@@ -1,0 +1,70 @@
+# 05 — Trigger Layer
+
+Three trigger types share one dispatch path: **event** (async-events notifier), **schedule** (cron + query), and **manual** (grid mass-action / CLI). All spawn identical executions through the same dispatcher.
+
+## Event triggers — ride the async-events notifier seam
+
+`mageos-async-events` delivers events to destinations via **notifiers** resolved from subscription `metadata` (`http`, `event_bridge`, ...). We add one:
+
+```php
+class WorkflowNotifier implements NotifierInterface   // metadata: "workflow"
+{
+    public function notify(AsyncEventDisplayInterface $event, array $data): ResultInterface
+    {
+        // $data = resolved service-class output (already the hydrated DTO, e.g. OrderInterface as array)
+        return $this->dispatcher->dispatch(
+            (int) $event->getSubscriptionData('workflow_id'), $data
+        );
+    }
+}
+```
+
+Enabling a workflow programmatically creates a hidden async-event subscription (`event_name` = trigger ref, `metadata` = `workflow`, recipient = workflow ID). Disabling deactivates it. Consequences, all favorable:
+
+- The engine inherits async-events' **queue transport, quadratic backoff retry, dead-lettering, UUID tracing, replay, and ES-indexed searchability** with zero code. A failed workflow dispatch is just a failed delivery — replayable from the existing admin grid.
+- The **payload arrives pre-hydrated** by the event's declared service class (`OrderRepositoryInterface::get` etc.) — the same snapshot an HTTP subscriber would get. This becomes the trigger snapshot placed into execution `context.trigger`.
+- **Trigger coverage = `async_events.xml` definitions.** `mageos-common-async-events` covers customer/order/invoice/shipment basics; `workflows-triggers-core` fills gaps: order status change (with from→to in payload), stock threshold crossed, review submitted, cart abandoned¹, customer group changed, credit memo, RMA if present.
+
+¹ Cart abandonment isn't an event — it's a query ("quote updated > N hours ago, no order"). It lives in the scheduler (below), which then *publishes* a `quote.abandoned` async event, keeping one dispatch path.
+
+The hidden subscriptions carry an `owner=workflow:<id>` marker; the async-events admin UI and REST API refuse mutation of owned subscriptions ([Security §Subscription ownership](10-security.md#subscription-ownership)).
+
+### Trigger metadata
+
+Trigger metadata for the UI (labels, entity type, payload hints) is declared in `workflow_triggers.xml`:
+
+```xml
+<trigger event="sales.order.created" entity="sales_order"
+         label="Order Created" group="Sales"
+         resolver="MageOS\Workflows\Model\Resolver\OrderResolver"/>
+```
+
+The `resolver` is the repository-backed hydration entry point used by the condition engine's Phase-2 pass ([Conditions §Two-phase evaluation](06-conditions.md#two-phase-evaluation-the-eav-at-scale-answer)).
+
+## Scheduled triggers (`workflows-scheduler`)
+
+A schedule-type workflow = cron expression + entity type + the same rule-condition tree used as a **query**.
+
+Key trick: `Magento\Rule\Model\Condition\*` supports `collectValidatedAttributes()` / SQL generation in the CatalogRule lineage — but that path is only reliable for products. Pragmatic approach:
+
+- Map the condition tree to `SearchCriteria` where operators translate cleanly (scalar/set/date on selectable attributes)
+- Fall back to load-and-filter in batches of 500 where they don't
+
+Each matching entity spawns a normal execution through the same dispatcher.
+
+**Guard rails:**
+
+- Per-run match cap (default 5k)
+- A `last_run_watermark` so "orders older than 72h" doesn't reprocess the same rows
+- Dedupe on `(workflow_id, entity_id)` within a configurable window
+
+Schedules evaluate in *store* timezone with the store recorded on the execution — see [Risks §Timezones](14-risks.md), the #1 support-ticket generator in every scheduler ever shipped.
+
+## Manual triggers
+
+- Admin mass-action on order/customer/product grids ("Run workflow…")
+- `bin/magento workflow:run <id> --entity-id=…`
+
+Spawns a standard execution with `trigger_type=manual` recorded. This doubles as the developer test harness during development and the merchant's test harness after.
+
+Manual mass-run is guarded: confirmation modal with matched-count preview, per-run cap (default 1k, configurable), a dedicated ACL resource, and a full audit log entry ([Security §Manual mass-run](10-security.md#manual-mass-run)).

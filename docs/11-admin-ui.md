@@ -1,0 +1,41 @@
+# 11 — Admin UI
+
+## v1 (adminhtml, ships with MVP)
+
+Grid + tabbed form:
+
+| Tab | Contents |
+|---|---|
+| General | Name, status, scope, loop guard |
+| Trigger | Grouped select from trigger metadata; schedule builder for cron type |
+| Conditions | The stock rule widget — ugly, familiar, free |
+| Actions | `dynamicRows`; each row's fieldset rendered from `getConfigForm()` metadata; delay and stop are just row types. v1 exposes linear + delays + a single optional post-delay branch |
+| Logs | Embedded execution grid |
+
+Plus grid mass-actions and the manual-run modal ([Triggers §Manual](05-triggers.md#manual-triggers)).
+
+## Shadow mode (v1, nearly free)
+
+Enable a workflow in `shadow` status: conditions evaluate on live traffic, actions log their would-be effect via `simulate()`, nothing mutates.
+
+This is the **single highest-leverage confidence feature** for merchants ("run it for a week, look at what it *would have* done") and it costs one enum value plus the simulate path that dry-run already needs. Ship it before dry-run — it's the same machinery with a status flag.
+
+## v2 (`workflows-canvas`)
+
+React Flow reading/writing the same [definition JSON](04-definition-format.md). Node palette from trigger/action metadata endpoints. The definition format is the API boundary — the canvas is purely presentational, no engine changes.
+
+Also v2:
+
+- **Template library** — curated JSON definitions installable from a gallery; the import pipeline is already the mechanism.
+- **Dry-run mode** — execute with a `simulate` flag; actions render their would-be effect into step results without side effects. Requires `ActionInterface::simulate()`, added to the contract in v1 as an optional interface so the core library is ready.
+
+Note: the canvas replaces the *layout*; the rule widget remains the condition editor even in v2 — it's the only EAV-aware editor that exists.
+
+## Merchant Accessibility & Openness
+
+The engine is only "merchant-facing" if a non-developer can trust and understand it:
+
+- **Plain-language rendering:** auto-generate a sentence from any definition — *"When an order is created on US Store, if grand total > $500 and customer group is Wholesale, then: add order comment, wait 1 hour, if still unpaid notify #fraud."* Rendered on the grid, the form header, the confirmation modal, and change-history entries. Cheap (walk the graph, template per node type), enormous comprehension payoff, and doubles later as the target/source representation for AI-assisted authoring.
+- **Change history with diffs:** definitions are versioned already ([Domain Model §Versioning](03-domain-model.md#versioning-semantics)) — expose it. Who changed what, when, rendered as plain-language before/after. Merchants audit; agencies debug "it worked last month."
+- **Failure UX:** step errors surfaced as merchant-readable messages with remediation hints (*"The webhook endpoint took longer than 5s"*, not a Guzzle trace; the trace lives behind a "technical details" expander). Daily failure digest email per store, opt-out.
+- **a11y & i18n:** all new UI keyboard-navigable and WCAG 2.1 AA (the legacy rule widget won't be — wrap it, don't inherit its sins into new components); every trigger/action/condition label runs through `__()` from day one so the ecosystem can ship label packs.
