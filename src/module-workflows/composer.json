@@ -1,0 +1,22 @@
+{
+    "name": "mage-os/workflows",
+    "description": "Mage-OS Workflow Engine core: domain model, condition evaluation, execution, queues",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0",
+        "magento/framework": ">=103.0.4",
+        "magento/module-store": "*",
+        "magento/module-rule": "*",
+        "mage-os/mageos-async-events": ">=4.0"
+    },
+    "suggest": {
+        "mage-os/mageos-async-events-admin-ui": "Raw async-event subscription debugging UI"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "MageOS\\Workflows\\": ""
+        }
+    }
+}
