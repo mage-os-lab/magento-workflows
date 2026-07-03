@@ -1,0 +1,59 @@
+{
+    "schema": 2,
+    "entry": "wait_for_order",
+    "steps": {
+        "wait_for_order": {
+            "type": "wait",
+            "config": {
+                "event": "sales.order.created",
+                "timeout": "PT4H"
+            },
+            "on_event": "thank_you",
+            "on_timeout": "still_abandoned"
+        },
+        "still_abandoned": {
+            "type": "branch",
+            "conditions_serialized": "",
+            "revalidate_entity": true,
+            "on_true": "send_reminder",
+            "on_false": null
+        },
+        "send_reminder": {
+            "type": "action",
+            "action": "notify.email",
+            "config": {
+                "to": "{{ trigger.customer_email|lower }}",
+                "subject": "You left something behind",
+                "body": "Your cart from {{ trigger.updated_at|date:'M j' }} is still waiting."
+            },
+            "next": "morning_nudge_delay"
+        },
+        "morning_nudge_delay": {
+            "type": "delay",
+            "config": {
+                "duration": "P1D",
+                "business_days": true,
+                "at": "09:00"
+            },
+            "next": "final_check"
+        },
+        "final_check": {
+            "type": "branch",
+            "conditions_serialized": "",
+            "revalidate_entity": true,
+            "on_true": "generate_coupon",
+            "on_false": null
+        },
+        "generate_coupon": {
+            "type": "action",
+            "action": "marketing.generate_coupon",
+            "config": {
+                "rule_id": "1"
+            },
+            "next": null
+        },
+        "thank_you": {
+            "type": "stop"
+        }
+    }
+}
