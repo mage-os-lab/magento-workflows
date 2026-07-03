@@ -76,12 +76,12 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Call Webhook';
+        return (string)__('Call Webhook');
     }
 
     public function getGroup(): string
     {
-        return 'Notify';
+        return (string)__('Notify');
     }
 
     public function getApplicableEntities(): array
@@ -126,7 +126,7 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
 
         $method = strtoupper($this->stringConfig($config, 'method', 'POST') ?? 'POST');
         if (!in_array($method, self::ALLOWED_METHODS, true)) {
-            return ActionResult::failure(sprintf('Invalid HTTP method "%s"', $method));
+            return ActionResult::failure((string)__('Invalid HTTP method "%1"', $method));
         }
 
         $storeId = $ctx->getStoreId();
@@ -136,15 +136,15 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
         $scheme = strtolower((string)($parts['scheme'] ?? ''));
         $host = strtolower(trim((string)($parts['host'] ?? ''), '[]'));
         if ($host === '' || !in_array($scheme, ['http', 'https'], true)) {
-            return ActionResult::failure(sprintf('Invalid webhook URL "%s"', $url));
+            return ActionResult::failure((string)__('Invalid webhook URL "%1"', $url));
         }
         if ($scheme !== 'https' && !$insecureAllowed) {
             return ActionResult::failure(
-                'Webhook URLs must use HTTPS (plain HTTP requires both the step flag and the global config opt-in)'
+                (string)__('Webhook URLs must use HTTPS (plain HTTP requires both the step flag and the global config opt-in)')
             );
         }
         if (isset($parts['user']) || isset($parts['pass'])) {
-            return ActionResult::failure('Userinfo in webhook URLs is not allowed');
+            return ActionResult::failure((string)__('Userinfo in webhook URLs is not allowed'));
         }
         $port = (int)($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
 
@@ -230,10 +230,10 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
         }
 
         if ($statusCode >= 500) {
-            return ActionResult::failure(sprintf('Webhook returned HTTP %d', $statusCode), true, $output);
+            return ActionResult::failure((string)__('Webhook returned HTTP %1', $statusCode), true, $output);
         }
         if ($statusCode >= 400) {
-            return ActionResult::failure(sprintf('Webhook returned HTTP %d', $statusCode), false, $output);
+            return ActionResult::failure((string)__('Webhook returned HTTP %1', $statusCode), false, $output);
         }
 
         $schemaError = $this->checkResponseSchema($config, $decoded);
@@ -252,16 +252,16 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
         }
         $method = strtoupper($this->stringConfig($config, 'method', 'POST') ?? 'POST');
         if (!in_array($method, self::ALLOWED_METHODS, true)) {
-            return ActionResult::failure(sprintf('Invalid HTTP method "%s"', $method));
+            return ActionResult::failure((string)__('Invalid HTTP method "%1"', $method));
         }
         $parts = parse_url($url);
         $scheme = strtolower((string)($parts['scheme'] ?? ''));
         $host = strtolower(trim((string)($parts['host'] ?? ''), '[]'));
         if ($host === '' || !in_array($scheme, ['http', 'https'], true)) {
-            return ActionResult::failure(sprintf('Invalid webhook URL "%s"', $url));
+            return ActionResult::failure((string)__('Invalid webhook URL "%1"', $url));
         }
         if ($scheme !== 'https' && !$this->isInsecureHttpAllowed($config, $ctx->getStoreId())) {
-            return ActionResult::failure('Webhook URLs must use HTTPS');
+            return ActionResult::failure((string)__('Webhook URLs must use HTTPS'));
         }
         return $this->simulated(
             sprintf('%s %s (no request sent)', $method, $url),
@@ -509,7 +509,7 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
             $value = $decoded;
             foreach (explode('.', $path) as $segment) {
                 if (!is_array($value) || !array_key_exists($segment, $value)) {
-                    return sprintf('Webhook response is missing required key "%s"', $path);
+                    return (string)__('Webhook response is missing required key "%1"', $path);
                 }
                 $value = $value[$segment];
             }

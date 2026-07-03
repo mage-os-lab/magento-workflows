@@ -31,12 +31,12 @@ class AssignGroup extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Assign Customer Group';
+        return (string)__('Assign Customer Group');
     }
 
     public function getGroup(): string
     {
-        return 'Customer';
+        return (string)__('Customer');
     }
 
     public function getApplicableEntities(): array
@@ -61,13 +61,13 @@ class AssignGroup extends AbstractAction implements SimulateableActionInterface
         try {
             $group = $this->groupRepository->getById($groupId);
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Customer group %d does not exist', $groupId));
+            return ActionResult::failure((string)__('Customer group %1 does not exist', $groupId));
         }
 
         try {
             $customer = $this->customerRepository->getById($ctx->getEntityId());
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Customer %d not found', $ctx->getEntityId()));
+            return ActionResult::failure((string)__('Customer %1 not found', $ctx->getEntityId()));
         }
 
         if ((int)$customer->getGroupId() === $groupId) {
@@ -98,7 +98,7 @@ class AssignGroup extends AbstractAction implements SimulateableActionInterface
         try {
             $group = $this->groupRepository->getById($groupId);
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Customer group %d does not exist', $groupId));
+            return ActionResult::failure((string)__('Customer group %1 does not exist', $groupId));
         }
         return $this->simulated(sprintf(
             'Assign customer %d to group "%s" (%d)',

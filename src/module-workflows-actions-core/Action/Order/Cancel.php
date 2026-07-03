@@ -21,7 +21,7 @@ class Cancel extends AbstractOrderAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Cancel Order';
+        return (string)__('Cancel Order');
     }
 
     public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface

@@ -21,7 +21,7 @@ class Unhold extends AbstractOrderAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Unhold Order';
+        return (string)__('Unhold Order');
     }
 
     public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface

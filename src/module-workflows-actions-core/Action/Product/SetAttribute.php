@@ -42,12 +42,12 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Set Product Attribute';
+        return (string)__('Set Product Attribute');
     }
 
     public function getGroup(): string
     {
-        return 'Catalog';
+        return (string)__('Catalog');
     }
 
     public function getApplicableEntities(): array
@@ -87,7 +87,7 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
         try {
             $this->attributeRepository->get('catalog_product', $attributeCode);
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Product attribute "%s" does not exist', $attributeCode));
+            return ActionResult::failure((string)__('Product attribute "%1" does not exist', $attributeCode));
         }
 
         try {
@@ -128,11 +128,11 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
     private function checkDenied(string $attributeCode): ?ActionResult
     {
         if (!preg_match(self::CODE_PATTERN, $attributeCode)) {
-            return ActionResult::failure(sprintf('Invalid attribute code "%s"', $attributeCode));
+            return ActionResult::failure((string)__('Invalid attribute code "%1"', $attributeCode));
         }
         if (in_array(strtolower($attributeCode), array_map('strtolower', $this->deniedAttributes), true)) {
-            return ActionResult::failure(sprintf(
-                'Attribute "%s" is on the security denylist and cannot be written by workflows',
+            return ActionResult::failure((string)__(
+                'Attribute "%1" is on the security denylist and cannot be written by workflows',
                 $attributeCode
             ));
         }

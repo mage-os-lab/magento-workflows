@@ -23,7 +23,7 @@ abstract class AbstractOrderAction extends AbstractAction
 
     public function getGroup(): string
     {
-        return 'Sales';
+        return (string)__('Sales');
     }
 
     public function getApplicableEntities(): array
@@ -39,10 +39,10 @@ abstract class AbstractOrderAction extends AbstractAction
         try {
             $order = $this->orderRepository->get($ctx->getEntityId());
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Order %d not found', $ctx->getEntityId()));
+            return ActionResult::failure((string)__('Order %1 not found', $ctx->getEntityId()));
         }
         if (!$order instanceof Order) {
-            return ActionResult::failure('Unexpected order implementation returned by repository');
+            return ActionResult::failure((string)__('Unexpected order implementation returned by repository'));
         }
         return $order;
     }

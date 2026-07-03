@@ -36,12 +36,12 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
 
     public function getLabel(): string
     {
-        return 'Generate Coupon Code';
+        return (string)__('Generate Coupon Code');
     }
 
     public function getGroup(): string
     {
-        return 'Marketing';
+        return (string)__('Marketing');
     }
 
     public function getApplicableEntities(): array
@@ -72,12 +72,12 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
         try {
             $rule = $this->ruleRepository->getById($ruleId);
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Cart price rule %d does not exist', $ruleId));
+            return ActionResult::failure((string)__('Cart price rule %1 does not exist', $ruleId));
         }
 
         if (!$rule->getUseAutoGeneration()) {
-            return ActionResult::failure(sprintf(
-                'Cart price rule %d ("%s") does not allow auto-generated coupons',
+            return ActionResult::failure((string)__(
+                'Cart price rule %1 ("%2") does not allow auto-generated coupons',
                 $ruleId,
                 (string)$rule->getName()
             ));
@@ -95,7 +95,7 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
         }
 
         if ($codes === []) {
-            return ActionResult::failure('Coupon generation returned no codes', true);
+            return ActionResult::failure((string)__('Coupon generation returned no codes'), true);
         }
 
         return ActionResult::success([
@@ -113,10 +113,10 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
         try {
             $rule = $this->ruleRepository->getById($ruleId);
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Cart price rule %d does not exist', $ruleId));
+            return ActionResult::failure((string)__('Cart price rule %1 does not exist', $ruleId));
         }
         if (!$rule->getUseAutoGeneration()) {
-            return ActionResult::failure(sprintf('Cart price rule %d does not allow auto-generated coupons', $ruleId));
+            return ActionResult::failure((string)__('Cart price rule %1 does not allow auto-generated coupons', $ruleId));
         }
         return $this->simulated(
             sprintf('Generate one coupon code from rule "%s" (%d)', (string)$rule->getName(), $ruleId),

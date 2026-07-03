@@ -40,12 +40,12 @@ class Email extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Send Email';
+        return (string)__('Send Email');
     }
 
     public function getGroup(): string
     {
-        return 'Notify';
+        return (string)__('Notify');
     }
 
     public function getApplicableEntities(): array
@@ -73,7 +73,7 @@ class Email extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('to');
         }
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            return ActionResult::failure(sprintf('Invalid recipient email "%s"', $to));
+            return ActionResult::failure((string)__('Invalid recipient email "%1"', $to));
         }
 
         // Check-and-set guard BEFORE the side effect (mail cannot be unsent)
@@ -126,7 +126,7 @@ class Email extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('to');
         }
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            return ActionResult::failure(sprintf('Invalid recipient email "%s"', $to));
+            return ActionResult::failure((string)__('Invalid recipient email "%1"', $to));
         }
         return $this->simulated(sprintf('Send email template "%s" to %s', $templateId, $to));
     }

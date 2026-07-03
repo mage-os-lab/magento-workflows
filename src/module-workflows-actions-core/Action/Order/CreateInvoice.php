@@ -37,7 +37,7 @@ class CreateInvoice extends AbstractOrderAction implements SimulateableActionInt
 
     public function getLabel(): string
     {
-        return 'Create Invoice';
+        return (string)__('Create Invoice');
     }
 
     public function getConfigForm(): array
@@ -61,7 +61,7 @@ class CreateInvoice extends AbstractOrderAction implements SimulateableActionInt
     {
         $capture = $this->stringConfig($config, 'capture', self::CAPTURE_OFFLINE);
         if (!in_array($capture, [self::CAPTURE_ONLINE, self::CAPTURE_OFFLINE], true)) {
-            return ActionResult::failure(sprintf('Invalid capture mode "%s" (online|offline)', $capture));
+            return ActionResult::failure((string)__('Invalid capture mode "%1" (online|offline)', $capture));
         }
 
         $order = $this->loadOrder($ctx);

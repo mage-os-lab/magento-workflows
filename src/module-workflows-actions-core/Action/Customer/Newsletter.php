@@ -33,12 +33,12 @@ class Newsletter extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Newsletter Subscribe/Unsubscribe';
+        return (string)__('Newsletter Subscribe/Unsubscribe');
     }
 
     public function getGroup(): string
     {
-        return 'Customer';
+        return (string)__('Customer');
     }
 
     public function getApplicableEntities(): array
@@ -69,7 +69,7 @@ class Newsletter extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('action');
         }
         if (!in_array($action, [self::ACTION_SUBSCRIBE, self::ACTION_UNSUBSCRIBE], true)) {
-            return ActionResult::failure(sprintf('Invalid newsletter action "%s" (subscribe|unsubscribe)', $action));
+            return ActionResult::failure((string)__('Invalid newsletter action "%1" (subscribe|unsubscribe)', $action));
         }
 
         try {
@@ -77,7 +77,7 @@ class Newsletter extends AbstractAction implements SimulateableActionInterface
                 ? $this->subscriptionManager->subscribeCustomer($ctx->getEntityId(), $ctx->getStoreId())
                 : $this->subscriptionManager->unsubscribeCustomer($ctx->getEntityId(), $ctx->getStoreId());
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Customer %d not found', $ctx->getEntityId()));
+            return ActionResult::failure((string)__('Customer %1 not found', $ctx->getEntityId()));
         } catch (\Exception $e) {
             return ActionResult::failure('Newsletter update failed: ' . $e->getMessage(), true);
         }
@@ -95,7 +95,7 @@ class Newsletter extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('action');
         }
         if (!in_array($action, [self::ACTION_SUBSCRIBE, self::ACTION_UNSUBSCRIBE], true)) {
-            return ActionResult::failure(sprintf('Invalid newsletter action "%s" (subscribe|unsubscribe)', $action));
+            return ActionResult::failure((string)__('Invalid newsletter action "%1" (subscribe|unsubscribe)', $action));
         }
         return $this->simulated(sprintf(
             '%s customer %d on store %d',

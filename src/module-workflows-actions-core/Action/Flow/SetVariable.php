@@ -25,12 +25,12 @@ class SetVariable extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Set Context Variable';
+        return (string)__('Set Context Variable');
     }
 
     public function getGroup(): string
     {
-        return 'Flow';
+        return (string)__('Flow');
     }
 
     public function getConfigForm(): array
@@ -49,8 +49,8 @@ class SetVariable extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('name');
         }
         if (!preg_match(self::NAME_PATTERN, $name)) {
-            return ActionResult::failure(sprintf(
-                'Invalid variable name "%s" (letters, digits, underscores only)',
+            return ActionResult::failure((string)__(
+                'Invalid variable name "%1" (letters, digits, underscores only)',
                 $name
             ));
         }
@@ -65,7 +65,7 @@ class SetVariable extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('name');
         }
         if (!preg_match(self::NAME_PATTERN, $name)) {
-            return ActionResult::failure(sprintf('Invalid variable name "%s"', $name));
+            return ActionResult::failure((string)__('Invalid variable name "%1"', $name));
         }
         // No side effects to begin with: simulate returns the real output too,
         // so downstream shadow steps can interpolate it.

@@ -32,12 +32,12 @@ class SetStatus extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Enable/Disable Product';
+        return (string)__('Enable/Disable Product');
     }
 
     public function getGroup(): string
     {
-        return 'Catalog';
+        return (string)__('Catalog');
     }
 
     public function getApplicableEntities(): array
@@ -68,7 +68,7 @@ class SetStatus extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('status');
         }
         if (!in_array($status, [self::STATUS_ENABLED, self::STATUS_DISABLED], true)) {
-            return ActionResult::failure(sprintf('Invalid status "%s" (enabled|disabled)', $status));
+            return ActionResult::failure((string)__('Invalid status "%1" (enabled|disabled)', $status));
         }
 
         $statusValue = $status === self::STATUS_ENABLED ? Status::STATUS_ENABLED : Status::STATUS_DISABLED;
@@ -97,7 +97,7 @@ class SetStatus extends AbstractAction implements SimulateableActionInterface
             return $this->missingConfig('status');
         }
         if (!in_array($status, [self::STATUS_ENABLED, self::STATUS_DISABLED], true)) {
-            return ActionResult::failure(sprintf('Invalid status "%s" (enabled|disabled)', $status));
+            return ActionResult::failure((string)__('Invalid status "%1" (enabled|disabled)', $status));
         }
         return $this->simulated(sprintf(
             'Set product %d to %s on store %d',

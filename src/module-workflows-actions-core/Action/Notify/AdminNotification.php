@@ -27,12 +27,12 @@ class AdminNotification extends AbstractAction implements SimulateableActionInte
 
     public function getLabel(): string
     {
-        return 'Admin Notification';
+        return (string)__('Admin Notification');
     }
 
     public function getGroup(): string
     {
-        return 'Notify';
+        return (string)__('Notify');
     }
 
     public function getApplicableEntities(): array

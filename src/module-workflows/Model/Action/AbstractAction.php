@@ -23,11 +23,26 @@ abstract class AbstractAction implements ActionInterface, ActionMetadataInterfac
     }
 
     /**
+     * ACL group per action-code prefix. Derived from getCode(), never from
+     * getGroup(): the group label is translatable and ACL resource ids must
+     * be locale-independent.
+     */
+    private const ACL_GROUP_BY_CODE_PREFIX = [
+        'order' => 'sales',
+        'customer' => 'customer',
+        'product' => 'catalog',
+        'marketing' => 'marketing',
+        'notify' => 'notify',
+        'flow' => 'flow',
+    ];
+
+    /**
      * @inheritDoc
      */
     public function getAclResource(): ?string
     {
-        return 'MageOS_Workflows::action_' . strtolower($this->getGroup());
+        $prefix = explode('.', $this->getCode(), 2)[0];
+        return 'MageOS_Workflows::action_' . (self::ACL_GROUP_BY_CODE_PREFIX[$prefix] ?? $prefix);
     }
 
     /**

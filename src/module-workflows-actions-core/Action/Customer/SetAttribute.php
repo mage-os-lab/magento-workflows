@@ -45,12 +45,12 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Set Customer Attribute';
+        return (string)__('Set Customer Attribute');
     }
 
     public function getGroup(): string
     {
-        return 'Customer';
+        return (string)__('Customer');
     }
 
     public function getApplicableEntities(): array
@@ -91,13 +91,13 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
         try {
             $this->attributeRepository->get('customer', $attributeCode);
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Customer attribute "%s" does not exist', $attributeCode));
+            return ActionResult::failure((string)__('Customer attribute "%1" does not exist', $attributeCode));
         }
 
         try {
             $customer = $this->customerRepository->getById($ctx->getEntityId());
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Customer %d not found', $ctx->getEntityId()));
+            return ActionResult::failure((string)__('Customer %1 not found', $ctx->getEntityId()));
         }
 
         try {
@@ -137,11 +137,11 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
     private function checkDenied(string $attributeCode): ?ActionResult
     {
         if (!preg_match(self::CODE_PATTERN, $attributeCode)) {
-            return ActionResult::failure(sprintf('Invalid attribute code "%s"', $attributeCode));
+            return ActionResult::failure((string)__('Invalid attribute code "%1"', $attributeCode));
         }
         if (in_array(strtolower($attributeCode), array_map('strtolower', $this->deniedAttributes), true)) {
-            return ActionResult::failure(sprintf(
-                'Attribute "%s" is on the security denylist and cannot be written by workflows',
+            return ActionResult::failure((string)__(
+                'Attribute "%1" is on the security denylist and cannot be written by workflows',
                 $attributeCode
             ));
         }

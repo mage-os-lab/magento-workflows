@@ -34,12 +34,12 @@ class SetStock extends AbstractAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Set Stock Status/Qty';
+        return (string)__('Set Stock Status/Qty');
     }
 
     public function getGroup(): string
     {
-        return 'Catalog';
+        return (string)__('Catalog');
     }
 
     public function getApplicableEntities(): array
@@ -61,16 +61,16 @@ class SetStock extends AbstractAction implements SimulateableActionInterface
         $qty = $this->stringConfig($config, 'qty');
         $hasStockStatus = array_key_exists('is_in_stock', $config) && $config['is_in_stock'] !== '';
         if ($qty === null && !$hasStockStatus) {
-            return ActionResult::failure('Configure at least one of "qty" or "is_in_stock"');
+            return ActionResult::failure((string)__('Configure at least one of "qty" or "is_in_stock"'));
         }
         if ($qty !== null && !is_numeric($qty)) {
-            return ActionResult::failure(sprintf('Invalid qty "%s"', $qty));
+            return ActionResult::failure((string)__('Invalid qty "%1"', $qty));
         }
 
         try {
             $product = $this->productRepository->getById($ctx->getEntityId());
         } catch (NoSuchEntityException $e) {
-            return ActionResult::failure(sprintf('Product %d not found', $ctx->getEntityId()));
+            return ActionResult::failure((string)__('Product %1 not found', $ctx->getEntityId()));
         }
 
         try {
@@ -98,7 +98,7 @@ class SetStock extends AbstractAction implements SimulateableActionInterface
         $qty = $this->stringConfig($config, 'qty');
         $hasStockStatus = array_key_exists('is_in_stock', $config) && $config['is_in_stock'] !== '';
         if ($qty === null && !$hasStockStatus) {
-            return ActionResult::failure('Configure at least one of "qty" or "is_in_stock"');
+            return ActionResult::failure((string)__('Configure at least one of "qty" or "is_in_stock"'));
         }
         $parts = [];
         if ($qty !== null) {

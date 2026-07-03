@@ -35,7 +35,7 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
 
     public function getLabel(): string
     {
-        return 'Change Order Status';
+        return (string)__('Change Order Status');
     }
 
     public function getConfigForm(): array
@@ -70,8 +70,8 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
         $state = (string)$order->getState();
         $allowed = $this->orderConfig->getStateStatuses($state);
         if (!array_key_exists($status, $allowed)) {
-            return ActionResult::failure(sprintf(
-                'Status "%s" is not valid for order state "%s" (allowed: %s)',
+            return ActionResult::failure((string)__(
+                'Status "%1" is not valid for order state "%2" (allowed: %3)',
                 $status,
                 $state,
                 implode(', ', array_keys($allowed))
@@ -116,8 +116,8 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
 
         $allowed = $this->orderConfig->getStateStatuses((string)$order->getState());
         if (!array_key_exists($status, $allowed)) {
-            return ActionResult::failure(sprintf(
-                'Status "%s" is not valid for order state "%s"',
+            return ActionResult::failure((string)__(
+                'Status "%1" is not valid for order state "%2"',
                 $status,
                 (string)$order->getState()
             ));

@@ -21,7 +21,7 @@ class Hold extends AbstractOrderAction implements SimulateableActionInterface
 
     public function getLabel(): string
     {
-        return 'Hold Order';
+        return (string)__('Hold Order');
     }
 
     public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface

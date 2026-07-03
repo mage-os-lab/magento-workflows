@@ -27,7 +27,7 @@ class AddComment extends AbstractOrderAction implements SimulateableActionInterf
 
     public function getLabel(): string
     {
-        return 'Add Order Comment';
+        return (string)__('Add Order Comment');
     }
 
     public function getConfigForm(): array
