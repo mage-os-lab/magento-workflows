@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Execution\Index" name="mageos_workflows_execution_index"/>
+            <uiComponent name="mageos_workflow_executions_listing"/>
+        </referenceContainer>
+    </body>
+</page>

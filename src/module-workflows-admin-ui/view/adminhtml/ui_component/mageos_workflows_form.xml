@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_components.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">mageos_workflows_form.mageos_workflows_form_data_source</item>
+        </item>
+        <item name="label" xsi:type="string" translate="true">General Information</item>
+    </argument>
+    <settings>
+        <namespace>mageos_workflows_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>mageos_workflows_form.mageos_workflows_form_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="mageos_workflows_form_data_source">
+        <argument name="dataProvider" xsi:type="configurableObject">
+            <argument name="class" xsi:type="string">MageOS\WorkflowsAdminUi\Model\Workflow\DataProvider</argument>
+            <argument name="name" xsi:type="string">mageos_workflows_form_data_source</argument>
+            <argument name="primaryFieldName" xsi:type="string">workflow_id</argument>
+            <argument name="requestFieldName" xsi:type="string">workflow_id</argument>
+        </argument>
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/form/provider</item>
+            </item>
+        </argument>
+    </dataSource>
+    <fieldset name="general">
+        <settings>
+            <label translate="true">General</label>
+        </settings>
+        <field name="workflow_id" formElement="input">
+            <settings>
+                <visible>false</visible>
+                <dataType>text</dataType>
+            </settings>
+        </field>
+        <field name="name" formElement="input" sortOrder="10">
+            <settings>
+                <label translate="true">Name</label>
+                <dataType>text</dataType>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+        <field name="status" formElement="select" sortOrder="20">
+            <settings>
+                <label translate="true">Status</label>
+                <dataType>text</dataType>
+                <dataScope>status</dataScope>
+                <notice translate="true">Shadow mode evaluates conditions on live traffic and logs would-be action effects without mutating anything.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="MageOS\WorkflowsAdminUi\Model\Source\WorkflowStatus"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="entity_type" formElement="select" sortOrder="30">
+            <settings>
+                <label translate="true">Entity Type</label>
+                <dataType>text</dataType>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="MageOS\WorkflowsAdminUi\Model\Source\EntityType"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="trigger_type" formElement="select" sortOrder="40">
+            <settings>
+                <label translate="true">Trigger Type</label>
+                <dataType>text</dataType>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="MageOS\WorkflowsAdminUi\Model\Source\TriggerType"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="trigger_ref" formElement="select" sortOrder="50">
+            <settings>
+                <label translate="true">Trigger</label>
+                <dataType>text</dataType>
+                <notice translate="true">Populated from registered event triggers. For schedule-type workflows, use a cron expression here instead; manual triggers ignore this field.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="MageOS\WorkflowsAdminUi\Model\Trigger\TriggerRefOptions"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="website_ids" formElement="multiselect" sortOrder="60">
+            <settings>
+                <label translate="true">Website Scope</label>
+                <dataType>text</dataType>
+                <dataScope>website_ids</dataScope>
+                <notice translate="true">The dispatcher resolves the triggering entity's store to a website and skips this workflow if it doesn't match.</notice>
+            </settings>
+            <formElements>
+                <multiselect>
+                    <settings>
+                        <options class="Magento\Config\Model\Config\Source\Website"/>
+                    </settings>
+                </multiselect>
+            </formElements>
+        </field>
+        <field name="loop_guard_depth" formElement="input" sortOrder="70">
+            <settings>
+                <label translate="true">Loop Guard Depth</label>
+                <dataType>number</dataType>
+                <notice translate="true">Maximum re-dispatch depth before a self-triggered chain is suppressed (default 1).</notice>
+                <validation>
+                    <rule name="validate-digits" xsi:type="boolean">true</rule>
+                    <rule name="validate-greater-than-zero" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+    </fieldset>
+    <fieldset name="conditions">
+        <settings>
+            <label translate="true">Conditions</label>
+            <collapsible>true</collapsible>
+        </settings>
+        <field name="conditions_serialized" formElement="textarea" sortOrder="10">
+            <settings>
+                <label translate="true">Conditions</label>
+                <dataType>text</dataType>
+                <notice translate="true">v1 placeholder: a serialized condition tree (same shape as salesrule/catalogrule). The stock rule widget is a stretch goal for a future release; this keeps conditions authorable meanwhile. Leave blank for "always run".</notice>
+            </settings>
+        </field>
+    </fieldset>
+    <fieldset name="actions">
+        <settings>
+            <label translate="true">Actions</label>
+            <collapsible>true</collapsible>
+        </settings>
+        <field name="definition" formElement="textarea" sortOrder="10">
+            <settings>
+                <label translate="true">Definition (JSON)</label>
+                <dataType>text</dataType>
+                <notice translate="true">v1 fallback editor: the raw step-graph JSON (schema, steps, entry -- see docs/04-definition-format.md). Validated on save against the definition schema and against your ACL for every action referenced. A dynamicRows/metadata-driven step builder is a stretch goal.</notice>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+    </fieldset>
+</form>

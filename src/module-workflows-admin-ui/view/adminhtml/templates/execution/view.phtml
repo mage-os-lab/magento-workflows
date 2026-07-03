@@ -1,0 +1,115 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Execution\View $block
+ */
+$execution = $block->getExecution();
+?>
+<?php if (!$execution): ?>
+    <div class="message message-error"><?= $block->escapeHtml(__('Execution not found.')) ?></div>
+<?php else: ?>
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml(__('Execution Summary')) ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <table class="admin__table-secondary">
+                <tbody>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Execution ID')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getExecutionId()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('UUID')) ?></th>
+                    <td><?= $block->escapeHtml($execution->getUuid()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Workflow')) ?></th>
+                    <td><?= $block->escapeHtml($block->getWorkflowName()) ?> (#<?= $block->escapeHtml((string) $execution->getWorkflowId()) ?>, v<?= $block->escapeHtml((string) $execution->getWorkflowVersion()) ?>)</td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Entity ID')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getEntityId()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Store ID')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getStoreId()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Status')) ?></th>
+                    <td><?= $block->escapeHtml($execution->getStatus()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Chain Depth')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getChainDepth()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Current Step')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getCurrentStep()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Triggered At')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getTriggeredAt()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Completed At')) ?></th>
+                    <td><?= $block->escapeHtml((string) $execution->getCompletedAt()) ?></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml(__('Step Timeline')) ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <table class="data-table admin__table-primary">
+                <thead>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Step')) ?></th>
+                    <th><?= $block->escapeHtml(__('Status')) ?></th>
+                    <th><?= $block->escapeHtml(__('Started')) ?></th>
+                    <th><?= $block->escapeHtml(__('Finished')) ?></th>
+                    <th><?= $block->escapeHtml(__('Resume At')) ?></th>
+                    <th><?= $block->escapeHtml(__('Result / Error')) ?></th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php $steps = $block->getSteps(); ?>
+                <?php if (!$steps): ?>
+                    <tr>
+                        <td colspan="6"><?= $block->escapeHtml(__('No step data recorded yet.')) ?></td>
+                    </tr>
+                <?php endif; ?>
+                <?php foreach ($steps as $step): ?>
+                    <tr>
+                        <td><?= $block->escapeHtml($step->getStepKey()) ?></td>
+                        <td><?= $block->escapeHtml($step->getStatus()) ?></td>
+                        <td><?= $block->escapeHtml((string) $step->getStartedAt()) ?></td>
+                        <td><?= $block->escapeHtml((string) $step->getFinishedAt()) ?></td>
+                        <td><?= $block->escapeHtml((string) $step->getResumeAt()) ?></td>
+                        <td>
+                            <?php if ($step->getError()): ?>
+                                <div class="message message-error"><?= $block->escapeHtml($step->getError()) ?></div>
+                            <?php endif; ?>
+                            <?php if ($step->getResult()): ?>
+                                <pre style="white-space: pre-wrap;"><?= $block->escapeHtml($block->formatJson($step->getResult())) ?></pre>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml(__('Context (technical details)')) ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <pre style="white-space: pre-wrap;"><?= $block->escapeHtml($block->formatJson($execution->getContext())) ?></pre>
+        </div>
+    </div>
+<?php endif; ?>

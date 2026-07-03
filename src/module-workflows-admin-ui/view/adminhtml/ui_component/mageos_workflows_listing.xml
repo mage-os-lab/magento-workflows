@@ -1,0 +1,142 @@
+<?xml version="1.0"?>
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_components.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">mageos_workflows_listing.mageos_workflows_listing_data_source</item>
+        </item>
+    </argument>
+    <settings>
+        <spinner>mageos_workflows_columns</spinner>
+        <deps>
+            <dep>mageos_workflows_listing.mageos_workflows_listing_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="mageos_workflows_listing_data_source">
+        <argument name="dataProvider" xsi:type="configurableObject">
+            <argument name="class" xsi:type="string">Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider</argument>
+            <argument name="name" xsi:type="string">mageos_workflows_listing_data_source</argument>
+            <argument name="primaryFieldName" xsi:type="string">workflow_id</argument>
+            <argument name="requestFieldName" xsi:type="string">id</argument>
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="update_url" xsi:type="url" path="mui/index/render"/>
+                </item>
+            </argument>
+        </argument>
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/grid/provider</item>
+            </item>
+        </argument>
+    </dataSource>
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filters name="listing_filters"/>
+        <massaction name="listing_massaction">
+            <action name="enable">
+                <settings>
+                    <url path="mageos_workflows/workflow/massEnable"/>
+                    <type>enable</type>
+                    <label translate="true">Enable</label>
+                </settings>
+            </action>
+            <action name="disable">
+                <settings>
+                    <url path="mageos_workflows/workflow/massDisable"/>
+                    <type>disable</type>
+                    <label translate="true">Disable</label>
+                </settings>
+            </action>
+            <action name="delete">
+                <settings>
+                    <url path="mageos_workflows/workflow/delete"/>
+                    <type>delete</type>
+                    <label translate="true">Delete</label>
+                    <confirm>
+                        <title translate="true">Delete Workflow(s)</title>
+                        <message translate="true">Are you sure you want to delete the selected workflow(s)?</message>
+                    </confirm>
+                </settings>
+            </action>
+        </massaction>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+    <columns name="mageos_workflows_columns">
+        <selectionsColumn name="ids">
+            <settings>
+                <indexField>workflow_id</indexField>
+            </settings>
+        </selectionsColumn>
+        <column name="workflow_id">
+            <settings>
+                <filter>textRange</filter>
+                <sorting>desc</sorting>
+                <label translate="true">ID</label>
+            </settings>
+        </column>
+        <column name="name">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Name</label>
+            </settings>
+        </column>
+        <column name="status" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\WorkflowStatus"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Status</label>
+            </settings>
+        </column>
+        <column name="trigger_type">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Trigger Type</label>
+            </settings>
+        </column>
+        <column name="trigger_ref">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Trigger</label>
+            </settings>
+        </column>
+        <column name="entity_type">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Entity Type</label>
+            </settings>
+        </column>
+        <column name="version">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Version</label>
+            </settings>
+        </column>
+        <column name="plain_language" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\PlainLanguage">
+            <settings>
+                <sortable>false</sortable>
+                <filter>false</filter>
+                <label translate="true">Summary</label>
+            </settings>
+        </column>
+        <column name="updated_at" class="Magento\Ui\Component\Listing\Columns\Date">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Updated</label>
+            </settings>
+        </column>
+        <actionsColumn name="actions" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\WorkflowActions">
+            <settings>
+                <indexField>workflow_id</indexField>
+                <sortable>false</sortable>
+                <filter>false</filter>
+            </settings>
+        </actionsColumn>
+    </columns>
+</listing>
