@@ -75,6 +75,13 @@ class Executor
             return;
         }
 
+        // Parked by a delay: only the resume path (which flips the status to
+        // running first) may wake it. A redelivered execute message arriving
+        // after the delay persisted must NOT walk past the delay early.
+        if ($status === WorkflowExecutionInterface::STATUS_WAITING) {
+            return;
+        }
+
         try {
             $definition = Definition::fromJson($execution->getDefinitionSnapshot());
         } catch (\InvalidArgumentException $e) {

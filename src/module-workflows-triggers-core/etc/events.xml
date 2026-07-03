@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Workflow lifecycle -> hidden async-event subscription sync
+         (AbstractModel events, event prefix 'mageos_workflow') -->
+    <event name="mageos_workflow_save_after">
+        <observer name="mageos_workflows_triggers_subscription_sync_save"
+                  instance="MageOS\WorkflowsTriggersCore\Observer\WorkflowSaveObserver"/>
+    </event>
+    <event name="mageos_workflow_delete_after">
+        <observer name="mageos_workflows_triggers_subscription_sync_delete"
+                  instance="MageOS\WorkflowsTriggersCore\Observer\WorkflowSaveObserver"/>
+    </event>
+
+    <!-- Gap-fill async-event publishers -->
+    <event name="sales_order_save_after">
+        <observer name="mageos_workflows_triggers_order_status_changed"
+                  instance="MageOS\WorkflowsTriggersCore\Observer\OrderStatusChangeObserver"/>
+    </event>
+    <event name="customer_save_after">
+        <observer name="mageos_workflows_triggers_customer_group_changed"
+                  instance="MageOS\WorkflowsTriggersCore\Observer\CustomerGroupChangeObserver"/>
+    </event>
+    <event name="review_save_after">
+        <observer name="mageos_workflows_triggers_review_submitted"
+                  instance="MageOS\WorkflowsTriggersCore\Observer\ReviewSubmittedObserver"/>
+    </event>
+</config>

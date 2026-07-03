@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <mageos_workflows>
+            <scheduler>
+                <!-- Per-run match cap for schedule-type workflows (docs/05-triggers.md#scheduled-triggers-workflows-scheduler) -->
+                <match_cap>5000</match_cap>
+                <!-- AbandonedCartDetector: quotes idle at least this many hours are candidates -->
+                <abandoned_hours>4</abandoned_hours>
+            </scheduler>
+        </mageos_workflows>
+    </default>
+</config>

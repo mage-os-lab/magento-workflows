@@ -1,0 +1,23 @@
+{
+    "mageos_workflow_schedule_state": {
+        "column": {
+            "workflow_id": true,
+            "last_run_at": true,
+            "last_run_watermark": true
+        },
+        "index": {},
+        "constraint": {
+            "PRIMARY": true
+        }
+    },
+    "mageos_workflow_abandoned_flag": {
+        "column": {
+            "quote_id": true,
+            "flagged_at": true
+        },
+        "index": {},
+        "constraint": {
+            "PRIMARY": true
+        }
+    }
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <table name="mageos_workflow_schedule_state" resource="default" engine="innodb"
+           comment="Per-workflow last-run bookkeeping for schedule-type workflows - double-fire guard and watermark">
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" identity="false"
+                comment="Workflow ID (mageos_workflow.workflow_id)"/>
+        <column xsi:type="timestamp" name="last_run_at" on_update="false" nullable="true" default="null"
+                comment="UTC timestamp (minute precision) this workflow last fired - avoids double-fires within the same minute"/>
+        <column xsi:type="varchar" name="last_run_watermark" nullable="true" length="32"
+                comment="High-water mark (created_at for sales_order, updated_at otherwise) of the last entity dispatched"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="workflow_id"/>
+        </constraint>
+    </table>
+
+    <table name="mageos_workflow_abandoned_flag" resource="default" engine="innodb"
+           comment="Quotes already flagged as abandoned by AbandonedCartDetector - prevents re-detection">
+        <column xsi:type="int" name="quote_id" unsigned="true" nullable="false" identity="false"
+                comment="Quote entity ID (quote.entity_id)"/>
+        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="When this quote was flagged as abandoned"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="quote_id"/>
+        </constraint>
+    </table>
+
+</schema>

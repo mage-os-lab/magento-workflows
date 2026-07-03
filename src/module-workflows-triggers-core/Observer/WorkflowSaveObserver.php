@@ -1,0 +1,71 @@
+<?php
+declare(strict_types=1);
+
+namespace MageOS\WorkflowsTriggersCore\Observer;
+
+use Magento\Framework\Event\Observer;
+use Magento\Framework\Event\ObserverInterface;
+use MageOS\Workflows\Api\Data\WorkflowInterface;
+use MageOS\WorkflowsTriggersCore\Model\SubscriptionManager;
+
+/**
+ * Keeps the hidden async-event subscription in sync with the workflow
+ * lifecycle. Registered on both 'mageos_workflow_save_after' and
+ * 'mageos_workflow_delete_after' (the standard AbstractModel events fired
+ * by the core repository, event prefix 'mageos_workflow').
+ *
+ * Sync rules:
+ * - save of an event-triggered workflow in Enabled or Shadow status
+ *   -> ensure an active subscription (Shadow workflows receive live events;
+ *      their actions only simulate, see docs/architecture-plan.md section 9)
+ * - save in Disabled/Suspended status, or with a non-event trigger type
+ *   -> deactivate the subscription
+ * - delete -> deactivate the subscription
+ *
+ * Errors bubble: a workflow save that cannot bind its event stream must
+ * fail loudly, not enable a workflow that will never fire.
+ */
+class WorkflowSaveObserver implements ObserverInterface
+{
+    private const DELETE_EVENT_SUFFIX = '_delete_after';
+
+    public function __construct(
+        private readonly SubscriptionManager $subscriptionManager
+    ) {
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function execute(Observer $observer): void
+    {
+        $workflow = $observer->getEvent()->getData('object')
+            ?? $observer->getEvent()->getData('data_object');
+        if (!$workflow instanceof WorkflowInterface) {
+            return;
+        }
+
+        if ($this->isDeleteEvent($observer) || !$this->requiresActiveSubscription($workflow)) {
+            $this->subscriptionManager->disableSubscription($workflow);
+
+            return;
+        }
+
+        $this->subscriptionManager->ensureSubscription($workflow);
+    }
+
+    private function isDeleteEvent(Observer $observer): bool
+    {
+        return str_ends_with((string) $observer->getEvent()->getName(), self::DELETE_EVENT_SUFFIX);
+    }
+
+    private function requiresActiveSubscription(WorkflowInterface $workflow): bool
+    {
+        return $workflow->getTriggerType() === WorkflowInterface::TRIGGER_TYPE_EVENT
+            && in_array(
+                $workflow->getStatus(),
+                [WorkflowInterface::STATUS_ENABLED, WorkflowInterface::STATUS_SHADOW],
+                true
+            );
+    }
+}
