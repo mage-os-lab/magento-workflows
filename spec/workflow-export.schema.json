@@ -13,7 +13,7 @@
         "trigger_type": {"enum": ["event", "schedule", "manual"]},
         "trigger_ref": {"type": "string"},
         "conditions_serialized": {"type": ["string", "null"]},
-        "definition": {"$ref": "https://mage-os.org/schemas/workflow-definition/1.json"},
+        "definition": {"$ref": "https://mage-os.org/schemas/workflow-definition/2.json"},
         "loop_guard_depth": {"type": "integer", "minimum": 0, "maximum": 10, "default": 1}
     }
 }

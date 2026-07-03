@@ -12,15 +12,20 @@
                 <item name="order.hold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Hold</item>
                 <item name="order.unhold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Unhold</item>
                 <item name="order.create_invoice" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateInvoice</item>
+                <item name="order.create_shipment" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateShipment</item>
+                <item name="order.create_creditmemo" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateCreditmemo</item>
                 <item name="order.cancel" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Cancel</item>
                 <!-- Customer -->
                 <item name="customer.assign_group" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\AssignGroup</item>
                 <item name="customer.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute</item>
                 <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Newsletter</item>
+                <item name="customer.anonymize" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Anonymize</item>
                 <!-- Catalog -->
                 <item name="product.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetAttribute</item>
                 <item name="product.set_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStatus</item>
                 <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStock</item>
+                <item name="product.set_categories" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetCategories</item>
+                <item name="product.set_special_price" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetSpecialPrice</item>
                 <!-- Marketing -->
                 <item name="marketing.generate_coupon" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Marketing\GenerateCoupon</item>
                 <!-- Notify -->

@@ -6,6 +6,7 @@ namespace MageOS\Workflows\Model\Rule\Condition\Customer;
 use Magento\Framework\DataObject;
 use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;
+use MageOS\Workflows\Model\Rule\Condition\TriggerData;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 
 /**
@@ -43,6 +44,7 @@ class Combine extends AbstractWorkflowCombine
             parent::getNewChildSelectOptions(),
             [
                 ['value' => self::class, 'label' => __('Conditions Combination')],
+                ['value' => TriggerData::class, 'label' => __('Trigger Data (advanced)')],
                 ['label' => __('Customer Attribute'), 'value' => $attributeOptions],
             ]
         );

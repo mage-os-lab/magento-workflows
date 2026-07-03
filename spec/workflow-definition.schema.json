@@ -1,14 +1,14 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://mage-os.org/schemas/workflow-definition/1.json",
+    "$id": "https://mage-os.org/schemas/workflow-definition/2.json",
     "title": "Mage-OS Workflow Definition",
-    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 1.",
+    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 2 adds the wait step and the optional delay fields business_days / at; documents using them MUST declare schema 2. Version 1 documents remain valid.",
     "type": "object",
     "required": ["schema", "steps", "entry"],
     "additionalProperties": false,
     "properties": {
         "schema": {
-            "const": 1
+            "enum": [1, 2]
         },
         "entry": {
             "$ref": "#/$defs/stepKeyOrNull",
@@ -24,7 +24,8 @@
                     {"$ref": "#/$defs/actionStep"},
                     {"$ref": "#/$defs/delayStep"},
                     {"$ref": "#/$defs/branchStep"},
-                    {"$ref": "#/$defs/stopStep"}
+                    {"$ref": "#/$defs/stopStep"},
+                    {"$ref": "#/$defs/waitStep"}
                 ]
             }
         }
@@ -35,6 +36,10 @@
                 {"type": "string", "pattern": "^[a-zA-Z0-9_\\-]{1,64}$"},
                 {"type": "null"}
             ]
+        },
+        "iso8601Duration": {
+            "type": "string",
+            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$"
         },
         "actionStep": {
             "type": "object",
@@ -49,7 +54,7 @@
                 },
                 "config": {
                     "type": "object",
-                    "description": "Action config. String values may contain {{ trigger.* }}, {{ steps.* }}, {{ workflow.* }}, {{ secrets.* }} placeholders (values only, never keys)."
+                    "description": "Action config. String values may contain {{ trigger.* }}, {{ steps.* }}, {{ workflow.* }}, {{ secrets.* }} placeholders (values only, never keys), optionally with whitelisted formatters, e.g. {{ trigger.grand_total|number:2 }}."
                 },
                 "next": {"$ref": "#/$defs/stepKeyOrNull"}
             }
@@ -66,9 +71,18 @@
                     "additionalProperties": false,
                     "properties": {
                         "duration": {
+                            "$ref": "#/$defs/iso8601Duration",
+                            "description": "ISO-8601 duration; absolute UTC arithmetic unless business_days/at are set"
+                        },
+                        "business_days": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Schema 2 only. Day components count Mon-Fri in the store's timezone."
+                        },
+                        "at": {
                             "type": "string",
-                            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                            "description": "ISO-8601 duration; absolute UTC arithmetic"
+                            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                            "description": "Schema 2 only. After the duration, roll forward to the next occurrence of this store-local time (24h HH:MM)."
                         }
                     }
                 },
@@ -100,6 +114,33 @@
             "additionalProperties": false,
             "properties": {
                 "type": {"const": "stop"}
+            }
+        },
+        "waitStep": {
+            "type": "object",
+            "required": ["type", "config"],
+            "additionalProperties": false,
+            "description": "Schema 2 only. Parks the execution until the named trigger event fires for the same entity, or until the timeout elapses. The resume routes through on_event / on_timeout; the step's output exposes {resolution: 'event'|'timeout', event: <payload>} for downstream interpolation.",
+            "properties": {
+                "type": {"const": "wait"},
+                "config": {
+                    "type": "object",
+                    "required": ["event", "timeout"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "event": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9_.\\-]{1,128}$",
+                            "description": "Trigger event name to wait for (matched against this execution's entity id)"
+                        },
+                        "timeout": {
+                            "$ref": "#/$defs/iso8601Duration",
+                            "description": "Timeout after which on_timeout fires; ceiling-clamped by the max-delay guard"
+                        }
+                    }
+                },
+                "on_event": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_timeout": {"$ref": "#/$defs/stepKeyOrNull"}
             }
         }
     }

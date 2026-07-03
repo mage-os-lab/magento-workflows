@@ -18,6 +18,7 @@ class ConditionCombinePool
         HydrationProviderInterface::TYPE_ORDER => Condition\Order\Combine::class,
         HydrationProviderInterface::TYPE_CUSTOMER => Condition\Customer\Combine::class,
         HydrationProviderInterface::TYPE_PRODUCT => Condition\Product\Combine::class,
+        HydrationProviderInterface::TYPE_QUOTE => Condition\Quote\Combine::class,
     ];
 
     /**

@@ -14,6 +14,7 @@ use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
+use MageOS\Workflows\Model\Variable\SecretsProviderInterface;
 use MageOS\WorkflowsActionsCore\Exception\BlockedHostException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -36,6 +37,10 @@ use Psr\Http\Message\UriInterface;
  *    private-range rules via on_redirect; a violation aborts the transfer.
  *  - HMAC-SHA256 of the body in X-MageOS-Webhook-Signature when sign_with is
  *    configured (same convention as the async-events HTTP notifier).
+ *  - First-class auth: auth_type bearer|basic resolves a NAMED secret via
+ *    SecretsProviderInterface into the Authorization header at request build
+ *    time; the resolved value never appears in output, logs, or errors. An
+ *    explicit Authorization header in the headers config takes precedence.
  *  - Response caps: 256KB body read, json_decode depth 10; parse failure
  *    captures {parse_error: true} instead of raw bytes.
  *  - Optional response_schema: minimal required-key check; mismatch is a
@@ -63,9 +68,14 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
     private const STRIPPED_HEADERS = ['host', 'content-length', 'transfer-encoding', 'connection'];
     private const METADATA_ENDPOINTS = ['169.254.169.254', 'fd00:ec2::254'];
 
+    private const AUTH_NONE = 'none';
+    private const AUTH_BEARER = 'bearer';
+    private const AUTH_BASIC = 'basic';
+
     public function __construct(
         private readonly Client $httpClient,
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly SecretsProviderInterface $secretsProvider
     ) {
     }
 
@@ -110,6 +120,17 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
             ['name' => 'capture_as', 'label' => 'Capture Response As', 'type' => 'text', 'required' => false],
             ['name' => 'sign_with', 'label' => 'HMAC Secret', 'type' => 'secret', 'required' => false,
                 'notice' => 'Reference a secret, e.g. {{ secrets.fraud_api_key }}. Adds ' . self::SIGNATURE_HEADER . '.'],
+            ['name' => 'auth_type', 'label' => 'Authentication', 'type' => 'select', 'required' => false,
+                'default' => self::AUTH_NONE,
+                'options' => [
+                    ['value' => self::AUTH_NONE, 'label' => 'None'],
+                    ['value' => self::AUTH_BEARER, 'label' => 'Bearer Token'],
+                    ['value' => self::AUTH_BASIC, 'label' => 'Basic Auth'],
+                ],
+                'notice' => 'An explicit Authorization header in "Headers" takes precedence and skips this.'],
+            ['name' => 'auth_secret', 'label' => 'Auth Secret Name', 'type' => 'text', 'required' => false,
+                'notice' => 'NAME of a stored workflow secret (not the value). Bearer: the token. '
+                    . 'Basic: "user:password". The resolved value never appears in logs or step output.'],
             ['name' => 'response_schema', 'label' => 'Required Response Keys (JSON array)', 'type' => 'textarea',
                 'required' => false, 'notice' => 'Dot paths that must exist in the response, e.g. ["score"].'],
             ['name' => 'allow_http', 'label' => 'Allow Plain HTTP', 'type' => 'boolean', 'required' => false,
@@ -159,6 +180,11 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
 
         $body = (string)($this->stringConfig($config, 'body') ?? '');
         $headers = $this->buildHeaders($config, $body);
+
+        $authError = $this->applyAuthorization($config, $headers);
+        if ($authError !== null) {
+            return $authError;
+        }
 
         $timeout = min(
             max(1, $this->intConfig($config, 'timeout') ?? $this->configuredDefaultTimeout($storeId)),
@@ -263,11 +289,59 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
         if ($scheme !== 'https' && !$this->isInsecureHttpAllowed($config, $ctx->getStoreId())) {
             return ActionResult::failure((string)__('Webhook URLs must use HTTPS'));
         }
+        $authType = strtolower($this->stringConfig($config, 'auth_type', self::AUTH_NONE) ?? self::AUTH_NONE);
+        if (!in_array($authType, [self::AUTH_NONE, self::AUTH_BEARER, self::AUTH_BASIC], true)) {
+            return ActionResult::failure((string)__('Invalid auth type "%1" (none|bearer|basic)', $authType));
+        }
+        // Deliberately does NOT fetch the secret: simulation must be side-effect
+        // free and must never risk leaking credential material into shadow output.
+        $authNote = $authType === self::AUTH_NONE ? '' : sprintf(', auth: %s via stored secret', $authType);
         return $this->simulated(
-            sprintf('%s %s (no request sent)', $method, $url),
+            sprintf('%s %s (no request sent%s)', $method, $url, $authNote),
             // Empty capture so downstream shadow references resolve to null, not garbage
             ['status_code' => 0, 'response' => []]
         );
+    }
+
+    /**
+     * Resolve auth_type/auth_secret into an Authorization header. An explicit
+     * Authorization header from the headers config wins and skips auth_type
+     * entirely. The resolved secret value is written into $headers only —
+     * never into results, log messages, or exceptions.
+     */
+    private function applyAuthorization(array $config, array &$headers): ?ActionResult
+    {
+        $authType = strtolower($this->stringConfig($config, 'auth_type', self::AUTH_NONE) ?? self::AUTH_NONE);
+        if (!in_array($authType, [self::AUTH_NONE, self::AUTH_BEARER, self::AUTH_BASIC], true)) {
+            return ActionResult::failure((string)__('Invalid auth type "%1" (none|bearer|basic)', $authType));
+        }
+        if ($authType === self::AUTH_NONE) {
+            return null;
+        }
+        foreach (array_keys($headers) as $name) {
+            if (strtolower((string)$name) === 'authorization') {
+                // Explicit header takes precedence over auth_type
+                return null;
+            }
+        }
+
+        $secretName = $this->stringConfig($config, 'auth_secret');
+        $secretValue = $secretName !== null ? $this->secretsProvider->get($secretName) : null;
+        if ($secretValue === null || $secretValue === '') {
+            return ActionResult::failure((string)__('auth secret not found'));
+        }
+        // Header injection guard, same as user-supplied header values
+        $secretValue = str_replace(["\r", "\n"], '', $secretValue);
+
+        if ($authType === self::AUTH_BEARER) {
+            $headers['Authorization'] = 'Bearer ' . $secretValue;
+            return null;
+        }
+        if (!str_contains($secretValue, ':')) {
+            return ActionResult::failure((string)__('Basic auth secret must be in user:password format'));
+        }
+        $headers['Authorization'] = 'Basic ' . base64_encode($secretValue);
+        return null;
     }
 
     /**

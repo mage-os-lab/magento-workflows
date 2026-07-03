@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Model\Engine;
 
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Event\ManagerInterface as EventManagerInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Store\Model\ScopeInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionStepInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
@@ -38,6 +40,9 @@ class Executor
      */
     private const MAX_STEPS_PER_RUN = 1000;
 
+    public const CONFIG_MAX_DELAY_DAYS = 'mageos_workflows/guards/max_delay_days';
+    public const DEFAULT_MAX_DELAY_DAYS = 365;
+
     public function __construct(
         private readonly WorkflowExecutionRepositoryInterface $executionRepository,
         private readonly WorkflowRepositoryInterface $workflowRepository,
@@ -47,7 +52,9 @@ class Executor
         private readonly CircuitBreaker $circuitBreaker,
         private readonly ResourceConnection $resourceConnection,
         private readonly EventManagerInterface $eventManager,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly DelayCalculator $delayCalculator,
+        private readonly ScopeConfigInterface $scopeConfig
     ) {
     }
 
@@ -184,6 +191,10 @@ class Executor
                     $this->runDelayStep($execution, $ctx, $currentKey, $step);
                     return; // message done; resumption is a separate delivery
 
+                case Definition::STEP_WAIT:
+                    $this->runWaitStep($execution, $ctx, $currentKey, $step);
+                    return; // parked until the event fires or the timeout sweeps
+
                 case Definition::STEP_BRANCH:
                     $currentKey = $this->runBranchStep($execution, $ctx, $workflow, $currentKey, $step);
                     break;
@@ -293,9 +304,11 @@ class Executor
     }
 
     /**
-     * Delay: absolute UTC arithmetic (docs/04, docs/14). Step goes waiting with
-     * resume_at; execution goes waiting with current_step = the step AFTER the
-     * delay so resumption walks straight into it.
+     * Delay: plain durations use absolute UTC arithmetic (docs/04, docs/14);
+     * the v2 extras (business_days, at) compute in the store timezone via
+     * DelayCalculator. Step goes waiting with resume_at; execution goes
+     * waiting with current_step = the step AFTER the delay so resumption
+     * walks straight into it.
      */
     private function runDelayStep(
         WorkflowExecutionInterface $execution,
@@ -303,21 +316,11 @@ class Executor
         string $stepKey,
         array $step
     ): void {
-        $duration = (string) ($step['config']['duration'] ?? 'PT0S');
-        try {
-            $interval = new \DateInterval($duration);
-        } catch (\Exception $e) {
-            $interval = new \DateInterval('PT0S');
-            $this->logger->error(sprintf(
-                'Delay step "%s" of execution %d has invalid duration "%s"; resuming immediately',
-                $stepKey,
-                (int) $execution->getExecutionId(),
-                $duration
-            ));
-        }
-        $resumeAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
-            ->add($interval)
-            ->format('Y-m-d H:i:s');
+        $resumeAt = $this->computeResumeAt(
+            $execution,
+            $stepKey,
+            is_array($step['config'] ?? null) ? $step['config'] : []
+        );
 
         $this->upsertStepRow($execution, $stepKey, [
             'status' => WorkflowExecutionStepInterface::STATUS_WAITING,
@@ -328,6 +331,74 @@ class Executor
         $execution->setCurrentStep(isset($step['next']) ? (string) $step['next'] : null);
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
+    }
+
+    /**
+     * Wait (schema v2): park until the configured event fires for this
+     * execution's entity, or until the timeout sweeps. Unlike a delay,
+     * current_step stays ON the wait step — the resume consumer routes to
+     * on_event / on_timeout based on how the park ended (step row result
+     * written by Dispatcher::resumeWaiting or the ResumeSweeper).
+     */
+    private function runWaitStep(
+        WorkflowExecutionInterface $execution,
+        ExecutionContext $ctx,
+        string $stepKey,
+        array $step
+    ): void {
+        $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+        $timeoutAt = $this->computeResumeAt($execution, $stepKey, ['duration' => $config['timeout'] ?? 'PT0S']);
+
+        $this->upsertStepRow($execution, $stepKey, [
+            'status' => WorkflowExecutionStepInterface::STATUS_WAITING,
+            'resume_at' => $timeoutAt,
+        ]);
+
+        $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
+        $execution->setCurrentStep($stepKey);
+        $execution->setWaitingEvent((string) ($config['event'] ?? ''));
+        $this->persistContext($execution, $ctx);
+        $this->executionRepository->save($execution);
+    }
+
+    /**
+     * @return string UTC 'Y-m-d H:i:s' resume time, ceiling-clamped
+     */
+    private function computeResumeAt(WorkflowExecutionInterface $execution, string $stepKey, array $config): string
+    {
+        $maxDays = (int) $this->scopeConfig->getValue(self::CONFIG_MAX_DELAY_DAYS);
+        if ($maxDays <= 0) {
+            $maxDays = self::DEFAULT_MAX_DELAY_DAYS;
+        }
+        $timezone = (string) $this->scopeConfig->getValue(
+            'general/locale/timezone',
+            ScopeInterface::SCOPE_STORE,
+            (int) $execution->getStoreId()
+        );
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        try {
+            [$resume, $clamped] = $this->delayCalculator->computeResumeAt($now, $config, $timezone, $maxDays);
+        } catch (\InvalidArgumentException $e) {
+            $resume = $now;
+            $clamped = false;
+            $this->logger->error(sprintf(
+                'Step "%s" of execution %d has an invalid duration (%s); resuming immediately',
+                $stepKey,
+                (int) $execution->getExecutionId(),
+                $e->getMessage()
+            ));
+        }
+        if ($clamped) {
+            $this->logger->warning(sprintf(
+                'Step "%s" of execution %d exceeded the max delay ceiling (%d days); clamped',
+                $stepKey,
+                (int) $execution->getExecutionId(),
+                $maxDays
+            ));
+        }
+
+        return $resume->format('Y-m-d H:i:s');
     }
 
     /**

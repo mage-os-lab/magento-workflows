@@ -16,6 +16,7 @@ interface WorkflowExecutionInterface
     public const CONTEXT = 'context';
     public const CHAIN_DEPTH = 'chain_depth';
     public const CURRENT_STEP = 'current_step';
+    public const WAITING_EVENT = 'waiting_event';
     public const TRIGGERED_AT = 'triggered_at';
     public const COMPLETED_AT = 'completed_at';
 
@@ -76,4 +77,11 @@ interface WorkflowExecutionInterface
     public function getCurrentStep(): ?string;
 
     public function setCurrentStep(?string $stepKey): self;
+
+    /**
+     * Event name a wait step parked this execution on (null outside waits)
+     */
+    public function getWaitingEvent(): ?string;
+
+    public function setWaitingEvent(?string $event): self;
 }

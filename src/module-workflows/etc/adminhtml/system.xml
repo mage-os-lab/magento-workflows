@@ -34,6 +34,11 @@
                     <label>Manual Mass-Run Cap</label>
                     <validate>validate-digits</validate>
                 </field>
+                <field id="max_delay_days" translate="label comment" type="text" sortOrder="40" showInDefault="1">
+                    <label>Maximum Delay / Wait (days)</label>
+                    <comment>Delay and wait steps are clamped to this ceiling so a mistyped duration cannot park an execution silently.</comment>
+                    <validate>validate-digits</validate>
+                </field>
             </group>
             <group id="retention" translate="label" type="text" sortOrder="30" showInDefault="1">
                 <label>Execution Retention</label>
@@ -72,6 +77,11 @@
                 </field>
                 <field id="abandoned_hours" translate="label" type="text" sortOrder="20" showInDefault="1">
                     <label>Cart Abandonment Threshold (hours)</label>
+                    <validate>validate-digits</validate>
+                </field>
+                <field id="stock_threshold" translate="label comment" type="text" sortOrder="30" showInDefault="1">
+                    <label>Stock Threshold Quantity</label>
+                    <comment>Publishes the Stock Threshold Crossed trigger when a managed product's quantity drops to or below this value. 0 disables the detector.</comment>
                     <validate>validate-digits</validate>
                 </field>
             </group>

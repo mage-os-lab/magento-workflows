@@ -137,6 +137,17 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
         return $this->setData(self::CURRENT_STEP, $stepKey);
     }
 
+    public function getWaitingEvent(): ?string
+    {
+        $event = $this->getData(self::WAITING_EVENT);
+        return $event === null || $event === '' ? null : (string)$event;
+    }
+
+    public function setWaitingEvent(?string $event): WorkflowExecutionInterface
+    {
+        return $this->setData(self::WAITING_EVENT, $event === '' ? null : $event);
+    }
+
     public function getTriggeredAt(): ?string
     {
         $triggeredAt = $this->getData(self::TRIGGERED_AT);

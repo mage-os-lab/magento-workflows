@@ -12,6 +12,7 @@
         "magento/module-sales": "*",
         "magento/module-customer": "*",
         "magento/module-catalog": "*",
+        "magento/module-catalog-inventory": "*",
         "mage-os/workflows": "*"
     },
     "suggest": {

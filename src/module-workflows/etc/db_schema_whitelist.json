@@ -64,12 +64,14 @@
             "chain_depth": true,
             "current_step": true,
             "triggered_at": true,
-            "completed_at": true
+            "completed_at": true,
+            "waiting_event": true
         },
         "index": {
             "MAGEOS_WORKFLOW_EXECUTION_WORKFLOW_ID_STATUS": true,
             "MAGEOS_WORKFLOW_EXECUTION_UUID": true,
-            "MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT": true
+            "MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT": true,
+            "MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH": true
         },
         "constraint": {
             "PRIMARY": true,
@@ -123,6 +125,16 @@
         "constraint": {
             "PRIMARY": true,
             "MAGEOS_WORKFLOW_SECRET_KEY": true
+        }
+    },
+    "mageos_workflow_stock_flag": {
+        "column": {
+            "product_id": true,
+            "qty_at_flag": true,
+            "flagged_at": true
+        },
+        "constraint": {
+            "PRIMARY": true
         }
     }
 }

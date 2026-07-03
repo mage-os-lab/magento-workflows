@@ -38,14 +38,37 @@ class Attribute extends AbstractWorkflowCondition
         'coupon_code' => 'Coupon Code',
         'weight' => 'Weight',
         'created_at' => 'Created At',
+        'order_currency_code' => 'Order Currency',
+        'discount_amount' => 'Discount Amount',
+        'total_paid' => 'Total Paid',
+        'total_refunded' => 'Total Refunded',
+        'customer_is_guest' => 'Customer Is Guest',
+        'billing_country' => 'Billing Country',
+        'billing_region' => 'Billing State/Province',
+        'billing_postcode' => 'Billing Postcode',
+        'billing_city' => 'Billing City',
+        'shipping_country' => 'Shipping Country',
+        'shipping_region' => 'Shipping State/Province',
+        'shipping_postcode' => 'Shipping Postcode',
+        'shipping_city' => 'Shipping City',
     ];
 
     /**
      * Attributes readable from a nested snapshot structure when the flat key
-     * is absent: attribute => [payload key, nested key]
+     * is absent: attribute => [payload key, nested key]. On a full miss the
+     * hydrated order carries these as flat keys (OrderHydrator emits flat
+     * payment_method and billing_/shipping_ address basics).
      */
     private const NESTED_SOURCES = [
         'payment_method' => ['payment', 'method'],
+        'billing_country' => ['billing_address', 'country_id'],
+        'billing_region' => ['billing_address', 'region'],
+        'billing_postcode' => ['billing_address', 'postcode'],
+        'billing_city' => ['billing_address', 'city'],
+        'shipping_country' => ['shipping_address', 'country_id'],
+        'shipping_region' => ['shipping_address', 'region'],
+        'shipping_postcode' => ['shipping_address', 'postcode'],
+        'shipping_city' => ['shipping_address', 'city'],
     ];
 
     public function __construct(
@@ -80,8 +103,10 @@ class Attribute extends AbstractWorkflowCondition
     public function getInputType()
     {
         return match ((string)$this->getAttribute()) {
-            'grand_total', 'subtotal', 'total_qty_ordered', 'weight' => 'numeric',
+            'grand_total', 'subtotal', 'total_qty_ordered', 'weight',
+            'discount_amount', 'total_paid', 'total_refunded' => 'numeric',
             'created_at' => 'date',
+            'customer_is_guest' => 'boolean',
             'status', 'state', 'customer_group_id', 'store_id', 'payment_method', 'shipping_method' => 'select',
             default => 'string',
         };
@@ -94,7 +119,7 @@ class Attribute extends AbstractWorkflowCondition
     {
         return match ($this->getInputType()) {
             'date' => 'date',
-            'select' => 'select',
+            'select', 'boolean' => 'select',
             default => 'text',
         };
     }
@@ -112,6 +137,10 @@ class Attribute extends AbstractWorkflowCondition
                 'store_id' => $this->systemStore->getStoreValuesForForm(),
                 'payment_method' => $this->paymentMethods->toOptionArray(),
                 'shipping_method' => $this->shippingMethods->toOptionArray(),
+                'customer_is_guest' => [
+                    ['value' => 1, 'label' => __('Yes')],
+                    ['value' => 0, 'label' => __('No')],
+                ],
                 default => [],
             };
             $this->setData('value_select_options', $options);

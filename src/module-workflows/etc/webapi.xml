@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <!-- Workflows -->
+    <route url="/V1/workflows" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="getList"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="getById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows" method="POST">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="save"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId" method="PUT">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="save"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId" method="DELETE">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="deleteById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+
+    <!-- Workflow executions (read-only) -->
+    <route url="/V1/workflow-executions" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getList"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflow-executions/:executionId" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+</routes>

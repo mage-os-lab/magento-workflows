@@ -47,6 +47,14 @@ class WorkflowNotifier implements NotifierInterface
      */
     public const RECIPIENT_PREFIX = 'workflow:';
 
+    /**
+     * Wait-subscription recipient infix: "workflow:<id>:wait:<event>" marks
+     * a subscription created for a wait step rather than the workflow's own
+     * trigger. Deliveries on it resume parked executions instead of
+     * dispatching new ones.
+     */
+    public const WAIT_INFIX = ':wait:';
+
     public function __construct(
         private readonly DispatcherInterface $dispatcher,
         private readonly NotifierResultFactory $notifierResultFactory,
@@ -59,6 +67,11 @@ class WorkflowNotifier implements NotifierInterface
      */
     public function notify(AsyncEventDisplayInterface $asyncEvent, array $data): NotifierResult
     {
+        $waitTarget = $this->extractWaitTarget($asyncEvent);
+        if ($waitTarget !== null) {
+            return $this->notifyWait($asyncEvent, $waitTarget[0], $waitTarget[1], $data);
+        }
+
         $workflowId = $this->extractWorkflowId($asyncEvent);
         if ($workflowId === null) {
             // Misconfigured subscription: never dispatchable, so do not retry.
@@ -107,6 +120,41 @@ class WorkflowNotifier implements NotifierInterface
     }
 
     /**
+     * Delivery on a wait subscription: resume parked executions instead of
+     * dispatching a new one. Zero matches is a normal outcome (nothing was
+     * waiting) and must never enter the retry path.
+     */
+    private function notifyWait(
+        AsyncEventDisplayInterface $asyncEvent,
+        int $workflowId,
+        string $event,
+        array $data
+    ): NotifierResult {
+        try {
+            $resumed = $this->dispatcher->resumeWaiting($workflowId, $event, $data);
+        } catch (\Throwable $exception) {
+            $this->logger->error(
+                sprintf('Workflow #%d wait resume failed: %s', $workflowId, $exception->getMessage()),
+                ['exception' => $exception, 'event_name' => $event]
+            );
+
+            return $this->buildResult($asyncEvent, false, [
+                'status' => 'error',
+                'workflow_id' => $workflowId,
+                'wait_event' => $event,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return $this->buildResult($asyncEvent, true, [
+            'status' => 'wait_resumed',
+            'workflow_id' => $workflowId,
+            'wait_event' => $event,
+            'resumed' => $resumed,
+        ]);
+    }
+
+    /**
      * Resolves the workflow id from the hidden subscription's recipient URL
      * ("workflow:<id>"). The recipient doubles as the ownership marker, so no
      * extra metadata field is needed.
@@ -120,6 +168,31 @@ class WorkflowNotifier implements NotifierInterface
         $id = substr($recipient, strlen(self::RECIPIENT_PREFIX));
 
         return ctype_digit($id) && (int) $id > 0 ? (int) $id : null;
+    }
+
+    /**
+     * Parses a wait recipient "workflow:<id>:wait:<event>".
+     *
+     * @return array{0: int, 1: string}|null [workflow id, event] or null when not a wait recipient
+     */
+    private function extractWaitTarget(AsyncEventDisplayInterface $asyncEvent): ?array
+    {
+        $recipient = (string) $asyncEvent->getRecipientUrl();
+        if (!str_starts_with($recipient, self::RECIPIENT_PREFIX)) {
+            return null;
+        }
+        $rest = substr($recipient, strlen(self::RECIPIENT_PREFIX));
+        $infixPos = strpos($rest, self::WAIT_INFIX);
+        if ($infixPos === false) {
+            return null;
+        }
+        $id = substr($rest, 0, $infixPos);
+        $event = substr($rest, $infixPos + strlen(self::WAIT_INFIX));
+        if (!ctype_digit($id) || (int) $id <= 0 || $event === '') {
+            return null;
+        }
+
+        return [(int) $id, $event];
     }
 
     /**

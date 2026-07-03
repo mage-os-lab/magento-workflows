@@ -28,11 +28,20 @@ use Psr\Log\LoggerInterface;
 class Dispatcher implements DispatcherInterface
 {
     public const TOPIC_EXECUTE = 'mageos.workflow.execute';
+    public const TOPIC_RESUME = 'mageos.workflow.resume';
 
     public const CONFIG_DEBOUNCE_WINDOW = 'mageos_workflows/guards/debounce_window_seconds';
     public const DEFAULT_DEBOUNCE_WINDOW = 60;
 
     private const DEBOUNCE_TABLE = 'mageos_workflow_debounce';
+    private const EXECUTION_TABLE = 'mageos_workflow_execution';
+    private const STEP_TABLE = 'mageos_workflow_execution_step';
+
+    /**
+     * Wait-resume fan-out cap per event delivery; the remainder is picked up
+     * by subsequent deliveries or times out via the sweeper.
+     */
+    private const WAIT_RESUME_BATCH = 200;
 
     public function __construct(
         private readonly WorkflowRepositoryInterface $workflowRepository,
@@ -101,6 +110,96 @@ class Dispatcher implements DispatcherInterface
         $this->publisher->publish(self::TOPIC_EXECUTE, (string) $execution->getExecutionId());
 
         return $execution;
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * Race-safe: each candidate is claimed with an atomic waiting -> pending
+     * UPDATE conditioned on the current status, so a concurrent timeout sweep
+     * (or duplicate event delivery) claims each execution exactly once. The
+     * event payload is written into the wait step row's result before the
+     * resume publish so the consumer can route on_event and expose the
+     * payload as the step's output.
+     */
+    public function resumeWaiting(int $workflowId, string $event, array $eventPayload): int
+    {
+        $entityId = $this->extractEntityId($eventPayload);
+        if ($entityId <= 0 || $event === '') {
+            return 0;
+        }
+
+        $connection = $this->resourceConnection->getConnection();
+        $executionTable = $this->resourceConnection->getTableName(self::EXECUTION_TABLE);
+        $stepTable = $this->resourceConnection->getTableName(self::STEP_TABLE);
+
+        $select = $connection->select()
+            ->from($executionTable, ['execution_id'])
+            ->where('workflow_id = ?', $workflowId)
+            ->where('status = ?', WorkflowExecutionInterface::STATUS_WAITING)
+            ->where('waiting_event = ?', $event)
+            ->where('entity_id = ?', $entityId)
+            ->limit(self::WAIT_RESUME_BATCH);
+
+        $resumed = 0;
+        foreach (array_map('intval', $connection->fetchCol($select)) as $executionId) {
+            $claimed = $connection->update(
+                $executionTable,
+                ['status' => WorkflowExecutionInterface::STATUS_PENDING],
+                [
+                    'execution_id = ?' => $executionId,
+                    'status = ?' => WorkflowExecutionInterface::STATUS_WAITING,
+                ]
+            );
+            if ($claimed !== 1) {
+                continue;
+            }
+
+            $connection->update(
+                $stepTable,
+                [
+                    'result' => json_encode(
+                        ['resolution' => 'event', 'event' => $eventPayload],
+                        JSON_UNESCAPED_SLASHES
+                    ),
+                ],
+                [
+                    'execution_id = ?' => $executionId,
+                    'status = ?' => 'waiting',
+                ]
+            );
+
+            try {
+                $this->publisher->publish(self::TOPIC_RESUME, (string) $executionId);
+                $resumed++;
+            } catch (\Throwable $e) {
+                // Roll the claim back so the timeout sweeper still owns it
+                $connection->update(
+                    $executionTable,
+                    ['status' => WorkflowExecutionInterface::STATUS_WAITING],
+                    [
+                        'execution_id = ?' => $executionId,
+                        'status = ?' => WorkflowExecutionInterface::STATUS_PENDING,
+                    ]
+                );
+                $this->logger->error(sprintf(
+                    'Wait resume of execution %d could not publish: %s',
+                    $executionId,
+                    $e->getMessage()
+                ), ['exception' => $e]);
+            }
+        }
+
+        if ($resumed > 0) {
+            $this->logger->info('wait_resumed', [
+                'workflow_id' => $workflowId,
+                'event' => $event,
+                'entity_id' => $entityId,
+                'count' => $resumed,
+            ]);
+        }
+
+        return $resumed;
     }
 
     /**

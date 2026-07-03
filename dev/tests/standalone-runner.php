@@ -4,13 +4,19 @@
  * Zero-dependency test runner for the Mage-OS Workflow Engine unit tests.
  *
  * Neither PHPUnit nor Magento is installed in this environment. This script
- * defines a minimal PHPUnit\Framework\TestCase-compatible shim, a small
- * PSR-4 autoloader for the MageOS\Workflows\ namespace, discovers every
- * *Test.php file under src/module-workflows/Test/Unit, and runs it.
+ * defines a minimal PHPUnit\Framework\TestCase-compatible shim, PSR-4
+ * autoloaders for every src/module-* package (prefixes read from each
+ * module's composer.json), a last-in-chain shim autoloader for Magento\ /
+ * Psr\Log\ classes backed by dev/tests/shims/, discovers every *Test.php
+ * file under each module's Test/Unit directory (all five src/module-…
+ * packages), and runs it.
  *
- * The real test suite (src/module-workflows/Test/Unit/**) is written against
- * the standard PHPUnit\Framework\TestCase API so it also runs unmodified
- * under a real PHPUnit installation in CI.
+ * The real test suites (Test/Unit trees under src/module-…) are written against
+ * the standard PHPUnit\Framework\TestCase API so they also run unmodified
+ * under a real PHPUnit installation in CI. The class shims under
+ * dev/tests/shims/ are registered only by this runner — and only after the
+ * module autoloaders — so real Magento / psr-log / PHPUnit classes always
+ * win when installed (see dev/tests/shims/README.md).
  *
  * Usage: php dev/tests/standalone-runner.php
  */
@@ -198,21 +204,79 @@ namespace {
     ini_set('display_errors', '1');
 
     $repoRoot = dirname(__DIR__, 2);
-    $moduleSrcRoot = $repoRoot . '/src/module-workflows';
-    $testRoot = $moduleSrcRoot . '/Test/Unit';
 
-    // PSR-4 autoloader: MageOS\Workflows\ => src/module-workflows/
-    spl_autoload_register(static function (string $class) use ($moduleSrcRoot): void {
-        $prefix = 'MageOS\\Workflows\\';
-        if (!str_starts_with($class, $prefix)) {
+    // -----------------------------------------------------------------
+    // Module PSR-4 autoloaders: prefix map read from each module's
+    // composer.json ("autoload"."psr-4"), e.g.
+    //   MageOS\Workflows\             => src/module-workflows/
+    //   MageOS\WorkflowsActionsCore\  => src/module-workflows-actions-core/
+    //   MageOS\WorkflowsAdminUi\     => src/module-workflows-admin-ui/
+    //   MageOS\WorkflowsScheduler\    => src/module-workflows-scheduler/
+    //   MageOS\WorkflowsTriggersCore\ => src/module-workflows-triggers-core/
+    // -----------------------------------------------------------------
+
+    /** @var array<string, string> $psr4Map prefix => module source root */
+    $psr4Map = [];
+    foreach (glob($repoRoot . '/src/module-*', GLOB_ONLYDIR) ?: [] as $moduleDir) {
+        $composerFile = $moduleDir . '/composer.json';
+        if (!is_file($composerFile)) {
+            continue;
+        }
+        $composer = json_decode((string)file_get_contents($composerFile), true);
+        foreach (($composer['autoload']['psr-4'] ?? []) as $prefix => $relativeDir) {
+            $psr4Map[$prefix] = rtrim($moduleDir . '/' . ltrim((string)$relativeDir, '/'), '/');
+        }
+    }
+    ksort($psr4Map);
+
+    spl_autoload_register(static function (string $class) use ($psr4Map): void {
+        foreach ($psr4Map as $prefix => $baseDir) {
+            if (!str_starts_with($class, $prefix)) {
+                continue;
+            }
+            $relative = substr($class, strlen($prefix));
+            $path = $baseDir . '/' . str_replace('\\', '/', $relative) . '.php';
+            if (is_file($path)) {
+                require_once $path;
+                return;
+            }
+        }
+    });
+
+    // -----------------------------------------------------------------
+    // Shim autoloader — registered LAST so that when real Magento /
+    // psr-log packages are installed their autoloaders (registered
+    // earlier in the chain) always win. Only fires for Magento\ and
+    // Psr\Log\ classes nothing else could load; each shim lives in its
+    // own file mirroring PSR-4 under dev/tests/shims/.
+    // -----------------------------------------------------------------
+
+    $shimRoot = $repoRoot . '/dev/tests/shims';
+    spl_autoload_register(static function (string $class) use ($shimRoot): void {
+        if (!str_starts_with($class, 'Magento\\') && !str_starts_with($class, 'Psr\\Log\\')) {
             return;
         }
-        $relative = substr($class, strlen($prefix));
-        $path = $moduleSrcRoot . '/' . str_replace('\\', '/', $relative) . '.php';
+        $path = $shimRoot . '/' . str_replace('\\', '/', $class) . '.php';
         if (is_file($path)) {
             require_once $path;
         }
     });
+
+    // Global __() translation-function shim (Magento defines this in
+    // app/functions.php on real installs).
+    if (!function_exists('__')) {
+        /**
+         * @return \Magento\Framework\Phrase
+         */
+        function __(...$argc)
+        {
+            $text = (string)array_shift($argc);
+            if (!empty($argc) && is_array($argc[0])) {
+                $argc = $argc[0];
+            }
+            return new \Magento\Framework\Phrase($text, $argc);
+        }
+    }
 
     /**
      * @return string[] absolute paths to *Test.php files
@@ -236,19 +300,30 @@ namespace {
         return $found;
     }
 
-    function classNameFromPath(string $path, string $moduleSrcRoot): ?string
+    /**
+     * @param array<string, string> $psr4Map prefix => module source root
+     */
+    function classNameFromPath(string $path, array $psr4Map): ?string
     {
         $path = str_replace('\\', '/', $path);
-        $root = str_replace('\\', '/', $moduleSrcRoot);
-        if (!str_starts_with($path, $root . '/')) {
-            return null;
+        foreach ($psr4Map as $prefix => $baseDir) {
+            $root = str_replace('\\', '/', $baseDir);
+            if (!str_starts_with($path, $root . '/')) {
+                continue;
+            }
+            $relative = substr($path, strlen($root) + 1);
+            $relative = preg_replace('/\.php$/', '', $relative);
+            return $prefix . str_replace('/', '\\', $relative);
         }
-        $relative = substr($path, strlen($root) + 1);
-        $relative = preg_replace('/\.php$/', '', $relative);
-        return 'MageOS\\Workflows\\' . str_replace('/', '\\', $relative);
+        return null;
     }
 
-    $testFiles = discoverTestFiles($testRoot);
+    // Discover *Test.php under EVERY src/module-*/Test/Unit directory.
+    $testFiles = [];
+    foreach ($psr4Map as $baseDir) {
+        $testFiles = array_merge($testFiles, discoverTestFiles($baseDir . '/Test/Unit'));
+    }
+    sort($testFiles);
 
     $totalTests = 0;
     $totalFailures = 0;
@@ -259,7 +334,7 @@ namespace {
     echo str_repeat('=', 60) . "\n";
 
     foreach ($testFiles as $testFile) {
-        $class = classNameFromPath($testFile, $moduleSrcRoot);
+        $class = classNameFromPath($testFile, $psr4Map);
         if ($class === null || !class_exists($class)) {
             echo "SKIP  (could not resolve class for {$testFile})\n";
             continue;

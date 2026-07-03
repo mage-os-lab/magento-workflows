@@ -6,24 +6,38 @@ namespace MageOS\Workflows\Model\Definition;
 /**
  * Parsed, validated step-graph definition (docs/04-definition-format.md).
  * The single contract shared by the form UI, canvas, import/export, executor.
+ *
+ * Schema versions: v1 is the original action/delay/branch/stop set. v2 adds
+ * the "wait" step (park until an event fires for the same entity, with a
+ * timeout edge) and optional delay fields business_days / at. A v1 document
+ * using v2 features is rejected — bump "schema" to 2 to use them.
  */
 class Definition
 {
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
+    public const SCHEMA_VERSIONS = [1, 2];
 
     public const STEP_ACTION = 'action';
     public const STEP_DELAY = 'delay';
     public const STEP_BRANCH = 'branch';
     public const STEP_STOP = 'stop';
+    public const STEP_WAIT = 'wait';
 
-    public const STEP_TYPES = [self::STEP_ACTION, self::STEP_DELAY, self::STEP_BRANCH, self::STEP_STOP];
+    public const STEP_TYPES = [
+        self::STEP_ACTION,
+        self::STEP_DELAY,
+        self::STEP_BRANCH,
+        self::STEP_STOP,
+        self::STEP_WAIT,
+    ];
 
     /**
      * @param array<string, array> $steps step_key => step node
      */
     private function __construct(
         private readonly array $steps,
-        private readonly ?string $entry
+        private readonly ?string $entry,
+        private readonly int $schema
     ) {
     }
 
@@ -46,7 +60,7 @@ class Definition
     public static function fromArray(array $data): self
     {
         $schema = $data['schema'] ?? null;
-        if ($schema !== self::SCHEMA_VERSION) {
+        if (!in_array($schema, self::SCHEMA_VERSIONS, true)) {
             throw new \InvalidArgumentException(sprintf('Unsupported definition schema "%s"', (string) $schema));
         }
         $steps = $data['steps'] ?? [];
@@ -61,7 +75,7 @@ class Definition
             if (!in_array($type, self::STEP_TYPES, true)) {
                 throw new \InvalidArgumentException(sprintf('Step "%s" has invalid type "%s"', $key, (string) $type));
             }
-            foreach (['next', 'on_true', 'on_false'] as $edge) {
+            foreach (['next', 'on_true', 'on_false', 'on_event', 'on_timeout'] as $edge) {
                 $target = $step[$edge] ?? null;
                 if ($target !== null && !isset($steps[$target])) {
                     throw new \InvalidArgumentException(
@@ -73,19 +87,22 @@ class Definition
                 throw new \InvalidArgumentException(sprintf('Action step "%s" is missing "action"', $key));
             }
             if ($type === self::STEP_DELAY) {
-                $duration = $step['config']['duration'] ?? null;
-                if (!is_string($duration)) {
-                    throw new \InvalidArgumentException(sprintf('Delay step "%s" is missing config.duration', $key));
-                }
-                try {
-                    new \DateInterval($duration);
-                } catch (\Exception $e) {
+                self::assertDuration($step['config']['duration'] ?? null, $key, 'config.duration');
+                self::assertDelayExtras($step, $key, (int) $schema);
+            }
+            if ($type === self::STEP_WAIT) {
+                if ($schema < 2) {
                     throw new \InvalidArgumentException(
-                        sprintf('Delay step "%s" duration "%s" is not ISO-8601', $key, $duration),
-                        0,
-                        $e
+                        sprintf('Step "%s": wait steps require definition schema 2', $key)
                     );
                 }
+                $event = $step['config']['event'] ?? null;
+                if (!is_string($event) || $event === '' || !preg_match('/^[a-z0-9_.\-]{1,128}$/', $event)) {
+                    throw new \InvalidArgumentException(
+                        sprintf('Wait step "%s" is missing a valid config.event', $key)
+                    );
+                }
+                self::assertDuration($step['config']['timeout'] ?? null, $key, 'config.timeout');
             }
         }
         $entry = $data['entry'] ?? null;
@@ -95,7 +112,58 @@ class Definition
         if ($entry === null && $steps !== []) {
             throw new \InvalidArgumentException('Definition with steps must declare "entry"');
         }
-        return new self($steps, $entry);
+        return new self($steps, $entry, (int) $schema);
+    }
+
+    /**
+     * @throws \InvalidArgumentException when the value is not an ISO-8601 duration string
+     */
+    private static function assertDuration(mixed $duration, string $stepKey, string $field): void
+    {
+        if (!is_string($duration)) {
+            throw new \InvalidArgumentException(sprintf('Step "%s" is missing %s', $stepKey, $field));
+        }
+        try {
+            new \DateInterval($duration);
+        } catch (\Exception $e) {
+            throw new \InvalidArgumentException(
+                sprintf('Step "%s" %s "%s" is not ISO-8601', $stepKey, $field, $duration),
+                0,
+                $e
+            );
+        }
+    }
+
+    /**
+     * @throws \InvalidArgumentException on invalid v2 delay extras or v1 use of them
+     */
+    private static function assertDelayExtras(array $step, string $key, int $schema): void
+    {
+        $businessDays = $step['config']['business_days'] ?? null;
+        $at = $step['config']['at'] ?? null;
+        if ($businessDays === null && $at === null) {
+            return;
+        }
+        if ($schema < 2) {
+            throw new \InvalidArgumentException(
+                sprintf('Delay step "%s": business_days / at require definition schema 2', $key)
+            );
+        }
+        if ($businessDays !== null && !is_bool($businessDays)) {
+            throw new \InvalidArgumentException(
+                sprintf('Delay step "%s" config.business_days must be boolean', $key)
+            );
+        }
+        if ($at !== null && (!is_string($at) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $at))) {
+            throw new \InvalidArgumentException(
+                sprintf('Delay step "%s" config.at must be "HH:MM" 24-hour time', $key)
+            );
+        }
+    }
+
+    public function getSchemaVersion(): int
+    {
+        return $this->schema;
     }
 
     public function getEntryKey(): ?string
@@ -140,10 +208,26 @@ class Definition
         return array_values(array_unique($codes));
     }
 
+    /**
+     * Event names referenced by wait steps (subscription binding at save time)
+     *
+     * @return string[]
+     */
+    public function getWaitEvents(): array
+    {
+        $events = [];
+        foreach ($this->steps as $step) {
+            if (($step['type'] ?? null) === self::STEP_WAIT) {
+                $events[] = (string) $step['config']['event'];
+            }
+        }
+        return array_values(array_unique($events));
+    }
+
     public function toArray(): array
     {
         return [
-            'schema' => self::SCHEMA_VERSION,
+            'schema' => $this->schema,
             'steps' => $this->steps,
             'entry' => $this->entry,
         ];

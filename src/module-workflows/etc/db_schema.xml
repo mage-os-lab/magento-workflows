@@ -95,6 +95,8 @@
         <column xsi:type="smallint" name="chain_depth" unsigned="true" nullable="false" default="0"
                 comment="Chain Depth (loop guard)"/>
         <column xsi:type="varchar" name="current_step" length="64" nullable="true" comment="Current Step Key"/>
+        <column xsi:type="varchar" name="waiting_event" length="128" nullable="true"
+                comment="Event Name A Wait Step Parked This Execution On"/>
         <column xsi:type="timestamp" name="triggered_at" on_update="false" nullable="false"
                 default="CURRENT_TIMESTAMP" comment="Triggered At"/>
         <column xsi:type="timestamp" name="completed_at" on_update="false" nullable="true" comment="Completed At"/>
@@ -114,6 +116,11 @@
         <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT" indexType="btree">
             <column name="status"/>
             <column name="triggered_at"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH" indexType="btree">
+            <column name="status"/>
+            <column name="waiting_event"/>
+            <column name="entity_id"/>
         </index>
     </table>
 
@@ -169,6 +176,18 @@
         <constraint xsi:type="foreign" referenceId="MAGEOS_WF_DEBOUNCE_WORKFLOW_ID"
                     table="mageos_workflow_debounce" column="workflow_id"
                     referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+    </table>
+
+    <table name="mageos_workflow_stock_flag" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Stock Threshold Flags (hysteresis for the crossing detector)">
+        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="Product ID"/>
+        <column xsi:type="decimal" name="qty_at_flag" scale="4" precision="12" nullable="false" default="0"
+                comment="Quantity When Flagged"/>
+        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Flagged At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="product_id"/>
+        </constraint>
     </table>
 
     <table name="mageos_workflow_secret" resource="default" engine="innodb"

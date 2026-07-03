@@ -30,6 +30,7 @@
                 <item name="sales_order" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Order\Combine</item>
                 <item name="customer" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Customer\Combine</item>
                 <item name="catalog_product" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Product\Combine</item>
+                <item name="quote" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Quote\Combine</item>
             </argument>
         </arguments>
     </type>

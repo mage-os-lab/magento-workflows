@@ -12,6 +12,7 @@
                 <item name="sales_order" xsi:type="object">Magento\Sales\Api\OrderRepositoryInterface</item>
                 <item name="customer" xsi:type="object">Magento\Customer\Api\CustomerRepositoryInterface</item>
                 <item name="catalog_product" xsi:type="object">Magento\Catalog\Api\ProductRepositoryInterface</item>
+                <item name="quote" xsi:type="object">Magento\Quote\Api\CartRepositoryInterface</item>
             </argument>
         </arguments>
     </type>
