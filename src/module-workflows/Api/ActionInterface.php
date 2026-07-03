@@ -3,9 +3,6 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Api;
 
-use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-
 /**
  * A workflow action. Register implementations into
  * MageOS\Workflows\Model\Action\ActionPool via di.xml:
@@ -23,10 +20,12 @@ use MageOS\Workflows\Model\Execution\ExecutionContext;
  * never structure: config keys and the action code itself are static.
  *
  * Actions must be idempotent where cheap; otherwise consult
- * ExecutionContext::getDedupeKey($stepKey) before performing the side effect
- * (at-least-once delivery).
+ * ExecutionContextInterface::getDedupeKey($stepKey) before performing the
+ * side effect (at-least-once delivery).
+ *
+ * @api
  */
 interface ActionInterface
 {
-    public function execute(ExecutionContext $ctx, array $config): ActionResult;
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface;
 }

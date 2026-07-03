@@ -5,6 +5,7 @@ namespace MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow;
 
 use Magento\Backend\App\Action;
 use Magento\Framework\App\Action\HttpPostActionInterface;
+use Magento\Framework\App\Request\DataPersistorInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Exception\AuthorizationException;
@@ -29,11 +30,18 @@ class Save extends Action implements HttpPostActionInterface
 {
     public const ADMIN_RESOURCE = 'MageOS_Workflows::manage';
 
+    /**
+     * DataPersistor key under which posted form data survives a failed save,
+     * so the edit form (DataProvider) can restore the merchant's input.
+     */
+    public const PERSISTOR_KEY = 'mageos_workflow';
+
     public function __construct(
         Action\Context $context,
         private readonly WorkflowRepositoryInterface $workflowRepository,
         private readonly WorkflowInterfaceFactory $workflowFactory,
-        private readonly ActionPool $actionPool
+        private readonly ActionPool $actionPool,
+        private readonly DataPersistorInterface $dataPersistor
     ) {
         parent::__construct($context);
     }
@@ -58,6 +66,7 @@ class Save extends Action implements HttpPostActionInterface
             $definitionJson = $this->resolveDefinitionJson($data);
             $definition = Definition::fromJson($definitionJson);
             $this->authorizeActionCodes($definition);
+            $this->validateConditionsSerialized($data['conditions_serialized'] ?? null);
 
             $workflow->setName((string) ($data['name'] ?? ''));
             $workflow->setStatus((int) ($data['status'] ?? WorkflowInterface::STATUS_DISABLED));
@@ -76,6 +85,7 @@ class Save extends Action implements HttpPostActionInterface
             );
 
             $this->workflowRepository->save($workflow);
+            $this->dataPersistor->clear(self::PERSISTOR_KEY);
             $this->messageManager->addSuccessMessage(__('The workflow has been saved.'));
 
             if ($this->getRequest()->getParam('back')) {
@@ -86,18 +96,50 @@ class Save extends Action implements HttpPostActionInterface
             }
             return $resultRedirect->setPath('mageos_workflows/workflow/index');
         } catch (NoSuchEntityException $e) {
-            $this->messageManager->addErrorMessage(__('This workflow no longer exists.'));
-            return $resultRedirect->setPath('mageos_workflows/workflow/index');
+            // The record being edited was deleted meanwhile: keep the merchant's input and
+            // reopen it as a new workflow instead of dropping everything on the grid page.
+            unset($data['workflow_id']);
+            $this->dataPersistor->set(self::PERSISTOR_KEY, $data);
+            $this->messageManager->addErrorMessage(
+                __('This workflow no longer exists. Your input has been kept below; saving will create a new workflow.')
+            );
+            return $resultRedirect->setPath('mageos_workflows/workflow/edit');
         } catch (\InvalidArgumentException|AuthorizationException $e) {
             $this->messageManager->addErrorMessage($e->getMessage());
         } catch (\Exception $e) {
             $this->messageManager->addErrorMessage(__('Something went wrong while saving the workflow.'));
         }
 
+        // Any failure path: persist the full posted data so the edit form restores it.
+        $this->dataPersistor->set(self::PERSISTOR_KEY, $data);
+
         return $resultRedirect->setPath(
             'mageos_workflows/workflow/edit',
             $workflowId ? ['workflow_id' => $workflowId] : []
         );
+    }
+
+    /**
+     * v1 conditions are an opaque serialized condition tree; the only save-time contract is
+     * "empty, or a JSON structure". Deeper semantic validation is intentionally out of scope.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function validateConditionsSerialized(mixed $conditionsSerialized): void
+    {
+        if ($conditionsSerialized === null
+            || (is_scalar($conditionsSerialized) && trim((string) $conditionsSerialized) === '')
+        ) {
+            return;
+        }
+        $decoded = is_scalar($conditionsSerialized)
+            ? json_decode((string) $conditionsSerialized, true)
+            : null;
+        if (!is_array($decoded)) {
+            throw new \InvalidArgumentException(
+                (string) __('The Conditions field must be empty or contain a valid JSON condition tree (object or array).')
+            );
+        }
     }
 
     private function resolveDefinitionJson(array $data): string

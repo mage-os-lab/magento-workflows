@@ -18,7 +18,35 @@ class Edit extends Container
 
         if (!$this->getWorkflowId()) {
             $this->buttonList->remove('delete');
+        } elseif ($this->_authorization->isAllowed('MageOS_Workflows::manual_run')) {
+            $this->buttonList->add(
+                'run_now',
+                [
+                    'label' => __('Run Now'),
+                    'class' => 'action-secondary',
+                    'onclick' => $this->getRunNowOnclick(),
+                    'sort_order' => 30,
+                ]
+            );
         }
+    }
+
+    /**
+     * Prompt for the target entity ID (plain window.prompt, v1 adminhtml) and navigate to the
+     * Run controller; the URL builder already appends the adminhtml secret key, and extra
+     * path params after it are still routed, so entity_id is appended client-side.
+     */
+    private function getRunNowOnclick(): string
+    {
+        $runUrl = $this->getUrl('mageos_workflows/workflow/run', ['workflow_id' => $this->getWorkflowId()]);
+        $prompt = json_encode(
+            (string) __('Enter the ID of the entity (e.g. order or customer ID) to run this workflow against:'),
+            JSON_THROW_ON_ERROR
+        );
+
+        return "var entityId = window.prompt({$prompt}); "
+            . "if (entityId !== null && entityId.trim() !== '') { "
+            . "setLocation('{$runUrl}' + 'entity_id/' + encodeURIComponent(entityId.trim()) + '/'); }";
     }
 
     public function getWorkflowId(): ?int

@@ -36,3 +36,5 @@ Executions are **resumable and crash-safe**:
 Consumers scale horizontally and off-box exactly like async-events consumers — the same ops story clients already run.
 
 Sizing reality: a single `workflow.execute` consumer comfortably handles **hundreds of executions/min** when Phase-1 evaluation dominates ([Conditions §Two-phase evaluation](06-conditions.md#two-phase-evaluation-the-eav-at-scale-answer)); the ceiling is action side effects (order save ≈ 100–300ms), which parallelize across consumers.
+
+For day-to-day running — required consumers, cron, the `workflow:health` and `workflow:stats` commands, and remediation for each health check — see the [Operations Guide](15-operations.md).

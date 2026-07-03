@@ -3,12 +3,10 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Model\Action;
 
-class ActionResult
-{
-    public const STATUS_SUCCESS = 'success';
-    public const STATUS_FAILURE = 'failure';
-    public const STATUS_SKIPPED = 'skipped';
+use MageOS\Workflows\Api\ActionResultInterface;
 
+class ActionResult implements ActionResultInterface
+{
     /**
      * @param array $output Merged into execution context as steps.<step_key>
      * @param bool $retryable Failure only: true = redeliver via queue, false = terminal step failure

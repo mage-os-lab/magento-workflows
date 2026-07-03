@@ -1,15 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Action;
+namespace MageOS\Workflows\Model\Action;
 
 use MageOS\Workflows\Api\ActionInterface;
 use MageOS\Workflows\Api\ActionMetadataInterface;
-use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 
 /**
- * Base class for the bundled action library. Config values arrive already
+ * Base class for action implementations. Config values arrive already
  * interpolated ({{ trigger.* }} etc.) — interpolation supplies values, never
  * structure, so config KEYS and attribute/action codes are always static.
  */
@@ -53,7 +52,7 @@ abstract class AbstractAction implements ActionInterface, ActionMetadataInterfac
     protected function missingConfig(string $key): ActionResult
     {
         return ActionResult::failure(
-            sprintf('Missing required config "%s" for action "%s"', $key, $this->getCode())
+            (string)__('Missing required config "%1" for action "%2"', $key, $this->getCode())
         );
     }
 
@@ -97,7 +96,7 @@ abstract class AbstractAction implements ActionInterface, ActionMetadataInterfac
     /**
      * The executing step's key (for dedupe keys and log context); falls back to the action code
      */
-    protected function stepKey(ExecutionContext $ctx): string
+    protected function stepKey(ExecutionContextInterface $ctx): string
     {
         return $ctx->getExecution()->getCurrentStep() ?? $this->getCode();
     }

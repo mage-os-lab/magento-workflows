@@ -41,6 +41,7 @@ See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-go
 | [12 — B2B Pack](docs/12-b2b.md) | Adobe Commerce B2B triggers/conditions/actions |
 | [13 — Delivery Plan](docs/13-delivery-plan.md) | Phases, effort estimates, test strategy |
 | [14 — Risks & Open Questions](docs/14-risks.md) | Risk register with mitigations |
+| [15 — Operations Guide](docs/15-operations.md) | Consumers, cron, health checks, retention, recovery |
 
 The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).
 

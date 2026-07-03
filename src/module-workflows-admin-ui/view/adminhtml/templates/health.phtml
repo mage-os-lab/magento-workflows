@@ -1,0 +1,27 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Health $block
+ *
+ * Renders nothing when every check is 'ok'. See docs/15-operations.md for what each
+ * check means and how to fix it.
+ */
+$problems = $block->getProblemChecks();
+?>
+<?php if ($problems): ?>
+    <div class="message <?= $block->hasFailure() ? 'message-error error' : 'message-warning warning' ?> mageos-workflows-health-notice">
+        <div>
+            <strong><?= $block->escapeHtml(__('Workflow engine health')) ?></strong>
+            <ul style="margin: 0.5em 0 0; padding-left: 1.2em;">
+                <?php foreach ($problems as $check): ?>
+                    <li><?= $block->escapeHtml($check['message']) ?></li>
+                <?php endforeach; ?>
+            </ul>
+            <p style="margin: 0.5em 0 0;">
+                <?= $block->escapeHtml(
+                    __('See docs/15-operations.md for what each check means and how to fix it. ')
+                    . __('You can also run "bin/magento workflow:health" from the command line.')
+                ) ?>
+            </p>
+        </div>
+    </div>
+<?php endif; ?>

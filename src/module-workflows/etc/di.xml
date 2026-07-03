@@ -42,6 +42,7 @@
                 <item name="workflowImport" xsi:type="object">MageOS\Workflows\Console\Command\ImportCommand</item>
                 <item name="workflowRun" xsi:type="object">MageOS\Workflows\Console\Command\RunCommand</item>
                 <item name="workflowStats" xsi:type="object">MageOS\Workflows\Console\Command\StatsCommand</item>
+                <item name="workflowHealth" xsi:type="object">MageOS\Workflows\Console\Command\HealthCommand</item>
             </argument>
         </arguments>
     </type>

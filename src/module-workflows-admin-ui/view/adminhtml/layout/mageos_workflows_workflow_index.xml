@@ -4,6 +4,8 @@
     <body>
         <referenceContainer name="content">
             <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Index" name="mageos_workflows_workflow_index"/>
+            <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Health" name="mageos_workflows_health"
+                   template="MageOS_WorkflowsAdminUi::health.phtml" before="mageos_workflows_listing"/>
             <uiComponent name="mageos_workflows_listing"/>
         </referenceContainer>
     </body>

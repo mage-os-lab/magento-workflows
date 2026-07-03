@@ -4,13 +4,14 @@ declare(strict_types=1);
 namespace MageOS\Workflows\Model\Execution;
 
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 
 /**
  * The variable bag an execution carries: trigger snapshot, step outputs,
  * workflow metadata. Serialized into mageos_workflow_execution.context
  * between steps; delays rely on this being the complete resumable state.
  */
-class ExecutionContext
+class ExecutionContext implements ExecutionContextInterface
 {
     /**
      * @param array $trigger Pre-hydrated trigger payload snapshot
