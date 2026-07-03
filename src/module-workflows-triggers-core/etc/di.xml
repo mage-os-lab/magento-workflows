@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * DI wiring for the trigger layer.
+ *
+ * Notifier pool: registers WorkflowNotifier under the name "workflow" in the
+ * async-events NotifierFactory (argument name 'notifiers' — Aligent lineage;
+ * if your async-events version names the pool argument differently, adjust
+ * the <argument name> below).
+ *
+ * No wiring is required for the core module's workflow_triggers.xml reader
+ * quartet (MageOS\Workflows\Model\Trigger\Config\*): Reader, SchemaLocator
+ * and Data bind their collaborators, file name and cache id via concrete
+ * constructor defaults.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Register the workflow notifier in the async-events notifier pool -->
+    <type name="MageOS\AsyncEvents\Service\AsyncEvent\NotifierFactory">
+        <arguments>
+            <argument name="notifiers" xsi:type="array">
+                <item name="workflow" xsi:type="object">MageOS\WorkflowsTriggersCore\Model\WorkflowNotifier</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Refuse out-of-band mutation of workflow-owned subscriptions
+         (docs/10-security.md#subscription-ownership) -->
+    <type name="MageOS\AsyncEvents\Api\AsyncEventRepositoryInterface">
+        <plugin name="mageos_workflows_subscription_ownership"
+                type="MageOS\WorkflowsTriggersCore\Plugin\SubscriptionOwnershipPlugin"
+                sortOrder="10"/>
+    </type>
+</config>
