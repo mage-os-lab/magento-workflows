@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Delay resumption + zombie recovery; 1-minute precision is the DB-queue floor (docs/08) -->
+        <job name="mageos_workflows_resume_sweeper"
+             instance="MageOS\Workflows\Cron\ResumeSweeper"
+             method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
+        <!-- Retention pruning of completed executions + their step rows -->
+        <job name="mageos_workflows_prune_executions"
+             instance="MageOS\Workflows\Cron\PruneExecutions"
+             method="execute">
+            <schedule>0 2 * * *</schedule>
+        </job>
+    </group>
+</config>

@@ -1,0 +1,40 @@
+{
+    "format": "mageos-workflow-export/1",
+    "name": "High-value order fraud check",
+    "entity_type": "sales_order",
+    "trigger_type": "event",
+    "trigger_ref": "sales.order.created",
+    "conditions_serialized": "{\"type\":\"combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"order_attribute\",\"attribute\":\"grand_total\",\"operator\":\">=\",\"value\":\"500\"}]}",
+    "definition": {
+        "schema": 1,
+        "entry": "s1",
+        "steps": {
+            "s1": {
+                "type": "action",
+                "action": "order.add_comment",
+                "config": {"comment": "High-value order flagged ({{ trigger.grand_total }})"},
+                "next": "s2"
+            },
+            "s2": {"type": "delay", "config": {"duration": "PT1H"}, "next": "s3"},
+            "s3": {
+                "type": "branch",
+                "conditions_serialized": "{\"type\":\"combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"order_attribute\",\"attribute\":\"status\",\"operator\":\"==\",\"value\":\"pending\"}]}",
+                "revalidate_entity": true,
+                "on_true": "s4",
+                "on_false": null
+            },
+            "s4": {
+                "type": "action",
+                "action": "notify.webhook",
+                "config": {
+                    "url": "https://hooks.example/fraud",
+                    "capture_as": "fraud",
+                    "timeout": 5,
+                    "sign_with": "{{ secrets.fraud_hmac }}"
+                },
+                "next": null
+            }
+        }
+    },
+    "loop_guard_depth": 1
+}

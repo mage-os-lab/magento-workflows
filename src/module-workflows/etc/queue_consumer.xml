@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/consumer.xsd">
+    <!-- connection deliberately omitted: deployment (env.php queue config) decides amqp vs db -->
+    <consumer name="mageos.workflow.execute"
+              queue="mageos.workflow.execute"
+              handler="MageOS\Workflows\Model\Queue\ExecuteConsumer::process"/>
+    <consumer name="mageos.workflow.resume"
+              queue="mageos.workflow.resume"
+              handler="MageOS\Workflows\Model\Queue\ResumeConsumer::process"/>
+</config>

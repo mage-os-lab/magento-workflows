@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Schema for workflow_triggers.xml — workflow trigger metadata declarations.
+ *
+ * Trigger metadata describes the async events a workflow may bind to:
+ * UI label and grouping, the entity type the payload represents, and the
+ * optional resolver used for Phase-2 (hydration) condition evaluation.
+ *
+ * This schema is a published spec artifact of the Mage-OS Workflow Engine
+ * and is versioned with the definition format (see docs/05-triggers.md).
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ */
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+
+    <xs:element name="triggers">
+        <xs:annotation>
+            <xs:documentation>
+                Root node collecting all trigger declarations. Files are merged across
+                modules; declarations are keyed by the "event" attribute, and a later
+                module's declaration for the same event overrides an earlier one.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="trigger" type="triggerType" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+        <xs:unique name="uniqueTriggerEvent">
+            <xs:annotation>
+                <xs:documentation>Each async event may be declared at most once per file.</xs:documentation>
+            </xs:annotation>
+            <xs:selector xpath="trigger"/>
+            <xs:field xpath="@event"/>
+        </xs:unique>
+    </xs:element>
+
+    <xs:complexType name="triggerType">
+        <xs:annotation>
+            <xs:documentation>A single trigger declaration bound to one async event.</xs:documentation>
+        </xs:annotation>
+        <xs:attribute name="event" type="eventNameType" use="required">
+            <xs:annotation>
+                <xs:documentation>
+                    Async event name as declared in async_events.xml
+                    (e.g. "sales.order.created"). Unique identifier of the trigger.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="entity" type="entityTypeType" use="required">
+            <xs:annotation>
+                <xs:documentation>
+                    Entity type the trigger payload represents (e.g. "sales_order",
+                    "customer", "catalog_product", "quote"). Selects the condition
+                    combine class and the grids a manual run may target.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="label" type="labelType" use="required">
+            <xs:annotation>
+                <xs:documentation>Human-readable trigger label shown in the admin UI (translatable).</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="group" type="labelType">
+            <xs:annotation>
+                <xs:documentation>Optional UI option-group label (e.g. "Sales", "Customer").</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="resolver" type="phpClassType">
+            <xs:annotation>
+                <xs:documentation>
+                    Optional fully-qualified class name of the repository-backed entity
+                    resolver used by the condition engine's Phase-2 hydration pass.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+    </xs:complexType>
+
+    <xs:simpleType name="eventNameType">
+        <xs:annotation>
+            <xs:documentation>
+                Dot-separated lowercase identifier: segments of [a-z0-9_], starting
+                with a letter (e.g. "sales.order.status_changed").
+            </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="entityTypeType">
+        <xs:annotation>
+            <xs:documentation>Lowercase snake_case entity type code.</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[a-z][a-z0-9_]*"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="labelType">
+        <xs:annotation>
+            <xs:documentation>Non-empty, single-line text.</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:pattern value="[^\n\r\t]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="phpClassType">
+        <xs:annotation>
+            <xs:documentation>Fully-qualified PHP class name, with or without a leading backslash.</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:pattern value="\\?[A-Z][a-zA-Z0-9_]*(\\[A-Z][a-zA-Z0-9_]*)+"/>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>

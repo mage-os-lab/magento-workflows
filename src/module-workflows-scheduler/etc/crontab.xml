@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Evaluates every schedule-type workflow's cron expression against its store timezone;
+             docs/05-triggers.md#scheduled-triggers-workflows-scheduler -->
+        <job name="mageos_workflows_scheduler" instance="MageOS\WorkflowsScheduler\Cron\RunScheduledWorkflows" method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
+        <!-- The scheduler's canonical "query trigger" (docs/05-triggers.md, footnote 1) -->
+        <job name="mageos_workflows_abandoned_carts" instance="MageOS\WorkflowsScheduler\Model\AbandonedCartDetector" method="execute">
+            <schedule>*/10 * * * *</schedule>
+        </job>
+    </group>
+</config>

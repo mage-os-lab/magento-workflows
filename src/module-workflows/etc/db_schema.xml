@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <table name="mageos_workflow" resource="default" engine="innodb" comment="Mage-OS Workflow Definitions">
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" identity="true"
+                comment="Workflow ID"/>
+        <column xsi:type="varchar" name="name" length="255" nullable="false" comment="Workflow Name"/>
+        <column xsi:type="smallint" name="status" unsigned="true" nullable="false" default="0"
+                comment="Status (0 disabled, 1 enabled, 2 shadow, 3 suspended)"/>
+        <column xsi:type="varchar" name="trigger_type" length="32" nullable="false"
+                comment="Trigger Type (event|schedule|manual)"/>
+        <column xsi:type="varchar" name="trigger_ref" length="255" nullable="false"
+                comment="Trigger Reference (async event name or cron expression)"/>
+        <column xsi:type="varchar" name="entity_type" length="64" nullable="false"
+                comment="Entity Type (sales_order, customer, catalog_product, ...)"/>
+        <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
+                comment="Serialized Rule Condition Tree"/>
+        <column xsi:type="json" name="definition" nullable="false" comment="Step Graph Definition JSON"/>
+        <column xsi:type="int" name="version" unsigned="true" nullable="false" default="1"
+                comment="Definition Version"/>
+        <column xsi:type="smallint" name="loop_guard_depth" unsigned="true" nullable="false" default="1"
+                comment="Loop Guard Depth"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="workflow_id"/>
+        </constraint>
+        <index referenceId="MAGEOS_WORKFLOW_STATUS_TRIGGER_TYPE" indexType="btree">
+            <column name="status"/>
+            <column name="trigger_type"/>
+        </index>
+    </table>
+
+    <table name="mageos_workflow_website" resource="default" engine="innodb"
+           comment="Mage-OS Workflow To Website Link">
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
+        <column xsi:type="smallint" name="website_id" unsigned="true" nullable="false" comment="Website ID"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="workflow_id"/>
+            <column name="website_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_WEBSITE_WORKFLOW_ID"
+                    table="mageos_workflow_website" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_WEBSITE_WEBSITE_ID"
+                    table="mageos_workflow_website" column="website_id"
+                    referenceTable="store_website" referenceColumn="website_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_WEBSITE_WEBSITE_ID" indexType="btree">
+            <column name="website_id"/>
+        </index>
+    </table>
+
+    <table name="mageos_workflow_revision" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Revision Archive (prior definitions, change-history UI)">
+        <column xsi:type="int" name="revision_id" unsigned="true" nullable="false" identity="true"
+                comment="Revision ID"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
+        <column xsi:type="int" name="version" unsigned="true" nullable="false" comment="Archived Definition Version"/>
+        <column xsi:type="json" name="definition" nullable="false" comment="Archived Step Graph Definition JSON"/>
+        <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
+                comment="Archived Serialized Rule Condition Tree"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Archived At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="revision_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_REVISION_WORKFLOW_ID_VERSION">
+            <column name="workflow_id"/>
+            <column name="version"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_REVISION_WORKFLOW_ID"
+                    table="mageos_workflow_revision" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+    </table>
+
+    <table name="mageos_workflow_execution" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Executions (runtime instance per trigger firing)">
+        <column xsi:type="bigint" name="execution_id" unsigned="true" nullable="false" identity="true"
+                comment="Execution ID"/>
+        <column xsi:type="varchar" name="uuid" length="36" nullable="false"
+                comment="Execution UUID (correlates with async-events trace UUID)"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
+        <column xsi:type="int" name="workflow_version" unsigned="true" nullable="false"
+                comment="Workflow Definition Version Pinned At Trigger Time"/>
+        <column xsi:type="mediumtext" name="definition_snapshot" nullable="false"
+                comment="Full Definition JSON Snapshot Pinned At Trigger Time"/>
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" comment="Subject Entity ID"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" comment="Store ID"/>
+        <column xsi:type="varchar" name="status" length="16" nullable="false"
+                comment="Status (pending|running|waiting|complete|skipped|failed|cancelled)"/>
+        <column xsi:type="json" name="context" nullable="true"
+                comment="Context Variable Bag JSON (trigger snapshot + step outputs)"/>
+        <column xsi:type="smallint" name="chain_depth" unsigned="true" nullable="false" default="0"
+                comment="Chain Depth (loop guard)"/>
+        <column xsi:type="varchar" name="current_step" length="64" nullable="true" comment="Current Step Key"/>
+        <column xsi:type="timestamp" name="triggered_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Triggered At"/>
+        <column xsi:type="timestamp" name="completed_at" on_update="false" nullable="true" comment="Completed At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="execution_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_EXECUTION_WORKFLOW_ID"
+                    table="mageos_workflow_execution" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_WORKFLOW_ID_STATUS" indexType="btree">
+            <column name="workflow_id"/>
+            <column name="status"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_UUID" indexType="btree">
+            <column name="uuid"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT" indexType="btree">
+            <column name="status"/>
+            <column name="triggered_at"/>
+        </index>
+    </table>
+
+    <table name="mageos_workflow_execution_step" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Execution Steps (per-step runtime state)">
+        <column xsi:type="bigint" name="step_execution_id" unsigned="true" nullable="false" identity="true"
+                comment="Step Execution ID"/>
+        <column xsi:type="bigint" name="execution_id" unsigned="true" nullable="false" comment="Execution ID"/>
+        <column xsi:type="varchar" name="step_key" length="64" nullable="false" comment="Step Key"/>
+        <column xsi:type="varchar" name="status" length="16" nullable="false"
+                comment="Status (pending|running|waiting|complete|failed|skipped)"/>
+        <column xsi:type="json" name="result" nullable="true" comment="Action Output JSON"/>
+        <column xsi:type="text" name="error" nullable="true" comment="Error Message"/>
+        <column xsi:type="timestamp" name="resume_at" on_update="false" nullable="true"
+                comment="Resume At (delay steps)"/>
+        <column xsi:type="timestamp" name="claimed_at" on_update="false" nullable="true"
+                comment="Claimed At (sweeper worker claim)"/>
+        <column xsi:type="timestamp" name="started_at" on_update="false" nullable="true" comment="Started At"/>
+        <column xsi:type="timestamp" name="finished_at" on_update="false" nullable="true" comment="Finished At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="step_execution_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_EXECUTION_STEP_EXECUTION_ID"
+                    table="mageos_workflow_execution_step" column="execution_id"
+                    referenceTable="mageos_workflow_execution" referenceColumn="execution_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STEP_EXECUTION_ID" indexType="btree">
+            <column name="execution_id"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STEP_STATUS_RESUME_AT" indexType="btree">
+            <column name="status"/>
+            <column name="resume_at"/>
+        </index>
+    </table>
+
+    <table name="mageos_workflow_debounce" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Debounce Slots (atomic via unique key)">
+        <column xsi:type="bigint" name="debounce_id" unsigned="true" nullable="false" identity="true"
+                comment="Debounce ID"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" comment="Subject Entity ID"/>
+        <column xsi:type="varchar" name="time_bucket" length="64" nullable="false"
+                comment="Debounce Time Bucket (e.g. floor(unixtime / window))"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="debounce_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_DEBOUNCE_WORKFLOW_ID_ENTITY_ID_TIME_BUCKET">
+            <column name="workflow_id"/>
+            <column name="entity_id"/>
+            <column name="time_bucket"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_DEBOUNCE_WORKFLOW_ID"
+                    table="mageos_workflow_debounce" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+    </table>
+
+    <table name="mageos_workflow_secret" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Secrets (values encrypted at rest)">
+        <column xsi:type="int" name="secret_id" unsigned="true" nullable="false" identity="true"
+                comment="Secret ID"/>
+        <column xsi:type="varchar" name="key" length="128" nullable="false" comment="Secret Key Name"/>
+        <column xsi:type="text" name="value" nullable="false" comment="Secret Value (EncryptorInterface-encrypted)"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="secret_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_SECRET_KEY">
+            <column name="key"/>
+        </constraint>
+    </table>
+</schema>

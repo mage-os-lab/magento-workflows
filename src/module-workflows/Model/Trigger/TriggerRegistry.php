@@ -1,0 +1,61 @@
+<?php
+declare(strict_types=1);
+
+namespace MageOS\Workflows\Model\Trigger;
+
+use MageOS\Workflows\Model\Trigger\Config\Data;
+
+/**
+ * Facade over the merged workflow_triggers.xml metadata.
+ *
+ * Each trigger record is:
+ * ['event' => string, 'entity' => string, 'label' => string,
+ *  'group' => ?string, 'resolver' => ?string]
+ */
+class TriggerRegistry
+{
+    public function __construct(
+        private readonly Data $configData
+    ) {
+    }
+
+    /**
+     * All declared triggers, keyed by event name.
+     *
+     * @return array<string, array<string, string|null>>
+     */
+    public function getAll(): array
+    {
+        $triggers = $this->configData->get();
+
+        return is_array($triggers) ? $triggers : [];
+    }
+
+    /**
+     * Metadata for a single async event, or null when the event is not declared.
+     *
+     * @return array<string, string|null>|null
+     */
+    public function getByEvent(string $event): ?array
+    {
+        if ($event === '') {
+            return null;
+        }
+        $trigger = $this->configData->get($event);
+
+        return is_array($trigger) ? $trigger : null;
+    }
+
+    /**
+     * All triggers whose payload represents the given entity type.
+     *
+     * @return array<string, array<string, string|null>> keyed by event name
+     */
+    public function getByEntity(string $entityType): array
+    {
+        return array_filter(
+            $this->getAll(),
+            static fn (array $trigger): bool => ($trigger['entity'] ?? null) === $entityType
+        );
+    }
+}

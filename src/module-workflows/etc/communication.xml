@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/communication.xsd">
+    <!-- Payload is the execution id as a plain string -->
+    <topic name="mageos.workflow.execute" request="string">
+        <handler name="mageosWorkflowExecute" type="MageOS\Workflows\Model\Queue\ExecuteConsumer" method="process"/>
+    </topic>
+    <topic name="mageos.workflow.resume" request="string">
+        <handler name="mageosWorkflowResume" type="MageOS\Workflows\Model\Queue\ResumeConsumer" method="process"/>
+    </topic>
+</config>

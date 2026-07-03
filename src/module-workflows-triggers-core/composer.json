@@ -1,0 +1,21 @@
+{
+    "name": "mage-os/workflows-triggers-core",
+    "description": "Mage-OS Workflow Engine trigger layer: async-events notifier binding, subscription lifecycle, trigger metadata and gap-fill events",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0",
+        "magento/framework": ">=103.0.4",
+        "mage-os/workflows": "*",
+        "mage-os/mageos-async-events": ">=4.0"
+    },
+    "suggest": {
+        "mage-os/mageos-common-async-events": "Ships the standard sales/customer async event definitions this module declares triggers for"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "MageOS\\WorkflowsTriggersCore\\": ""
+        }
+    }
+}

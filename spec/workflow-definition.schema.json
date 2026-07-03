@@ -1,0 +1,106 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mage-os.org/schemas/workflow-definition/1.json",
+    "title": "Mage-OS Workflow Definition",
+    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 1.",
+    "type": "object",
+    "required": ["schema", "steps", "entry"],
+    "additionalProperties": false,
+    "properties": {
+        "schema": {
+            "const": 1
+        },
+        "entry": {
+            "$ref": "#/$defs/stepKeyOrNull",
+            "description": "Key of the first step; null only when steps is empty"
+        },
+        "steps": {
+            "type": "object",
+            "propertyNames": {
+                "pattern": "^[a-zA-Z0-9_\\-]{1,64}$"
+            },
+            "additionalProperties": {
+                "oneOf": [
+                    {"$ref": "#/$defs/actionStep"},
+                    {"$ref": "#/$defs/delayStep"},
+                    {"$ref": "#/$defs/branchStep"},
+                    {"$ref": "#/$defs/stopStep"}
+                ]
+            }
+        }
+    },
+    "$defs": {
+        "stepKeyOrNull": {
+            "oneOf": [
+                {"type": "string", "pattern": "^[a-zA-Z0-9_\\-]{1,64}$"},
+                {"type": "null"}
+            ]
+        },
+        "actionStep": {
+            "type": "object",
+            "required": ["type", "action"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {"const": "action"},
+                "action": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$",
+                    "description": "Registered action code, e.g. order.add_comment. Static: never interpolated."
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Action config. String values may contain {{ trigger.* }}, {{ steps.* }}, {{ workflow.* }}, {{ secrets.* }} placeholders (values only, never keys)."
+                },
+                "next": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "delayStep": {
+            "type": "object",
+            "required": ["type", "config"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {"const": "delay"},
+                "config": {
+                    "type": "object",
+                    "required": ["duration"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "duration": {
+                            "type": "string",
+                            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+                            "description": "ISO-8601 duration; absolute UTC arithmetic"
+                        }
+                    }
+                },
+                "next": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "branchStep": {
+            "type": "object",
+            "required": ["type"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {"const": "branch"},
+                "conditions_serialized": {
+                    "type": "string",
+                    "description": "Rule condition tree, salesrule-compatible serialized format"
+                },
+                "revalidate_entity": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "true: re-hydrate the entity fresh before evaluating (correct default after delays); false: evaluate against the frozen trigger snapshot"
+                },
+                "on_true": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_false": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "stopStep": {
+            "type": "object",
+            "required": ["type"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {"const": "stop"}
+            }
+        }
+    }
+}
