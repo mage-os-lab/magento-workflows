@@ -20,7 +20,7 @@
             </group>
             <group id="guards" translate="label" type="text" sortOrder="20" showInDefault="1">
                 <label>Guards</label>
-                <field id="debounce_window" translate="label comment" type="text" sortOrder="10" showInDefault="1">
+                <field id="debounce_window_seconds" translate="label comment" type="text" sortOrder="10" showInDefault="1">
                     <label>Debounce Window (seconds)</label>
                     <comment>Executions for the same workflow and entity within this window collapse to one.</comment>
                     <validate>validate-digits</validate>

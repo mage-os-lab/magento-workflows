@@ -44,10 +44,22 @@ See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-go
 
 The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).
 
+## Repository layout
+
+```
+src/module-workflows/               mage-os/workflows            MageOS_Workflows (core engine)
+src/module-workflows-admin-ui/      mage-os/workflows-admin-ui   MageOS_WorkflowsAdminUi
+src/module-workflows-actions-core/  mage-os/workflows-actions-core  MageOS_WorkflowsActionsCore
+src/module-workflows-triggers-core/ mage-os/workflows-triggers-core MageOS_WorkflowsTriggersCore
+src/module-workflows-scheduler/     mage-os/workflows-scheduler  MageOS_WorkflowsScheduler
+spec/                               Published definition + export JSON Schemas, conformance fixtures
+docs/                               Architecture documentation
+```
+
+The core module ships the domain model (`etc/db_schema.xml`), two-phase condition engine (`Model/Rule/`), graph-walking executor and queue topology (`Model/Engine/`, `Model/Queue/`), variable resolver and secrets (`Model/Variable/`, `Model/Secrets/`), and the `workflow:*` CLI commands. Actions register into `ActionPool` via `di.xml` — see `src/module-workflows-actions-core/etc/di.xml` for the pattern; that *is* the connector SDK.
+
 ## Status
 
-This is a **proposal**. Nothing here is implemented yet. Next steps:
+**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md) is coded: core engine (linear + delays + branches), condition pool for order/customer/product with EAV auto-discovery, 17 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart detection, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode.
 
-1. XSD for `workflow_triggers.xml`
-2. JSON Schema for the definition format
-3. Phase-0 spike ticket breakdown (see [Delivery Plan](docs/13-delivery-plan.md))
+Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end), unit/integration test suites, the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and the v2 canvas. Class-name fidelity against `mageos-async-events` internals needs verification on a real install — assumptions are documented in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks.

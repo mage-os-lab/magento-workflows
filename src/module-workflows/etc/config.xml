@@ -7,7 +7,7 @@
                 <suppress_all>0</suppress_all>
             </general>
             <guards>
-                <debounce_window>60</debounce_window>
+                <debounce_window_seconds>60</debounce_window_seconds>
                 <circuit_breaker_threshold>10</circuit_breaker_threshold>
                 <manual_run_cap>1000</manual_run_cap>
             </guards>

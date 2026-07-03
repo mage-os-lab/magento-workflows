@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Data + service contracts -->
+    <preference for="MageOS\Workflows\Api\Data\WorkflowInterface"
+                type="MageOS\Workflows\Model\Workflow"/>
+    <preference for="MageOS\Workflows\Api\Data\WorkflowExecutionInterface"
+                type="MageOS\Workflows\Model\WorkflowExecution"/>
+    <preference for="MageOS\Workflows\Api\Data\WorkflowExecutionStepInterface"
+                type="MageOS\Workflows\Model\WorkflowExecutionStep"/>
+    <preference for="MageOS\Workflows\Api\WorkflowRepositoryInterface"
+                type="MageOS\Workflows\Model\WorkflowRepository"/>
+    <preference for="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface"
+                type="MageOS\Workflows\Model\WorkflowExecutionRepository"/>
+
+    <!-- Engine -->
+    <preference for="MageOS\Workflows\Api\DispatcherInterface"
+                type="MageOS\Workflows\Model\Engine\Dispatcher"/>
+
+    <!-- Secrets -->
+    <preference for="MageOS\Workflows\Model\Variable\SecretsProviderInterface"
+                type="MageOS\Workflows\Model\Secrets\ConfigSecretsProvider"/>
+
+    <!-- Condition engine -->
+    <preference for="MageOS\Workflows\Model\Rule\HydrationProviderInterface"
+                type="MageOS\Workflows\Model\Rule\HydrationProvider"/>
+    <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
+        <arguments>
+            <argument name="combines" xsi:type="array">
+                <item name="sales_order" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Order\Combine</item>
+                <item name="customer" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Customer\Combine</item>
+                <item name="catalog_product" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Product\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- CLI -->
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="workflowExport" xsi:type="object">MageOS\Workflows\Console\Command\ExportCommand</item>
+                <item name="workflowImport" xsi:type="object">MageOS\Workflows\Console\Command\ImportCommand</item>
+                <item name="workflowRun" xsi:type="object">MageOS\Workflows\Console\Command\RunCommand</item>
+                <item name="workflowStats" xsi:type="object">MageOS\Workflows\Console\Command\StatsCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>
