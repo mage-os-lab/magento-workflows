@@ -14,6 +14,13 @@
 | Runaway/misconfigured workflow | Circuit breaker auto-suspend + digest notification ([Actions §Guards](07-actions.md#loop-prevention-storms-and-circuit-breaking)) |
 | Duplicate side effects on at-least-once redelivery | Step claim timestamps + per-step dedupe key (execution UUID + step key) checked by non-idempotent actions (email send logs the key before SMTP) |
 | Entity deleted during a delay | Resume path treats missing-entity as `skipped` with explicit log status, never as error retry |
-| Timezone ambiguity (delays, schedules) | Delays are absolute durations (UTC arithmetic); schedules evaluate in *store* timezone with the store recorded on the execution — document loudly, it's the #1 support-ticket generator in every scheduler ever shipped |
+| Timezone ambiguity (delays, schedules) | Plain delay durations stay absolute (UTC arithmetic); the schema-2 delay options `business_days` / `at` compute in the *store's* timezone, because they are merchant-local concepts; schedules evaluate in *store* timezone with the store recorded on the execution — document loudly, it's the #1 support-ticket generator in every scheduler ever shipped |
 | PII sprawl into ES / retained contexts | Redaction-by-default indexing, TTL pruning, GDPR erasure hook ([Security §PII](10-security.md#pii-containment)) — **GA blockers, not fast-follows** |
-| **Open:** multi-source inventory semantics for stock actions | v1 restricts to default source + salability check; MSI-aware config in Phase 2 |
+| **Open:** multi-source inventory semantics for stock actions | `product.set_stock` now takes an optional `source_code` (MSI `SourceItemsSave` when MSI is present; terminal step failure when it isn't); the default-source path is unchanged. Full MSI-aware config (per-stock salability, multi-source strategies) remains open |
+
+## Resolved since the July 2026 review
+
+- **Unbounded delays** — delay durations and wait timeouts are clamped to `mageos_workflows/guards/max_delay_days` (default 365) with a logged warning; a `P1Y` typo can no longer park an execution silently for a year ([Definition Format §Schema versions](04-definition-format.md#schema-versions)).
+- **`inventory.stock_threshold_crossed` had no publisher** — the trigger was declared but nothing fired it; `StockThresholdDetector` (scheduler cron, hysteresis flag table) now publishes it ([Triggers](05-triggers.md)).
+
+See [16 — Capability Roadmap](16-capability-roadmap.md) for the full execution record.

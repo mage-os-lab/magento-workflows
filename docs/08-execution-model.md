@@ -10,6 +10,7 @@ async-events event.trigger.consumer ──> WorkflowNotifier ──> workflow.di
                             action  -> execute inline, persist step result
                             branch  -> evaluate, follow edge
                             delay   -> persist state=waiting, resume_at; RELEASE message
+                            wait    -> persist state=waiting + waiting_event; park until event or timeout
                             stop    -> complete
 ```
 
@@ -21,6 +22,17 @@ async-events event.trigger.consumer ──> WorkflowNotifier ──> workflow.di
 | DB queue | Cron sweeper (1 min) on `INDEX(status, resume_at)` |
 
 Both paths converge on a `workflow.resume` consumer. RabbitMQ is documented as recommended, and required for sub-minute delay precision — the identical stance async-events takes for retry backoff.
+
+`resume_at` — for delays and wait timeouts alike — is ceiling-clamped to `mageos_workflows/guards/max_delay_days` (default 365) with a logged warning when the clamp fires, so a mistyped duration cannot park an execution silently for a year.
+
+## Wait steps (schema 2)
+
+A `wait` step parks the execution (`status = waiting`) with the awaited event name written to `mageos_workflow_execution.waiting_event`; a `(status, waiting_event, entity_id)` index makes the event-side lookup an index hit, not a scan. Two paths race to wake it, and each execution is claimed exactly once:
+
+- **Event match** — the hidden wait subscription (`workflow:<id>:wait:<event>`, see [Triggers](05-triggers.md)) delivers the event to `Dispatcher::resumeWaiting()`, which selects parked executions matching `(workflow_id, waiting_event, entity_id)` and claims each with an atomic `waiting → pending` conditional UPDATE — a concurrent timeout sweep or duplicate event delivery loses the race cleanly. The event payload is written into the wait step row's result *before* the resume is published.
+- **Timeout** — the resume sweeper claims the execution once the timeout deadline passes (computed like any delay and subject to the same max-delay ceiling); wait timeouts ride the sweeper on both queue backends.
+
+Both converge on the same `workflow.resume` consumer, which routes `on_event` or `on_timeout` depending on whether the step row carries an event result, and injects `{resolution: "event"|"timeout", event: <payload>}` as the wait step's output — available to downstream branches and interpolation as `steps.<key>.*`.
 
 ## Crash safety and delivery semantics
 

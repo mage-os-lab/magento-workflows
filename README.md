@@ -42,6 +42,7 @@ See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-go
 | [13 — Delivery Plan](docs/13-delivery-plan.md) | Phases, effort estimates, test strategy |
 | [14 — Risks & Open Questions](docs/14-risks.md) | Risk register with mitigations |
 | [15 — Operations Guide](docs/15-operations.md) | Consumers, cron, health checks, retention, recovery |
+| [16 — Capability Roadmap](docs/16-capability-roadmap.md) | Post-review execution record: waves 1–5 implemented, deferred scope |
 
 The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).
 
@@ -61,6 +62,6 @@ The core module ships the domain model (`etc/db_schema.xml`), two-phase conditio
 
 ## Status
 
-**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md) is coded: core engine (linear + delays + branches), condition pool for order/customer/product with EAV auto-discovery, 17 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart detection, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode.
+**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 22 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. A standalone test runner exercises `Test/Unit` across all five modules (via a Magento shim layer, `dev/tests/shims/`), with CI lint + units on PHP 8.1–8.4.
 
-Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end), unit/integration test suites, the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and the v2 canvas. Class-name fidelity against `mageos-async-events` internals needs verification on a real install — assumptions are documented in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks.
+Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end), full unit/integration coverage (the runner exists; suites are still growing), the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and the v2 canvas. Class-name fidelity against `mageos-async-events` internals needs verification on a real install — assumptions are documented in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks.

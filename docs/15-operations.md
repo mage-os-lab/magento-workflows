@@ -23,8 +23,17 @@ running for an execution to progress end to end (see
      died mid-step.
    - `mageos_workflows_prune_executions` — daily at 02:00. Retention/PII pruning (below).
 
+   The scheduler module (`workflows-scheduler`) registers three more jobs in the same
+   group: `mageos_workflows_scheduler` (every minute; evaluates schedule-type
+   workflows), `mageos_workflows_abandoned_carts` (every 10 minutes), and
+   `mageos_workflows_stock_threshold` (every 10 minutes) — the publisher for the
+   `inventory.stock_threshold_crossed` trigger. The stock detector fires when a managed
+   product's qty drops to or below `mageos_workflows/scheduler/stock_threshold`
+   (default 5; `0` disables it), with hysteresis via the `mageos_workflow_stock_flag`
+   table so a product hovering at the boundary fires once, not every 10 minutes.
+
    If Magento cron is not scheduled at all (no crontab entry, or `cron:run` never
-   invoked), neither job ever executes, independent of queue backend.
+   invoked), none of these jobs ever execute, independent of queue backend.
 
 2. **Queue consumers.** Executions and delay-resumes are dispatched onto message queue
    topics (`etc/queue_publisher.xml`, `etc/queue_consumer.xml`); a consumer process must
@@ -134,6 +143,26 @@ workflow), so unbounded retention is a PII liability, not just disk usage. The
 - This is retention pruning, not full GDPR erasure; see
   [Security §PII containment](10-security.md#pii-containment) for the erasure-hook and
   ES field-redaction controls, which are separate from this cron job.
+
+## Configuration quick reference
+
+Guard and scheduler keys added by the capability-roadmap waves, alongside the retention
+and circuit-breaker keys documented in their own sections:
+
+- `mageos_workflows/guards/max_delay_days` (default 365) — ceiling for delay durations
+  *and* wait-step timeouts, clamped at runtime with a logged warning, so a mistyped
+  `P1Y` cannot park an execution silently.
+- `mageos_workflows/scheduler/stock_threshold` (default 5) — quantity boundary for the
+  `mageos_workflows_stock_threshold` detector job; `0` disables the detector entirely.
+
+## REST API
+
+Workflow CRUD and execution reads are exposed over the standard Magento REST layer
+(`src/module-workflows/etc/webapi.xml`): `GET`/`POST /V1/workflows` and
+`GET`/`PUT`/`DELETE /V1/workflows/:workflowId` under the `MageOS_Workflows::view` /
+`::manage` ACL resources, plus read-only `GET /V1/workflow-executions[/:executionId]`
+under `::view`. This is the CI/CD deployment path for workflow definitions when SSH
+(`bin/magento workflow:import`) isn't available.
 
 ## Circuit-breaker recovery
 

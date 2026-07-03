@@ -23,11 +23,15 @@ Enabling a workflow programmatically creates a hidden async-event subscription (
 
 - The engine inherits async-events' **queue transport, quadratic backoff retry, dead-lettering, UUID tracing, replay, and ES-indexed searchability** with zero code. A failed workflow dispatch is just a failed delivery — replayable from the existing admin grid.
 - The **payload arrives pre-hydrated** by the event's declared service class (`OrderRepositoryInterface::get` etc.) — the same snapshot an HTTP subscriber would get. This becomes the trigger snapshot placed into execution `context.trigger`.
-- **Trigger coverage = `async_events.xml` definitions.** `mageos-common-async-events` covers customer/order/invoice/shipment basics; `workflows-triggers-core` fills gaps: order status change (with from→to in payload), stock threshold crossed, review submitted, cart abandoned¹, customer group changed, credit memo, RMA if present.
+- **Trigger coverage = `async_events.xml` definitions.** `mageos-common-async-events` covers customer/order/invoice/shipment basics; `workflows-triggers-core` fills gaps: order status change (with from→to in payload), stock threshold crossed², review submitted, cart abandoned¹, customer group changed, credit memo, RMA if present.
 
 ¹ Cart abandonment isn't an event — it's a query ("quote updated > N hours ago, no order"). It lives in the scheduler (below), which then *publishes* a `quote.abandoned` async event, keeping one dispatch path.
 
+² Same query shape, same answer: `StockThresholdDetector` (scheduler cron, every 10 minutes) publishes `inventory.stock_threshold_crossed` when a managed product's qty drops to or at `mageos_workflows/scheduler/stock_threshold` (default 5; `0` disables the detector). Hysteresis via the `mageos_workflow_stock_flag` table: a product is flagged on the downward crossing and unflagged only once qty recovers *above* the threshold, so a product hovering at the boundary fires once, not every 10 minutes.
+
 The hidden subscriptions carry an `owner=workflow:<id>` marker; the async-events admin UI and REST API refuse mutation of owned subscriptions ([Security §Subscription ownership](10-security.md#subscription-ownership)).
+
+Wait steps (definition schema 2) add a second class of hidden subscription: one per waited-on event, recipient `workflow:<id>:wait:<event>`, reconciled at workflow save time. These deliver to `Dispatcher::resumeWaiting()` — waking parked executions for the matching entity — rather than spawning a fresh dispatch, and they exist independently of the workflow's own trigger type: a schedule- or manual-triggered workflow with wait steps still needs its wait events delivered ([Execution Model §Wait steps](08-execution-model.md#wait-steps-schema-2)).
 
 ### Trigger metadata
 
@@ -49,6 +53,8 @@ Key trick: `Magento\Rule\Model\Condition\*` supports `collectValidatedAttributes
 
 - Map the condition tree to `SearchCriteria` where operators translate cleanly (scalar/set/date on selectable attributes)
 - Fall back to load-and-filter in batches of 500 where they don't
+
+All four entity roots are queryable, including `quote` (`CartRepositoryInterface` wired in the scheduler's `di.xml`); quote schedules watermark on `updated_at`.
 
 Each matching entity spawns a normal execution through the same dispatcher.
 

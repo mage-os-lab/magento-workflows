@@ -12,6 +12,7 @@ class WorkflowRule extends \Magento\Rule\Model\AbstractModel
         return $this->conditionPool->getCombine($this->getEntityType());
         // sales_order  => Condition\Order\Combine
         // customer     => Condition\Customer\Combine
+        // quote        => Condition\Quote\Combine (hydrates via CartRepositoryInterface)
         // catalog_product => reuse patterns from CatalogRule Product condition
     }
 }
@@ -27,6 +28,14 @@ Per-entity condition classes follow the `AbstractCondition` contract:
 ### Cross-entity traversal
 
 Via child combines: an Order combine exposes a "Customer" subtree (hydrates via `order.customer_id → CustomerRepository`) and an "Items" subtree with ANY/ALL semantics over `OrderItemInterface` (the pattern exists in `SalesRule\Model\Rule\Condition\Product\Found`).
+
+### Entity roots and attribute coverage
+
+- **Four roots**: `sales_order`, `customer`, `quote`, `catalog_product`. Quote is a first-class root (`Condition\Quote\Attribute` + `Combine`, `QuoteHydrator` via `CartRepositoryInterface`) — "cart total > $100" on `quote.abandoned` needs no workaround.
+- **Order attributes** include addresses (`billing_` / `shipping_` country, region, postcode, city), `order_currency_code`, `discount_amount`, `total_paid`, `total_refunded`, and `customer_is_guest` alongside the totals/status basics.
+- **Customer order-history aggregates**: `orders_count`, `lifetime_sales`, `avg_order_value`, `last_order_at`, `days_since_last_order`. These are never in the trigger snapshot — `CustomerAggregateProvider` computes them from `sales_order` on demand during the Phase-2 hydration pass (the save-time classifier marks them `needs_hydration` automatically), so they cost zero queries unless referenced. When an aggregate value is absent, only the negative operators (`!=`, `!{}`, `!()`) can match — fail-toward-false; a customer with zero orders has `orders_count = 0` but *no* `last_order_at` / `days_since_last_order` (there is no "days since" of nothing).
+- **Trigger Data (advanced)**: a generic leaf matching any dot-path into the raw trigger payload — `from_status` / `to_status` on `sales.order.status_changed`, `from_group_id` / `to_group_id` on `customer.group_changed`, nested paths like `payment.method` or `items.0.sku`. Snapshot-only *by design* (transition metadata exists only in the payload; re-hydrating the entity could never produce it); a missing path resolves to null, matched only by the negative operators.
+- **Relative date values**: date-type conditions accept expressions like `'-30 days'`, resolved against *now* at evaluation time — never frozen at save. The two canonical readings: `created_at <= '-30 days'` = created at least 30 days ago; `created_at >= '-30 days'` = created within the last 30 days.
 
 ## Two-phase evaluation (the EAV-at-scale answer)
 

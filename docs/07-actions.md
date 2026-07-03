@@ -28,18 +28,28 @@ An optional `simulate()` interface is added to the contract in v1 (as an optiona
 
 | Group | Actions |
 |---|---|
-| Sales | add order comment · change order status² · hold/unhold · create invoice (capture online/offline) · cancel order |
-| Customer | assign group · set custom attribute · subscribe/unsubscribe newsletter · add to segment (Commerce) |
-| Catalog | set attribute value (scoped) · enable/disable product · set stock status/qty (MSI source-aware) |
+| Sales | add order comment · change order status² · hold/unhold · create invoice (capture online/offline) · create shipment³ · create credit memo (offline full refund)³ · cancel order |
+| Customer | assign group · set custom attribute · subscribe/unsubscribe newsletter · anonymize⁴ · add to segment (Commerce) |
+| Catalog | set attribute value (scoped) · enable/disable product · set stock status/qty (MSI source-aware⁵) · set categories (add/remove/replace) · set special price (from/to dates; `clear: true` removes it) |
 | Marketing | generate coupon from cart price rule · apply customer tag attribute |
-| Notify | send email (transactional template + context vars) · **call webhook** · admin notification (inbox) |
+| Notify | send email (transactional template + context vars, or ad-hoc `subject` + `body`⁶) · **call webhook** · admin notification (inbox) |
 | Flow | delay · stop · set context variable |
 
 ² Status transitions are validated against the state machine — reuse `Magento\Sales\Model\Order` guards; an invalid transition = step failure, not silent corruption.
 
+³ Same guard philosophy: `order.create_shipment` (`ShipOrderInterface`) is gated by `canShip()`, `order.create_creditmemo` (`RefundOrderInterface`) by `canCreditmemo()` — a non-shippable/non-refundable order is a step failure, not silent corruption.
+
+⁴ `customer.anonymize` is a GDPR assist: scrambles PII fields to an RFC 2606 marker email and unsubscribes newsletter. It requires an explicit `confirm: true` in the step config (refuses to run otherwise) and is idempotent — re-running an already-anonymized customer is a no-op.
+
+⁵ `product.set_stock` takes an optional `source_code` routing through MSI `SourceItemsSave` (requires `qty`; a `source_code` on an install without MSI is a terminal step failure, not a retry). Without `source_code` the legacy default-source path is unchanged. Full MSI-aware configuration remains an open question ([Risks](14-risks.md)).
+
+⁶ Ad-hoc mode (`subject` + `body`, rendered through a bundled pass-through template) is mutually exclusive with `template_id`; variables work in both, and interpolated values in the ad-hoc body are HTML-escaped.
+
 ## Webhook action with response capture
 
 Sync HTTP POST (Guzzle), JSON body rendered from context, HMAC-SHA256 signature header (same convention as the async-events HTTP notifier so receivers verify identically), configurable timeout (default 5s, cap 30s), `capture_as` key storing the parsed JSON response into `context.steps.<key>`.
+
+First-class auth: `auth_type` (`bearer` | `basic`) plus `auth_secret` naming a stored secret — the value is resolved at send time and never appears in the definition or logs. An explicit `Authorization` header in the step's headers wins over `auth_type`.
 
 Subsequent branch conditions can reference the response: `{{ steps.fraud.response.score }} > 80`.
 
@@ -52,6 +62,7 @@ Failure honors `retryable` — 5xx/timeout retries via queue redelivery; 4xx fai
 A **restricted mustache-style resolver** over the context bag: `trigger.*`, `steps.*`, `workflow.*`, `secrets.*`.
 
 - **Not** `Magento\Framework\Filter\Template` — no directive execution, no method calls, dot-path array access only.
+- **Whitelisted formatters**: `{{ path|filter }}` / `{{ path|filter:'arg' }}`, chainable (`{{ trigger.email|lower|trim }}`), from a fixed list — `upper`, `lower`, `trim`, `number[:decimals]`, `date[:'format']`, `default:'fallback'` (e.g. `{{ trigger.grand_total|number:2 }}`). Unknown filters are ignored; the no-code-execution stance is unchanged.
 - Secrets are config-encrypted values referenced by key, never stored in definitions, redacted in logs ([Security §Secrets](10-security.md#secrets)).
 - Interpolation supplies *values*, never *structure*: captured webhook responses are usable in conditions and interpolation but never as action identifiers or attribute codes ([Security §Trust boundary](10-security.md#ssrf-hardening-the-webhook-action)).
 

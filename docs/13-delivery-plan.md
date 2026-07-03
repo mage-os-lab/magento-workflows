@@ -9,6 +9,10 @@
 
 **Phase 1 is a shippable, sellable product.**
 
+## Post-review execution (July 2026)
+
+The July 2026 state-and-outlook review produced a capability roadmap, since executed: waves 1–5 of [16 — Capability Roadmap](16-capability-roadmap.md) are implemented (wait step + delay upgrades, quote condition root + customer aggregates, action-library completion, stock-threshold publisher, variable formatters, REST API), with wave-6 test coverage in progress. Phase 3 (canvas, template gallery, dry-run UI, connectors program) and the B2B pack remain deferred as planned.
+
 ## Test strategy
 
 - The engine is highly unit-testable — condition evaluation, the graph walker, and the variable resolver are pure-ish.
