@@ -118,7 +118,7 @@ class WebhookTest extends TestCase
         $method = $this->reflection->getMethod('buildHeaders');
         $method->setAccessible(true);
         $headers = $method->invoke($this->webhook, [], '');
-        $this->assertIsArray($headers);
+        $this->assertCount(0, $headers);
     }
 
     public function testBuildHeadersStripsHostHeader(): void
@@ -127,7 +127,7 @@ class WebhookTest extends TestCase
         $method->setAccessible(true);
         $config = ['headers' => '{"Host": "example.com", "X-Custom": "value"}'];
         $headers = $method->invoke($this->webhook, $config, '');
-        $this->assertNotContains('Host', array_keys($headers));
+        $this->assertFalse(in_array('Host', array_keys($headers)));
         $this->assertSame('value', $headers['X-Custom'] ?? null);
     }
 
@@ -137,7 +137,7 @@ class WebhookTest extends TestCase
         $method->setAccessible(true);
         $config = ['headers' => '{"Content-Length": "100"}'];
         $headers = $method->invoke($this->webhook, $config, '');
-        $this->assertNotContains('Content-Length', array_keys($headers));
+        $this->assertFalse(in_array('Content-Length', array_keys($headers)));
     }
 
     public function testBuildHeadersStripsHopByHopHeaders(): void
@@ -146,8 +146,8 @@ class WebhookTest extends TestCase
         $method->setAccessible(true);
         $config = ['headers' => '{"Transfer-Encoding": "chunked", "Connection": "close"}'];
         $headers = $method->invoke($this->webhook, $config, '');
-        $this->assertNotContains('Transfer-Encoding', array_keys($headers));
-        $this->assertNotContains('Connection', array_keys($headers));
+        $this->assertFalse(in_array('Transfer-Encoding', array_keys($headers)));
+        $this->assertFalse(in_array('Connection', array_keys($headers)));
     }
 
     public function testBuildHeadersStripsCarriageReturnAndNewline(): void
@@ -165,7 +165,7 @@ class WebhookTest extends TestCase
         $method->setAccessible(true);
         $config = ['headers' => '{"X@Invalid": "value", "X-Valid": "ok"}'];
         $headers = $method->invoke($this->webhook, $config, '');
-        $this->assertNotContains('X@Invalid', array_keys($headers));
+        $this->assertFalse(in_array('X@Invalid', array_keys($headers)));
         $this->assertSame('ok', $headers['X-Valid'] ?? null);
     }
 
