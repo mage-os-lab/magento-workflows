@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Bundled action library: one class + one entry each. This registration
+         pattern IS the connector SDK surface (docs/07-actions.md). -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <!-- Sales -->
+                <item name="order.add_comment" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\AddComment</item>
+                <item name="order.change_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\ChangeStatus</item>
+                <item name="order.hold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Hold</item>
+                <item name="order.unhold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Unhold</item>
+                <item name="order.create_invoice" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateInvoice</item>
+                <item name="order.cancel" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Cancel</item>
+                <!-- Customer -->
+                <item name="customer.assign_group" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\AssignGroup</item>
+                <item name="customer.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute</item>
+                <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Newsletter</item>
+                <!-- Catalog -->
+                <item name="product.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetAttribute</item>
+                <item name="product.set_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStatus</item>
+                <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStock</item>
+                <!-- Marketing -->
+                <item name="marketing.generate_coupon" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Marketing\GenerateCoupon</item>
+                <!-- Notify -->
+                <item name="notify.email" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Email</item>
+                <item name="notify.webhook" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Webhook</item>
+                <item name="notify.admin" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\AdminNotification</item>
+                <!-- Flow -->
+                <item name="flow.set_variable" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Flow\SetVariable</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Deny-by-default attribute lists (docs/10-security.md, deferred privilege
+         escalation). Third parties may EXTEND these via di.xml array merge;
+         removing shipped entries is a deliberate, visible act. -->
+    <type name="MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute">
+        <arguments>
+            <argument name="deniedAttributes" xsi:type="array">
+                <item name="password_hash" xsi:type="string">password_hash</item>
+                <item name="rp_token" xsi:type="string">rp_token</item>
+                <item name="rp_token_created_at" xsi:type="string">rp_token_created_at</item>
+                <item name="is_active" xsi:type="string">is_active</item>
+                <item name="group_id" xsi:type="string">group_id</item>
+                <item name="website_id" xsi:type="string">website_id</item>
+                <item name="store_id" xsi:type="string">store_id</item>
+                <item name="confirmation" xsi:type="string">confirmation</item>
+                <item name="email" xsi:type="string">email</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="MageOS\WorkflowsActionsCore\Action\Product\SetAttribute">
+        <arguments>
+            <argument name="deniedAttributes" xsi:type="array">
+                <!-- sku is product identity; status is owned by product.set_status -->
+                <item name="sku" xsi:type="string">sku</item>
+                <item name="status" xsi:type="string">status</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

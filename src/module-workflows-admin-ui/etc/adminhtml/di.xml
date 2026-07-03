@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Grid data sources: independent SearchResult scans over the raw tables, decoupled
+         from the (potentially heavier / joined) domain collections used elsewhere. -->
+    <virtualType name="MageOS\WorkflowsAdminUi\Model\ResourceModel\Workflow\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">mageos_workflow</argument>
+            <argument name="resourceModel" xsi:type="string">MageOS\Workflows\Model\ResourceModel\Workflow</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="MageOS\WorkflowsAdminUi\Model\ResourceModel\WorkflowExecution\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">mageos_workflow_execution</argument>
+            <argument name="resourceModel" xsi:type="string">MageOS\Workflows\Model\ResourceModel\WorkflowExecution</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="mageos_workflows_listing_data_source" xsi:type="string">MageOS\WorkflowsAdminUi\Model\ResourceModel\Workflow\Grid\Collection</item>
+                <item name="mageos_workflow_executions_listing_data_source" xsi:type="string">MageOS\WorkflowsAdminUi\Model\ResourceModel\WorkflowExecution\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Mass actions operate on the full domain collection (peer: MageOS_Workflows). -->
+    <type name="MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\MassEnable">
+        <arguments>
+            <argument name="collectionFactory" xsi:type="object">MageOS\Workflows\Model\ResourceModel\Workflow\CollectionFactory</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\MassDisable">
+        <arguments>
+            <argument name="collectionFactory" xsi:type="object">MageOS\Workflows\Model\ResourceModel\Workflow\CollectionFactory</argument>
+        </arguments>
+    </type>
+</config>

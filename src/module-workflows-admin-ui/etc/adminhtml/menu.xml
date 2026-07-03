@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="MageOS_Workflows::workflow_index" title="Workflows" module="MageOS_WorkflowsAdminUi"
+             sortOrder="65" parent="Magento_Backend::marketing" action="mageos_workflows/workflow/index"
+             resource="MageOS_Workflows::view"/>
+        <add id="MageOS_Workflows::execution_index" title="Workflow Executions" module="MageOS_WorkflowsAdminUi"
+             sortOrder="66" parent="Magento_Backend::marketing" action="mageos_workflows/execution/index"
+             resource="MageOS_Workflows::view"/>
+    </menu>
+</config>
