@@ -6,9 +6,9 @@ namespace MageOS\WorkflowsActionsCore\Action\Order;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
+use MageOS\Workflows\Api\ExecutionContextInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * Shared plumbing for sales_order actions: loading the order model behind
@@ -34,7 +34,7 @@ abstract class AbstractOrderAction extends AbstractAction
     /**
      * Order model for the execution entity, or a terminal ActionResult failure
      */
-    protected function loadOrder(ExecutionContext $ctx): Order|ActionResult
+    protected function loadOrder(ExecutionContextInterface $ctx): Order|ActionResult
     {
         try {
             $order = $this->orderRepository->get($ctx->getEntityId());

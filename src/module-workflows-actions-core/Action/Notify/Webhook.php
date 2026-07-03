@@ -9,10 +9,11 @@ use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 use MageOS\WorkflowsActionsCore\Exception\BlockedHostException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -116,7 +117,7 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $url = $this->stringConfig($config, 'url');
         if ($url === null) {
@@ -243,7 +244,7 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
         return ActionResult::success($output);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $url = $this->stringConfig($config, 'url');
         if ($url === null) {

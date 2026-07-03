@@ -5,9 +5,10 @@ namespace MageOS\WorkflowsActionsCore\Action\Order;
 
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order\Config as OrderConfig;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
 
 /**
  * order.change_status — sets a new order status WITHIN the order's current
@@ -50,7 +51,7 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $status = $this->stringConfig($config, 'status');
         if ($status === null) {
@@ -97,7 +98,7 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $status = $this->stringConfig($config, 'status');
         if ($status === null) {

@@ -21,6 +21,11 @@
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
                     <item name="update_url" xsi:type="url" path="mui/index/render"/>
+                    <!-- Lets the workflow edit form embed this listing pre-filtered to one
+                         workflow ("*" = take from request; absent on the standalone page). -->
+                    <item name="filter_url_params" xsi:type="array">
+                        <item name="workflow_id" xsi:type="string">*</item>
+                    </item>
                 </item>
             </argument>
         </argument>
@@ -57,6 +62,18 @@
             <settings>
                 <filter>textRange</filter>
                 <label translate="true">Workflow ID</label>
+            </settings>
+        </column>
+        <column name="workflow_name" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\WorkflowName">
+            <settings>
+                <label translate="true">Workflow</label>
+                <sortable>false</sortable>
+            </settings>
+        </column>
+        <column name="workflow_mode" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\WorkflowMode">
+            <settings>
+                <label translate="true">Mode</label>
+                <sortable>false</sortable>
             </settings>
         </column>
         <column name="entity_id">

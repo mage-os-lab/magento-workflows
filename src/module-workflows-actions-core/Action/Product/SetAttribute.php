@@ -6,10 +6,11 @@ namespace MageOS\WorkflowsActionsCore\Action\Product;
 use Magento\Catalog\Model\Product\Action as ProductAction;
 use Magento\Eav\Api\AttributeRepositoryInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * product.set_attribute — writes one attribute value on the product, scoped to
@@ -68,7 +69,7 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $attributeCode = $this->stringConfig($config, 'attribute_code');
         if ($attributeCode === null) {
@@ -106,7 +107,7 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $attributeCode = $this->stringConfig($config, 'attribute_code');
         if ($attributeCode === null) {

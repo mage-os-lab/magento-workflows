@@ -163,4 +163,34 @@
             </settings>
         </field>
     </fieldset>
+    <!-- Embedded executions listing, filtered to the current workflow: the workflow_id from
+         the form provider is exported into the external listing provider's request params,
+         where the listing data source's filter_url_params picks it up (customer_form/orders
+         pattern). Hidden on the new-workflow form via DataProvider::getMeta(). -->
+    <fieldset name="execution_log" sortOrder="40">
+        <settings>
+            <label translate="true">Execution Log</label>
+            <collapsible>true</collapsible>
+            <opened>false</opened>
+        </settings>
+        <insertListing name="workflow_executions">
+            <settings>
+                <dataLinks>
+                    <exports>false</exports>
+                    <imports>false</imports>
+                </dataLinks>
+                <externalProvider>mageos_workflow_executions_listing.mageos_workflow_executions_listing_data_source</externalProvider>
+                <selectionsProvider>mageos_workflow_executions_listing.mageos_workflow_executions_listing.mageos_workflow_executions_columns.ids</selectionsProvider>
+                <autoRender>true</autoRender>
+                <dataScope>workflow_executions</dataScope>
+                <ns>mageos_workflow_executions_listing</ns>
+                <exports>
+                    <link name="workflow_id">${ $.externalProvider }:params.workflow_id</link>
+                </exports>
+                <imports>
+                    <link name="workflow_id">${ $.provider }:data.workflow_id</link>
+                </imports>
+            </settings>
+        </insertListing>
+    </fieldset>
 </form>

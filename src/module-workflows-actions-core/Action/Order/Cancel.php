@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsActionsCore\Action\Order;
 
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
 
 /**
  * order.cancel — cancels the order when canCancel() allows it; otherwise skipped.
@@ -23,7 +24,7 @@ class Cancel extends AbstractOrderAction implements SimulateableActionInterface
         return 'Cancel Order';
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $order = $this->loadOrder($ctx);
         if ($order instanceof ActionResult) {
@@ -48,7 +49,7 @@ class Cancel extends AbstractOrderAction implements SimulateableActionInterface
         return ActionResult::success(['state' => (string)$order->getState()]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $order = $this->loadOrder($ctx);
         if ($order instanceof ActionResult) {

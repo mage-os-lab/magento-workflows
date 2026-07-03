@@ -4,9 +4,10 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsActionsCore\Action\Order;
 
 use Magento\Sales\Model\Order;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
 
 /**
  * order.add_comment — appends a status-history comment to the order.
@@ -37,7 +38,7 @@ class AddComment extends AbstractOrderAction implements SimulateableActionInterf
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $comment = $this->stringConfig($config, 'comment');
         if ($comment === null) {
@@ -71,7 +72,7 @@ class AddComment extends AbstractOrderAction implements SimulateableActionInterf
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $comment = $this->stringConfig($config, 'comment');
         if ($comment === null) {

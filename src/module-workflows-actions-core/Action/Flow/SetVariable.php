@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsActionsCore\Action\Flow;
 
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * flow.set_variable — stores a value in the step output so later steps can
@@ -41,7 +42,7 @@ class SetVariable extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $name = $this->stringConfig($config, 'name');
         if ($name === null) {
@@ -57,7 +58,7 @@ class SetVariable extends AbstractAction implements SimulateableActionInterface
         return ActionResult::success([$name => $config['value'] ?? null]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $name = $this->stringConfig($config, 'name');
         if ($name === null) {

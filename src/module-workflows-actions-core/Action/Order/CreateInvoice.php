@@ -8,9 +8,10 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Sales\Model\Service\InvoiceService;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
 
 /**
  * order.create_invoice — invoices all invoiceable items, capturing online or
@@ -56,7 +57,7 @@ class CreateInvoice extends AbstractOrderAction implements SimulateableActionInt
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $capture = $this->stringConfig($config, 'capture', self::CAPTURE_OFFLINE);
         if (!in_array($capture, [self::CAPTURE_ONLINE, self::CAPTURE_OFFLINE], true)) {
@@ -107,7 +108,7 @@ class CreateInvoice extends AbstractOrderAction implements SimulateableActionInt
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $order = $this->loadOrder($ctx);
         if ($order instanceof ActionResult) {

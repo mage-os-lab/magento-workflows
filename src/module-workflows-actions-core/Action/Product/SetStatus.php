@@ -5,10 +5,11 @@ namespace MageOS\WorkflowsActionsCore\Action\Product;
 
 use Magento\Catalog\Model\Product\Action as ProductAction;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * product.set_status — enables or disables the product on the execution's
@@ -60,7 +61,7 @@ class SetStatus extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $status = $this->stringConfig($config, 'status');
         if ($status === null) {
@@ -89,7 +90,7 @@ class SetStatus extends AbstractAction implements SimulateableActionInterface
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $status = $this->stringConfig($config, 'status');
         if ($status === null) {

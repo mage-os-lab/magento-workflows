@@ -4,10 +4,11 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsActionsCore\Action\Notify;
 
 use Magento\Framework\Notification\NotifierInterface;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * notify.admin — drops a notice into the admin notification inbox.
@@ -47,7 +48,7 @@ class AdminNotification extends AbstractAction implements SimulateableActionInte
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $title = $this->stringConfig($config, 'title');
         if ($title === null) {
@@ -64,7 +65,7 @@ class AdminNotification extends AbstractAction implements SimulateableActionInte
         return ActionResult::success(['title' => $title]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $title = $this->stringConfig($config, 'title');
         if ($title === null) {

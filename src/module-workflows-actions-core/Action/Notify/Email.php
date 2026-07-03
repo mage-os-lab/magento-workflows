@@ -7,10 +7,11 @@ use Magento\Framework\App\Area;
 use Magento\Framework\App\CacheInterface;
 use Magento\Framework\Exception\MailException;
 use Magento\Framework\Mail\Template\TransportBuilder;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * notify.email — sends a transactional email template with the execution
@@ -61,7 +62,7 @@ class Email extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $templateId = $this->stringConfig($config, 'template_id');
         if ($templateId === null) {
@@ -114,7 +115,7 @@ class Email extends AbstractAction implements SimulateableActionInterface
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $templateId = $this->stringConfig($config, 'template_id');
         if ($templateId === null) {

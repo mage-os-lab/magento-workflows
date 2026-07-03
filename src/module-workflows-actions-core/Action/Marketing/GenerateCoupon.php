@@ -6,10 +6,11 @@ namespace MageOS\WorkflowsActionsCore\Action\Marketing;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\SalesRule\Api\RuleRepositoryInterface;
 use Magento\SalesRule\Model\CouponGenerator;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * marketing.generate_coupon — generates a single coupon code from a cart price
@@ -61,7 +62,7 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $ruleId = $this->intConfig($config, 'rule_id');
         if ($ruleId === null) {
@@ -103,7 +104,7 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $ruleId = $this->intConfig($config, 'rule_id');
         if ($ruleId === null) {

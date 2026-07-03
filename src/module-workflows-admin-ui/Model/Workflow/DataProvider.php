@@ -72,6 +72,7 @@ class DataProvider extends AbstractDataProvider
         $meta = parent::getMeta();
         if (!$this->request->getParam($this->getRequestFieldName())) {
             $meta['execution_log']['arguments']['data']['config']['visible'] = false;
+            $meta['execution_log']['arguments']['data']['config']['componentDisabled'] = true;
         }
         return $meta;
     }

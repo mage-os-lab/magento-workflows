@@ -5,10 +5,11 @@ namespace MageOS\WorkflowsActionsCore\Action\Customer;
 
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Newsletter\Model\SubscriptionManagerInterface;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * customer.newsletter — subscribes or unsubscribes the customer on the
@@ -61,7 +62,7 @@ class Newsletter extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $action = $this->stringConfig($config, 'action');
         if ($action === null) {
@@ -87,7 +88,7 @@ class Newsletter extends AbstractAction implements SimulateableActionInterface
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $action = $this->stringConfig($config, 'action');
         if ($action === null) {

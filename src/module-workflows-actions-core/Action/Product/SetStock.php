@@ -6,10 +6,11 @@ namespace MageOS\WorkflowsActionsCore\Action\Product;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
+use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
+use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\AbstractAction;
 
 /**
  * product.set_stock — v1 writes to the DEFAULT SOURCE ONLY via the legacy
@@ -55,7 +56,7 @@ class SetStock extends AbstractAction implements SimulateableActionInterface
         ];
     }
 
-    public function execute(ExecutionContext $ctx, array $config): ActionResult
+    public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $qty = $this->stringConfig($config, 'qty');
         $hasStockStatus = array_key_exists('is_in_stock', $config) && $config['is_in_stock'] !== '';
@@ -92,7 +93,7 @@ class SetStock extends AbstractAction implements SimulateableActionInterface
         ]);
     }
 
-    public function simulate(ExecutionContext $ctx, array $config): ActionResult
+    public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $qty = $this->stringConfig($config, 'qty');
         $hasStockStatus = array_key_exists('is_in_stock', $config) && $config['is_in_stock'] !== '';

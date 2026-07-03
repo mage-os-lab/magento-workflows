@@ -51,16 +51,18 @@ class PlainLanguageRenderer
         ?string $conditionsSerialized,
         string $definitionJson
     ): string {
-        $sentence = sprintf('When %s', $this->resolveTriggerLabel($triggerType, $triggerRef, $entityType));
+        $sentence = (string) __('When %1', $this->resolveTriggerLabel($triggerType, $triggerRef, $entityType));
 
         $conditionCount = $this->countConditions($conditionsSerialized);
         if ($conditionCount > 0) {
-            $sentence .= sprintf(', if %d condition%s', $conditionCount, $conditionCount === 1 ? '' : 's');
+            $sentence .= (string) ($conditionCount === 1
+                ? __(', if %1 condition', $conditionCount)
+                : __(', if %1 conditions', $conditionCount));
         }
 
         $steps = $this->renderSteps($definitionJson);
         if ($steps !== []) {
-            $sentence .= sprintf(', then: %s', implode(', ', $steps));
+            $sentence .= (string) __(', then: %1', implode(', ', $steps));
         }
 
         return $sentence . '.';
@@ -74,15 +76,22 @@ class PlainLanguageRenderer
                     return (string) $trigger['label'];
                 }
             }
-            return $triggerRef !== '' ? sprintf('"%s" occurs', $triggerRef) : 'an event occurs';
+            return $triggerRef !== ''
+                ? (string) __('"%1" occurs', $triggerRef)
+                : (string) __('an event occurs');
         }
         if ($triggerType === WorkflowInterface::TRIGGER_TYPE_SCHEDULE) {
-            return $triggerRef !== '' ? sprintf('on schedule "%s"', $triggerRef) : 'on schedule';
+            return $triggerRef !== ''
+                ? (string) __('on schedule "%1"', $triggerRef)
+                : (string) __('on schedule');
         }
         if ($triggerType === WorkflowInterface::TRIGGER_TYPE_MANUAL) {
-            return sprintf('manually run on %s', $entityType !== '' ? $entityType : 'an entity');
+            return (string) __(
+                'manually run on %1',
+                $entityType !== '' ? $entityType : (string) __('an entity')
+            );
         }
-        return $triggerRef !== '' ? $triggerRef : 'an event occurs';
+        return $triggerRef !== '' ? $triggerRef : (string) __('an event occurs');
     }
 
     /**
@@ -159,8 +168,8 @@ class PlainLanguageRenderer
             Definition::STEP_ACTION => $this->renderActionStep($step),
             Definition::STEP_DELAY => $this->renderDelayStep($step),
             Definition::STEP_BRANCH => $this->renderBranchStep($step),
-            Definition::STEP_STOP => 'stop',
-            default => 'unknown step',
+            Definition::STEP_STOP => (string) __('stop'),
+            default => (string) __('unknown step'),
         };
     }
 
@@ -173,28 +182,31 @@ class PlainLanguageRenderer
                 return $action->getLabel();
             }
         }
-        return $code !== '' ? $code : 'run an action';
+        return $code !== '' ? $code : (string) __('run an action');
     }
 
     private function renderDelayStep(array $step): string
     {
         $duration = (string) ($step['config']['duration'] ?? '');
-        return sprintf('wait %s', $this->humanizeDuration($duration));
+        return (string) __('wait %1', $this->humanizeDuration($duration));
     }
 
     private function renderBranchStep(array $step): string
     {
         $serialized = $step['conditions_serialized'] ?? null;
         $count = $this->countConditions(is_string($serialized) ? $serialized : null);
-        return $count > 0
-            ? sprintf('if %d more condition%s still hold', $count, $count === 1 ? '' : 's')
-            : 'check a condition';
+        if ($count === 0) {
+            return (string) __('check a condition');
+        }
+        return (string) ($count === 1
+            ? __('if %1 more condition still holds', $count)
+            : __('if %1 more conditions still hold', $count));
     }
 
     private function humanizeDuration(string $iso8601): string
     {
         if ($iso8601 === '') {
-            return 'a while';
+            return (string) __('a while');
         }
         try {
             $interval = new \DateInterval($iso8601);
@@ -203,14 +215,21 @@ class PlainLanguageRenderer
         }
 
         $parts = [];
-        $units = ['y' => 'year', 'm' => 'month', 'd' => 'day', 'h' => 'hour', 'i' => 'minute', 's' => 'second'];
-        foreach ($units as $property => $label) {
+        $units = [
+            'y' => ['%1 year', '%1 years'],
+            'm' => ['%1 month', '%1 months'],
+            'd' => ['%1 day', '%1 days'],
+            'h' => ['%1 hour', '%1 hours'],
+            'i' => ['%1 minute', '%1 minutes'],
+            's' => ['%1 second', '%1 seconds'],
+        ];
+        foreach ($units as $property => [$singular, $plural]) {
             $value = $interval->$property;
             if ($value) {
-                $parts[] = $value . ' ' . $label . ($value === 1 ? '' : 's');
+                $parts[] = (string) __($value === 1 ? $singular : $plural, $value);
             }
         }
 
-        return $parts !== [] ? implode(' ', $parts) : 'a moment';
+        return $parts !== [] ? implode(' ', $parts) : (string) __('a moment');
     }
 }
