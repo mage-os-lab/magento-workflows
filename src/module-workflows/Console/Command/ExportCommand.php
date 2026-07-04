@@ -28,9 +28,11 @@ class ExportCommand extends Command
     private const OPT_FILE = 'file';
 
     /**
-     * Export envelope format tag (docs/04-definition-format.md).
+     * Export envelope format tag (docs/04-definition-format.md). Alias of
+     * the importer's constant — the single source of truth for the shared
+     * import/export path (F3).
      */
-    public const FORMAT = 'mageos-workflow-export/1';
+    public const FORMAT = \MageOS\Workflows\Model\Import\WorkflowImporter::FORMAT;
 
     public function __construct(
         private readonly WorkflowRepositoryInterface $workflowRepository,

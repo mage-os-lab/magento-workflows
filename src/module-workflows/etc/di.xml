@@ -17,13 +17,67 @@
     <preference for="MageOS\Workflows\Api\DispatcherInterface"
                 type="MageOS\Workflows\Model\Engine\Dispatcher"/>
 
+    <!-- Validate endpoint (F6) -->
+    <preference for="MageOS\Workflows\Api\DefinitionValidationInterface"
+                type="MageOS\Workflows\Model\Webapi\DefinitionValidation"/>
+    <preference for="MageOS\Workflows\Api\Data\DefinitionValidationResultInterface"
+                type="MageOS\Workflows\Model\Webapi\DefinitionValidationResult"/>
+    <preference for="MageOS\Workflows\Api\Data\ValidationMessageInterface"
+                type="MageOS\Workflows\Model\Validation\ValidationMessage"/>
+
     <!-- Secrets -->
     <preference for="MageOS\Workflows\Model\Variable\SecretsProviderInterface"
                 type="MageOS\Workflows\Model\Secrets\ConfigSecretsProvider"/>
 
+    <!-- Simulation substrate (F7): a variable resolver whose secrets resolve
+         to ***name***. Bound as a named virtualType — never a preference
+         swap of the shared production resolver. Consumers: dry-run (03),
+         shadow mode behind mageos_workflows/simulation/redact_shadow_secrets. -->
+    <virtualType name="MageOS\Workflows\Model\Variable\VariableResolverForDryRun"
+                 type="MageOS\Workflows\Model\Variable\VariableResolver">
+        <arguments>
+            <argument name="secretsProvider" xsi:type="object">MageOS\Workflows\Model\Secrets\RedactingSecretsProvider</argument>
+        </arguments>
+    </virtualType>
+    <type name="MageOS\Workflows\Model\Engine\Executor">
+        <arguments>
+            <argument name="redactingVariableResolver" xsi:type="object">MageOS\Workflows\Model\Variable\VariableResolverForDryRun</argument>
+        </arguments>
+    </type>
+
+    <!-- Save-time validation pipeline (F2): the ordered check pool. The
+         before-plugin on the repository is the single chokepoint every
+         authoring path funnels through (admin Save, REST, CLI import,
+         gallery); the executor parses definition_snapshot directly and
+         never re-enters it. -->
+    <type name="MageOS\Workflows\Model\Validation\WorkflowValidator">
+        <arguments>
+            <argument name="checks" xsi:type="array">
+                <item name="structural" xsi:type="object">MageOS\Workflows\Model\Validation\Check\StructuralCheck</item>
+                <item name="graph" xsi:type="object">MageOS\Workflows\Model\Validation\Check\GraphCheck</item>
+                <item name="profile" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ProfileCheck</item>
+                <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>
+                <item name="action_authorization" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionAuthorizationCheck</item>
+                <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Api\WorkflowRepositoryInterface">
+        <plugin name="mageos_workflows_validate_on_save"
+                type="MageOS\Workflows\Plugin\ValidateWorkflowOnSave"/>
+    </type>
+
     <!-- Condition engine -->
     <preference for="MageOS\Workflows\Model\Rule\HydrationProviderInterface"
                 type="MageOS\Workflows\Model\Rule\HydrationProvider"/>
+    <!-- Condition-node types that force hydration regardless of referenced
+         attributes (F4). First entry arrives with the RelatedEntity combine
+         (entity cross-referencing); extensions append their own. -->
+    <type name="MageOS\Workflows\Model\Rule\AttributeClassifier">
+        <arguments>
+            <argument name="hydrationForcingNodeTypes" xsi:type="array"/>
+        </arguments>
+    </type>
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
         <arguments>
             <argument name="combines" xsi:type="array">

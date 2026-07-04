@@ -9,13 +9,13 @@ use Magento\Framework\App\Request\DataPersistorInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Exception\AuthorizationException;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
-use MageOS\Workflows\Api\ActionMetadataInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterfaceFactory;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
-use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\Definition\Definition;
+use MageOS\Workflows\Model\Validation\ValidationResultRegistry;
 
 /**
  * Persists general fields plus the step-graph definition.
@@ -25,6 +25,11 @@ use MageOS\Workflows\Model\Definition\Definition;
  * shipped in v1), it is assembled into a linear chain -- each row becomes one step keyed
  * s1..sN, "next" pointers chain them in posted order, entry = the first row -- and run
  * through the exact same Definition::fromJson/fromArray validation as the textarea path.
+ *
+ * Validation happens in the F2 pipeline behind WorkflowRepositoryInterface::save
+ * (structural, graph, action codes, per-action ACL, conditions shape — see
+ * MageOS\Workflows\Plugin\ValidateWorkflowOnSave); this controller only
+ * normalizes the posted definition and surfaces the pipeline's messages.
  */
 class Save extends Action implements HttpPostActionInterface
 {
@@ -40,8 +45,8 @@ class Save extends Action implements HttpPostActionInterface
         Action\Context $context,
         private readonly WorkflowRepositoryInterface $workflowRepository,
         private readonly WorkflowInterfaceFactory $workflowFactory,
-        private readonly ActionPool $actionPool,
-        private readonly DataPersistorInterface $dataPersistor
+        private readonly DataPersistorInterface $dataPersistor,
+        private readonly ValidationResultRegistry $validationResultRegistry
     ) {
         parent::__construct($context);
     }
@@ -65,8 +70,6 @@ class Save extends Action implements HttpPostActionInterface
 
             $definitionJson = $this->resolveDefinitionJson($data);
             $definition = Definition::fromJson($definitionJson);
-            $this->authorizeActionCodes($definition);
-            $this->validateConditionsSerialized($data['conditions_serialized'] ?? null);
 
             $workflow->setName((string) ($data['name'] ?? ''));
             $workflow->setStatus((int) ($data['status'] ?? WorkflowInterface::STATUS_DISABLED));
@@ -87,6 +90,7 @@ class Save extends Action implements HttpPostActionInterface
             $this->workflowRepository->save($workflow);
             $this->dataPersistor->clear(self::PERSISTOR_KEY);
             $this->messageManager->addSuccessMessage(__('The workflow has been saved.'));
+            $this->surfaceValidationWarnings();
 
             if ($this->getRequest()->getParam('back')) {
                 return $resultRedirect->setPath(
@@ -106,6 +110,9 @@ class Save extends Action implements HttpPostActionInterface
             return $resultRedirect->setPath('mageos_workflows/workflow/edit');
         } catch (\InvalidArgumentException|AuthorizationException $e) {
             $this->messageManager->addErrorMessage($e->getMessage());
+        } catch (LocalizedException $e) {
+            // Validation pipeline errors (ValidatorException et al.) carry actionable text
+            $this->messageManager->addErrorMessage($e->getMessage());
         } catch (\Exception $e) {
             $this->messageManager->addErrorMessage(__('Something went wrong while saving the workflow.'));
         }
@@ -120,25 +127,18 @@ class Save extends Action implements HttpPostActionInterface
     }
 
     /**
-     * v1 conditions are an opaque serialized condition tree; the only save-time contract is
-     * "empty, or a JSON structure". Deeper semantic validation is intentionally out of scope.
-     *
-     * @throws \InvalidArgumentException
+     * Non-blocking findings from the validation pipeline (unreachable steps,
+     * post-delay stale branches, …) surface as form warnings after a
+     * successful save.
      */
-    private function validateConditionsSerialized(mixed $conditionsSerialized): void
+    private function surfaceValidationWarnings(): void
     {
-        if ($conditionsSerialized === null
-            || (is_scalar($conditionsSerialized) && trim((string) $conditionsSerialized) === '')
-        ) {
+        $result = $this->validationResultRegistry->get();
+        if ($result === null) {
             return;
         }
-        $decoded = is_scalar($conditionsSerialized)
-            ? json_decode((string) $conditionsSerialized, true)
-            : null;
-        if (!is_array($decoded)) {
-            throw new \InvalidArgumentException(
-                (string) __('The Conditions field must be empty or contain a valid JSON condition tree (object or array).')
-            );
+        foreach ($result->getWarnings() as $warning) {
+            $this->messageManager->addWarningMessage($warning->getMessage());
         }
     }
 
@@ -222,27 +222,4 @@ class Save extends Action implements HttpPostActionInterface
         return [];
     }
 
-    /**
-     * Re-authorize every action code referenced by the definition against the current
-     * admin's ACL, per action-group gate (docs/09 -- authoring gates, not just execution).
-     *
-     * @throws \InvalidArgumentException
-     * @throws AuthorizationException
-     */
-    private function authorizeActionCodes(Definition $definition): void
-    {
-        foreach ($definition->getActionCodes() as $code) {
-            if (!$this->actionPool->has($code)) {
-                throw new \InvalidArgumentException((string) __('Unknown workflow action "%1".', $code));
-            }
-            $action = $this->actionPool->get($code);
-            $resource = ($action instanceof ActionMetadataInterface ? $action->getAclResource() : null)
-                ?? 'MageOS_Workflows::manage';
-            if (!$this->_authorization->isAllowed($resource)) {
-                throw new AuthorizationException(
-                    __('You are not authorized to author the "%1" action into a workflow.', $code)
-                );
-            }
-        }
-    }
 }

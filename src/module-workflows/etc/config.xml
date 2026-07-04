@@ -11,7 +11,11 @@
                 <circuit_breaker_threshold>10</circuit_breaker_threshold>
                 <manual_run_cap>1000</manual_run_cap>
                 <max_delay_days>365</max_delay_days>
+                <relation_cap>100</relation_cap>
             </guards>
+            <simulation>
+                <redact_shadow_secrets>0</redact_shadow_secrets>
+            </simulation>
             <retention>
                 <days>90</days>
             </retention>

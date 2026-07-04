@@ -9,19 +9,27 @@ namespace MageOS\Workflows\Model\Definition;
  *
  * Schema versions: v1 is the original action/delay/branch/stop set. v2 adds
  * the "wait" step (park until an event fires for the same entity, with a
- * timeout edge) and optional delay fields business_days / at. A v1 document
- * using v2 features is rejected — bump "schema" to 2 to use them.
+ * timeout edge) and optional delay fields business_days / at. v3 adds the
+ * "switch" step (first-match-wins multi-way branch with a default edge).
+ * A document using features of a later schema than it declares is rejected —
+ * bump "schema" to use them.
+ *
+ * The optional top-level "ui" block (canvas layout persistence) is
+ * non-semantic: it is preserved verbatim through fromArray()/toArray(),
+ * legal at any schema version, and never read by the engine. It is the only
+ * whitelisted non-semantic key — there is no general unknown-key passthrough.
  */
 class Definition
 {
-    public const SCHEMA_VERSION = 2;
-    public const SCHEMA_VERSIONS = [1, 2];
+    public const SCHEMA_VERSION = 3;
+    public const SCHEMA_VERSIONS = [1, 2, 3];
 
     public const STEP_ACTION = 'action';
     public const STEP_DELAY = 'delay';
     public const STEP_BRANCH = 'branch';
     public const STEP_STOP = 'stop';
     public const STEP_WAIT = 'wait';
+    public const STEP_SWITCH = 'switch';
 
     public const STEP_TYPES = [
         self::STEP_ACTION,
@@ -29,15 +37,18 @@ class Definition
         self::STEP_BRANCH,
         self::STEP_STOP,
         self::STEP_WAIT,
+        self::STEP_SWITCH,
     ];
 
     /**
      * @param array<string, array> $steps step_key => step node
+     * @param array|null $ui non-semantic canvas layout block, preserved verbatim
      */
     private function __construct(
         private readonly array $steps,
         private readonly ?string $entry,
-        private readonly int $schema
+        private readonly int $schema,
+        private readonly ?array $ui = null
     ) {
     }
 
@@ -104,6 +115,9 @@ class Definition
                 }
                 self::assertDuration($step['config']['timeout'] ?? null, $key, 'config.timeout');
             }
+            if ($type === self::STEP_SWITCH) {
+                self::assertSwitchStep($step, $steps, $key, (int) $schema);
+            }
         }
         $entry = $data['entry'] ?? null;
         if ($entry !== null && !isset($steps[$entry])) {
@@ -112,7 +126,83 @@ class Definition
         if ($entry === null && $steps !== []) {
             throw new \InvalidArgumentException('Definition with steps must declare "entry"');
         }
-        return new self($steps, $entry, (int) $schema);
+        $ui = $data['ui'] ?? null;
+        if ($ui !== null && !is_array($ui)) {
+            throw new \InvalidArgumentException('Definition "ui" must be an object when present');
+        }
+        return new self($steps, $entry, (int) $schema, $ui);
+    }
+
+    /**
+     * Switch step (schema 3): first-match-wins cases, each reusing the
+     * serialized condition-tree format, plus a nullable "default" edge and
+     * one shared step-level revalidate_entity flag.
+     *
+     * @param array<string, array> $steps all steps, for edge-target validation
+     * @throws \InvalidArgumentException on invalid switch shape or schema < 3
+     */
+    private static function assertSwitchStep(array $step, array $steps, string $key, int $schema): void
+    {
+        if ($schema < 3) {
+            throw new \InvalidArgumentException(
+                sprintf('Step "%s": switch steps require definition schema 3', $key)
+            );
+        }
+        $cases = $step['cases'] ?? null;
+        if (!is_array($cases) || $cases === [] || array_keys($cases) !== range(0, count($cases) - 1)) {
+            throw new \InvalidArgumentException(
+                sprintf('Switch step "%s" must declare a non-empty "cases" list', $key)
+            );
+        }
+        $seenKeys = [];
+        foreach ($cases as $index => $case) {
+            if (!is_array($case)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Switch step "%s" case #%d must be an object', $key, $index)
+                );
+            }
+            $caseKey = $case['key'] ?? null;
+            if (!is_string($caseKey) || !preg_match('/^[a-zA-Z0-9_\-]{1,64}$/', $caseKey)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Switch step "%s" case #%d has an invalid "key"', $key, $index)
+                );
+            }
+            if (isset($seenKeys[$caseKey])) {
+                throw new \InvalidArgumentException(
+                    sprintf('Switch step "%s" declares duplicate case key "%s"', $key, $caseKey)
+                );
+            }
+            $seenKeys[$caseKey] = true;
+            $conditions = $case['conditions_serialized'] ?? null;
+            if ($conditions !== null && !is_string($conditions)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Switch step "%s" case "%s" conditions_serialized must be a string', $key, $caseKey)
+                );
+            }
+            $target = $case['next'] ?? null;
+            if ($target !== null && !isset($steps[$target])) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Switch step "%s" case "%s" points to unknown step "%s"',
+                    $key,
+                    $caseKey,
+                    (string) $target
+                ));
+            }
+        }
+        $default = $step['default'] ?? null;
+        if ($default !== null && !isset($steps[$default])) {
+            throw new \InvalidArgumentException(sprintf(
+                'Switch step "%s" default edge points to unknown step "%s"',
+                $key,
+                (string) $default
+            ));
+        }
+        $revalidate = $step['revalidate_entity'] ?? null;
+        if ($revalidate !== null && !is_bool($revalidate)) {
+            throw new \InvalidArgumentException(
+                sprintf('Switch step "%s" revalidate_entity must be boolean', $key)
+            );
+        }
     }
 
     /**
@@ -193,6 +283,59 @@ class Definition
     }
 
     /**
+     * The step's full declared edge map, read from step data — the single
+     * source of "what edges does this step have" (F1, docs/discovery/
+     * implementation/00-foundations.md). Topology only: runtime *selection*
+     * (which edge to follow) stays in each consumer.
+     *
+     *   action/delay => ['next' => …]
+     *   branch       => ['on_true' => …, 'on_false' => …]
+     *   wait         => ['on_event' => …, 'on_timeout' => …]
+     *   switch       => ['case:<key>' => …, …, 'default' => …]
+     *   stop         => []
+     *
+     * @return array<string, ?string> edge name => target step key or null
+     * @throws \InvalidArgumentException on an unknown step key
+     */
+    public function getStepEdges(string $stepKey): array
+    {
+        $step = $this->getStep($stepKey);
+        $edge = static fn (array $node, string $field): ?string =>
+            isset($node[$field]) && $node[$field] !== null ? (string) $node[$field] : null;
+
+        switch ($step['type'] ?? null) {
+            case self::STEP_ACTION:
+            case self::STEP_DELAY:
+                return ['next' => $edge($step, 'next')];
+            case self::STEP_BRANCH:
+                return ['on_true' => $edge($step, 'on_true'), 'on_false' => $edge($step, 'on_false')];
+            case self::STEP_WAIT:
+                return ['on_event' => $edge($step, 'on_event'), 'on_timeout' => $edge($step, 'on_timeout')];
+            case self::STEP_SWITCH:
+                $edges = [];
+                foreach ((array) ($step['cases'] ?? []) as $case) {
+                    if (is_array($case) && isset($case['key'])) {
+                        $edges['case:' . (string) $case['key']] = $edge($case, 'next');
+                    }
+                }
+                $edges['default'] = $edge($step, 'default');
+                return $edges;
+            case self::STEP_STOP:
+            default:
+                return [];
+        }
+    }
+
+    /**
+     * Non-semantic canvas layout block; null when the document has none.
+     * Never read by the engine — preserved for round-tripping only.
+     */
+    public function getUi(): ?array
+    {
+        return $this->ui;
+    }
+
+    /**
      * Action codes referenced anywhere in the graph (import validation, ACL re-authorization)
      *
      * @return string[]
@@ -226,11 +369,15 @@ class Definition
 
     public function toArray(): array
     {
-        return [
+        $data = [
             'schema' => $this->schema,
             'steps' => $this->steps,
             'entry' => $this->entry,
         ];
+        if ($this->ui !== null) {
+            $data['ui'] = $this->ui;
+        }
+        return $data;
     }
 
     public function toJson(): string

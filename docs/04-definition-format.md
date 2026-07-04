@@ -34,12 +34,15 @@ The `definition` JSON is **the contract everything shares**: the single artifact
 | `branch` | Evaluates a condition tree; follows `on_true` / `on_false`; carries `revalidate_entity` (see [Conditions §Delay semantics](06-conditions.md#delay-semantics)) |
 | `stop` | Completes the execution |
 | `wait` | Schema 2. Parks the execution until `config.event` fires **for the same entity**, or until `config.timeout` (ISO-8601 duration) elapses; follows `on_event` / `on_timeout`. Step output is `{resolution: "event"\|"timeout", event: <payload>}` for downstream conditions and interpolation (see [Execution Model §Wait steps](08-execution-model.md#wait-steps-schema-2)) |
+| `switch` | Schema 3. First-match-wins multi-way branch: `cases[]` (each with a unique `key`, an optional `conditions_serialized` tree in the same format `branch` uses, and a nullable `next` edge) evaluated top to bottom; the nullable `default` edge fires when no case matches. One shared `revalidate_entity` for the step (one hydration, evaluated N times). Step result records `{matched: <key>\|null}` |
 
 `{{ ... }}` placeholders are resolved by the restricted variable resolver — dot-path access over `trigger.*`, `steps.*`, `workflow.*`, `secrets.*` only; no directive execution ([Actions §Variable resolution](07-actions.md#variable-resolution)). Values (never keys) may append whitelisted, chainable formatters — `{{ trigger.grand_total|number:2 }}`, `{{ trigger.email|lower|trim }}` — from a fixed list: `upper`, `lower`, `trim`, `number[:decimals]`, `date[:'format']`, `default:'fallback'`. Unknown filters are ignored.
 
 ## Schema versions
 
-`schema` accepts `1` or `2`. Version 2 adds exactly one step type (`wait`) and two optional delay fields (`business_days`, `at`); nothing else changes, and v1 documents remain valid unchanged. The compat rule is enforced, not advisory: a document using any v2 feature **must** declare `"schema": 2` — the parser (`Model/Definition/Definition.php`) rejects wait steps and delay extras in a schema-1 document, as does the published JSON Schema.
+`schema` accepts `1`, `2`, or `3`. Version 2 adds exactly one step type (`wait`) and two optional delay fields (`business_days`, `at`); version 3 adds exactly one step type (`switch`). Nothing else changes at either bump, and older documents remain valid unchanged. The compat rule is enforced, not advisory: a document using any v2 feature **must** declare `"schema": 2` or later, and a document using `switch` **must** declare `"schema": 3` — the parser (`Model/Definition/Definition.php`) rejects them below the required version, as does the published JSON Schema.
+
+An optional top-level `ui` block (canvas layout persistence) is **non-semantic**: preserved verbatim through parse/serialize, never read by the engine, legal at any schema version. It is the only whitelisted non-semantic key — there is no general unknown-key passthrough.
 
 Delay durations and wait timeouts are clamped at runtime to the `mageos_workflows/guards/max_delay_days` ceiling (default 365, with a logged warning when the clamp fires) — a fat-fingered `P1Y` cannot silently park an execution past the ceiling.
 
@@ -65,4 +68,4 @@ Imported definitions are validated hard (full detail in [Security Model](10-secu
 
 ## Published spec
 
-The JSON Schema for this format, the `workflow_triggers.xml` XSD, and a conformance fixture set are published and semver'd deliverables (see [Overview §Strategy](01-overview.md#strategy-open-spec-commercial-layers)). Authoring the schema is a companion next step alongside the Phase-0 spike.
+The JSON Schema for this format, the `workflow_triggers.xml` XSD, and a conformance fixture set are published and semver'd deliverables (see [Overview §Strategy](01-overview.md#strategy-open-spec-commercial-layers)) under `spec/`, with revision history in `spec/CHANGELOG.md`.

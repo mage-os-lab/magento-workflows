@@ -14,6 +14,15 @@
             <resource ref="MageOS_Workflows::view"/>
         </resources>
     </route>
+    <!-- Validate-only (F6): runs the save-time pipeline on a posted
+         definition without persisting. Owned by branching stage 2
+         (docs/discovery/implementation/01-branching.md). -->
+    <route url="/V1/workflows/validate" method="POST">
+        <service class="MageOS\Workflows\Api\DefinitionValidationInterface" method="validate"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
     <route url="/V1/workflows" method="POST">
         <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="save"/>
         <resources>

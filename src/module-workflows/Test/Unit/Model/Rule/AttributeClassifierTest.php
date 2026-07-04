@@ -81,4 +81,75 @@ class AttributeClassifierTest extends TestCase
         $this->assertEquals([], $result['in_snapshot']);
         $this->assertEquals([], $result['needs_hydration']);
     }
+
+    // ------------------------------------------------------------------
+    // Node-type awareness (F4)
+    // ------------------------------------------------------------------
+
+    public function testForcingNodeTypeReportedEvenWithZeroAttributes(): void
+    {
+        // A childless NOT-EXISTS related-entity node references zero
+        // attributes and would otherwise classify zero-query.
+        $conditionTree = [
+            'type' => 'combine',
+            'conditions' => [
+                ['type' => 'related_entity', 'relation' => 'order_customer', 'operator' => 'not_exists'],
+            ],
+        ];
+
+        $classifier = new AttributeClassifier(['related_entity']);
+        $result = $classifier->classify($conditionTree, ['grand_total']);
+
+        $this->assertEquals([], $result['in_snapshot']);
+        $this->assertEquals([], $result['needs_hydration']);
+        $this->assertEquals(['related_entity'], $result['forcing_node_types']);
+        $this->assertFalse($classifier->isZeroQuery($conditionTree, ['grand_total']));
+    }
+
+    public function testNoForcingTypesRegisteredKeepsZeroQueryClassification(): void
+    {
+        $conditionTree = [
+            'type' => 'combine',
+            'conditions' => [
+                ['type' => 'related_entity', 'relation' => 'order_customer', 'operator' => 'not_exists'],
+            ],
+        ];
+
+        $classifier = new AttributeClassifier();
+        $result = $classifier->classify($conditionTree, []);
+
+        $this->assertEquals([], $result['forcing_node_types']);
+        $this->assertTrue($classifier->isZeroQuery($conditionTree, []));
+    }
+
+    public function testIsZeroQueryFalseWhenAttributeNeedsHydration(): void
+    {
+        $conditionTree = [
+            'type' => 'combine',
+            'conditions' => [
+                ['type' => 'order_attribute', 'attribute' => 'shipping_method', 'operator' => '==', 'value' => 'x'],
+            ],
+        ];
+
+        $classifier = new AttributeClassifier();
+
+        $this->assertFalse($classifier->isZeroQuery($conditionTree, ['grand_total']));
+        $this->assertTrue($classifier->isZeroQuery($conditionTree, ['shipping_method']));
+    }
+
+    public function testDuplicateForcingNodesReportedOnce(): void
+    {
+        $conditionTree = [
+            'type' => 'combine',
+            'conditions' => [
+                ['type' => 'related_entity', 'relation' => 'a'],
+                ['type' => 'related_entity', 'relation' => 'b'],
+            ],
+        ];
+
+        $classifier = new AttributeClassifier(['related_entity']);
+        $result = $classifier->classify($conditionTree, []);
+
+        $this->assertEquals(['related_entity'], $result['forcing_node_types']);
+    }
 }

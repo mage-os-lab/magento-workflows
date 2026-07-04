@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Console\Command;
 
-use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Serialize\SerializerInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
-use MageOS\Workflows\Api\WorkflowRepositoryInterface;
-use MageOS\Workflows\Model\Action\ActionPool;
-use MageOS\Workflows\Model\Definition\Definition;
-use MageOS\Workflows\Model\WorkflowFactory;
+use MageOS\Workflows\Model\Import\WorkflowImporter;
+use MageOS\Workflows\Model\Validation\ValidationContext;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -18,36 +16,29 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Imports a workflow from the JSON envelope produced by `workflow:export`
- * (docs/04-definition-format.md).
+ * Thin CLI shell over Model\Import\WorkflowImporter (F3): reads the file,
+ * decodes the JSON, and delegates envelope + definition validation and
+ * persistence to the shared import path.
  *
- * Import is untrusted input (docs/04-definition-format.md#import-is-untrusted-input,
- * docs/10-security.md#import-is-untrusted-input) and is validated hard:
- *  - the envelope's `format` tag must match the supported version;
- *  - the definition graph is structurally validated via Definition::fromArray()
- *    (schema/step-type/edge/duration checks — throws \InvalidArgumentException);
- *  - every action code referenced by the definition (Definition::getActionCodes())
- *    must be registered in the ActionPool, otherwise the import is rejected with the
- *    full list of unknown codes.
- *
- * ACL re-authorization warning: the security model additionally requires re-authorizing
- * an imported definition against the *importing admin's* ACL, so a definition containing
- * actions the importer couldn't author themselves fails loudly. The CLI has no admin
- * session — it runs with system privileges — so that re-authorization step is skipped
- * here, exactly like the documented risk for data-patch-run-as-system imports
- * (docs/04-definition-format.md: "patches run as system; agencies own that risk"). A
- * warning is printed on every invocation; operators are responsible for reviewing
- * definitions from untrusted sources before running this command.
+ * ACL re-authorization warning: the security model additionally requires
+ * re-authorizing an imported definition against the *importing admin's* ACL,
+ * so a definition containing actions the importer couldn't author themselves
+ * fails loudly. The CLI has no admin session — it runs with system
+ * privileges — so the importer is invoked in SYSTEM mode and that
+ * re-authorization step is skipped, exactly like the documented risk for
+ * data-patch-run-as-system imports (docs/04-definition-format.md: "patches
+ * run as system; agencies own that risk"). A warning is printed on every
+ * invocation; operators are responsible for reviewing definitions from
+ * untrusted sources before running this command.
  */
 class ImportCommand extends Command
 {
     private const ARG_FILE = 'file';
     private const OPT_ACTIVATE = 'activate';
+    private const OPT_SHADOW = 'shadow';
 
     public function __construct(
-        private readonly WorkflowRepositoryInterface $workflowRepository,
-        private readonly WorkflowFactory $workflowFactory,
-        private readonly ActionPool $actionPool,
+        private readonly WorkflowImporter $workflowImporter,
         private readonly SerializerInterface $serializer,
         ?string $name = null
     ) {
@@ -68,6 +59,12 @@ class ImportCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Enable the imported workflow immediately; otherwise it is created disabled'
+            )
+            ->addOption(
+                self::OPT_SHADOW,
+                null,
+                InputOption::VALUE_NONE,
+                'Create the imported workflow in shadow mode (evaluates and logs, no side effects)'
             );
         parent::configure();
     }
@@ -80,6 +77,11 @@ class ImportCommand extends Command
             . '(see docs/04-definition-format.md#import-is-untrusted-input). Review the source '
             . 'of this file before importing.</comment>'
         );
+
+        if ($input->getOption(self::OPT_ACTIVATE) && $input->getOption(self::OPT_SHADOW)) {
+            $output->writeln('<error>--activate and --shadow are mutually exclusive</error>');
+            return Command::FAILURE;
+        }
 
         $path = (string) $input->getArgument(self::ARG_FILE);
         if (!is_readable($path)) {
@@ -105,84 +107,30 @@ class ImportCommand extends Command
             return Command::FAILURE;
         }
 
-        $format = $envelope['format'] ?? null;
-        if ($format !== ExportCommand::FORMAT) {
-            $output->writeln(sprintf(
-                '<error>Unsupported export format "%s"; expected "%s"</error>',
-                (string) $format,
-                ExportCommand::FORMAT
-            ));
-            return Command::FAILURE;
-        }
-
-        $definitionData = $envelope['definition'] ?? null;
-        if (!is_array($definitionData)) {
-            $output->writeln('<error>Envelope "definition" must be an object</error>');
-            return Command::FAILURE;
+        $status = WorkflowInterface::STATUS_DISABLED;
+        if ($input->getOption(self::OPT_ACTIVATE)) {
+            $status = WorkflowInterface::STATUS_ENABLED;
+        } elseif ($input->getOption(self::OPT_SHADOW)) {
+            $status = WorkflowInterface::STATUS_SHADOW;
         }
 
         try {
-            $definition = Definition::fromArray($definitionData);
-        } catch (\InvalidArgumentException $e) {
-            $output->writeln(sprintf('<error>Invalid workflow definition: %s</error>', $e->getMessage()));
+            $result = $this->workflowImporter->import($envelope, ValidationContext::MODE_SYSTEM, $status);
+        } catch (LocalizedException $e) {
+            $output->writeln(sprintf('<error>%s</error>', $e->getMessage()));
             return Command::FAILURE;
         }
 
-        $unknownCodes = [];
-        foreach ($definition->getActionCodes() as $code) {
-            if (!$this->actionPool->has($code)) {
-                $unknownCodes[] = $code;
-            }
-        }
-        if ($unknownCodes !== []) {
+        foreach ($result->getValidationResult()->getWarnings() as $warning) {
             $output->writeln(sprintf(
-                '<error>Definition references unknown action code(s): %s</error>',
-                implode(', ', $unknownCodes)
+                '<comment>Warning [%s]%s: %s</comment>',
+                $warning->getCode(),
+                $warning->getStepKey() !== null ? sprintf(' (step "%s")', $warning->getStepKey()) : '',
+                $warning->getMessage()
             ));
-            return Command::FAILURE;
         }
 
-        $name = $envelope['name'] ?? null;
-        $entityType = $envelope['entity_type'] ?? null;
-        $triggerType = $envelope['trigger_type'] ?? null;
-        $triggerRef = $envelope['trigger_ref'] ?? null;
-        if (!is_string($name) || $name === ''
-            || !is_string($entityType) || $entityType === ''
-            || !is_string($triggerType) || $triggerType === ''
-            || !is_string($triggerRef) || $triggerRef === ''
-        ) {
-            $output->writeln(
-                '<error>Envelope is missing required field(s): name, entity_type, trigger_type, '
-                . 'trigger_ref</error>'
-            );
-            return Command::FAILURE;
-        }
-
-        $conditionsSerialized = $envelope['conditions_serialized'] ?? null;
-        $loopGuardDepth = $envelope['loop_guard_depth'] ?? 1;
-
-        $workflow = $this->workflowFactory->create();
-        $workflow->setName($name);
-        $workflow->setEntityType($entityType);
-        $workflow->setTriggerType($triggerType);
-        $workflow->setTriggerRef($triggerRef);
-        $workflow->setConditionsSerialized(is_string($conditionsSerialized) ? $conditionsSerialized : null);
-        $workflow->setDefinition($definition->toJson());
-        $workflow->setLoopGuardDepth((int) $loopGuardDepth);
-        $workflow->setStatus(
-            $input->getOption(self::OPT_ACTIVATE)
-                ? WorkflowInterface::STATUS_ENABLED
-                : WorkflowInterface::STATUS_DISABLED
-        );
-
-        try {
-            $saved = $this->workflowRepository->save($workflow);
-        } catch (CouldNotSaveException $e) {
-            $output->writeln(sprintf('<error>Could not save imported workflow: %s</error>', $e->getMessage()));
-            return Command::FAILURE;
-        }
-
-        $output->writeln((string) $saved->getWorkflowId());
+        $output->writeln((string) $result->getWorkflow()->getWorkflowId());
         return Command::SUCCESS;
     }
 }

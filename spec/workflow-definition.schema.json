@@ -1,14 +1,14 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://mage-os.org/schemas/workflow-definition/2.json",
+    "$id": "https://mage-os.org/schemas/workflow-definition/3.json",
     "title": "Mage-OS Workflow Definition",
-    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 2 adds the wait step and the optional delay fields business_days / at; documents using them MUST declare schema 2. Version 1 documents remain valid.",
+    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 3 adds the switch step (first-match-wins multi-way branch); documents using it MUST declare schema 3. Version 2 adds the wait step and the optional delay fields business_days / at; documents using them MUST declare schema 2 or later. Version 1 and 2 documents remain valid. The optional top-level ui block is non-semantic (canvas layout persistence), legal at any schema version, never read by the engine, and preserved verbatim.",
     "type": "object",
     "required": ["schema", "steps", "entry"],
     "additionalProperties": false,
     "properties": {
         "schema": {
-            "enum": [1, 2]
+            "enum": [1, 2, 3]
         },
         "entry": {
             "$ref": "#/$defs/stepKeyOrNull",
@@ -25,9 +25,14 @@
                     {"$ref": "#/$defs/delayStep"},
                     {"$ref": "#/$defs/branchStep"},
                     {"$ref": "#/$defs/stopStep"},
-                    {"$ref": "#/$defs/waitStep"}
+                    {"$ref": "#/$defs/waitStep"},
+                    {"$ref": "#/$defs/switchStep"}
                 ]
             }
+        },
+        "ui": {
+            "type": "object",
+            "description": "Non-semantic UI/canvas layout block, preserved verbatim by the engine and never evaluated. The only whitelisted non-semantic key; there is no general unknown-key passthrough."
         }
     },
     "$defs": {
@@ -141,6 +146,42 @@
                 },
                 "on_event": {"$ref": "#/$defs/stepKeyOrNull"},
                 "on_timeout": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "switchStep": {
+            "type": "object",
+            "required": ["type", "cases"],
+            "additionalProperties": false,
+            "description": "Schema 3 only. First-match-wins multi-way branch: cases are evaluated top to bottom, the first whose condition tree matches is followed; the nullable default edge fires when no case matches. One shared revalidate_entity for the whole step (one hydration, evaluated N times). The step result records {matched: <case key>|null}.",
+            "properties": {
+                "type": {"const": "switch"},
+                "cases": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "required": ["key"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_\\-]{1,64}$",
+                                "description": "Case label, unique within the step; recorded as {matched} in the step result"
+                            },
+                            "conditions_serialized": {
+                                "type": ["string", "null"],
+                                "description": "Rule condition tree, salesrule-compatible serialized format; empty/absent = always matches"
+                            },
+                            "next": {"$ref": "#/$defs/stepKeyOrNull"}
+                        }
+                    }
+                },
+                "revalidate_entity": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "true: re-hydrate the entity fresh before evaluating the cases (correct default after delays); false: evaluate against the frozen trigger snapshot"
+                },
+                "default": {"$ref": "#/$defs/stepKeyOrNull"}
             }
         }
     }

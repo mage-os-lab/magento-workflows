@@ -129,9 +129,8 @@ class ResumeConsumer
             if ($definition->hasStep($stepKey)) {
                 $step = $definition->getStep($stepKey);
                 if (($step['type'] ?? null) === Definition::STEP_WAIT) {
-                    $edge = $resolution === 'event'
-                        ? ($step['on_event'] ?? null)
-                        : ($step['on_timeout'] ?? null);
+                    $edges = $definition->getStepEdges($stepKey);
+                    $edge = $resolution === 'event' ? $edges['on_event'] : $edges['on_timeout'];
                 }
             }
         } catch (\InvalidArgumentException $e) {

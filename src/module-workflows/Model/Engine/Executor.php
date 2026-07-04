@@ -43,6 +43,8 @@ class Executor
     public const CONFIG_MAX_DELAY_DAYS = 'mageos_workflows/guards/max_delay_days';
     public const DEFAULT_MAX_DELAY_DAYS = 365;
 
+    public const CONFIG_REDACT_SHADOW_SECRETS = 'mageos_workflows/simulation/redact_shadow_secrets';
+
     public function __construct(
         private readonly WorkflowExecutionRepositoryInterface $executionRepository,
         private readonly WorkflowRepositoryInterface $workflowRepository,
@@ -54,7 +56,8 @@ class Executor
         private readonly EventManagerInterface $eventManager,
         private readonly LoggerInterface $logger,
         private readonly DelayCalculator $delayCalculator,
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly ?VariableResolver $redactingVariableResolver = null
     ) {
     }
 
@@ -181,14 +184,14 @@ class Executor
 
             switch ($step['type']) {
                 case Definition::STEP_ACTION:
-                    $currentKey = $this->runActionStep($execution, $ctx, $currentKey, $step);
+                    $currentKey = $this->runActionStep($execution, $ctx, $definition, $currentKey, $step);
                     if ($currentKey === false) {
                         return; // execution failed terminally
                     }
                     break;
 
                 case Definition::STEP_DELAY:
-                    $this->runDelayStep($execution, $ctx, $currentKey, $step);
+                    $this->runDelayStep($execution, $ctx, $definition, $currentKey, $step);
                     return; // message done; resumption is a separate delivery
 
                 case Definition::STEP_WAIT:
@@ -196,7 +199,11 @@ class Executor
                     return; // parked until the event fires or the timeout sweeps
 
                 case Definition::STEP_BRANCH:
-                    $currentKey = $this->runBranchStep($execution, $ctx, $workflow, $currentKey, $step);
+                    $currentKey = $this->runBranchStep($execution, $ctx, $workflow, $definition, $currentKey, $step);
+                    break;
+
+                case Definition::STEP_SWITCH:
+                    $currentKey = $this->runSwitchStep($execution, $ctx, $workflow, $definition, $currentKey, $step);
                     break;
 
                 case Definition::STEP_STOP:
@@ -220,6 +227,7 @@ class Executor
     private function runActionStep(
         WorkflowExecutionInterface $execution,
         ExecutionContext $ctx,
+        Definition $definition,
         string $stepKey,
         array $step
     ): string|false|null {
@@ -234,7 +242,7 @@ class Executor
         }
 
         $config = is_array($step['config'] ?? null) ? $step['config'] : [];
-        $config = $this->variableResolver->resolveConfig($config, $ctx);
+        $config = $this->resolverFor($ctx)->resolveConfig($config, $ctx);
         $action = $this->actionPool->get($code);
 
         try {
@@ -300,7 +308,7 @@ class Executor
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
 
-        return isset($step['next']) ? (string) $step['next'] : null;
+        return $definition->getStepEdges($stepKey)['next'];
     }
 
     /**
@@ -313,6 +321,7 @@ class Executor
     private function runDelayStep(
         WorkflowExecutionInterface $execution,
         ExecutionContext $ctx,
+        Definition $definition,
         string $stepKey,
         array $step
     ): void {
@@ -328,7 +337,7 @@ class Executor
         ]);
 
         $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
-        $execution->setCurrentStep(isset($step['next']) ? (string) $step['next'] : null);
+        $execution->setCurrentStep($definition->getStepEdges($stepKey)['next']);
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
     }
@@ -408,14 +417,13 @@ class Executor
         WorkflowExecutionInterface $execution,
         ExecutionContext $ctx,
         ?WorkflowInterface $workflow,
+        Definition $definition,
         string $stepKey,
         array $step
     ): ?string {
         $conditionsSerialized = $step['conditions_serialized'] ?? null;
         $revalidate = (bool) ($step['revalidate_entity'] ?? true);
-        $entityType = $workflow !== null
-            ? $workflow->getEntityType()
-            : (string) ($ctx->getWorkflow()['entity_type'] ?? '');
+        $entityType = $this->resolveEntityType($workflow, $ctx);
 
         if (is_string($conditionsSerialized) && $conditionsSerialized !== '') {
             $result = $this->conditionEvaluator->evaluateSerialized(
@@ -436,8 +444,90 @@ class Executor
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
 
-        $edge = $result ? ($step['on_true'] ?? null) : ($step['on_false'] ?? null);
-        return $edge !== null ? (string) $edge : null;
+        $edges = $definition->getStepEdges($stepKey);
+        return $result ? $edges['on_true'] : $edges['on_false'];
+    }
+
+    /**
+     * Switch (schema v3): first-match-wins over the case list, `default`
+     * fallback, one shared revalidate_entity flag for the whole step. An
+     * empty/absent case condition tree always matches (mirrors branch).
+     * Identical persistence discipline to runBranchStep: the step row is
+     * written before the edge is followed. Repeat per-case hydrations under
+     * revalidate_entity=true are cheap — repositories keep per-request
+     * identity registries under the HydrationProvider.
+     *
+     * @return string|null next step key (null edge = graph end)
+     */
+    private function runSwitchStep(
+        WorkflowExecutionInterface $execution,
+        ExecutionContext $ctx,
+        ?WorkflowInterface $workflow,
+        Definition $definition,
+        string $stepKey,
+        array $step
+    ): ?string {
+        $revalidate = (bool) ($step['revalidate_entity'] ?? true);
+        $entityType = $this->resolveEntityType($workflow, $ctx);
+
+        $matched = null;
+        $target = null;
+        foreach ((array) ($step['cases'] ?? []) as $case) {
+            if (!is_array($case)) {
+                continue;
+            }
+            $conditionsSerialized = $case['conditions_serialized'] ?? null;
+            $result = !is_string($conditionsSerialized) || $conditionsSerialized === ''
+                || $this->conditionEvaluator->evaluateSerialized(
+                    $conditionsSerialized,
+                    $entityType,
+                    $ctx,
+                    $revalidate
+                );
+            if ($result) {
+                $matched = (string) $case['key'];
+                $target = isset($case['next']) ? (string) $case['next'] : null;
+                break;
+            }
+        }
+        if ($matched === null) {
+            $target = $definition->getStepEdges($stepKey)['default'];
+        }
+
+        $this->upsertStepRow($execution, $stepKey, [
+            'status' => WorkflowExecutionStepInterface::STATUS_COMPLETE,
+            'result' => $this->encodeJson(['matched' => $matched]),
+            'finished_at' => $this->now(),
+        ]);
+        $this->persistContext($execution, $ctx);
+        $this->executionRepository->save($execution);
+
+        return $target;
+    }
+
+    private function resolveEntityType(?WorkflowInterface $workflow, ExecutionContext $ctx): string
+    {
+        return $workflow !== null
+            ? $workflow->getEntityType()
+            : (string) ($ctx->getWorkflow()['entity_type'] ?? '');
+    }
+
+    /**
+     * Simulation substrate (F7): shadow-mode executions optionally resolve
+     * {{ secrets.* }} to ***name*** via the redacting resolver, behind
+     * mageos_workflows/simulation/redact_shadow_secrets (default off — a
+     * behavior change for existing shadow users; flip at the next minor).
+     * The production resolver is never swapped, only bypassed per call.
+     */
+    private function resolverFor(ExecutionContext $ctx): VariableResolver
+    {
+        if ($ctx->isSimulation()
+            && $this->redactingVariableResolver !== null
+            && $this->scopeConfig->isSetFlag(self::CONFIG_REDACT_SHADOW_SECRETS)
+        ) {
+            return $this->redactingVariableResolver;
+        }
+        return $this->variableResolver;
     }
 
     private function completeExecution(WorkflowExecutionInterface $execution, ?ExecutionContext $ctx = null): void

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsAdminUi\Model;
+namespace MageOS\Workflows\Model;
 
 use MageOS\Workflows\Api\ActionMetadataInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
@@ -14,6 +14,16 @@ use MageOS\Workflows\Model\Trigger\TriggerRegistry;
  * sentence described in docs/11-admin-ui.md#merchant-accessibility--openness, e.g.:
  *
  *   "When Order Created, if 2 conditions, then: Add Order Comment, wait 1 hour, stop."
+ *
+ * Relocated from module-workflows-admin-ui (F6): the validate endpoint, dry-run traces,
+ * and gallery previews live in core/webapi and must not depend on the admin-ui module;
+ * admin-ui keeps its grid column as a thin consumer.
+ *
+ * Rendering coverage: action, delay, stop, branch (both edges — a non-null on_false
+ * renders an inline "otherwise: …" chain; the legacy on_false = null shape renders
+ * byte-identically to the pre-relocation output so existing grid rows do not change),
+ * wait (event + timeout), and switch (case keys listed, walk continues down the first
+ * case). Edge topology comes from Definition::getStepEdges (F1).
  *
  * Deliberately defensive: a malformed/partial definition or condition tree (mid-edit, bad
  * import) degrades to omitting that clause rather than throwing -- this class is called from
@@ -142,35 +152,62 @@ class PlainLanguageRenderer
             return [];
         }
 
-        $summaries = [];
         $visited = [];
-        $key = $entry;
-        while ($key !== null && !isset($visited[$key]) && count($summaries) < self::MAX_STEPS) {
+        return $this->renderChain($definition, $entry, $visited);
+    }
+
+    /**
+     * Walk one chain of steps. $visited is shared across the whole render
+     * (including nested "otherwise" chains) so cycles and diamonds terminate
+     * and the global MAX_STEPS budget holds.
+     *
+     * @param array<string, true> $visited
+     * @return string[]
+     */
+    private function renderChain(Definition $definition, ?string $key, array &$visited): array
+    {
+        $summaries = [];
+        while ($key !== null && !isset($visited[$key]) && count($visited) < self::MAX_STEPS) {
             $visited[$key] = true;
             if (!$definition->hasStep($key)) {
                 break;
             }
             $step = $definition->getStep($key);
-            $summaries[] = $this->renderStep($step);
-            $key = match ($step['type'] ?? null) {
-                Definition::STEP_ACTION, Definition::STEP_DELAY => $step['next'] ?? null,
-                Definition::STEP_BRANCH => $step['on_true'] ?? null,
-                default => null,
-            };
+            $edges = $definition->getStepEdges($key);
+
+            switch ($step['type'] ?? null) {
+                case Definition::STEP_ACTION:
+                    $summaries[] = $this->renderActionStep($step);
+                    $key = $edges['next'];
+                    break;
+                case Definition::STEP_DELAY:
+                    $summaries[] = $this->renderDelayStep($step);
+                    $key = $edges['next'];
+                    break;
+                case Definition::STEP_BRANCH:
+                    $summaries[] = $this->renderBranchStep($definition, $step, $edges, $visited);
+                    $key = $edges['on_true'];
+                    break;
+                case Definition::STEP_WAIT:
+                    $summaries[] = $this->renderWaitStep($step);
+                    $key = $edges['on_event'] ?? $edges['on_timeout'];
+                    break;
+                case Definition::STEP_SWITCH:
+                    $summaries[] = $this->renderSwitchStep($edges);
+                    $key = $this->firstSwitchTarget($edges);
+                    break;
+                case Definition::STEP_STOP:
+                    $summaries[] = (string) __('stop');
+                    $key = null;
+                    break;
+                default:
+                    $summaries[] = (string) __('unknown step');
+                    $key = null;
+                    break;
+            }
         }
 
         return $summaries;
-    }
-
-    private function renderStep(array $step): string
-    {
-        return match ($step['type'] ?? null) {
-            Definition::STEP_ACTION => $this->renderActionStep($step),
-            Definition::STEP_DELAY => $this->renderDelayStep($step),
-            Definition::STEP_BRANCH => $this->renderBranchStep($step),
-            Definition::STEP_STOP => (string) __('stop'),
-            default => (string) __('unknown step'),
-        };
     }
 
     private function renderActionStep(array $step): string
@@ -191,16 +228,84 @@ class PlainLanguageRenderer
         return (string) __('wait %1', $this->humanizeDuration($duration));
     }
 
-    private function renderBranchStep(array $step): string
+    /**
+     * Legacy shape (on_false null — everything the v1 form assembler emits)
+     * renders byte-identically to the pre-relocation output. A non-null
+     * on_false renders its chain inline as "otherwise: …".
+     *
+     * @param array<string, ?string> $edges
+     * @param array<string, true> $visited
+     */
+    private function renderBranchStep(Definition $definition, array $step, array $edges, array &$visited): string
     {
         $serialized = $step['conditions_serialized'] ?? null;
         $count = $this->countConditions(is_string($serialized) ? $serialized : null);
-        if ($count === 0) {
-            return (string) __('check a condition');
+
+        if ($edges['on_false'] === null) {
+            if ($count === 0) {
+                return (string) __('check a condition');
+            }
+            return (string) ($count === 1
+                ? __('if %1 more condition still holds', $count)
+                : __('if %1 more conditions still hold', $count));
         }
+
+        $condition = match (true) {
+            $count === 0 => (string) __('always'),
+            $count === 1 => (string) __('if %1 more condition still holds', $count),
+            default => (string) __('if %1 more conditions still hold', $count),
+        };
+        $otherwise = $this->renderChain($definition, $edges['on_false'], $visited);
+        if ($otherwise === []) {
+            return $condition;
+        }
+        return (string) __('%1 (otherwise: %2)', $condition, implode(', ', $otherwise));
+    }
+
+    private function renderWaitStep(array $step): string
+    {
+        $event = (string) ($step['config']['event'] ?? '');
+        $timeout = (string) ($step['config']['timeout'] ?? '');
+        if ($event === '') {
+            return (string) __('wait for an event');
+        }
+        if ($timeout === '') {
+            return (string) __('wait for "%1"', $event);
+        }
+        return (string) __('wait for "%1" up to %2', $event, $this->humanizeDuration($timeout));
+    }
+
+    /**
+     * @param array<string, ?string> $edges getStepEdges output: case:<key> entries + default
+     */
+    private function renderSwitchStep(array $edges): string
+    {
+        $caseKeys = [];
+        foreach ($edges as $edge => $target) {
+            if (str_starts_with($edge, 'case:')) {
+                $caseKeys[] = substr($edge, strlen('case:'));
+            }
+        }
+        $count = count($caseKeys);
         return (string) ($count === 1
-            ? __('if %1 more condition still holds', $count)
-            : __('if %1 more conditions still hold', $count));
+            ? __('first match of %1 case (%2)', $count, implode(', ', $caseKeys))
+            : __('first match of %1 cases (%2)', $count, implode(', ', $caseKeys)));
+    }
+
+    /**
+     * Primary continuation of a switch for the one-line summary: the first
+     * case's target, falling back to the default edge.
+     *
+     * @param array<string, ?string> $edges
+     */
+    private function firstSwitchTarget(array $edges): ?string
+    {
+        foreach ($edges as $edge => $target) {
+            if (str_starts_with($edge, 'case:') && $target !== null) {
+                return $target;
+            }
+        }
+        return $edges['default'] ?? null;
     }
 
     private function humanizeDuration(string $iso8601): string
