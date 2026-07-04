@@ -39,6 +39,15 @@ fan-out). Fan-out and batch aggregation are inverses — N outputs from one inpu
 from N inputs — and both keep the single-token executor untouched by living at the dispatch
 layer.
 
+## Track 3 — Discoverability
+
+| Doc | Feature | Recommendation in one line | Est. |
+|---|---|---|---|
+| [entity-grid-visibility.md](entity-grid-visibility.md) | Workflows surfaced on native entity grids ([issue #5](https://github.com/rhoerr/magento-workflows/issues/5)) | New `workflows-grid-links` addon renders an ACL-gated, toggleable summary strip beside native grids via `page.main.actions` layout handles — count + view/create deep links; no ui_component surgery | ~1.5–2 wk |
+
+Independent of Tracks 1–2 (pure surface layer over the existing repository and metadata
+catalogue); can ship any time.
+
 ## Recommended cross-feature sequence (Track 1)
 
 The features share foundations; this order lets each ship something user-visible while feeding
