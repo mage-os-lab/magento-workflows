@@ -1,0 +1,79 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "product-review-triage",
+        "title": "Product review triage",
+        "description": "Switches on review score: rewards five-star reviewers with a coupon, alerts CX on a low score.",
+        "category": "Marketing & reviews",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 3,
+            "triggers": ["catalog.product.review_submitted"],
+            "actions": ["marketing.generate_coupon", "notify.email", "notify.admin"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "alert_threshold", "label": "Rating at or below which CX is alerted", "type": "string", "default": "2"},
+            {"key": "reward_rule_id", "label": "Cart price rule for the five-star reward", "type": "entity:salesrule", "required": true}
+        ]
+    },
+    "workflow": {
+        "name": "Product review triage",
+        "entity_type": "catalog_product",
+        "trigger_type": "event",
+        "trigger_ref": "catalog.product.review_submitted",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 3,
+            "entry": "route",
+            "steps": {
+                "route": {
+                    "type": "switch",
+                    "cases": [
+                        {
+                            "key": "five_star",
+                            "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\TriggerData\",\"attribute\":\"rating\",\"operator\":\"==\",\"value\":\"5\"}",
+                            "next": "reward_customer"
+                        },
+                        {
+                            "key": "low_score",
+                            "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\TriggerData\",\"attribute\":\"rating\",\"operator\":\"<=\",\"value\":\"%param.alert_threshold%\"}",
+                            "next": "alert_cx"
+                        }
+                    ],
+                    "revalidate_entity": false,
+                    "default": null
+                },
+                "reward_customer": {
+                    "type": "action",
+                    "action": "marketing.generate_coupon",
+                    "config": {
+                        "rule_id": "%param.reward_rule_id%"
+                    },
+                    "next": "send_thanks"
+                },
+                "send_thanks": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "Thanks for the five-star review!",
+                        "body": "Enjoy a little something on your next order with code {{ steps.reward_customer.coupon_code }}."
+                    },
+                    "next": null
+                },
+                "alert_cx": {
+                    "type": "action",
+                    "action": "notify.admin",
+                    "config": {
+                        "title": "Low review score submitted",
+                        "description": "Product {{ trigger.sku }} received a low review score."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

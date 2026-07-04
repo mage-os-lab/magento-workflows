@@ -1,0 +1,53 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "vip-auto-group-assignment",
+        "title": "VIP auto group assignment",
+        "description": "Promotes a customer to a VIP group automatically once lifetime spend crosses a threshold.",
+        "category": "Customer lifecycle",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["customer.updated"],
+            "actions": ["customer.assign_group", "notify.email"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "spend_threshold", "label": "Lifetime spend threshold", "type": "string", "default": "1000"},
+            {"key": "vip_group_id", "label": "VIP customer group ID", "type": "string", "required": true}
+        ]
+    },
+    "workflow": {
+        "name": "VIP auto group assignment",
+        "entity_type": "customer",
+        "trigger_type": "event",
+        "trigger_ref": "customer.updated",
+        "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Customer\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Customer\\\\Attribute\",\"attribute\":\"lifetime_sales\",\"operator\":\">=\",\"value\":\"%param.spend_threshold%\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Customer\\\\Attribute\",\"attribute\":\"group_id\",\"operator\":\"!=\",\"value\":\"%param.vip_group_id%\"}]}",
+        "definition": {
+            "schema": 1,
+            "entry": "promote",
+            "steps": {
+                "promote": {
+                    "type": "action",
+                    "action": "customer.assign_group",
+                    "config": {
+                        "group_id": "%param.vip_group_id%"
+                    },
+                    "next": "notify_customer"
+                },
+                "notify_customer": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.email|lower }}",
+                        "subject": "You've been upgraded!",
+                        "body": "Thanks for being a loyal customer -- you've been moved to our VIP tier."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

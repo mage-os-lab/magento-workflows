@@ -1,0 +1,57 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "stock-threshold-supplier-webhook",
+        "title": "Stock threshold supplier webhook",
+        "description": "Notifies a supplier iPaaS by signed webhook when a managed SKU crosses its stock threshold.",
+        "category": "Catalog & inventory",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["inventory.stock_threshold_crossed"],
+            "actions": ["notify.webhook", "notify.admin"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "supplier_webhook_url", "label": "Supplier reorder webhook URL", "type": "string", "required": true},
+            {"key": "supplier_signing_secret", "label": "HMAC secret for the supplier webhook", "type": "secret", "required": true}
+        ]
+    },
+    "workflow": {
+        "name": "Stock threshold supplier webhook",
+        "entity_type": "catalog_product",
+        "trigger_type": "event",
+        "trigger_ref": "inventory.stock_threshold_crossed",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 1,
+            "entry": "alert_supplier",
+            "steps": {
+                "alert_supplier": {
+                    "type": "action",
+                    "action": "notify.webhook",
+                    "config": {
+                        "url": "%param.supplier_webhook_url%",
+                        "method": "POST",
+                        "body": "{\"sku\":\"{{ trigger.sku }}\",\"qty\":\"{{ trigger.qty }}\"}",
+                        "capture_as": "supplier_ack",
+                        "timeout": 10,
+                        "sign_with": "{{ secrets.%param.supplier_signing_secret% }}"
+                    },
+                    "next": "log_alert"
+                },
+                "log_alert": {
+                    "type": "action",
+                    "action": "notify.admin",
+                    "config": {
+                        "title": "Low stock supplier alert sent",
+                        "description": "Requested restock for SKU {{ trigger.sku }}."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}
