@@ -7,6 +7,7 @@ use MageOS\Workflows\Api\Data\ExecutionStepStateInterface;
 
 /**
  * Immutable webapi DTO for one GET /V1/workflow-executions/:id/steps row (07).
+ * A safe, narrow projection — see the interface for the security rationale.
  */
 class ExecutionStepState implements ExecutionStepStateInterface
 {
@@ -15,8 +16,8 @@ class ExecutionStepState implements ExecutionStepStateInterface
         private readonly string $status,
         private readonly ?string $startedAt,
         private readonly ?string $finishedAt,
-        private readonly ?string $result,
-        private readonly ?string $error
+        private readonly ?string $edgeTaken,
+        private readonly ?string $errorSummary
     ) {
     }
 
@@ -40,13 +41,13 @@ class ExecutionStepState implements ExecutionStepStateInterface
         return $this->finishedAt;
     }
 
-    public function getResult(): ?string
+    public function getEdgeTaken(): ?string
     {
-        return $this->result;
+        return $this->edgeTaken;
     }
 
-    public function getError(): ?string
+    public function getErrorSummary(): ?string
     {
-        return $this->error;
+        return $this->errorSummary;
     }
 }
