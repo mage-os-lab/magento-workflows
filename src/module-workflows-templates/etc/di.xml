@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Register this pack's templates/ directory with the bundled source. A
+         third-party pack does exactly this with its own module name — the
+         ActionPool type-array extension pattern (06 stage 2). -->
+    <type name="MageOS\Workflows\Model\Template\BundledTemplateSource">
+        <arguments>
+            <argument name="packDirectories" xsi:type="array">
+                <item name="mageos" xsi:type="string">MageOS_WorkflowsTemplates</item>
+            </argument>
+        </arguments>
+    </type>
+</config>
