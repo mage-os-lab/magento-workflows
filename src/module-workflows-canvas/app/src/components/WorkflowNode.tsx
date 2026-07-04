@@ -20,6 +20,8 @@ export interface NodeData extends Record<string, unknown> {
   duration?: string;
   error?: string;
   onTakenPath?: boolean;
+  /** Pinned validation findings for this node (Phase B editor). */
+  messages?: import('../types').ValidationMessage[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -81,6 +83,16 @@ export function WorkflowNode({ data }: NodeProps): JSX.Element {
       )}
 
       {d.error && <div className="wf-node__error">{d.error}</div>}
+
+      {d.messages && d.messages.length > 0 && (
+        <ul className="wf-node__messages">
+          {d.messages.map((m, i) => (
+            <li key={`${m.code}-${i}`} className={`wf-node__message wf-node__message--${m.severity}`}>
+              {m.message}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {renderSourceHandles(edges)}
     </div>

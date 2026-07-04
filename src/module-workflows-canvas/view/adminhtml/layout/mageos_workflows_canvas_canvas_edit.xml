@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!--
+  Editor page (::manage). Renders the same CSP-safe mount as the viewer; the
+  React bundle enables editing affordances from grants.manage.
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      layout="admin-1column"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <block class="MageOS\WorkflowsCanvas\Block\Adminhtml\Canvas\Mount"
+                   name="mageos_workflows_canvas_mount"
+                   template="MageOS_WorkflowsCanvas::canvas/mount.phtml"/>
+        </referenceContainer>
+    </body>
+</page>
