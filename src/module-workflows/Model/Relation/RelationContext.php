@@ -123,7 +123,11 @@ class RelationContext
             return (int) $websiteId;
         }
         $storeId = $source->getData('store_id');
-        if (is_numeric($storeId)) {
+        // store_id = 0 is the admin store: manual mass-runs and CLI
+        // `workflow:run` dispatch there, and it must not silently resolve to a
+        // customer-facing website. A source carrying no positive store is
+        // genuinely indeterminable (fail-toward-false in per-website mode).
+        if (is_numeric($storeId) && (int) $storeId > 0) {
             try {
                 return (int) $this->storeManager->getStore((int) $storeId)->getWebsiteId();
             } catch (\Throwable $e) {
@@ -131,6 +135,17 @@ class RelationContext
             }
         }
         return null;
+    }
+
+    /**
+     * Resolution cap (mageos_workflows/guards/relation_cap, default 100).
+     * Public so the RelatedEntity combine can detect a truncated to-many set
+     * (an `ALL` match over a capped list is unknowable — fail toward false).
+     */
+    public function getCap(): int
+    {
+        $cap = (int) $this->scopeConfig->getValue(self::CONFIG_RELATION_CAP);
+        return $cap > 0 ? $cap : self::DEFAULT_RELATION_CAP;
     }
 
     /**
@@ -154,11 +169,5 @@ class RelationContext
     {
         $this->resolved = [];
         $this->fresh = false;
-    }
-
-    private function getCap(): int
-    {
-        $cap = (int) $this->scopeConfig->getValue(self::CONFIG_RELATION_CAP);
-        return $cap > 0 ? $cap : self::DEFAULT_RELATION_CAP;
     }
 }

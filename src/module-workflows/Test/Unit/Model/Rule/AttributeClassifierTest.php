@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MageOS\Workflows\Test\Unit\Model\Rule;
 
 use MageOS\Workflows\Model\Rule\AttributeClassifier;
+use MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine as RelatedEntityCombine;
 use PHPUnit\Framework\TestCase;
 
 class AttributeClassifierTest extends TestCase
@@ -135,6 +136,28 @@ class AttributeClassifierTest extends TestCase
 
         $this->assertFalse($classifier->isZeroQuery($conditionTree, ['grand_total']));
         $this->assertTrue($classifier->isZeroQuery($conditionTree, ['shipping_method']));
+    }
+
+    public function testChildlessNotExistsRelatedEntityForcesHydration(): void
+    {
+        // The exact node the RelatedEntity combine emits (setType(self::class))
+        // wired against the exact registry value from di.xml — a childless
+        // NOT EXISTS references zero attributes yet must classify needs-hydration.
+        $conditionTree = [
+            'type' => 'combine',
+            'conditions' => [
+                [
+                    'type' => RelatedEntityCombine::class,
+                    'relation' => 'order.customer_by_email',
+                    'value' => '0',
+                ],
+            ],
+        ];
+
+        $classifier = new AttributeClassifier([RelatedEntityCombine::class]);
+
+        $this->assertFalse($classifier->isZeroQuery($conditionTree, ['grand_total']));
+        $this->assertEquals([RelatedEntityCombine::class], $classifier->classify($conditionTree, [])['forcing_node_types']);
     }
 
     public function testDuplicateForcingNodesReportedOnce(): void
