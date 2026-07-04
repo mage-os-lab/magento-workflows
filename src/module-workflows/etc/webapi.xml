@@ -42,6 +42,15 @@
         </resources>
     </route>
 
+    <!-- Relation metadata (F6 / entity cross-referencing stage 4): lists the
+         registered relation pool for the canvas picker, gallery, and CI. -->
+    <route url="/V1/workflows/meta/relations" method="GET">
+        <service class="MageOS\Workflows\Api\RelationMetadataProviderInterface" method="getRelations"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+
     <!-- Workflow executions (read-only) -->
     <route url="/V1/workflow-executions" method="GET">
         <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getList"/>

@@ -29,6 +29,48 @@ Per-entity condition classes follow the `AbstractCondition` contract:
 
 Via child combines: an Order combine exposes a "Customer" subtree (hydrates via `order.customer_id → CustomerRepository`) and an "Items" subtree with ANY/ALL semantics over `OrderItemInterface` (the pattern exists in `SalesRule\Model\Rule\Condition\Product\Found`).
 
+### Related-entity conditions (the relation registry)
+
+Beyond the hardcoded `customer_id` FK, cross-entity traversal is generalized through a
+**relation registry** (`RelationInterface` + `RelationPool`, DI-registered exactly like actions —
+[entity cross-referencing](discovery/entity-cross-referencing.md)). One generic child condition,
+`Condition/RelatedEntity/Combine`, is offered under every root combine whose entity type has a
+registered relation (Order, Quote, Customer in the seed set — **not** Product, which sources
+none):
+
+- **Value = EXISTS / NOT EXISTS** (borrowed from the order-items `FOUND`/`NOT FOUND` pattern). The
+  flagship guest check is literally: Order → *a customer account matching the order email* →
+  **NOT EXISTS**.
+- **Child conditions** run against the resolved target entity, reusing the target's own leaf
+  classes (Customer `Attribute` with EAV auto-discovery and order-history aggregates included), so
+  "…EXISTS **and** its `orders_count` ≥ 3" works day one. Resolution is `resolveIds()` →
+  `getEntity(target, id)` → `propagateHydrationKeys()` — the existing primitive, fed by the
+  registry.
+- **Cardinality `many`** adds `ANY` / `ALL` / `NONE` over the resolved id list (`customer.open_orders`,
+  `order.orders_by_email`).
+- **NOT EXISTS forbids children** — a **hard save error**. The two operators stop being complements
+  once children exist ("exists but children fail" makes *both* false), so "NOT EXISTS a customer
+  with `orders_count` ≥ 3" would silently never match whenever any unqualified customer exists.
+  Express the negation as `NONE` under `EXISTS` instead.
+
+**Seed relations:** `order.customer` (the FK, re-expressed), `order.customer_by_email`,
+`quote.customer_by_email` (both website-scoped per `customer/account_share/scope`),
+`order.orders_by_email` (self + canceled excluded, newest-first), `customer.open_orders` (state in
+{new, processing, holded}). The pool is enumerable at `GET /V1/workflows/meta/relations`.
+
+**Cap & honesty (`mageos_workflows/guards/relation_cap`, default 100):** a to-many relation is
+capped at resolution. `ANY`/`NONE` evaluate the first N and log — a match in the first N is a real
+match. `ALL` over a *truncated* set is unknowable and **fails toward false with a warning**
+(correctness over convenience). Resolver errors and unresolvable website scope also fail toward
+false and never abort the execution.
+
+**Phase discipline:** a `RelatedEntity` node needs the DB by definition, so any tree containing one
+classifies `needs_hydration` — the `AttributeClassifier` gained node-type awareness precisely
+because a childless `NOT EXISTS` references zero attributes and would otherwise read as zero-query.
+Relation subtrees are never expressible as a `SearchCriteria`; scheduled workflows whose conditions
+hinge on a relation fall back to load-and-filter (evaluated per candidate). `revalidate_entity: true`
+after a delay re-resolves the relation — the guest may have registered *during* the wait.
+
 ### Entity roots and attribute coverage
 
 - **Four roots**: `sales_order`, `customer`, `quote`, `catalog_product`. Quote is a first-class root (`Condition\Quote\Attribute` + `Combine`, `QuoteHydrator` via `CartRepositoryInterface`) — "cart total > $100" on `quote.abandoned` needs no workaround.

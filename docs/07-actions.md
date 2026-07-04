@@ -22,6 +22,16 @@ interface ActionMetadataInterface   // drives UI form generation
 
 Registered via `di.xml` type-array into `ActionPool`. A third-party module = one class + one `di.xml` entry + optional `workflow_triggers.xml`. **That *is* the connector SDK** — no new plumbing concept required.
 
+**Relation packs (same shape).** Cross-entity *relations* extend the same way: implement
+`RelationInterface` (`getCode`/`getLabel`/`getSourceEntityType`/`getTargetEntityType`/`getCardinality`/`resolveIds`)
+and add one line to the `RelationPool` type-array in `di.xml`. The relation then appears
+automatically in every root combine of its source entity, in the classifier's hydration-forcing
+set, and at `GET /V1/workflows/meta/relations` — no core change. Examples: B2B `company → users`,
+an RMA module's `order → returns`. Resolve via repositories/`SearchCriteria`; `resolveIds()` is
+called only through `RelationContext` (which supplies memoization, website scoping, the resolution
+cap, and fail-toward-false), so never call it directly. See
+[entity cross-referencing](discovery/entity-cross-referencing.md).
+
 An optional `simulate()` interface is added to the contract in v1 (as an optional interface) so the core library is ready for shadow mode and dry-run ([Admin UI §Shadow mode](11-admin-ui.md#shadow-mode-v1-nearly-free)).
 
 ## Core library (v1, `workflows-actions-core`)

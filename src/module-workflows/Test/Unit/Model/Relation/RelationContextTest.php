@@ -239,6 +239,29 @@ class RelationContextTest extends TestCase
         $this->assertNull($this->seenWebsiteId);
     }
 
+    public function testWebsiteIdIndeterminableForAdminStore(): void
+    {
+        // store_id = 0 is the admin store: manual mass-runs / CLI dispatch there
+        // and it must NOT silently resolve to a customer-facing website.
+        $context = $this->context($this->relation([1]), [], 7);
+
+        $context->resolve('test_relation', new DataObject(['entity_id' => 3, 'store_id' => 0]));
+
+        $this->assertNull($this->seenWebsiteId);
+    }
+
+    public function testGetCapReflectsConfigAndDefault(): void
+    {
+        $this->assertSame(
+            RelationContext::DEFAULT_RELATION_CAP,
+            $this->context($this->relation([1]))->getCap()
+        );
+        $this->assertSame(
+            25,
+            $this->context($this->relation([1]), [RelationContext::CONFIG_RELATION_CAP => 25])->getCap()
+        );
+    }
+
     public function testCustomerUnderGlobalAccountSharingIsUnscoped(): void
     {
         $context = $this->context(

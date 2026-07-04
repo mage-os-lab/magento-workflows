@@ -7,6 +7,7 @@ use Magento\Framework\DataObject;
 use Magento\Framework\DataObjectFactory;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
+use MageOS\Workflows\Model\Relation\RelationContext;
 
 /**
  * Orchestrates two-phase condition evaluation (docs/06-conditions.md).
@@ -37,7 +38,8 @@ class ConditionEvaluator
     public function __construct(
         private readonly WorkflowRuleFactory $workflowRuleFactory,
         private readonly HydrationProviderInterface $hydrationProvider,
-        private readonly DataObjectFactory $dataObjectFactory
+        private readonly DataObjectFactory $dataObjectFactory,
+        private readonly RelationContext $relationContext
     ) {
     }
 
@@ -75,6 +77,13 @@ class ConditionEvaluator
         if ($tree === []) {
             return true;
         }
+
+        // Fresh per-tree relation resolution: clears any memo carried over from
+        // a prior evaluation in the same (long-lived consumer) process. The
+        // RelatedEntity combines thread the fresh flag onto the context
+        // themselves from the model, so within this one tree a relation
+        // referenced by several conditions still costs a single lookup.
+        $this->relationContext->reset();
 
         $rule = $this->workflowRuleFactory->create();
         $rule->setEntityType($entityType);

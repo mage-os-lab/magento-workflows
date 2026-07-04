@@ -5,6 +5,7 @@ namespace MageOS\Workflows\Model\Rule\Condition\Customer;
 
 use Magento\Framework\DataObject;
 use Magento\Rule\Model\Condition\Context;
+use MageOS\Workflows\Model\Relation\RelationPool;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;
 use MageOS\Workflows\Model\Rule\Condition\TriggerData;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
@@ -25,6 +26,7 @@ class Combine extends AbstractWorkflowCombine
     public function __construct(
         Context $context,
         private readonly Attribute $conditionAttribute,
+        private readonly RelationPool $relationPool,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -46,7 +48,8 @@ class Combine extends AbstractWorkflowCombine
                 ['value' => self::class, 'label' => __('Conditions Combination')],
                 ['value' => TriggerData::class, 'label' => __('Trigger Data (advanced)')],
                 ['label' => __('Customer Attribute'), 'value' => $attributeOptions],
-            ]
+            ],
+            $this->relatedEntityChildOptions($this->relationPool, HydrationProviderInterface::TYPE_CUSTOMER)
         );
     }
 
