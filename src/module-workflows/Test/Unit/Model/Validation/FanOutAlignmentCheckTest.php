@@ -120,6 +120,21 @@ class FanOutAlignmentCheckTest extends TestCase
         $this->assertSame([], $messages);
     }
 
+    public function testFanOutOnAggregatedWorkflowRejected(): void
+    {
+        // "Expand per target, then collapse into one digest" is a composition
+        // neither fan-out nor batch aggregation documents — refused at save.
+        $context = new ValidationContext(
+            ValidationContext::MODE_ADMIN_CONTEXT,
+            ValidationContext::KIND_AGGREGATED
+        );
+
+        $messages = $this->check()->check($this->subject($this->fanOut()), $context);
+
+        $this->assertCount(1, $messages);
+        $this->assertSame(FanOutAlignmentCheck::CODE_AGGREGATED_UNSUPPORTED, $messages[0]->getCode());
+    }
+
     public function testAlignedFanOutPasses(): void
     {
         // trigger entity customer == relation source customer;

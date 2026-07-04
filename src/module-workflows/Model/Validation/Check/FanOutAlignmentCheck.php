@@ -32,6 +32,7 @@ use MageOS\Workflows\Model\Validation\ValidationSubject;
 class FanOutAlignmentCheck implements CheckInterface
 {
     public const CODE_MALFORMED = 'FAN_OUT_MALFORMED';
+    public const CODE_AGGREGATED_UNSUPPORTED = 'FAN_OUT_AGGREGATED_UNSUPPORTED';
     public const CODE_SCHEDULE_UNSUPPORTED = 'FAN_OUT_SCHEDULE_UNSUPPORTED';
     public const CODE_UNKNOWN_RELATION = 'FAN_OUT_UNKNOWN_RELATION';
     public const CODE_SOURCE_MISMATCH = 'FAN_OUT_SOURCE_MISMATCH';
@@ -51,6 +52,21 @@ class FanOutAlignmentCheck implements CheckInterface
         $fanOut = $subject->getFanOut();
         if ($fanOut === null || trim($fanOut) === '') {
             return [];
+        }
+
+        // Fan-out on an aggregated workflow would silently compose "expand
+        // per target, then collapse into one digest" — a direction neither
+        // feature documents or tests (batch-aggregation reserves only the
+        // inverse, digest→fan-out, as future work). Refuse the combination
+        // until it is a designed behavior.
+        if ($context->getWorkflowKind() === ValidationContext::KIND_AGGREGATED) {
+            return [ValidationMessage::error(
+                self::CODE_AGGREGATED_UNSUPPORTED,
+                (string) __(
+                    'Aggregated (batch) workflows cannot use fan-out. Remove the fan-out clause '
+                    . 'or the aggregation configuration.'
+                )
+            )];
         }
 
         $config = json_decode($fanOut, true);

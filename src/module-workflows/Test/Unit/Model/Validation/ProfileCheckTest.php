@@ -157,6 +157,44 @@ class ProfileCheckTest extends TestCase
         $this->assertTrue(in_array(ProfileCheck::CODE_REVALIDATE_FORBIDDEN, $this->codes($messages), true));
     }
 
+    public function testAbsentRevalidateOnBranchForbidden(): void
+    {
+        // Branch/switch default to revalidate_entity = true when the key is
+        // absent (the executor's `?? true` convention) — an omitted key in an
+        // aggregated workflow must be flagged exactly like an explicit true,
+        // or REST/CLI-authored definitions pass validation and fail-close at
+        // run time against entity_id = 0.
+        $definition = $this->definition([
+            's1' => [
+                'type' => 'branch',
+                'conditions_serialized' => null,
+                'on_true' => null,
+                'on_false' => null,
+            ],
+        ]);
+
+        $messages = $this->check()->check($this->subject($definition), $this->aggregatedContext());
+
+        $this->assertTrue(in_array(ProfileCheck::CODE_REVALIDATE_FORBIDDEN, $this->codes($messages), true));
+    }
+
+    public function testExplicitFalseRevalidateOnBranchAllowed(): void
+    {
+        $definition = $this->definition([
+            's1' => [
+                'type' => 'branch',
+                'revalidate_entity' => false,
+                'conditions_serialized' => null,
+                'on_true' => null,
+                'on_false' => null,
+            ],
+        ]);
+
+        $messages = $this->check()->check($this->subject($definition), $this->aggregatedContext());
+
+        $this->assertFalse(in_array(ProfileCheck::CODE_REVALIDATE_FORBIDDEN, $this->codes($messages), true));
+    }
+
     public function testCrossEntityRootConditionForbidden(): void
     {
         $definition = $this->definition([

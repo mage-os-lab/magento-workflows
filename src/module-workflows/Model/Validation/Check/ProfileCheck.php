@@ -126,7 +126,8 @@ class ProfileCheck implements CheckInterface
                     self::CODE_REVALIDATE_FORBIDDEN,
                     (string) __(
                         'Step "%1": re-validating the entity is not available in aggregated workflows — '
-                        . 'batch executions have no single entity and evaluate the event snapshot only.',
+                        . 'batch executions have no single entity and evaluate the event snapshot only. '
+                        . 'Set "revalidate_entity": false explicitly (branch/switch steps default to true).',
                         $stepKey
                     ),
                     $stepKey
@@ -157,11 +158,23 @@ class ProfileCheck implements CheckInterface
     }
 
     /**
+     * Whether the step would re-hydrate at run time. Branch/switch steps
+     * default to revalidate_entity = true when the key is ABSENT (the
+     * executor's `?? true` convention, docs/06 delay semantics) — so only an
+     * explicit false is safe in an aggregated workflow; an omitted key must
+     * be flagged too, or a REST/CLI-authored definition passes validation and
+     * then fail-closes every branch at run time against entity_id = 0.
+     * Other step types never consult the flag.
+     *
      * @param array<string, mixed> $step
      */
     private function hasRevalidate(array $step): bool
     {
-        return ($step['revalidate_entity'] ?? null) === true;
+        $type = (string) ($step['type'] ?? '');
+        if (!in_array($type, [Definition::STEP_BRANCH, Definition::STEP_SWITCH], true)) {
+            return ($step['revalidate_entity'] ?? null) === true;
+        }
+        return (bool) ($step['revalidate_entity'] ?? true);
     }
 
     /**
