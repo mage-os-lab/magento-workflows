@@ -4,6 +4,7 @@
     <module name="MageOS_Workflows">
         <sequence>
             <module name="MageOS_AsyncEvents"/>
+            <module name="Magento_ImportExport"/>
         </sequence>
     </module>
 </config>

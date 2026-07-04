@@ -193,6 +193,16 @@
                 type="MageOS\Workflows\Plugin\ValidateWorkflowOnSave"/>
     </type>
 
+    <!-- Bulk-operation suppression (07 loop prevention): the known-bulk-path
+         wiring for the suppression API — CSV imports funnel through
+         Magento\ImportExport\Model\Import::importSource(), so an around-plugin
+         wraps it in WorkflowSuppression::scope() while
+         mageos_workflows/general/suppress_bulk_imports is enabled (default). -->
+    <type name="Magento\ImportExport\Model\Import">
+        <plugin name="mageos_workflows_suppress_bulk_imports"
+                type="MageOS\Workflows\Plugin\SuppressWorkflowsDuringImport"/>
+    </type>
+
     <!-- Batch aggregation (05): the restricted 'aggregated' definition profile.
          Non-null mageos_workflow.aggregation makes a workflow this kind (see
          ValidateWorkflowOnSave). No wait steps; batch-capable actions only
