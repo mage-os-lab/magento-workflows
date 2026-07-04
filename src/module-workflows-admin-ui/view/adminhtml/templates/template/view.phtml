@@ -1,0 +1,76 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Template\View $block
+ */
+$summary = $block->getSummary();
+$requires = $block->getRequires();
+$parameters = $block->getParameters();
+$compat = $block->getCompatibility();
+?>
+<div class="admin__page-section">
+    <div class="admin__page-section-title">
+        <span class="title"><?= $block->escapeHtml($block->getTitle()) ?></span>
+    </div>
+    <p class="admin__field-note">
+        <?= $block->escapeHtml($block->getCategory()) ?> &middot; v<?= $block->escapeHtml($block->getVersion()) ?>
+    </p>
+    <p><?= $block->escapeHtml($block->getDescription()) ?></p>
+
+    <div class="admin__field">
+        <label class="admin__field-label"><?= $block->escapeHtml(__('What it does')) ?></label>
+        <div class="admin__field-control">
+            <p class="mageos-template-plain"><?= $block->escapeHtml($block->getPlainLanguage()) ?></p>
+        </div>
+    </div>
+
+    <div class="admin__field">
+        <label class="admin__field-label"><?= $block->escapeHtml(__('Requirements')) ?></label>
+        <div class="admin__field-control">
+            <ul class="mageos-template-requires">
+                <?php if (!empty($requires['edition']) && $requires['edition'] !== 'any'): ?>
+                    <li><?= $block->escapeHtml(__('Edition: %1', $requires['edition'])) ?></li>
+                <?php endif; ?>
+                <?php foreach ((array) ($requires['triggers'] ?? []) as $trigger): ?>
+                    <li><?= $block->escapeHtml(__('Trigger: %1', $trigger)) ?></li>
+                <?php endforeach; ?>
+                <?php foreach ((array) ($requires['actions'] ?? []) as $action): ?>
+                    <li><?= $block->escapeHtml(__('Action: %1', $action)) ?></li>
+                <?php endforeach; ?>
+                <?php foreach ((array) ($requires['modules'] ?? []) as $module): ?>
+                    <li><?= $block->escapeHtml(__('Module: %1', $module)) ?></li>
+                <?php endforeach; ?>
+            </ul>
+            <?php if (!$compat->isCompatible()): ?>
+                <?php foreach ($compat->getMessages() as $message): ?>
+                    <div class="message message-warning"><?= $block->escapeHtml($message) ?></div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <?php if ($parameters !== []): ?>
+        <div class="admin__field">
+            <label class="admin__field-label"><?= $block->escapeHtml(__('Questions you will answer')) ?></label>
+            <div class="admin__field-control">
+                <ul class="mageos-template-params">
+                    <?php foreach ($parameters as $parameter): ?>
+                        <li><?= $block->escapeHtml($block->parameterLabel($parameter)) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <div class="admin__field">
+        <div class="admin__field-control">
+            <a class="action-default" href="<?= $block->escapeUrl($block->getGalleryUrl()) ?>">
+                <?= $block->escapeHtml(__('Back to gallery')) ?>
+            </a>
+            <?php if ($compat->isCompatible()): ?>
+                <a class="action-primary" href="<?= $block->escapeUrl($block->getInstallUrl()) ?>">
+                    <span><?= $block->escapeHtml(__('Install this template')) ?></span>
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
