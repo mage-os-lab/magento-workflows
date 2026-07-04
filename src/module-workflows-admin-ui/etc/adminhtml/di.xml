@@ -28,6 +28,16 @@
         </arguments>
     </type>
 
+    <!-- Dry-run entity picker (03): per-entity-type recent-entity providers.
+         New entity types append their own provider here. -->
+    <type name="MageOS\Workflows\Model\DryRun\RecentEntityProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="sales_order" xsi:type="object">MageOS\WorkflowsAdminUi\Model\DryRun\OrderRecentEntityProvider</item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Mass actions operate on the full domain collection (peer: MageOS_Workflows). -->
     <type name="MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\MassEnable">
         <arguments>
