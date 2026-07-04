@@ -109,9 +109,11 @@ config inspection.
 
 Two read-only killers-apps ship here:
 
-- **Execution overlay:** load an execution (existing `GET /V1/workflow-executions/:id` + steps),
-  tint the taken path with per-step status/duration/result — turns support/debugging from log
-  archaeology into a picture. Links from the execution grid.
+- **Execution overlay:** load an execution and its step rows — the execution read exists
+  (`GET /V1/workflow-executions/:id`) but step rows are *not* REST-exposed today, so this ships
+  a small `…/:id/steps` endpoint alongside — and tint the taken path with per-step
+  status/duration/result: support/debugging goes from log archaeology to a picture. Links from
+  the execution grid.
 - **Dry-run overlay:** render the [dry-run](dry-run.md) trace on the graph, including the
   both-paths wait exploration as parallel tinted paths.
 

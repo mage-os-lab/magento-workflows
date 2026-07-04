@@ -182,8 +182,9 @@ no-code-execution stance:
   explicitly [fan-out](fan-out.md)'s territory — a future `batch → fan-out` composition is noted
   there, not smuggled in here.
 - **Item snapshots are projections**: configurable field list per workflow (default: identity
-  fields + the attributes referenced by conditions/templates), item cap default 500 with
-  `count`/`overflow` always accurate. Keeps batch rows small and bounds the PII surface; batch
+  fields + the attributes named in the root conditions — template-referenced fields are *not*
+  auto-derived, that would mean parsing `{{ }}` out of every action config; declare them in the
+  explicit projection list), item cap default 500 with `count`/`overflow` always accurate. Keeps batch rows small and bounds the PII surface; batch
   items and batch executions get the same TTL pruning as execution context
   ([10 §PII containment](../10-security.md#pii-containment)).
 

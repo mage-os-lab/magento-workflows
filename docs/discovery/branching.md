@@ -53,8 +53,8 @@ becomes the contract that protects the executor.
 re-parses `definition_snapshot` on every resume, so parse-time rules are retroactive across all
 parked executions. Validation policy must live *outside* the parser. Severity split:
 
-- **Errors (block save/import):** cycles; `entry` unreachable of itself (trivially true) — more precisely, any cycle reachable from `entry`; branch/switch with *all* edges null **and** no conditions (pure dead end is fine — `stop` exists — but flag it); wait step whose `on_event` and `on_timeout` are both null.
-- **Warnings (surface in UI + CLI, don't block):** steps unreachable from `entry`; `on_true`/`on_false` pointing at the same step; branch directly after a delay with `revalidate_entity: false` (probably a mistake, per [06 §Delay semantics](../06-conditions.md#delay-semantics)).
+- **Errors (block save/import):** cycles — more precisely, any cycle reachable from `entry`; wait step whose `on_event` and `on_timeout` are both null.
+- **Warnings (surface in UI + CLI, don't block):** steps unreachable from `entry`; branch/switch with *all* edges null (the shipped form assembler can emit exactly this as a last-row branch, so it must stay re-savable — warning, not error); `on_true`/`on_false` pointing at the same step; branch directly after a delay with `revalidate_entity: false` (probably a mistake, per [06 §Delay semantics](../06-conditions.md#delay-semantics)).
 
 Cycles are **errors**, not warnings: the engine has no loop semantics (explicit non-goal,
 [01 §Non-goals](../01-overview.md#non-goals-for-v1)), so a cycle is always authoring error, and

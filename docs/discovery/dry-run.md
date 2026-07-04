@@ -163,11 +163,14 @@ This is the recommendation's main liability; controls, in order of leverage:
    runs *before* the simulation branch in production (`Executor::runActionStep` resolves config
    at ~237, ahead of the `isSimulation()` check at ~241), so sharing the production
    `SecretsProviderInterface` would resolve real secret values into trace content.
-2. **Conformance fixtures run through both engines.** Extend `spec/fixtures/` with paired
-   expectations: for each fixture + synthetic payload, the step *sequence* the executor produces
-   (in shadow status, via the existing unit-test harness) must equal the path `DryRunService`
-   reports. A new step type (e.g. `switch`, [branching.md](branching.md)) that lands in one
-   walker but not the other fails this suite loudly.
+2. **Conformance fixtures run through both engines** — in two layers, because the executor is
+   DB-backed (repository saves + raw SQL) and has no unit harness today: a unit-level
+   routing-equivalence suite (both walkers' edge selection checked against shared fixture
+   expectations) ships immediately, and the full dual-engine diff (fixture dispatched through
+   the real executor in shadow status vs the `DryRunService` path) is authored now but executes
+   at the live-install integration milestone that already gates GA. A new step type (e.g.
+   `switch`, [branching.md](branching.md)) that lands in one walker but not the other fails the
+   unit layer loudly.
 3. **Single routing table.** Extract edge-selection (`type` → which config key names the next
    step) into a shared helper on `Definition` so "what edges does a branch have" is written once.
    This is a small, safe extraction — unlike extracting the executor's persistence choreography.

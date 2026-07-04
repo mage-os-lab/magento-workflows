@@ -13,10 +13,10 @@ condition/hydration layer — no executor, queue, or persistence changes at all.
 
 | Component | Home | Intent |
 |---|---|---|
-| `RelationInterface` + `RelationPool` (F5) | `Api/`, `Model/Relation/` | The extension surface; di.xml type-array like `ActionPool` |
-| `RelationContext` (F5) | `Model/Relation/` | Per-execution memoization (`source_id > 0` guard), fresh-flag threading, website-scope resolution (source-entity-derived; per-website vs global share mode; fail-toward-false + warn when indeterminable) |
+| `RelationInterface` + `RelationPool` (F5) | `Api/`, `Model/Relation/` | The extension surface; di.xml type-array — mirror `Model/Action/ActionPool.php` |
+| `RelationContext` (F5) | `Model/Relation/` | The pinned F5 surface (`resolve(code, $source)`, `resolveWebsiteId`, `isFresh`) — memoization with the `source_id > 0` guard, fresh-flag threading, website scoping (per-website vs global share mode; fail-toward-false + warn when indeterminable). Feature code never calls `RelationInterface::resolveIds()` directly |
 | `RelatedEntity\Combine` | `Model/Rule/Condition/RelatedEntity/` | One generic combine: relation select, EXISTS/NOT EXISTS value, ANY/ALL/NONE for cardinality-many; resolves ids → `getEntity()` → `propagateHydrationKeys()` (the existing traversal primitive); children are the target root's existing leaf conditions |
-| Cap semantics | in the combine | ANY/NONE evaluate first-N + warn; ALL over truncated = false + warn |
+| Cap semantics | in the combine | ANY/NONE evaluate first-N + warn; ALL over truncated = false + warn. Cap config: `mageos_workflows/guards/relation_cap`, default 100 (the existing guards convention) |
 | Seed resolvers | `Model/Relation/Resolver/` | `order.customer` (formalizes the FK subtree), `order.customer_by_email`, `quote.customer_by_email`, `order.orders_by_email`, `customer.open_orders` — per discovery §4; state lists fixed in the resolver, not merchant-config |
 | Classifier node-type extension (F4) | `Model/Rule/AttributeClassifier` | Registry of hydration-forcing node types; `RelatedEntity` is the first entry |
 | Save-time rule | F2 check | Children under NOT EXISTS = **hard error** (the operators aren't complements once children exist — adversarial-review finding) |
@@ -25,11 +25,11 @@ condition/hydration layer — no executor, queue, or persistence changes at all.
 
 ## Stages
 
-| # | Stage | Notes |
+| # | Stage | Notes / done-when |
 |---|---|---|
-| 1 | F5 skeleton: interface, pool, `RelationContext` with scoping + memoization rules + tests | The multi-site correctness argument is made here, once |
-| 2 | `RelatedEntity\Combine` + classifier node-type extension + NOT-EXISTS save rule | Condition wiring into the four root combines' `getNewChildSelectOptions()` |
-| 3 | Seed resolvers + per-resolver tests (dual share-mode, storeless dispatch, guest cases) + a conformance-style fixture (guest-nudge workflow) | The flagship ships here |
+| 1 | F5 skeleton: interface, pool, `RelationContext` with scoping + memoization rules + tests | The multi-site correctness argument is made here, once. Done when: the share-mode × store-presence matrix tests pass |
+| 2 | `RelatedEntity\Combine` + classifier node-type extension + NOT-EXISTS save rule | Wire into root combines **only where `RelationPool` has ≥1 relation with that source entity** — Order/Quote/Customer in the seed set, **not Product** (it sources no relations; the discovery rule is conditional by design). Done when: childless NOT-EXISTS classifies `needs_hydration`; Product's child-select options are asserted unchanged; NOT-EXISTS-with-children save is a hard error |
+| 3 | Seed resolvers + per-resolver tests (dual share-mode, storeless dispatch, guest cases) + a conformance-style fixture (guest-nudge workflow) | The flagship ships here. Done when: the guest-nudge fixture evaluates correctly in both share modes |
 | 4 | Plain language, UI child options, `meta/relations` endpoint, docs (06 update) | |
 
 ## Tests

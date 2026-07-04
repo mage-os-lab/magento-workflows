@@ -23,7 +23,7 @@ with the shipped engine instead of each carving its own seams.
 
 01 Branching        ← F1, F2, F6(plain language)
 02 Cross-referencing← F4, F5
-03 Dry-run          ← F1(edge helper), F2, F6, F7
+03 Dry-run          ← F1(edge helper), F2, F6, F7 (+ owns F8 `mode` column)
 04 Fan-out          ← F5, F8(origin_uuid, fan_out col); extends 03's traces
 05 Batch aggregation← F2(profile checks), F4, F8(batch tables); extends 03
 06 Template gallery ← F2, F3, F6(plain language); wants 03 for install→dry-run→enable

@@ -61,9 +61,10 @@ Extend — don't fork — the export envelope. New format tag `mageos-workflow-t
 
 Design points:
 
-- **`workflow` is a verbatim export envelope body** — one parser/validator for both; a template
-  is "an export plus a face". Exporting an existing workflow "as template" becomes a trivial
-  authoring path for agencies.
+- **`workflow` carries the export envelope's fields** — the installer lifts them into a
+  synthetic envelope (re-injecting the `format` tag) for the shared import pipeline, so there is
+  one parser/validator lineage; a template is "an export plus a face", and exporting an existing
+  workflow "as template" becomes a trivial authoring path for agencies.
 - **`requires` is checked before the install button is enabled**: every trigger in
   `TriggerRegistry`, every action in `ActionPool`, `schema` ≤ engine's `SCHEMA_VERSION`, module
   presence (e.g. MSI for `product.set_stock` with `source_code`), edition for Commerce-only

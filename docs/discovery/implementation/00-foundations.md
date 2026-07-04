@@ -17,8 +17,8 @@ One coordinated revision of the format contract, in `module-workflows` + `spec/`
 | Piece | Intent |
 |---|---|
 | `SCHEMA_VERSIONS = [1, 2, 3]`; `switch` step parsing + per-type validation in `Definition` | The one new semantic feature of schema 3 ([branching §3](../branching.md)) |
-| Optional top-level `ui` block: **preserved verbatim** through `fromArray()`/`toArray()`, whitelisted (no general unknown-key passthrough), never read by the engine | Canvas layout persistence ([canvas §5](../canvas.md)); non-semantic, so legal at any schema version |
-| **Edge-routing helper** on `Definition` (per step: the ordered map of edge-name → target, derived from step type) | The single source of "what edges does step type X have". Consumers: `Executor::walk`, `GraphValidator`, `DryRunService`, `PlainLanguageRenderer`, canvas mapping layer, dry-run's dual-engine conformance suite. Today this knowledge is duplicated in at least three switch statements; every new step type currently means N hand-synchronized edits — this helper collapses that to one. |
+| Optional top-level `ui` block: **preserved verbatim** through `fromArray()`/`toArray()`, whitelisted (no general unknown-key passthrough), never read by the engine | Canvas layout persistence ([canvas §5](../canvas.md)); non-semantic, so legal at any schema version. Ships in 01 stage 4 with the spec release, exercised immediately by the ui round-trip fixture; canvas (07) is its first *product* consumer |
+| **Edge-routing helper** on `Definition` — pinned signature: `getStepEdges(string $stepKey): array<string, ?string>` returning the step's **full declared edge map read from step data** (action/delay → `['next'=>…]`; branch → `['on_true'=>…, 'on_false'=>…]`; wait → `['on_event'=>…, 'on_timeout'=>…]`; switch → one `case:<key>` entry per case plus `'default'` — switch edges are data-dependent, not derivable from the type alone). **Topology only**: runtime *selection* (which edge to follow) stays in each consumer; `runSwitchStep` reads `cases[]` (targets + conditions) directly | The single source of "what edges does this step have". Consumers: the `Executor` `run*Step` methods' edge returns, `ResumeConsumer` (the only runtime follower of `on_event`/`on_timeout` — do not miss it), `GraphCheck`, `DryRunService` fan-out, `PlainLanguageRenderer`, canvas mapping layer. Today this knowledge is duplicated across at least four sites (`Executor` run-methods, `PlainLanguageRenderer`, `ResumeConsumer`, and `Definition`'s flat edge list); every new step type means hand-synchronized edits — this helper collapses that to one |
 | `spec/workflow-definition.schema.json` v3 (switch schema, `ui` relaxation, everything else stays `additionalProperties:false`) + fixtures (switch routing, ui round-trip) + a `spec/CHANGELOG` | Third parties get one semver event, one migration note |
 
 Deliberately **not** in F1: any executor behavior change beyond `runSwitchStep` (which rides
@@ -30,29 +30,48 @@ versioned evolution, not plugins).
 *First consumer: [01 — Branching](01-branching.md) (GraphValidator). Extended by: batch profile
 checks, fan-out type-alignment, gallery install.*
 
-Today validation is scattered: structural checks in `Definition::fromArray`, ACL re-auth in the
-Save controller, envelope/action checks in `ImportCommand`, nothing topological anywhere. The
-foundation is one orchestrator with a DI-registered check pool:
+Today validation is scattered — and one path has **none**: structural checks live in
+`Definition::fromArray`, ACL re-auth and the conditions-shape check in the Save controller,
+envelope/action checks in `ImportCommand`, nothing topological anywhere, and **REST save
+(`POST/PUT /V1/workflows` → `WorkflowRepositoryInterface::save`) performs zero validation** —
+not even JSON parsing, and critically no per-action ACL (`authorizeActionCodes` exists only on
+the admin controller path). Wiring F2 into REST is therefore a **deliberate tightening, not a
+consolidation**: it closes a real per-action-ACL bypass and will start rejecting previously
+accepted invalid payloads. Document it as a breaking change for API clients and add contract
+tests (invalid definition → 400; unauthorized action code → 403).
 
 ```
 Model/Validation/
-  WorkflowValidator          orchestrator: runs checks, aggregates typed results
-  ValidationResult           errors (block) + warnings (surface), machine codes + __() messages
+  WorkflowValidator          orchestrator: validate(Definition $d, ValidationContext $ctx)
+  ValidationContext          carries auth mode (ADMIN_CONTEXT | SYSTEM), workflow kind, dry-run flag
+  ValidationResult           list of ValidationMessage
+  ValidationMessage          {severity: error|warning, code: string (stable machine code),
+                              message: string (__()'d), target?: {step_key?: string, edge?: string}}
+                             — target.step_key is REQUIRED where applicable: the canvas pins
+                             messages to nodes and the form anchors them to steps
   Check/ (pool, di.xml-registered, ordered)
     StructuralCheck          wraps Definition::fromJson (parse errors become typed results)
-    GraphCheck               the GraphValidator: cycles/entry = errors; unreachable/dead-edge = warnings
+    GraphCheck               cycles/entry = errors; unreachable/dead-edge/post-delay-stale = warnings
+                             (codes: GRAPH_CYCLE, GRAPH_UNREACHABLE_STEP, GRAPH_DEAD_EDGE,
+                              GRAPH_POST_DELAY_STALE)
     ProfileCheck             step-type + action allowlist per workflow kind (standard vs aggregated —
                              added by 05; inert until then)
-    ActionAuthorizationCheck relocated authorizeActionCodes logic (Save keeps behavior, loses ownership)
+    ActionCodesCheck         unknown action codes = error (always runs, every context)
+    ActionAuthorizationCheck per-action ACL (relocated from Save); no-ops when
+                             ctx auth mode = SYSTEM or ctx is a dry-run (not an authoring path)
     ConditionsShapeCheck     the existing shallow conditions_serialized JSON check
 ```
 
-Wired into: `Save` controller, REST save (via repository-adjacent plugin or explicit call in the
-web-api path — decide at implementation; the invariant is *every* authoring path runs it),
-`WorkflowImporter` (F3), gallery install. **Never** into the executor's snapshot parsing —
-that's the retroactivity trap the discovery doc pinned ([branching §2](../branching.md)).
-Warnings travel: form messages in admin, an extension attribute on REST save responses, console
-output on CLI import.
+**Wiring decision (made here, not at implementation): a `before`-plugin on
+`WorkflowRepository::save`.** Every authoring path funnels through the repository (admin Save,
+REST, CLI import, future gallery), and the executor never calls it (it parses
+`definition_snapshot` directly) — so the plugin is the single chokepoint that structurally
+cannot leak into the retroactivity trap ([branching §2](../branching.md)). Required guard: the
+plugin validates **only when definition or conditions changed** (reuse the repository's existing
+`isDefinitionChanged` idiom) — status-only saves (mass enable/disable) must not re-validate a
+stored definition, or disabling a workflow whose action module was uninstalled becomes
+impossible. Warnings travel: form messages in admin, an extension attribute on REST save
+responses, console output on CLI import.
 
 ## F3 — WorkflowImporter (one import path)
 
@@ -93,15 +112,25 @@ discovering it — keeps the class pure and shim-testable.
 
 ```
 Api/RelationInterface            code, label, source/target entity types, cardinality, resolveIds()
-Model/Relation/RelationPool      di.xml type-array (the ActionPool pattern — this IS the extension surface)
-Model/Relation/RelationContext   per-execution memoization (keyed relation+source_id, skip when id<=0),
-                                 fresh-flag threading, website-scope resolution helper (source-entity-derived,
-                                 fail-toward-false when indeterminable — the storeless-dispatch rule)
+Model/Relation/RelationPool      di.xml type-array (mirror: Model/Action/ActionPool.php — this IS
+                                 the extension surface)
+Model/Relation/RelationContext   the ONLY entry point feature code may call:
+                                   resolve(string $relationCode, DataObject $source): int[]
+                                     — memoizes on (relation, source entity_id), skips caching when
+                                       id <= 0, applies website scoping, catches resolver exceptions
+                                       (fail-toward-false + log)
+                                   resolveWebsiteId(DataObject $source): ?int
+                                     — source-entity-derived (store_id column), honors
+                                       customer/account_share/scope; null = indeterminable
+                                   isFresh(): bool — threads revalidate_entity
 Model/Relation/Resolver/*        seed resolvers (see 02)
 ```
 
-The scoping and memoization rules live in `RelationContext` — **not** in individual resolvers —
-so every relation inherits them and the multi-site correctness argument is made once.
+**Invariant:** all resolution goes through `RelationContext::resolve()`;
+`RelationInterface::resolveIds()` is context-internal and must never be called by feature code
+(a consumer bypassing the context silently loses memoization, the storeless fail-toward-false
+rule, and website scoping — the exact guarantees this design centralizes). Both consumers —
+02's `RelatedEntity` combine and 04's `FanOutExpander` — bind to the context.
 
 ## F6 — REST metadata + validate endpoints; PlainLanguageRenderer relocation
 
@@ -115,21 +144,42 @@ customer: [07 — Canvas](07-canvas.md).*
   batch phrasing later.
 - New webapi routes in `module-workflows`:
   `GET /V1/workflows/meta/actions|triggers|entity-types|relations`, `GET …/meta/secrets`
-  (names only), `POST /V1/workflows/validate` (runs F2, returns typed errors/warnings +
+  (names only), `POST /V1/workflows/validate` (runs F2, returns the `ValidationResult` messages +
   plain-language rendering). ACL: meta under `::view`, validate under `::manage`.
-- Option-source question for `getConfigForm()` select fields (bounded lists inline, large lists
-  via a search endpoint) is decided **here**, once, because gallery parameter forms and canvas
-  config panels both consume the answer.
+- **Each endpoint has one owning stage** (an endpoint referenced by a plan but built by no stage
+  is how contracts drift): `validate` → 01 stage 2; `meta/relations` → 02 stage 4;
+  `meta/actions|triggers|entity-types|secrets` + the options mechanism below → 07 stage 1
+  (pull earlier if 06 stage 4 lands first — first consumer builds it).
+- **Option-source decision (recorded here, not deferred):** a `getConfigForm()` select field
+  either carries inline options — `options: [{value, label}]`, for sources the provider declares
+  bounded (guideline ≤ ~200 entries: order statuses, customer groups, entity types) — or a
+  search reference: `options_search: {source: "<code>", min_chars: 2}` resolved via a new
+  `GET /V1/workflows/meta/options?source=<code>&q=…` endpoint backed by a DI-registered
+  option-source pool (large sources: cart price rules, email templates, products). Gallery
+  parameter fields (`entity:*`, `select`) and canvas config panels both render from this one
+  union shape. SPI impact is additive: field defs gain the optional `options`/`options_search`
+  keys; no `ActionMetadataInterface` method change.
 
 ## F7 — Simulation substrate
 
 *First consumer: [03 — Dry-run](03-dry-run.md). Offered to: shadow mode.*
 
 `Model/Secrets/RedactingSecretsProvider` — a decorator over `SecretsProviderInterface` returning
-`***<name>***`. Injected wherever a simulation context builds its resolver. A system-config
-toggle offers the same decorator to shadow-mode executions (default off initially — behavior
-change for existing shadow users; flip the default at the next minor). SDK docs gain the
-contract line: `simulate()` performs no I/O beyond entity reads.
+`***<name>***`. The production `VariableResolver` already takes its provider by DI, so the work
+is a named virtualType (e.g. `VariableResolverForDryRun`) binding the decorator — never a swap
+of the shared production instance. A system-config toggle
+(`mageos_workflows/simulation/redact_shadow_secrets`, default 0) offers the same decorator to
+shadow-mode executions (behavior change for existing shadow users; flip the default at the next
+minor). SDK docs gain the contract line: `simulate()` performs no I/O beyond entity reads.
+
+**Config-path convention** (all new settings follow the existing `mageos_workflows/<group>/<field>`
+pattern, declared in `etc/config.xml` + `etc/adminhtml/system.xml`): the paths reserved by these
+plans are `mageos_workflows/simulation/redact_shadow_secrets` (F7),
+`mageos_workflows/dry_run/persist` + `mageos_workflows/dry_run/retention_days` (03 — a separate
+knob from the existing `mageos_workflows/retention/days`, applied by extending the existing
+`PruneExecutions` cron), `mageos_workflows/guards/relation_cap` (02, default 100), and
+`mageos_workflows/guards/fan_out_cap` (04, default 100 — the global ceiling per-workflow caps
+clamp to).
 
 ## F8 — DB evolution map
 
