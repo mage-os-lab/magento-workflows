@@ -76,10 +76,10 @@
                 <sortable>false</sortable>
             </settings>
         </column>
-        <column name="entity_id">
+        <column name="entity_id" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\ExecutionEntity">
             <settings>
                 <filter>textRange</filter>
-                <label translate="true">Entity ID</label>
+                <label translate="true">Entity</label>
             </settings>
         </column>
         <column name="store_id" component="Magento_Ui/js/grid/columns/select">

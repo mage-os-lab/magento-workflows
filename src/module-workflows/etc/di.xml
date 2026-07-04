@@ -17,6 +17,11 @@
     <preference for="MageOS\Workflows\Api\DispatcherInterface"
                 type="MageOS\Workflows\Model\Engine\Dispatcher"/>
 
+    <!-- Batch aggregation (05): snapshot-only membership evaluator shared by
+         B1 (collected mode) and B2 (accumulator). -->
+    <preference for="MageOS\Workflows\Model\Aggregation\MembershipEvaluatorInterface"
+                type="MageOS\Workflows\Model\Aggregation\MembershipEvaluator"/>
+
     <!-- Validate endpoint (F6) -->
     <preference for="MageOS\Workflows\Api\DefinitionValidationInterface"
                 type="MageOS\Workflows\Model\Webapi\DefinitionValidation"/>
