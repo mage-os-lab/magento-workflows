@@ -16,6 +16,10 @@
             <simulation>
                 <redact_shadow_secrets>0</redact_shadow_secrets>
             </simulation>
+            <dry_run>
+                <persist>1</persist>
+                <retention_days>7</retention_days>
+            </dry_run>
             <retention>
                 <days>90</days>
             </retention>

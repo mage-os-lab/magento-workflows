@@ -39,6 +39,16 @@ $execution = $block->getExecution();
                     <td><?= $block->escapeHtml($execution->getStatus()) ?></td>
                 </tr>
                 <tr>
+                    <th><?= $block->escapeHtml(__('Run Mode')) ?></th>
+                    <td>
+                        <?php if ($block->isDryRun()): ?>
+                            <span class="grid-severity-notice"><span><?= $block->escapeHtml(__('Dry-run (preview — no side effects)')) ?></span></span>
+                        <?php else: ?>
+                            <?= $block->escapeHtml(__('Live')) ?>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
                     <th><?= $block->escapeHtml(__('Chain Depth')) ?></th>
                     <td><?= $block->escapeHtml((string) $execution->getChainDepth()) ?></td>
                 </tr>

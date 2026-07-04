@@ -81,6 +81,19 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
             </group>
+            <group id="dry_run" translate="label" type="text" sortOrder="46" showInDefault="1">
+                <label>Dry-Run</label>
+                <field id="persist" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Persist Admin Dry-Runs of Saved Workflows</label>
+                    <comment>When enabled, an admin dry-run of a SAVED workflow is recorded as a dry_run-mode execution row for audit and reuse of the execution view. Unsaved-definition dry-runs are always transient.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="retention_days" translate="label comment" type="text" sortOrder="20" showInDefault="1">
+                    <label>Prune Dry-Run Executions After (days)</label>
+                    <comment>Dry-run audit rows are pruned aggressively, separate from the live-execution retention. Default 7.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+            </group>
             <group id="scheduler" translate="label" type="text" sortOrder="50" showInDefault="1">
                 <label>Scheduler</label>
                 <field id="match_cap" translate="label comment" type="text" sortOrder="10" showInDefault="1">

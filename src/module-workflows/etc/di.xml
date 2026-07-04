@@ -31,6 +31,14 @@
     <preference for="MageOS\Workflows\Api\Data\RelationMetadataInterface"
                 type="MageOS\Workflows\Model\Webapi\RelationMetadata"/>
 
+    <!-- Dry-run endpoints (03) -->
+    <preference for="MageOS\Workflows\Api\WorkflowDryRunInterface"
+                type="MageOS\Workflows\Model\Webapi\WorkflowDryRun"/>
+    <preference for="MageOS\Workflows\Api\Data\DryRunResultInterface"
+                type="MageOS\Workflows\Model\Webapi\DryRunResult"/>
+    <preference for="MageOS\Workflows\Api\Data\DryRunTraceStepInterface"
+                type="MageOS\Workflows\Model\Webapi\DryRunTraceStep"/>
+
     <!-- Secrets -->
     <preference for="MageOS\Workflows\Model\Variable\SecretsProviderInterface"
                 type="MageOS\Workflows\Model\Secrets\ConfigSecretsProvider"/>
@@ -48,6 +56,36 @@
     <type name="MageOS\Workflows\Model\Engine\Executor">
         <arguments>
             <argument name="redactingVariableResolver" xsi:type="object">MageOS\Workflows\Model\Variable\VariableResolverForDryRun</argument>
+        </arguments>
+    </type>
+
+    <!-- Dry-run (03): the synchronous, side-effect-free walker. The Walker's
+         resolver is the redacting virtualType — config interpolation runs
+         ahead of the simulation branch, so a shared production resolver would
+         materialize real secret values into trace content (guardrail). -->
+    <type name="MageOS\Workflows\Model\DryRun\Walker">
+        <arguments>
+            <argument name="variableResolver" xsi:type="object">MageOS\Workflows\Model\Variable\VariableResolverForDryRun</argument>
+        </arguments>
+    </type>
+    <!-- The dry-run validation subset: Structural + Graph + ActionCodes +
+         ConditionsShape. ActionAuthorizationCheck is deliberately absent
+         (dry-run is not an authoring path); ProfileCheck is out of scope for
+         the preview. -->
+    <virtualType name="MageOS\Workflows\Model\Validation\WorkflowValidatorForDryRun"
+                 type="MageOS\Workflows\Model\Validation\WorkflowValidator">
+        <arguments>
+            <argument name="checks" xsi:type="array">
+                <item name="structural" xsi:type="object">MageOS\Workflows\Model\Validation\Check\StructuralCheck</item>
+                <item name="graph" xsi:type="object">MageOS\Workflows\Model\Validation\Check\GraphCheck</item>
+                <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>
+                <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="MageOS\Workflows\Model\DryRun\DryRunService">
+        <arguments>
+            <argument name="validator" xsi:type="object">MageOS\Workflows\Model\Validation\WorkflowValidatorForDryRun</argument>
         </arguments>
     </type>
 

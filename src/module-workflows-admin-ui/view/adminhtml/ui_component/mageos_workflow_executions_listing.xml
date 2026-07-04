@@ -98,6 +98,14 @@
                 <label translate="true">Status</label>
             </settings>
         </column>
+        <column name="mode" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\ExecutionMode"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Run Mode</label>
+            </settings>
+        </column>
         <column name="triggered_at" class="Magento\Ui\Component\Listing\Columns\Date">
             <settings>
                 <filter>dateRange</filter>

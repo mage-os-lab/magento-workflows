@@ -54,6 +54,21 @@ The runtime `MAX_STEPS_PER_RUN` cap (≈1000) is a backstop, not the primary def
 
 Errors block the save; warnings travel with it (admin form messages, REST responses, CLI output). Validation policy lives **outside** the parser: `Executor` re-parses `definition_snapshot` on every resume, so parse-time rules would be retroactive across parked executions — the pipeline never touches the executor's load path. The same pipeline runs read-only over an unsaved draft via `POST /V1/workflows/validate` and the edit form's "Refresh preview" button (see [Definition Format §Save-time validation](04-definition-format.md#save-time-validation)).
 
+## Dry-run (synchronous preview)
+
+Dry-run answers "what *would* this do to entity X, right now, before I enable it" — the immediacy complement to shadow mode's fidelity ([discovery](discovery/dry-run.md)). It is a **separate in-process walker** (`Model/DryRun/DryRunService` + `Walker` + `PathExplorer`); it does **not** run through the crash-safe `Executor`, add a simulation flag to it, or call `Executor::execute()`. Both walkers route over the one shared edge helper `Definition::getStepEdges()`, and a routing-equivalence conformance suite pins that they agree.
+
+The walker reuses every production semantic component (`ConditionEvaluator`, `VariableResolver`, `DelayCalculator`, action `simulate()`) and owns only routing, time compression, and trace assembly. Semantics that differ from production, all deliberate:
+
+- **Delays/waits never park** — they annotate the resolved resume time (same `DelayCalculator`, store timezone, max-delay clamp) and continue.
+- **Waits explore both edges** (no event can arrive in-process): `on_event` and `on_timeout` both render; shared tails where they reconverge are emitted once (rejoin dedupe), and the walk is capped on **distinct** step visits.
+- **Failures don't stop the walk** — a failed `simulate()`, or an unevaluable branch/switch condition, is flagged and the walk continues so every problem surfaces in one pass; steps reached only past a production-terminal failure are marked `production_stops_here`. An unevaluable branch/switch explores **all** edges (production would silently follow the false/`default` edge).
+- **Secrets are redacted** — the walker's resolver is the `VariableResolverForDryRun` virtualType, so `{{ secrets.* }}` renders `***name***`, never the value (traces render in the browser and may persist).
+
+Dry-run is gated by its own ACL resource `MageOS_Workflows::dry_run` (which does **not** imply `::manual_run`), and is reachable via the admin edit-form "Dry run" button, CLI `workflow:run --dry-run` (saved workflows by id), and REST `POST /V1/workflows/dry-run` and `POST /V1/workflows/:workflowId/dry-run`.
+
+**`mode` column.** `mageos_workflow_execution.mode` (`live` | `dry_run`, default `live`) marks persisted dry-run audit rows (admin dry-runs of *saved* workflows, on by default). It is a feature marker, **not** a side-effect predicate — a `mode=live` row under a shadow-status workflow still ran simulated; side effects remain governed by workflow status. Dry-run rows are pruned on a separate, shorter clock (see [15 — Operations](15-operations.md#retention--pii-pruning)).
+
 ## Crash safety and delivery semantics
 
 Executions are **resumable and crash-safe**:

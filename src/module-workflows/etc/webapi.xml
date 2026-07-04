@@ -23,6 +23,24 @@
             <resource ref="MageOS_Workflows::manage"/>
         </resources>
     </route>
+    <!-- Dry-run (03): synchronous, side-effect-free preview. Route shapes are
+         deliberately non-colliding with GET /V1/workflows/:workflowId (distinct
+         method + segment depth); a GET on …/dry-run falls through to
+         getById('dry-run') → 404 (pinned by a contract test) — do not "fix" it
+         into a collision. Gated by the dedicated ::dry_run resource, which does
+         NOT imply ::manual_run. -->
+    <route url="/V1/workflows/dry-run" method="POST">
+        <service class="MageOS\Workflows\Api\WorkflowDryRunInterface" method="runOnDefinition"/>
+        <resources>
+            <resource ref="MageOS_Workflows::dry_run"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId/dry-run" method="POST">
+        <service class="MageOS\Workflows\Api\WorkflowDryRunInterface" method="runOnSaved"/>
+        <resources>
+            <resource ref="MageOS_Workflows::dry_run"/>
+        </resources>
+    </route>
     <route url="/V1/workflows" method="POST">
         <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="save"/>
         <resources>

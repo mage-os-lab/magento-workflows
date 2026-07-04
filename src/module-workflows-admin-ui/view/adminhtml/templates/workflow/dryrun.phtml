@@ -1,0 +1,169 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\DryRun $block
+ */
+$input = $block->getInput();
+$trace = $block->getTrace();
+$recent = is_array($input['recent'] ?? null) ? $input['recent'] : [];
+?>
+<div class="admin__page-section">
+    <div class="admin__page-section-title">
+        <span class="title"><?= $block->escapeHtml(__('Dry-Run Preview')) ?></span>
+    </div>
+    <p class="admin__field-note">
+        <?= $block->escapeHtml(__('Runs the definition below against one entity with no side effects — no emails, no webhooks, no data changes. Delays and waits are compressed; waits show both outcomes.')) ?>
+    </p>
+
+    <form action="<?= $block->escapeUrl($block->getFormActionUrl()) ?>" method="post" id="mageos-dryrun-form">
+        <?= $block->getBlockHtml('formkey') ?>
+        <input type="hidden" name="run" value="1"/>
+        <input type="hidden" name="workflow_id" value="<?= $block->escapeHtmlAttr((string) ($input['workflow_id'] ?? '')) ?>"/>
+        <input type="hidden" name="entity_type" value="<?= $block->escapeHtmlAttr((string) ($input['entity_type'] ?? '')) ?>"/>
+        <input type="hidden" name="conditions_serialized" value="<?= $block->escapeHtmlAttr((string) ($input['conditions_serialized'] ?? '')) ?>"/>
+
+        <div class="admin__field">
+            <label class="admin__field-label"><?= $block->escapeHtml(__('Entity type')) ?></label>
+            <div class="admin__field-control">
+                <span><?= $block->escapeHtml((string) ($input['entity_type'] ?? '')) ?></span>
+            </div>
+        </div>
+
+        <div class="admin__field">
+            <label class="admin__field-label" for="mageos-dryrun-entity-id"><?= $block->escapeHtml(__('Entity')) ?></label>
+            <div class="admin__field-control">
+                <?php if ($recent !== []): ?>
+                    <select id="mageos-dryrun-recent" class="admin__control-select">
+                        <option value=""><?= $block->escapeHtml(__('— recent %1 —', $input['entity_type'] ?? '')) ?></option>
+                        <?php foreach ($recent as $row): ?>
+                            <option value="<?= $block->escapeHtmlAttr((string) $row['id']) ?>">
+                                <?= $block->escapeHtml((string) $row['label']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+                <input type="text" id="mageos-dryrun-entity-id" name="entity_id"
+                       class="admin__control-text"
+                       value="<?= $block->escapeHtmlAttr((string) ($input['entity_id'] ?? '')) ?>"
+                       placeholder="<?= $block->escapeHtmlAttr(__('Entity ID')) ?>"/>
+            </div>
+        </div>
+
+        <div class="admin__field">
+            <label class="admin__field-label" for="mageos-dryrun-definition"><?= $block->escapeHtml(__('Definition (edit freely — nothing is saved)')) ?></label>
+            <div class="admin__field-control">
+                <textarea id="mageos-dryrun-definition" name="definition" rows="12"
+                          class="admin__control-textarea" spellcheck="false"><?= $block->escapeHtml((string) ($input['definition'] ?? '')) ?></textarea>
+            </div>
+        </div>
+
+        <div class="admin__field">
+            <div class="admin__field-control">
+                <button type="submit" class="action-primary"><span><?= $block->escapeHtml(__('Run Dry-Run')) ?></span></button>
+                <a href="<?= $block->escapeUrl($block->getBackUrl()) ?>" class="action-secondary"><span><?= $block->escapeHtml(__('Back')) ?></span></a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<?php if ($trace !== null): ?>
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml(__('Trace')) ?></span>
+        </div>
+
+        <?php if (!empty($input['persisted_execution_id'])): ?>
+            <p class="message message-notice">
+                <?= $block->escapeHtml(__('Saved as a dry-run execution for audit.')) ?>
+                <a href="<?= $block->escapeUrl($block->getExecutionUrl((int) $input['persisted_execution_id'])) ?>">
+                    <?= $block->escapeHtml(__('View execution #%1', (int) $input['persisted_execution_id'])) ?>
+                </a>
+            </p>
+        <?php endif; ?>
+
+        <?php foreach ($trace->getValidation() as $message): ?>
+            <div class="message <?= $message->getSeverity() === 'error' ? 'message-error' : 'message-warning' ?>">
+                <?= $block->escapeHtml($message->getMessage()) ?>
+            </div>
+        <?php endforeach; ?>
+
+        <?php if ($trace->isSkipped()): ?>
+            <div class="message message-notice">
+                <?= $block->escapeHtml(__('This workflow would be skipped: its conditions do not match this entity.')) ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($trace->getSteps() !== []): ?>
+            <table class="admin__table-secondary">
+                <thead>
+                    <tr>
+                        <th><?= $block->escapeHtml(__('Step')) ?></th>
+                        <th><?= $block->escapeHtml(__('Type')) ?></th>
+                        <th><?= $block->escapeHtml(__('Outcome')) ?></th>
+                        <th><?= $block->escapeHtml(__('What would happen')) ?></th>
+                        <th><?= $block->escapeHtml(__('Edge')) ?></th>
+                        <th><?= $block->escapeHtml(__('Details')) ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($trace->getSteps() as $step): ?>
+                    <tr>
+                        <td><?= $block->escapeHtml($step->getStepKey()) ?></td>
+                        <td><?= $block->escapeHtml($step->getType()) ?></td>
+                        <td>
+                            <span class="<?= $block->escapeHtmlAttr($block->statusClass($step->getStatus())) ?>">
+                                <span><?= $block->escapeHtml($block->statusLabel($step->getStatus())) ?></span>
+                            </span>
+                        </td>
+                        <td><?= $block->escapeHtml((string) ($step->getWould() ?? '')) ?></td>
+                        <td><?= $block->escapeHtml((string) ($step->getEdgeTaken() ?? '')) ?></td>
+                        <td>
+                            <details>
+                                <summary><?= $block->escapeHtml(__('Technical details')) ?></summary>
+                                <pre><?= $block->escapeHtml($block->technicalDetails($step)) ?></pre>
+                            </details>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php if ($trace->isTruncated()): ?>
+                <p class="message message-notice">
+                    <?= $block->escapeHtml(__('The trace was truncated at the step-visit cap; some paths were not explored.')) ?>
+                </p>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<script>
+    require(['jquery'], function ($) {
+        'use strict';
+        // Carry in-progress (unsaved) edits from the workflow edit form: the
+        // Dry run button stashes the current definition/conditions before
+        // navigating here.
+        try {
+            var stashed = window.sessionStorage.getItem('mageos_dryrun_definition');
+            if (stashed !== null && $('#mageos-dryrun-definition').val().trim() === '') {
+                $('#mageos-dryrun-definition').val(stashed);
+            }
+            var conditions = window.sessionStorage.getItem('mageos_dryrun_conditions');
+            if (conditions !== null) {
+                $('input[name="conditions_serialized"]').val(conditions);
+            }
+            var entityType = window.sessionStorage.getItem('mageos_dryrun_entity_type');
+            if (entityType && $('input[name="entity_type"]').val().trim() === '') {
+                $('input[name="entity_type"]').val(entityType);
+            }
+            window.sessionStorage.removeItem('mageos_dryrun_definition');
+            window.sessionStorage.removeItem('mageos_dryrun_conditions');
+            window.sessionStorage.removeItem('mageos_dryrun_entity_type');
+        } catch (e) {
+            // sessionStorage unavailable — fall back to the saved definition.
+        }
+        $('#mageos-dryrun-recent').on('change', function () {
+            if ($(this).val()) {
+                $('#mageos-dryrun-entity-id').val($(this).val());
+            }
+        });
+    });
+</script>

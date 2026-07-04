@@ -13,6 +13,7 @@ interface WorkflowExecutionInterface
     public const ENTITY_ID = 'entity_id';
     public const STORE_ID = 'store_id';
     public const STATUS = 'status';
+    public const MODE = 'mode';
     public const CONTEXT = 'context';
     public const CHAIN_DEPTH = 'chain_depth';
     public const CURRENT_STEP = 'current_step';
@@ -27,6 +28,14 @@ interface WorkflowExecutionInterface
     public const STATUS_SKIPPED = 'skipped';
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
+
+    /**
+     * Execution mode: a normal live/shadow execution vs a persisted dry-run
+     * preview. NOT a side-effect predicate — a mode=live row under a
+     * shadow-status workflow still ran simulated (docs/discovery/dry-run.md §6).
+     */
+    public const MODE_LIVE = 'live';
+    public const MODE_DRY_RUN = 'dry_run';
 
     public function getExecutionId(): ?int;
 
@@ -62,6 +71,13 @@ interface WorkflowExecutionInterface
     public function getStatus(): string;
 
     public function setStatus(string $status): self;
+
+    /**
+     * Execution mode (live|dry_run); defaults to live
+     */
+    public function getMode(): string;
+
+    public function setMode(string $mode): self;
 
     /**
      * Context bag JSON: {trigger: {...}, steps: {...}, workflow: {...}}

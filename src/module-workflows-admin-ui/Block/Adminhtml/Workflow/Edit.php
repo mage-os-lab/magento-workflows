@@ -29,6 +29,38 @@ class Edit extends Container
                 ]
             );
         }
+
+        if ($this->_authorization->isAllowed('MageOS_Workflows::dry_run')) {
+            $this->buttonList->add(
+                'dry_run',
+                [
+                    'label' => __('Dry run'),
+                    'class' => 'action-secondary',
+                    'onclick' => $this->getDryRunOnclick(),
+                    'sort_order' => 35,
+                ]
+            );
+        }
+    }
+
+    /**
+     * Stash the currently edited (unsaved) definition/conditions/entity type so
+     * the dry-run page can preview them without a save, then navigate there.
+     */
+    private function getDryRunOnclick(): string
+    {
+        $params = $this->getWorkflowId() ? ['workflow_id' => $this->getWorkflowId()] : [];
+        $dryRunUrl = $this->getUrl('mageos_workflows/workflow/dryRun', $params);
+
+        return "try { "
+            . "var def = document.querySelector('[name=\"definition\"]'); "
+            . "var cond = document.querySelector('[name=\"conditions_serialized\"]'); "
+            . "var et = document.querySelector('[name=\"entity_type\"]'); "
+            . "if (def) { window.sessionStorage.setItem('mageos_dryrun_definition', def.value); } "
+            . "if (cond) { window.sessionStorage.setItem('mageos_dryrun_conditions', cond.value); } "
+            . "if (et) { window.sessionStorage.setItem('mageos_dryrun_entity_type', et.value); } "
+            . "} catch (e) {} "
+            . "setLocation('{$dryRunUrl}');";
     }
 
     /**

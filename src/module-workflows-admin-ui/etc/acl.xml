@@ -9,6 +9,7 @@
                     <resource id="MageOS_Workflows::manage" title="Create &amp; Edit Workflows" sortOrder="20"/>
                     <resource id="MageOS_Workflows::enable" title="Enable / Disable Workflows" sortOrder="30"/>
                     <resource id="MageOS_Workflows::manual_run" title="Manually Run Workflows" sortOrder="40"/>
+                    <resource id="MageOS_Workflows::dry_run" title="Dry-Run Workflows" sortOrder="45"/>
                     <resource id="MageOS_Workflows::secrets" title="Reference Secrets in Workflow Actions" sortOrder="50"/>
                     <resource id="MageOS_Workflows::action_sales" title="Author Sales Actions" sortOrder="60"/>
                     <resource id="MageOS_Workflows::action_customer" title="Author Customer Actions" sortOrder="70"/>
