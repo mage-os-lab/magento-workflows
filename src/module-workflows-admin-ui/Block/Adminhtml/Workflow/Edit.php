@@ -44,8 +44,14 @@ class Edit extends Container
 
         // Optional canvas module: "Open in visual editor" entry from the form.
         // Hidden when the module is absent — admin-ui never depends on it.
+        // Managers reach the ::manage editor controller; ::view-only admins get
+        // the read-only viewer (both render the same mount, the React app and
+        // the write controllers gate editing on ::manage independently).
         if ($this->getWorkflowId() && $this->_moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
-            $canvasUrl = $this->getUrl('mageos_workflows_canvas/canvas/view', ['workflow_id' => $this->getWorkflowId()]);
+            $canvasRoute = $this->_authorization->isAllowed('MageOS_Workflows::manage')
+                ? 'mageos_workflows_canvas/canvas/edit'
+                : 'mageos_workflows_canvas/canvas/view';
+            $canvasUrl = $this->getUrl($canvasRoute, ['workflow_id' => $this->getWorkflowId()]);
             $this->buttonList->add(
                 'visual_editor',
                 [

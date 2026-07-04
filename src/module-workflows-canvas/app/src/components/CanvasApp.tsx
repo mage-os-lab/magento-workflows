@@ -8,7 +8,7 @@ import {
   type Node,
 } from '@xyflow/react';
 import type { Graph, MountConfig } from '../types';
-import { toGraph } from '../mapping';
+import { isReadOnly, toGraph } from '../mapping';
 import { autoLayout, needsLayout } from '../layout';
 import { nodeTypes, type NodeData } from './WorkflowNode';
 import {
@@ -21,12 +21,33 @@ import {
   type Overlay,
 } from '../overlay';
 import { Outline } from './Outline';
+import { Editor } from './Editor';
 
 interface Props {
   config: MountConfig;
 }
 
+/**
+ * Dispatcher (no hooks, so the Rules of Hooks hold regardless of branch): a
+ * manager editing a schema-known workflow gets the Phase B editor; everyone
+ * else (::view-only, a newer-schema document, or no definition) gets the
+ * read-only viewer. The write controllers re-check ACL server-side regardless
+ * of which surface loaded.
+ */
 export function CanvasApp({ config }: Props): JSX.Element {
+  const definition = config.workflow?.definition ?? null;
+  const editable =
+    config.grants.manage &&
+    definition !== null &&
+    !isReadOnly(definition.schema, config.knownSchemaVersion);
+
+  if (editable && definition) {
+    return <Editor config={config} initialGraph={toGraph(definition, config)} />;
+  }
+  return <Viewer config={config} />;
+}
+
+function Viewer({ config }: Props): JSX.Element {
   const definition = config.workflow?.definition ?? null;
 
   const baseGraph = useMemo<Graph | null>(

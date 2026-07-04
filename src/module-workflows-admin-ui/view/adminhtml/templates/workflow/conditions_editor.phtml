@@ -1,0 +1,25 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\ConditionsEditor $block
+ * @var \Magento\Framework\Escaper $escaper
+ *
+ * The condition slide-out trigger. Booted with data-mage-init (declarative,
+ * CSP-safe — no inline script); all config travels in data-* attributes. The
+ * textarea (the "edit as JSON" fallback) stays visible above this in the
+ * fieldset.
+ */
+$escaper = $escaper ?? $block->getEscaper();
+$config = $escaper->escapeHtmlAttr('{"mageosWorkflowsConditions": {}}');
+?>
+<div class="mageos-conditions-editor"
+     data-mage-init='<?= /* @noEscape */ $config ?>'
+     data-apply-url="<?= $escaper->escapeUrl($block->getApplyUrl()) ?>"
+     data-form-key="<?= $escaper->escapeHtmlAttr($block->getFormKey()) ?>"
+     data-field-selector="<?= $escaper->escapeHtmlAttr($block->getFieldSelector()) ?>">
+    <button type="button" class="action-secondary" data-role="open-conditions">
+        <?= $escaper->escapeHtml(__('Edit conditions…')) ?>
+    </button>
+    <span class="note">
+        <?= $escaper->escapeHtml(__('Opens a slide-out editor. The textarea above remains available for direct JSON editing.')) ?>
+    </span>
+</div>

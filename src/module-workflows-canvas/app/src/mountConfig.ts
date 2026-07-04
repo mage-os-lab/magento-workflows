@@ -35,10 +35,16 @@ export function readMountConfig(el: Element | null): MountConfig | null {
     endpoints: {
       executionSteps: String(c.endpoints?.executionSteps ?? ''),
       dryRun: String(c.endpoints?.dryRun ?? ''),
+      validate: String(c.endpoints?.validate ?? ''),
+      options: String(c.endpoints?.options ?? ''),
+      save: String(c.endpoints?.save ?? ''),
     },
     formKey: String(c.formKey ?? ''),
     workflow: c.workflow ?? null,
     actions: c.actions ?? {},
+    actionsMeta: Array.isArray(c.actionsMeta) ? c.actionsMeta : [],
+    triggers: Array.isArray(c.triggers) ? c.triggers : [],
+    secrets: Array.isArray(c.secrets) ? c.secrets : [],
   };
 }
 

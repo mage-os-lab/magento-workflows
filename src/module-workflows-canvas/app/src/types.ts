@@ -99,21 +99,103 @@ export interface Graph {
   entry: string | null;
 }
 
+/**
+ * One config-panel field, mirroring an ActionMetadataInterface::getConfigForm()
+ * entry (F6). `type` is declarative (text/textarea/select/multiselect/boolean/
+ * integer/secret). Option-bearing selects use the F6 union: `options` for a
+ * bounded inline list, `options_search` for a large/searched source resolved at
+ * runtime via GET meta/options?source=&q=. The value union is never eval'd.
+ */
+export interface ConfigFieldOption {
+  value: string;
+  label: string;
+}
+
+export interface OptionsSearch {
+  source: string;
+  /** Minimum chars before a live search fires; 0 = resolve the whole list. */
+  min_chars?: number;
+}
+
+export interface ConfigField {
+  name: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  notice?: string;
+  default?: unknown;
+  options?: ConfigFieldOption[];
+  options_search?: OptionsSearch;
+  [k: string]: unknown;
+}
+
+/** A palette/config action, projected from GET meta/actions. */
+export interface PaletteAction {
+  code: string;
+  label: string;
+  group: string;
+  applicableEntities: string[];
+  configForm: ConfigField[];
+  aclResource: string | null;
+}
+
+/** A palette trigger, projected from GET meta/triggers. */
+export interface TriggerMeta {
+  event: string;
+  entity: string;
+  label: string;
+  group: string | null;
+}
+
+/** One validation finding pinned to a node (Phase B validate loop). */
+export interface ValidationMessage {
+  severity: 'error' | 'warning' | string;
+  code: string;
+  message: string;
+  step_key: string | null;
+  edge: string | null;
+}
+
+/** The workflow's general (non-graph) fields, round-tripped through save. */
+export interface WorkflowMeta {
+  id: number;
+  name: string;
+  status: number;
+  entityType: string;
+  triggerType: string;
+  triggerRef: string;
+  conditionsSerialized: string | null;
+  loopGuardDepth: number;
+  websiteIds: number[];
+  fanOutRelation: string;
+  fanOutCap: string;
+  definition: Definition | null;
+}
+
 /** Bootstrap config delivered via the mount div's data-config attribute. */
 export interface MountConfig {
   workflowId: number | null;
   executionId: number | null;
   knownSchemaVersion: number;
   grants: { manage: boolean; dryRun: boolean };
-  endpoints: { executionSteps: string; dryRun: string };
+  endpoints: {
+    executionSteps: string;
+    dryRun: string;
+    /** Same-origin admin JSON validate proxy (canvas Data/Validate). */
+    validate: string;
+    /** Same-origin admin JSON option-source proxy (canvas Data/Options). */
+    options: string;
+    /** The EXISTING admin Save controller (mageos_workflows/workflow/save). */
+    save: string;
+  };
   formKey: string;
-  workflow: {
-    id: number;
-    name: string;
-    entityType: string;
-    triggerType: string;
-    triggerRef: string;
-    definition: Definition | null;
-  } | null;
+  workflow: WorkflowMeta | null;
+  /** code => {label, group}: kept for node summaries (Phase A). */
   actions: Record<string, { label: string; group: string }>;
+  /** Full palette/config action metadata (Phase B). ACL-filtered display. */
+  actionsMeta: PaletteAction[];
+  /** Palette triggers (Phase B). */
+  triggers: TriggerMeta[];
+  /** Secret NAMES only (never values) for the variable picker. */
+  secrets: string[];
 }

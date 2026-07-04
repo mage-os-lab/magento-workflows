@@ -22,10 +22,13 @@ function config(actions: MountConfig['actions']): MountConfig {
     executionId: null,
     knownSchemaVersion: 3,
     grants: { manage: true, dryRun: true },
-    endpoints: { executionSteps: '/steps', dryRun: '/dry' },
+    endpoints: { executionSteps: '/steps', dryRun: '/dry', validate: '/validate', options: '/options', save: '/save' },
     formKey: 'k',
     workflow: null,
     actions,
+    actionsMeta: [],
+    triggers: [],
+    secrets: [],
   };
 }
 
