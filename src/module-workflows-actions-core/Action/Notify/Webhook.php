@@ -10,6 +10,7 @@ use GuzzleHttp\RequestOptions;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\BatchCapableActionInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
@@ -52,7 +53,7 @@ use Psr\Http\Message\UriInterface;
  * merged into steps.<key> for conditions and VALUE interpolation only — the
  * engine never resolves action codes or attribute codes from step output.
  */
-class Webhook extends AbstractAction implements SimulateableActionInterface
+class Webhook extends AbstractAction implements SimulateableActionInterface, BatchCapableActionInterface
 {
     public const SIGNATURE_HEADER = 'X-MageOS-Webhook-Signature';
 
@@ -82,6 +83,11 @@ class Webhook extends AbstractAction implements SimulateableActionInterface
     public function getCode(): string
     {
         return 'notify.webhook';
+    }
+
+    public function supportsBatch(): bool
+    {
+        return true;
     }
 
     public function getLabel(): string

@@ -7,148 +7,155 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 
 /**
  * Minimal in-memory WorkflowInterface stand-in for unit tests (Magento's
- * generated data models are unavailable outside an install). Property
- * round-trips; only the accessors the tests exercise carry non-default seeds.
+ * generated data models are unavailable outside an install): getters back a
+ * data bag, setters mutate it. No ORM, no resource model.
+ *
+ * Two construction styles, matching the suites that share this stub:
+ * an int/null seeds workflow_id (fan-out suites), an array seeds the whole
+ * data bag (aggregation/scheduler suites).
  */
 class WorkflowStub implements WorkflowInterface
 {
-    private ?int $workflowId;
-    private string $name = '';
-    private int $status = self::STATUS_ENABLED;
-    private string $triggerType = self::TRIGGER_TYPE_EVENT;
-    private string $triggerRef = '';
-    private string $entityType = '';
-    private ?string $conditionsSerialized = null;
-    private string $definition = '{"schema":3,"steps":[],"entry":null}';
-    private int $version = 1;
-    private int $loopGuardDepth = 1;
-    private ?string $fanOut = null;
-    /** @var int[] */
-    private array $websiteIds = [];
+    /** @var array<string, mixed> */
+    private array $data;
 
-    public function __construct(?int $workflowId = 1)
+    /**
+     * @param array<string, mixed>|int|null $seed
+     */
+    public function __construct(array|int|null $seed = 1)
     {
-        $this->workflowId = $workflowId;
+        $this->data = is_array($seed) ? $seed : ['workflow_id' => $seed];
     }
 
     public function getWorkflowId(): ?int
     {
-        return $this->workflowId;
+        return isset($this->data['workflow_id']) ? (int) $this->data['workflow_id'] : null;
     }
 
     public function setWorkflowId(int $workflowId): self
     {
-        $this->workflowId = $workflowId;
+        $this->data['workflow_id'] = $workflowId;
         return $this;
     }
 
     public function getName(): string
     {
-        return $this->name;
+        return (string) ($this->data['name'] ?? '');
     }
 
     public function setName(string $name): self
     {
-        $this->name = $name;
+        $this->data['name'] = $name;
         return $this;
     }
 
     public function getStatus(): int
     {
-        return $this->status;
+        return (int) ($this->data['status'] ?? self::STATUS_ENABLED);
     }
 
     public function setStatus(int $status): self
     {
-        $this->status = $status;
+        $this->data['status'] = $status;
         return $this;
     }
 
     public function getTriggerType(): string
     {
-        return $this->triggerType;
+        return (string) ($this->data['trigger_type'] ?? self::TRIGGER_TYPE_EVENT);
     }
 
     public function setTriggerType(string $triggerType): self
     {
-        $this->triggerType = $triggerType;
+        $this->data['trigger_type'] = $triggerType;
         return $this;
     }
 
     public function getTriggerRef(): string
     {
-        return $this->triggerRef;
+        return (string) ($this->data['trigger_ref'] ?? '');
     }
 
     public function setTriggerRef(string $triggerRef): self
     {
-        $this->triggerRef = $triggerRef;
+        $this->data['trigger_ref'] = $triggerRef;
         return $this;
     }
 
     public function getEntityType(): string
     {
-        return $this->entityType;
+        return (string) ($this->data['entity_type'] ?? '');
     }
 
     public function setEntityType(string $entityType): self
     {
-        $this->entityType = $entityType;
+        $this->data['entity_type'] = $entityType;
         return $this;
     }
 
     public function getConditionsSerialized(): ?string
     {
-        return $this->conditionsSerialized;
+        return $this->data['conditions_serialized'] ?? null;
     }
 
     public function setConditionsSerialized(?string $conditions): self
     {
-        $this->conditionsSerialized = $conditions;
+        $this->data['conditions_serialized'] = $conditions;
         return $this;
     }
 
     public function getDefinition(): string
     {
-        return $this->definition;
+        return (string) ($this->data['definition'] ?? '{"schema":3,"steps":[],"entry":null}');
     }
 
     public function setDefinition(string $definition): self
     {
-        $this->definition = $definition;
+        $this->data['definition'] = $definition;
+        return $this;
+    }
+
+    public function getAggregation(): ?string
+    {
+        return $this->data['aggregation'] ?? null;
+    }
+
+    public function setAggregation(?string $aggregation): self
+    {
+        $this->data['aggregation'] = $aggregation;
         return $this;
     }
 
     public function getVersion(): int
     {
-        return $this->version;
+        return (int) ($this->data['version'] ?? 1);
     }
 
     public function setVersion(int $version): self
     {
-        $this->version = $version;
+        $this->data['version'] = $version;
         return $this;
     }
 
     public function getLoopGuardDepth(): int
     {
-        return $this->loopGuardDepth;
+        return (int) ($this->data['loop_guard_depth'] ?? 1);
     }
 
     public function setLoopGuardDepth(int $depth): self
     {
-        $this->loopGuardDepth = $depth;
+        $this->data['loop_guard_depth'] = $depth;
         return $this;
     }
 
     public function getFanOut(): ?string
     {
-        return $this->fanOut;
+        return $this->data['fan_out'] ?? null;
     }
 
     public function setFanOut(?string $fanOut): self
     {
-        $this->fanOut = $fanOut === '' ? null : $fanOut;
+        $this->data['fan_out'] = $fanOut === '' ? null : $fanOut;
         return $this;
     }
 
@@ -157,7 +164,7 @@ class WorkflowStub implements WorkflowInterface
      */
     public function getWebsiteIds(): array
     {
-        return $this->websiteIds;
+        return array_values(array_map('intval', $this->data['website_ids'] ?? []));
     }
 
     /**
@@ -165,7 +172,7 @@ class WorkflowStub implements WorkflowInterface
      */
     public function setWebsiteIds(array $websiteIds): self
     {
-        $this->websiteIds = array_values(array_map('intval', $websiteIds));
+        $this->data['website_ids'] = $websiteIds;
         return $this;
     }
 }

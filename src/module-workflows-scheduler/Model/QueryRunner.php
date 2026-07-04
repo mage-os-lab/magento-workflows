@@ -11,6 +11,11 @@ use Magento\Framework\Api\SortOrderBuilder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\DispatcherInterface;
+use MageOS\Workflows\Model\Aggregation\AggregationConfig;
+use MageOS\Workflows\Model\Aggregation\BatchContextBuilder;
+use MageOS\Workflows\Model\Aggregation\ItemProjector;
+use MageOS\Workflows\Model\Aggregation\MembershipEvaluatorInterface;
+use MageOS\Workflows\Model\Rule\Hydrator\EntityDataConverter;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -24,6 +29,15 @@ use Psr\Log\LoggerInterface;
  *   conditions (the watermark filter still applies) within the match cap,
  *   and flag the dispatch payload so the engine knows it must re-evaluate
  *   the root conditions per-execution - it does this anyway.
+ *
+ * Collected mode (05 B1): when the workflow carries a `collected` aggregation
+ * config, matches are NOT dispatched one-per-row; their projections are
+ * accumulated and one batch execution is dispatched. Because a batch has a
+ * single execution and no per-execution re-filter, membership is enforced
+ * per item HERE — on the mapped AND fallback paths alike — before a row joins
+ * items[] (the same snapshot-only membership evaluator B2 uses). Projections
+ * are routed through EntityDataConverter so the item shape (lifted EAV
+ * attributes included) matches B2's event-snapshot items exactly.
  *
  * Guard rails: per-run match cap (config mageos_workflows/scheduler/match_cap,
  * default 5000) and a watermark so re-runs don't reprocess the same rows.
@@ -45,6 +59,9 @@ class QueryRunner
     /**
      * @param array<string, object> $repositories entity_type => repository exposing
      *        getList(SearchCriteriaInterface): SearchResultsInterface
+     * @param array<string, string> $dtoInterfaces entity_type => DTO interface FQN
+     *        used by EntityDataConverter for the converter path (models/DTOs
+     *        with getData()/__toArray() ignore it)
      */
     public function __construct(
         private readonly DispatcherInterface $dispatcher,
@@ -55,7 +72,12 @@ class QueryRunner
         private readonly SortOrderBuilder $sortOrderBuilder,
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly LoggerInterface $logger,
-        private readonly array $repositories = []
+        private readonly array $repositories = [],
+        private readonly ?EntityDataConverter $entityDataConverter = null,
+        private readonly ?MembershipEvaluatorInterface $membershipEvaluator = null,
+        private readonly ?ItemProjector $itemProjector = null,
+        private readonly ?BatchContextBuilder $batchContextBuilder = null,
+        private readonly array $dtoInterfaces = []
     ) {
     }
 
@@ -106,21 +128,28 @@ class QueryRunner
             ->setDirection(SortOrder::SORT_ASC)
             ->create();
 
+        $aggregation = $this->collectedConfig($workflow);
+        if ($aggregation !== null) {
+            return $this->runCollected(
+                $workflow,
+                $repository,
+                $baseFilterGroups,
+                $sortOrder,
+                $watermarkField,
+                $previousWatermark,
+                $matchCap,
+                $isMapped,
+                $aggregation
+            );
+        }
+
         $newWatermark = $previousWatermark;
         $matched = 0;
         $currentPage = 1;
         $items = [];
 
         do {
-            $filterGroups = $baseFilterGroups;
-            if ($previousWatermark !== null && $previousWatermark !== '') {
-                $watermarkFilter = $this->filterBuilder
-                    ->setField($watermarkField)
-                    ->setValue($previousWatermark)
-                    ->setConditionType('gt')
-                    ->create();
-                $filterGroups[] = $this->filterGroupBuilder->setFilters([$watermarkFilter])->create();
-            }
+            $filterGroups = $this->pageFilterGroups($baseFilterGroups, $watermarkField, $previousWatermark);
 
             $criteria = $this->searchCriteriaBuilder
                 ->setFilterGroups($filterGroups)
@@ -150,18 +179,195 @@ class QueryRunner
                 $this->dispatcher->dispatch($workflowId, $payload, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
                 $matched++;
 
-                $watermarkValue = $flat[$watermarkField] ?? null;
-                if (is_string($watermarkValue) && $watermarkValue !== ''
-                    && ($newWatermark === null || $watermarkValue > $newWatermark)
-                ) {
-                    $newWatermark = $watermarkValue;
-                }
+                $newWatermark = $this->advanceWatermark($newWatermark, $flat[$watermarkField] ?? null);
             }
 
             $currentPage++;
         } while (count($items) === self::PAGE_SIZE && $matched < $matchCap);
 
         return $newWatermark;
+    }
+
+    /**
+     * B1 collected mode: accumulate per-item projections of members and
+     * dispatch exactly one batch execution.
+     *
+     * @param object $repository
+     * @param \Magento\Framework\Api\Search\FilterGroup[] $baseFilterGroups
+     */
+    private function runCollected(
+        WorkflowInterface $workflow,
+        object $repository,
+        array $baseFilterGroups,
+        SortOrder $sortOrder,
+        string $watermarkField,
+        ?string $previousWatermark,
+        int $matchCap,
+        bool $isMapped,
+        AggregationConfig $aggregation
+    ): ?string {
+        $workflowId = (int) $workflow->getWorkflowId();
+        $itemCap = $aggregation->getItemCap();
+        $fields = $this->itemProjector->fieldsFor(
+            $aggregation->getProjection(),
+            $workflow->getConditionsSerialized()
+        );
+
+        $newWatermark = $previousWatermark;
+        $scanned = 0;
+        $memberCount = 0;
+        $items = [];
+        $currentPage = 1;
+        $pageItems = [];
+
+        do {
+            $filterGroups = $this->pageFilterGroups($baseFilterGroups, $watermarkField, $previousWatermark);
+
+            $criteria = $this->searchCriteriaBuilder
+                ->setFilterGroups($filterGroups)
+                ->setSortOrders([$sortOrder])
+                ->setPageSize(self::PAGE_SIZE)
+                ->setCurrentPage($currentPage)
+                ->create();
+
+            $pageItems = $repository->getList($criteria)->getItems();
+
+            foreach ($pageItems as $entity) {
+                if ($scanned >= $matchCap) {
+                    break 2;
+                }
+
+                $flat = $this->toFlatArrayForBatch($entity, $workflow->getEntityType());
+                $entityId = $this->resolveEntityId($entity, $flat);
+                if ($entityId === null) {
+                    continue;
+                }
+                $flat['entity_id'] = $entityId;
+                $scanned++;
+                // Watermark advances for every scanned row (member or not) so a
+                // non-matching row is never re-scanned into a later digest.
+                $newWatermark = $this->advanceWatermark($newWatermark, $flat[$watermarkField] ?? null);
+
+                // Membership enforced per item on BOTH paths: mapped criteria
+                // may be approximate; the fallback path did no filtering at all.
+                if (!$this->membershipEvaluator->matches($workflow, $flat)) {
+                    continue;
+                }
+                $memberCount++;
+                if (count($items) < $itemCap) {
+                    $items[] = $this->itemProjector->project($flat, $fields);
+                }
+            }
+
+            $currentPage++;
+        } while (count($pageItems) === self::PAGE_SIZE && $scanned < $matchCap);
+
+        $this->dispatchBatch(
+            $workflow,
+            $aggregation,
+            $memberCount,
+            $items,
+            $itemCap,
+            $previousWatermark,
+            $newWatermark,
+            $isMapped
+        );
+
+        return $newWatermark;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     */
+    private function dispatchBatch(
+        WorkflowInterface $workflow,
+        AggregationConfig $aggregation,
+        int $memberCount,
+        array $items,
+        int $itemCap,
+        ?string $windowFrom,
+        ?string $windowTo,
+        bool $isMapped
+    ): void {
+        $workflowId = (int) $workflow->getWorkflowId();
+
+        if ($memberCount < $aggregation->getMinItems()) {
+            // Schedule-shaped mode: a window closing under the minimum drops
+            // with a debug log (05 §Compatibility, min_items provisional
+            // default). The watermark still advances so those rows are not
+            // re-digested.
+            $this->logger->debug('Workflow collected digest below min_items; dropped', [
+                'workflow_id' => $workflowId,
+                'members' => $memberCount,
+                'min_items' => $aggregation->getMinItems(),
+            ]);
+            return;
+        }
+
+        $context = $this->batchContextBuilder->build(
+            $memberCount,
+            $items,
+            ['from' => $windowFrom, 'to' => $windowTo],
+            $itemCap
+        );
+        if (!$isMapped) {
+            $context[self::FALLBACK_FLAG] = true;
+        }
+
+        $this->dispatcher->dispatch($workflowId, $context, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
+    }
+
+    /**
+     * @return AggregationConfig|null the config when this is a collected-mode
+     *         aggregated workflow AND the collected-mode collaborators are
+     *         wired; null keeps the per-entity path
+     */
+    private function collectedConfig(WorkflowInterface $workflow): ?AggregationConfig
+    {
+        if ($this->membershipEvaluator === null
+            || $this->itemProjector === null
+            || $this->batchContextBuilder === null
+            || $this->entityDataConverter === null
+        ) {
+            return null;
+        }
+        try {
+            $config = AggregationConfig::fromJson($workflow->getAggregation());
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->warning(sprintf(
+                'QueryRunner: workflow #%d has an invalid aggregation config; running per-entity. %s',
+                (int) $workflow->getWorkflowId(),
+                $e->getMessage()
+            ));
+            return null;
+        }
+        return $config !== null && $config->isCollected() ? $config : null;
+    }
+
+    /**
+     * @param \Magento\Framework\Api\Search\FilterGroup[] $baseFilterGroups
+     * @return \Magento\Framework\Api\Search\FilterGroup[]
+     */
+    private function pageFilterGroups(array $baseFilterGroups, string $watermarkField, ?string $previousWatermark): array
+    {
+        $filterGroups = $baseFilterGroups;
+        if ($previousWatermark !== null && $previousWatermark !== '') {
+            $watermarkFilter = $this->filterBuilder
+                ->setField($watermarkField)
+                ->setValue($previousWatermark)
+                ->setConditionType('gt')
+                ->create();
+            $filterGroups[] = $this->filterGroupBuilder->setFilters([$watermarkFilter])->create();
+        }
+        return $filterGroups;
+    }
+
+    private function advanceWatermark(?string $current, mixed $candidate): ?string
+    {
+        if (is_string($candidate) && $candidate !== '' && ($current === null || $candidate > $current)) {
+            return $candidate;
+        }
+        return $current;
     }
 
     /**
@@ -181,6 +387,17 @@ class QueryRunner
             return $entity->__toArray();
         }
         return [];
+    }
+
+    /**
+     * Collected-mode flattening: route through EntityDataConverter so custom
+     * (EAV) / extension attributes are lifted to top-level keys, matching the
+     * B2 event-snapshot item shape exactly (a `|pluck:'my_eav_attr'` resolves
+     * identically under both modes).
+     */
+    private function toFlatArrayForBatch(object $entity, string $entityType): array
+    {
+        return $this->entityDataConverter->toFlatArray($entity, $this->dtoInterfaces[$entityType] ?? '');
     }
 
     private function resolveEntityId(object $entity, array $flat): ?int

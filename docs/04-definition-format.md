@@ -36,7 +36,26 @@ The `definition` JSON is **the contract everything shares**: the single artifact
 | `wait` | Schema 2. Parks the execution until `config.event` fires **for the same entity**, or until `config.timeout` (ISO-8601 duration) elapses; follows `on_event` / `on_timeout`. Step output is `{resolution: "event"\|"timeout", event: <payload>}` for downstream conditions and interpolation (see [Execution Model §Wait steps](08-execution-model.md#wait-steps-schema-2)) |
 | `switch` | Schema 3. First-match-wins multi-way branch: `cases[]` (each with a unique `key`, an optional `conditions_serialized` tree in the same format `branch` uses, and a nullable `next` edge) evaluated top to bottom; the nullable `default` edge fires when no case matches. One shared `revalidate_entity` for the step (one hydration, evaluated N times). Step result records `{matched: <key>\|null}` |
 
-`{{ ... }}` placeholders are resolved by the restricted variable resolver — dot-path access over `trigger.*`, `steps.*`, `workflow.*`, `secrets.*` only; no directive execution ([Actions §Variable resolution](07-actions.md#variable-resolution)). Values (never keys) may append whitelisted, chainable formatters — `{{ trigger.grand_total|number:2 }}`, `{{ trigger.email|lower|trim }}` — from a fixed list: `upper`, `lower`, `trim`, `number[:decimals]`, `date[:'format']`, `default:'fallback'`. Unknown filters are ignored.
+`{{ ... }}` placeholders are resolved by the restricted variable resolver — dot-path access over `trigger.*`, `steps.*`, `workflow.*`, `secrets.*` only; no directive execution ([Actions §Variable resolution](07-actions.md#variable-resolution)). Values (never keys) may append whitelisted, chainable formatters — `{{ trigger.grand_total|number:2 }}`, `{{ trigger.email|lower|trim }}` — from a fixed list: `upper`, `lower`, `trim`, `number[:decimals]`, `date[:'format']`, `default:'fallback'`. Unknown filters are ignored. Aggregated (batch) workflows add collection formatters over `trigger.items` — `count`, `pluck:'field'`, `join:', '`, `table:'f1,f2'` (HTML-escaped cells), `json` (see [Batch aggregation](discovery/batch-aggregation.md#5-rendering-a-collection-actions--variables)).
+
+## Trigger context conventions
+
+The `context.trigger` bag is normally one entity's snapshot. Two reserved shapes carry provenance/collection metadata; their key names are fixed so features do not invent incompatible variants:
+
+- **`origin`** (fan-out and event tracing) — `{event, entity_type, entity_id, trace_uuid, via: fan_out|…}`.
+- **Batch trigger shape** (aggregated workflows, [batch aggregation](discovery/batch-aggregation.md)) — an aggregated workflow's single execution receives a collection instead of one entity:
+
+  ```json
+  "trigger": {
+    "batch": true,
+    "count": 143,
+    "window": {"from": "2026-07-03T09:00:00-04:00", "to": "2026-07-04T09:00:00-04:00"},
+    "overflow": false,
+    "items": [ { "entity_id": 42, "sku": "ABC", "…": "…projected, capped snapshot…" }, … ]
+  }
+  ```
+
+  `count` is always the true match count; `overflow` is `true` when `count` exceeds the item cap (default 500) so `items` is elided — never silently truncated. `items` entries are **projections** (identity fields + attributes named in the root conditions, or an explicit `projection` list), passed through the same `EntityDataConverter` shape as event snapshots so EAV attributes resolve identically. Batch executions carry `entity_id = 0` (there is no single entity); the execution grid renders "batch (N items)" rather than an entity link.
 
 ## Schema versions
 

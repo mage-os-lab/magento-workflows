@@ -23,6 +23,19 @@ abstract class AbstractAction implements ActionInterface, ActionMetadataInterfac
     }
 
     /**
+     * Whether this action is meaningful over a whole batch (aggregated
+     * workflow) rather than per entity. Default false: most actions mutate a
+     * single entity and belong in per-entity or fan-out workflows. The
+     * batch-safe core actions override this AND implement
+     * BatchCapableActionInterface (the marker the ProfileCheck actually keys
+     * on); this method is first-party ergonomics only.
+     */
+    public function supportsBatch(): bool
+    {
+        return false;
+    }
+
+    /**
      * ACL group per action-code prefix. Derived from getCode(), never from
      * getGroup(): the group label is translatable and ACL resource ids must
      * be locale-independent.

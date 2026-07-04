@@ -105,7 +105,12 @@ class Executor
 
         $isFirstRun = $status === WorkflowExecutionInterface::STATUS_PENDING;
 
-        if ($isFirstRun && $workflow !== null) {
+        // Aggregated (batch) executions carry entity_id = 0: they have no single
+        // entity to re-evaluate root conditions against, and membership was
+        // already enforced per item at accumulation time (05). This entity_id=0
+        // tolerance is the executor's ONLY batch-awareness — everything else
+        // concentrates in save-time validation and the dispatch layer.
+        if ($isFirstRun && $workflow !== null && $execution->getEntityId() > 0) {
             if (!$this->conditionEvaluator->evaluate($workflow, $ctx)) {
                 $execution->setStatus(WorkflowExecutionInterface::STATUS_SKIPPED);
                 $this->persistContext($execution, $ctx);

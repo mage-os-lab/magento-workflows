@@ -9,6 +9,7 @@
             "entity_type": true,
             "conditions_serialized": true,
             "definition": true,
+            "aggregation": true,
             "version": true,
             "loop_guard_depth": true,
             "fan_out": true,
@@ -116,6 +117,43 @@
             "PRIMARY": true,
             "MAGEOS_WORKFLOW_DEBOUNCE_WORKFLOW_ID_ENTITY_ID_TIME_BUCKET": true,
             "MAGEOS_WF_DEBOUNCE_WORKFLOW_ID": true
+        }
+    },
+    "mageos_workflow_batch": {
+        "column": {
+            "batch_id": true,
+            "workflow_id": true,
+            "window_key": true,
+            "status": true,
+            "item_count": true,
+            "store_id": true,
+            "execution_id": true,
+            "opened_at": true,
+            "flush_due_at": true,
+            "flushing_at": true,
+            "flushed_at": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_BATCH_STATUS_FLUSH_DUE_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WORKFLOW_BATCH_WORKFLOW_ID_WINDOW_KEY": true,
+            "MAGEOS_WF_BATCH_WORKFLOW_ID": true
+        }
+    },
+    "mageos_workflow_batch_item": {
+        "column": {
+            "batch_item_id": true,
+            "batch_id": true,
+            "entity_id": true,
+            "snapshot": true,
+            "created_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WORKFLOW_BATCH_ITEM_BATCH_ID_ENTITY_ID": true,
+            "MAGEOS_WF_BATCH_ITEM_BATCH_ID": true
         }
     },
     "mageos_workflow_secret": {

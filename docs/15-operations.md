@@ -155,6 +155,62 @@ prunes them first on a **separate, shorter** clock:
   to keep dry-runs transient (no audit rows written at all). Unsaved-definition dry-runs
   are always transient regardless of this flag.
 
+**Batch rows** (`mageos_workflow_batch` + `mageos_workflow_batch_item`, from aggregated
+workflows) also carry projected entity snapshots. Flushed batches (and their items, which
+CASCADE) are pruned by the same `mageos_workflows_prune_executions` cron on the general
+`mageos_workflows/retention/days` clock. Open/flushing batches are never pruned — they are
+still accumulating or mid-flush.
+
+## Batch aggregation (event-window digests)
+
+An [aggregated workflow](discovery/batch-aggregation.md) turns N events into one digest
+execution. There are two mechanisms and two new tables:
+
+- **Collected mode** (`aggregation.mode = collected`) rides the existing scheduler cron
+  (`mageos_workflows_run_scheduled`): `QueryRunner` accumulates matches and dispatches one
+  batch execution. No new infrastructure.
+- **Window mode** (`aggregation.mode = window`) uses the **event accumulator**: the
+  dispatcher appends each matching event to a batch (`mageos_workflow_batch` /
+  `mageos_workflow_batch_item`, keyed `UNIQUE(workflow_id, window_key)` and
+  `UNIQUE(batch_id, entity_id)`), and a new **flush sweep** releases due batches.
+
+**New cron job:** `mageos_workflows_flush_batches` (instance `MageOS\Workflows\Cron\FlushBatches`,
+schedule `* * * * *`) rides the same one-minute cadence as the resume sweeper. Each pass:
+
+1. claims due-and-open batches (`flush_due_at` passed) with an atomic `open → flushing`
+   UPDATE — one worker wins each batch, so overlapping cron ticks never double-flush;
+2. creates the batch execution, records its id on the batch row **before** publishing
+   (write-before-publish), publishes, then stamps `flushed`;
+3. re-claims batches stuck in `flushing` past a 5-minute grace period (a crashed sweeper)
+   and **re-publishes the recorded execution** — never a second one.
+
+**Window policies:**
+
+- `schedule` — `flush_due_at` is the next cron fire in the batch's declared store timezone;
+  the `window_key` is the window-start instant, so every event in the window converges on
+  one batch.
+- `interval` — the window closes `PT…` after the opening event.
+
+**`min_items`** (default 1): a window closing under the minimum **carries** its items to the
+next window in `interval` mode, or **drops** them with a debug log in `schedule` mode.
+
+**Suppression synergy:** by default a bulk import inside `WorkflowSuppression::scope()` drops
+aggregated events just like per-entity ones. Set `aggregate_suppressed_events: true` on the
+workflow to keep accumulating during a storm — the import becomes one "12,431 products were
+updated" digest instead of silent drops. Off by default (it trades suppression's near-free
+drop for per-event membership evaluation + an insert — see
+[08 — Execution Model](08-execution-model.md#aggregated-batch-workflows)).
+
+**Remediation:**
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| Batches accumulate but never flush | `mageos_workflows_flush_batches` cron not running | `bin/magento cron:run --group=default`; check `cron_schedule` for the job |
+| A batch stuck in `flushing` | sweeper crashed between claim and publish | the next sweep re-claims it after the 5-minute grace and re-publishes the recorded execution; no manual action |
+| Digest fired but `items[]` is short with `overflow: true` | the match count exceeded `item_cap` (default 500) | expected — `count` is always accurate; raise `item_cap` in the workflow's aggregation config if the full list is needed |
+| Aggregated workflow never accumulates | events dropped by suppression, or membership never matches | check `aggregate_suppressed_events`; confirm the root conditions are in-snapshot (save-time validation enforces this) |
+| Batch execution shows `entity_id = 0` in the grid | expected — a batch has no single entity | the grid renders "batch (N items)"; the collection is in `context.trigger.items` |
+
 ## Configuration quick reference
 
 Guard and scheduler keys added by the capability-roadmap waves, alongside the retention
