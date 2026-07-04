@@ -304,6 +304,9 @@
                 <item name="workflowHealth" xsi:type="object">MageOS\Workflows\Console\Command\HealthCommand</item>
                 <item name="workflowTemplateList" xsi:type="object">MageOS\Workflows\Console\Command\TemplateListCommand</item>
                 <item name="workflowTemplateInstall" xsi:type="object">MageOS\Workflows\Console\Command\TemplateInstallCommand</item>
+                <item name="workflowSecretSet" xsi:type="object">MageOS\Workflows\Console\Command\SecretSetCommand</item>
+                <item name="workflowSecretList" xsi:type="object">MageOS\Workflows\Console\Command\SecretListCommand</item>
+                <item name="workflowSecretDelete" xsi:type="object">MageOS\Workflows\Console\Command\SecretDeleteCommand</item>
             </argument>
         </arguments>
     </type>
