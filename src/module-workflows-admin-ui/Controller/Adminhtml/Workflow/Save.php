@@ -185,7 +185,7 @@ class Save extends Action implements HttpPostActionInterface
                     break;
                 case Definition::STEP_BRANCH:
                     $step['conditions_serialized'] = $row['conditions_serialized'] ?? null;
-                    $step['revalidate_entity'] = !empty($row['revalidate_entity']);
+                    $step['revalidate_entity'] = $this->resolveRevalidateEntity($rows, $index, $row);
                     $step['on_true'] = $keys[$index + 1] ?? null;
                     $step['on_false'] = null;
                     break;
@@ -208,6 +208,31 @@ class Save extends Action implements HttpPostActionInterface
             'steps' => $steps,
             'entry' => $keys[0] ?? null,
         ];
+    }
+
+    /**
+     * `revalidate_entity` default for an assembled branch row.
+     *
+     * An explicit value in the posted row always wins. Absent one, the default
+     * follows [06 §Delay semantics](docs/06-conditions.md#delay-semantics):
+     * a branch that directly follows a delay step re-hydrates by default
+     * (true) -- evaluating a post-delay branch against the frozen trigger
+     * snapshot is usually a mistake and would otherwise raise the
+     * GRAPH_POST_DELAY_STALE warning on every form-built delay->branch. A
+     * branch anywhere else keeps the historical default (false).
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param array<string, mixed> $row
+     */
+    private function resolveRevalidateEntity(array $rows, int $index, array $row): bool
+    {
+        if (array_key_exists('revalidate_entity', $row)) {
+            return (bool) $row['revalidate_entity'];
+        }
+        $previousType = $index > 0
+            ? (string) ($rows[$index - 1]['type'] ?? Definition::STEP_ACTION)
+            : '';
+        return $previousType === Definition::STEP_DELAY;
     }
 
     private function decodeConfig(mixed $config): array
