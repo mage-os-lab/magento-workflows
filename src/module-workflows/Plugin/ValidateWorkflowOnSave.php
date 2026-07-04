@@ -9,6 +9,7 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\Workflows\Model\ResourceModel\Workflow as WorkflowResource;
 use MageOS\Workflows\Model\Validation\Check\ActionAuthorizationCheck;
+use MageOS\Workflows\Model\Validation\ValidationContext;
 use MageOS\Workflows\Model\Validation\ValidationContextResolver;
 use MageOS\Workflows\Model\Validation\ValidationResultRegistry;
 use MageOS\Workflows\Model\Validation\ValidationSubject;
@@ -63,7 +64,7 @@ class ValidateWorkflowOnSave
 
         $result = $this->validator->validate(
             new ValidationSubject($workflow->getDefinition(), $workflow->getConditionsSerialized()),
-            $this->contextResolver->resolve()
+            $this->resolveContext($workflow)
         );
         $this->resultRegistry->set($result);
 
@@ -90,6 +91,28 @@ class ValidateWorkflowOnSave
         }
 
         return [$workflow];
+    }
+
+    /**
+     * The base ValidationContext (auth mode from area), refined with the
+     * workflow's kind and entity type: a non-null aggregation column makes
+     * this an 'aggregated' workflow, activating the restricted batch
+     * ProfileCheck (05). The entity type lets that check resolve the trigger
+     * snapshot shape for the in-snapshot condition constraint.
+     */
+    private function resolveContext(WorkflowInterface $workflow): ValidationContext
+    {
+        $base = $this->contextResolver->resolve();
+        $kind = $workflow->getAggregation() !== null
+            ? ValidationContext::KIND_AGGREGATED
+            : ValidationContext::KIND_STANDARD;
+
+        return new ValidationContext(
+            $base->getAuthMode(),
+            $kind,
+            $base->isDryRun(),
+            $workflow->getEntityType()
+        );
     }
 
     /**

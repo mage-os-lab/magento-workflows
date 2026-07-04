@@ -8,6 +8,7 @@ use Magento\Framework\App\CacheInterface;
 use Magento\Framework\Exception\MailException;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\BatchCapableActionInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
@@ -28,7 +29,7 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * key runs BEFORE SMTP (covering both modes): a redelivered step that already
  * attempted the send is skipped instead of double-mailing the customer.
  */
-class Email extends AbstractAction implements SimulateableActionInterface
+class Email extends AbstractAction implements SimulateableActionInterface, BatchCapableActionInterface
 {
     private const GUARD_CACHE_PREFIX = 'mageos_workflows_email_sent_';
     private const GUARD_LIFETIME_SECONDS = 604800; // 7 days, beyond any retry window
@@ -44,6 +45,11 @@ class Email extends AbstractAction implements SimulateableActionInterface
     public function getCode(): string
     {
         return 'notify.email';
+    }
+
+    public function supportsBatch(): bool
+    {
+        return true;
     }
 
     public function getLabel(): string

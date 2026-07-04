@@ -27,10 +27,19 @@ class ValidationContext
      */
     public const KIND_STANDARD = 'standard';
 
+    /**
+     * Aggregated (batch) workflow — its mageos_workflow.aggregation column is
+     * non-null. The batch ProfileCheck enforces the restricted definition
+     * profile (no wait steps, batch-capable actions only, in-snapshot root
+     * conditions) for this kind.
+     */
+    public const KIND_AGGREGATED = 'aggregated';
+
     public function __construct(
         private readonly string $authMode = self::MODE_ADMIN_CONTEXT,
         private readonly string $workflowKind = self::KIND_STANDARD,
-        private readonly bool $dryRun = false
+        private readonly bool $dryRun = false,
+        private readonly ?string $entityType = null
     ) {
     }
 
@@ -42,6 +51,17 @@ class ValidationContext
     public function getWorkflowKind(): string
     {
         return $this->workflowKind;
+    }
+
+    /**
+     * The workflow's entity type (e.g. sales_order), when known. Lets the
+     * batch ProfileCheck resolve the trigger snapshot shape for the
+     * in-snapshot root-condition constraint; null skips per-attribute
+     * verification.
+     */
+    public function getEntityType(): ?string
+    {
+        return $this->entityType;
     }
 
     /**

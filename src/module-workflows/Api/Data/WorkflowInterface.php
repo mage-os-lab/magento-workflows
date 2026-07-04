@@ -13,6 +13,7 @@ interface WorkflowInterface
     public const ENTITY_TYPE = 'entity_type';
     public const CONDITIONS_SERIALIZED = 'conditions_serialized';
     public const DEFINITION = 'definition';
+    public const AGGREGATION = 'aggregation';
     public const VERSION = 'version';
     public const LOOP_GUARD_DEPTH = 'loop_guard_depth';
     public const CREATED_AT = 'created_at';
@@ -61,6 +62,14 @@ interface WorkflowInterface
     public function getDefinition(): string;
 
     public function setDefinition(string $definition): self;
+
+    /**
+     * Aggregation config JSON (batch aggregation, 05). Null = a per-entity
+     * workflow; non-null = an aggregated workflow (the "kind" derivation).
+     */
+    public function getAggregation(): ?string;
+
+    public function setAggregation(?string $aggregation): self;
 
     public function getVersion(): int;
 

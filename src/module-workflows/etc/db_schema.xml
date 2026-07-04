@@ -16,6 +16,8 @@
         <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
                 comment="Serialized Rule Condition Tree"/>
         <column xsi:type="json" name="definition" nullable="false" comment="Step Graph Definition JSON"/>
+        <column xsi:type="json" name="aggregation" nullable="true"
+                comment="Batch Aggregation Config JSON (05); null = per-entity workflow, non-null = aggregated"/>
         <column xsi:type="int" name="version" unsigned="true" nullable="false" default="1"
                 comment="Definition Version"/>
         <column xsi:type="smallint" name="loop_guard_depth" unsigned="true" nullable="false" default="1"
@@ -190,6 +192,67 @@
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="product_id"/>
         </constraint>
+    </table>
+
+    <table name="mageos_workflow_batch" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Batches (event-window accumulation, 05 B2)">
+        <column xsi:type="bigint" name="batch_id" unsigned="true" nullable="false" identity="true"
+                comment="Batch ID"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
+        <column xsi:type="varchar" name="window_key" length="64" nullable="false"
+                comment="Flush-Idempotency Key (schedule: window-start ISO-8601; interval: opening event UTC to seconds)"/>
+        <column xsi:type="varchar" name="status" length="16" nullable="false" default="open"
+                comment="Status (open|flushing|flushed)"/>
+        <column xsi:type="int" name="item_count" unsigned="true" nullable="false" default="0"
+                comment="Accumulated Item Count (may exceed the item cap; overflow elides from items[])"/>
+        <column xsi:type="int" name="store_id" unsigned="true" nullable="false" default="0"
+                comment="Store ID Of The Opening Event"/>
+        <column xsi:type="bigint" name="execution_id" unsigned="true" nullable="true"
+                comment="Flush Execution ID (recorded BEFORE publish for write-before-publish idempotency)"/>
+        <column xsi:type="timestamp" name="opened_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Opened At"/>
+        <column xsi:type="timestamp" name="flush_due_at" on_update="false" nullable="false"
+                comment="Flush Due At (window close instant)"/>
+        <column xsi:type="timestamp" name="flushing_at" on_update="false" nullable="true"
+                comment="Claimed-For-Flush At (open->flushing; grace-period retry clock)"/>
+        <column xsi:type="timestamp" name="flushed_at" on_update="false" nullable="true"
+                comment="Flushed At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="batch_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_BATCH_WORKFLOW_ID_WINDOW_KEY">
+            <column name="workflow_id"/>
+            <column name="window_key"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_BATCH_WORKFLOW_ID"
+                    table="mageos_workflow_batch" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_BATCH_STATUS_FLUSH_DUE_AT" indexType="btree">
+            <column name="status"/>
+            <column name="flush_due_at"/>
+        </index>
+    </table>
+
+    <table name="mageos_workflow_batch_item" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Batch Items (projected, capped entity snapshots, 05 B2)">
+        <column xsi:type="bigint" name="batch_item_id" unsigned="true" nullable="false" identity="true"
+                comment="Batch Item ID"/>
+        <column xsi:type="bigint" name="batch_id" unsigned="true" nullable="false" comment="Batch ID"/>
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" comment="Subject Entity ID"/>
+        <column xsi:type="json" name="snapshot" nullable="true"
+                comment="Projected, Capped Entity Snapshot JSON"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="batch_item_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_BATCH_ITEM_BATCH_ID_ENTITY_ID">
+            <column name="batch_id"/>
+            <column name="entity_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_BATCH_ITEM_BATCH_ID"
+                    table="mageos_workflow_batch_item" column="batch_id"
+                    referenceTable="mageos_workflow_batch" referenceColumn="batch_id" onDelete="CASCADE"/>
     </table>
 
     <table name="mageos_workflow_secret" resource="default" engine="innodb"

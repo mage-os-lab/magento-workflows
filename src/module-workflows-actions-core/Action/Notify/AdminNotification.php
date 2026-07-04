@@ -5,6 +5,7 @@ namespace MageOS\WorkflowsActionsCore\Action\Notify;
 
 use Magento\Framework\Notification\NotifierInterface;
 use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\BatchCapableActionInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
@@ -13,7 +14,7 @@ use MageOS\Workflows\Model\Action\ActionResult;
 /**
  * notify.admin — drops a notice into the admin notification inbox.
  */
-class AdminNotification extends AbstractAction implements SimulateableActionInterface
+class AdminNotification extends AbstractAction implements SimulateableActionInterface, BatchCapableActionInterface
 {
     public function __construct(
         private readonly NotifierInterface $notifier
@@ -23,6 +24,11 @@ class AdminNotification extends AbstractAction implements SimulateableActionInte
     public function getCode(): string
     {
         return 'notify.admin';
+    }
+
+    public function supportsBatch(): bool
+    {
+        return true;
     }
 
     public function getLabel(): string

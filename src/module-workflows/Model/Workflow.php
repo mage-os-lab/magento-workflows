@@ -111,6 +111,17 @@ class Workflow extends AbstractModel implements WorkflowInterface
         return $this->setData(self::DEFINITION, $definition);
     }
 
+    public function getAggregation(): ?string
+    {
+        $aggregation = $this->getData(self::AGGREGATION);
+        return $aggregation === null || $aggregation === '' ? null : (string)$aggregation;
+    }
+
+    public function setAggregation(?string $aggregation): WorkflowInterface
+    {
+        return $this->setData(self::AGGREGATION, $aggregation);
+    }
+
     public function getVersion(): int
     {
         $version = $this->getData(self::VERSION);

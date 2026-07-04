@@ -112,6 +112,44 @@
                 type="MageOS\Workflows\Plugin\ValidateWorkflowOnSave"/>
     </type>
 
+    <!-- Batch aggregation (05): the restricted 'aggregated' definition profile.
+         Non-null mageos_workflow.aggregation makes a workflow this kind (see
+         ValidateWorkflowOnSave). No wait steps; batch-capable actions only
+         (BatchCapableActionInterface marker); no revalidate_entity; root and
+         branch/switch conditions must classify fully in-snapshot (F4). -->
+    <type name="MageOS\Workflows\Model\Validation\Check\ProfileCheck">
+        <arguments>
+            <argument name="profiles" xsi:type="array">
+                <item name="aggregated" xsi:type="array">
+                    <item name="step_types" xsi:type="array">
+                        <item name="action" xsi:type="string">action</item>
+                        <item name="delay" xsi:type="string">delay</item>
+                        <item name="branch" xsi:type="string">branch</item>
+                        <item name="switch" xsi:type="string">switch</item>
+                        <item name="stop" xsi:type="string">stop</item>
+                    </item>
+                    <item name="require_batch_capable_actions" xsi:type="boolean">true</item>
+                    <item name="forbid_revalidate" xsi:type="boolean">true</item>
+                    <item name="require_in_snapshot_conditions" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+            <argument name="actionPool" xsi:type="object">MageOS\Workflows\Model\Action\ActionPool</argument>
+            <argument name="attributeClassifier" xsi:type="object">MageOS\Workflows\Model\Rule\AttributeClassifier</argument>
+            <argument name="snapshotShapeProvider" xsi:type="object">MageOS\Workflows\Model\Trigger\SnapshotShapeProvider</argument>
+        </arguments>
+    </type>
+    <!-- Per-entity-type trigger snapshot attribute lists (F4 input to the
+         classifier). Empty by default: an unlisted entity type reports its
+         shape as unknown, so the batch ProfileCheck enforces only the
+         hydration-forcing node-type constraint (cross-entity/relation) and
+         does not second-guess plain attributes it cannot verify. Populate per
+         entity type to also reject out-of-snapshot attribute filters. -->
+    <type name="MageOS\Workflows\Model\Trigger\SnapshotShapeProvider">
+        <arguments>
+            <argument name="attributesByEntityType" xsi:type="array"/>
+        </arguments>
+    </type>
+
     <!-- Condition engine -->
     <preference for="MageOS\Workflows\Model\Rule\HydrationProviderInterface"
                 type="MageOS\Workflows\Model\Rule\HydrationProvider"/>
