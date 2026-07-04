@@ -1,6 +1,6 @@
 # Discovery — Entity-Grid Visibility (Workflows Surfaced on Native Grid Pages)
 
-**Status:** Discovery / evaluation · **Track:** discoverability · **Origin:** [issue #5](https://github.com/rhoerr/magento-workflows/issues/5)
+**Status:** Implemented (July 2026) · **Track:** discoverability · **Origin:** [issue #5](https://github.com/rhoerr/magento-workflows/issues/5)
 **Related:** [11 — Admin UI](../11-admin-ui.md) · [02 — Package Decomposition](../02-packages.md) · [09 — Scope, ACL & Observability](../09-scope-acl-observability.md)
 
 ---
@@ -108,8 +108,8 @@ a follow-up scope once the grid strip proves the pattern — see §6.
 
 ## 4. Recommended design
 
-**New module:** `mage-os/workflows-grid-links` / `MageOS_WorkflowsGridLinks`
-(`src/module-workflows-grid-links/`), following the `workflows-import-suppression` shape:
+**New module:** `mage-os/workflows-admin-extension` / `MageOS_WorkflowsAdminExtension`
+(`src/module-workflows-admin-extension/`), following the `workflows-import-suppression` shape:
 
 - `module.xml` sequence: `MageOS_Workflows`, `MageOS_WorkflowsAdminUi`, `Magento_Backend`.
   Composer requires only `mage-os/workflows`, `mage-os/workflows-admin-ui`,
@@ -161,8 +161,8 @@ a follow-up scope once the grid strip proves the pattern — see §6.
 
 ## 5. Implementation plan
 
-PR-sized stages, ordered so each lands independently green. The standalone test runner
-auto-discovers `Test/Unit` in any `src/module-*` directory, so no runner changes are needed.
+Landed as four PR-sized stages, each shipped independently green. The standalone test runner
+auto-discovers `Test/Unit` in any `src/module-*` directory, so no runner changes were needed.
 
 | Stage | Scope | Est. |
 |---|---|---|

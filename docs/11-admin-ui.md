@@ -14,6 +14,27 @@ Grid + tabbed form:
 
 Plus grid mass-actions and the manual-run modal ([Triggers §Manual](05-triggers.md#manual-triggers)).
 
+## Contextual entry points (entity grids)
+
+A compact, ACL-gated summary strip renders in `page.main.actions` on the native Orders,
+Customers, Products, Reviews, Invoices, Shipments, and Credit Memos grids — *"Workflows: 3 active
+for Orders · View · Create workflow"*, or *"Workflows: none yet for Orders · Create one"* when
+none exist. No ui_component surgery: the strip renders beside the grid via stable layout handles,
+so grid-replacement extensions are unaffected. Two deep links do the work:
+
+- **View** opens the workflow grid pre-filtered to the entity type (via `filters_modifier`).
+- **Create workflow** opens the workflow edit form with `entity_type` preselected, gated on
+  `MageOS_Workflows::manage`.
+
+The strip itself is gated on `MageOS_Workflows::view` (renders nothing without it), and on a
+config toggle, `mageos_workflows/general/expose_on_entity_grids` (Yes/No, default **Yes**). Counts
+come from a cached `WorkflowCountProvider`, invalidated on workflow save/delete.
+
+Ships in the optional **`MageOS_WorkflowsAdminExtension`** module
+(`mage-os/workflows-admin-extension`) — disable it and the native grids revert byte-for-byte. See
+[Discovery — Entity-Grid Visibility](discovery/entity-grid-visibility.md) for the full design and
+rationale.
+
 ## Shadow mode (v1, nearly free)
 
 Enable a workflow in `shadow` status: conditions evaluate on live traffic, actions log their would-be effect via `simulate()`, nothing mutates.

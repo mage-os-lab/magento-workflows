@@ -43,7 +43,7 @@ layer.
 
 | Doc | Feature | Recommendation in one line | Est. |
 |---|---|---|---|
-| [entity-grid-visibility.md](entity-grid-visibility.md) | Workflows surfaced on native entity grids ([issue #5](https://github.com/rhoerr/magento-workflows/issues/5)) | New `workflows-grid-links` addon renders an ACL-gated, toggleable summary strip beside native grids via `page.main.actions` layout handles — count + view/create deep links; no ui_component surgery | ~1.5–2 wk |
+| [entity-grid-visibility.md](entity-grid-visibility.md) | Workflows surfaced on native entity grids ([issue #5](https://github.com/rhoerr/magento-workflows/issues/5)) — **implemented (July 2026)** | New `workflows-admin-extension` addon renders an ACL-gated, toggleable summary strip beside native grids via `page.main.actions` layout handles — count + view/create deep links; no ui_component surgery | ~1.5–2 wk |
 
 Independent of Tracks 1–2 (pure surface layer over the existing repository and metadata
 catalogue); can ship any time.
