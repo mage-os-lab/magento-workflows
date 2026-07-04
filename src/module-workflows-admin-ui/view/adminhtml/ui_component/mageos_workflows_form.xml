@@ -181,9 +181,17 @@
             <settings>
                 <label translate="true">Conditions</label>
                 <dataType>text</dataType>
-                <notice translate="true">v1 placeholder: a serialized condition tree (same shape as salesrule/catalogrule). The stock rule widget is a stretch goal for a future release; this keeps conditions authorable meanwhile. Leave blank for "always run".</notice>
+                <notice translate="true">A serialized condition tree (same shape as salesrule/catalogrule). Use "Edit conditions…" for the slide-out editor, or edit the JSON directly here. Leave blank for "always run".</notice>
             </settings>
         </field>
+        <!-- Shared condition slide-out (E1 seam). The textarea above is retained
+             as the "edit as JSON" fallback; the slide-out posts the serialized
+             tree to the shared Conditions controller. The stock rule widget is
+             deferred (E1 spike verdict, docs/11-admin-ui.md) — the slide-out is
+             the JSON editor until a full install can host the widget. -->
+        <htmlContent name="conditions_editor" sortOrder="20">
+            <argument name="block" xsi:type="object">MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\ConditionsEditor</argument>
+        </htmlContent>
     </fieldset>
     <fieldset name="actions">
         <settings>
