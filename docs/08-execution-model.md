@@ -9,6 +9,7 @@ async-events event.trigger.consumer ──> WorkflowNotifier ──> workflow.di
                      └─ true: walk step graph
                             action  -> execute inline, persist step result
                             branch  -> evaluate, follow edge
+                            switch  -> evaluate cases top-down, follow first match (or default)
                             delay   -> persist state=waiting, resume_at; RELEASE message
                             wait    -> persist state=waiting + waiting_event; park until event or timeout
                             stop    -> complete
@@ -33,6 +34,25 @@ A `wait` step parks the execution (`status = waiting`) with the awaited event na
 - **Timeout** — the resume sweeper claims the execution once the timeout deadline passes (computed like any delay and subject to the same max-delay ceiling); wait timeouts ride the sweeper on both queue backends.
 
 Both converge on the same `workflow.resume` consumer, which routes `on_event` or `on_timeout` depending on whether the step row carries an event result, and injects `{resolution: "event"|"timeout", event: <payload>}` as the wait step's output — available to downstream branches and interpolation as `steps.<key>.*`.
+
+## Switch steps (schema 3)
+
+A `switch` step is a multi-way `branch`: `Executor::runSwitchStep()` hydrates the entity once (governed by the step's single `revalidate_entity` flag), then evaluates each case's `conditions_serialized` tree top to bottom through the same `ConditionEvaluator::evaluateSerialized` the `branch` step uses. **First match wins** — the walker follows that case's `next` edge; if no case matches it follows the nullable `default` edge (a null `default` ends the walk). An empty/absent `conditions_serialized` on a case always matches, so an unconditional trailing case behaves like `default`.
+
+`switch` adds no new persistence state: exactly like `branch`, the step row is written **before** the edge is followed, so crash-safety analysis is unchanged. The step result records `{matched: <key>|null}`, feeding the execution timeline, dry-run traces, and plain-language rendering. Edge topology comes from `Definition::getStepEdges()`, the single source of a step's outgoing edges.
+
+## Static graph validation
+
+The runtime `MAX_STEPS_PER_RUN` cap (≈1000) is a backstop, not the primary defense. Every authoring path (admin Save, REST save, CLI import, gallery install) funnels through the save-time validation pipeline behind `WorkflowRepositoryInterface::save`, whose `GraphCheck` runs a DFS over `getStepEdges()` from `entry`:
+
+| Finding | Code | Severity |
+|---|---|---|
+| Cycle reachable from `entry` | `GRAPH_CYCLE` | **error** (blocks save) — the engine has no loop semantics, so a cycle is always an authoring error; catching it at save time converts ~1000 iterations of wasted step-row/context churn into an immediate rejection |
+| Step unreachable from `entry` | `GRAPH_UNREACHABLE_STEP` | warning |
+| `branch`/`switch` with **all** edges null | `GRAPH_DEAD_EDGE` | warning (the shipped form assembler can emit exactly this as a last-row branch, so it must stay re-savable) |
+| `branch`/`switch` directly after a `delay` with `revalidate_entity: false` | `GRAPH_POST_DELAY_STALE` | warning (see [Conditions §Delay semantics](06-conditions.md#delay-semantics)) |
+
+Errors block the save; warnings travel with it (admin form messages, REST responses, CLI output). Validation policy lives **outside** the parser: `Executor` re-parses `definition_snapshot` on every resume, so parse-time rules would be retroactive across parked executions — the pipeline never touches the executor's load path. The same pipeline runs read-only over an unsaved draft via `POST /V1/workflows/validate` and the edit form's "Refresh preview" button (see [Definition Format §Save-time validation](04-definition-format.md#save-time-validation)).
 
 ## Crash safety and delivery semantics
 

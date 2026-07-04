@@ -46,6 +46,23 @@ An optional top-level `ui` block (canvas layout persistence) is **non-semantic**
 
 Delay durations and wait timeouts are clamped at runtime to the `mageos_workflows/guards/max_delay_days` ceiling (default 365, with a logged warning when the clamp fires) — a fat-fingered `P1Y` cannot silently park an execution past the ceiling.
 
+## Save-time validation
+
+Parsing answers "is this well-formed?"; a separate validation pipeline answers "is this runnable?". Every authoring path — admin Save, REST save, CLI import, gallery install — funnels through it behind `WorkflowRepositoryInterface::save`; the executor never touches it (it re-parses stored `definition_snapshot`s directly, so any validation rule would otherwise be retroactive across parked executions — see [Execution Model §Static graph validation](08-execution-model.md#static-graph-validation)). Each finding carries a **stable machine code** (consumers may branch on it), a translated message, and an optional `step_key`/`edge` anchor. **Errors block the save; warnings travel with it.**
+
+Graph findings (`GraphCheck`, DFS from `entry` over the edge helper):
+
+| Code | Severity | Meaning |
+|---|---|---|
+| `GRAPH_CYCLE` | error | A cycle is reachable from `entry`. The engine has no loop semantics ([Overview §Non-goals](01-overview.md#non-goals-for-v1)); a cycle is always an authoring error |
+| `GRAPH_UNREACHABLE_STEP` | warning | A step no path from `entry` can reach |
+| `GRAPH_DEAD_EDGE` | warning | A `branch`/`switch` whose every edge is null (the form assembler can emit this as a last-row branch, so it stays re-savable) |
+| `GRAPH_POST_DELAY_STALE` | warning | A `branch`/`switch` directly after a `delay` with `revalidate_entity: false` — usually a mistake ([Conditions §Delay semantics](06-conditions.md#delay-semantics)) |
+
+The pipeline also rejects unknown/empty action codes, re-authorizes every referenced action against the acting admin's ACL, and validates the condition-tree shape. **Compatibility bar:** `GraphCheck` never turns a currently-savable definition into an unsavable one — a genuine cycle (which the form assembler cannot produce) is the only new error on previously-valid input.
+
+The *same* pipeline runs read-only, without persisting, over an unsaved draft via **`POST /V1/workflows/validate`** (returns the findings plus a plain-language rendering; per-action ACL re-authorization is skipped — a validate call is not an authoring path). The workflow edit form's **plain-language preview + "Refresh preview"** panel calls this pipeline through a session-authenticated admin controller and renders the summary sentence with any warnings anchored to their step.
+
 ## Workflow-as-code
 
 Agencies get first-class definition portability:

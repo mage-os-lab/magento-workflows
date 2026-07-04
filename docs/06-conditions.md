@@ -58,4 +58,4 @@ After a delay, the world has moved. Each post-delay branch/step carries `revalid
 | `true` | Re-hydrate fresh and re-evaluate (AutomateWoo's "validate before send") | "Email 1h after abandonment *if still abandoned*" |
 | `false` | Evaluate against the frozen trigger snapshot | "Log what it looked like at order time" |
 
-Exposed as a checkbox; **defaults to `true` on branches following delays**.
+Exposed as a checkbox; **defaults to `true` on branches following delays**. The form assembler applies that default (a branch row whose preceding row is a `delay` gets `revalidate_entity: true` unless the row sets it explicitly); a post-delay `branch`/`switch` left at `false` raises the `GRAPH_POST_DELAY_STALE` warning in the save-time validation pipeline ([Execution Model §Static graph validation](08-execution-model.md#static-graph-validation)) — non-blocking, but usually a mistake. `switch` carries one shared `revalidate_entity` for the whole step: one hydration, N case evaluations.
