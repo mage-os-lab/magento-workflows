@@ -7,6 +7,7 @@ use MageOS\Workflows\Api\ActionMetadataInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\Definition\Definition;
+use MageOS\Workflows\Model\Engine\FanOutExpander;
 use MageOS\Workflows\Model\Relation\RelationPool;
 use MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine as RelatedEntityCombine;
 use MageOS\Workflows\Model\Trigger\TriggerRegistry;
@@ -49,7 +50,8 @@ class PlainLanguageRenderer
             $workflow->getTriggerRef(),
             $workflow->getEntityType(),
             $workflow->getConditionsSerialized(),
-            $workflow->getDefinition()
+            $workflow->getDefinition(),
+            $workflow->getFanOut()
         );
     }
 
@@ -62,9 +64,18 @@ class PlainLanguageRenderer
         string $triggerRef,
         string $entityType,
         ?string $conditionsSerialized,
-        string $definitionJson
+        string $definitionJson,
+        ?string $fanOut = null
     ): string {
         $sentence = (string) __('When %1', $this->resolveTriggerLabel($triggerType, $triggerRef, $entityType));
+
+        // Fan-out leads with the per-target phrasing (the single most important
+        // comprehension detail — a merchant who reads this as "runs once" is
+        // surprised in the worst way): "for each of <relation> (up to N)".
+        $fanOutClause = $this->renderFanOutClause($fanOut);
+        if ($fanOutClause !== '') {
+            $sentence .= (string) __(', %1', $fanOutClause);
+        }
 
         $conditionCount = $this->countConditions($conditionsSerialized);
         $relationClause = $this->renderRelationClause($conditionsSerialized);
@@ -88,6 +99,30 @@ class PlainLanguageRenderer
         }
 
         return $sentence . '.';
+    }
+
+    /**
+     * "for each of <relation label> (up to N)" — the fan-out per-target lead.
+     * Returns '' when the workflow does not fan out or the clause is unreadable.
+     * When no per-workflow cap is set, the global default is shown so the
+     * sentence always renders a number (the cap is the load-bearing detail).
+     */
+    private function renderFanOutClause(?string $fanOut): string
+    {
+        if ($fanOut === null || trim($fanOut) === '') {
+            return '';
+        }
+        $config = json_decode($fanOut, true);
+        $code = is_array($config) ? trim((string) ($config['relation'] ?? '')) : '';
+        if ($code === '') {
+            return '';
+        }
+        $label = $this->relationPool->has($code) ? $this->relationPool->get($code)->getLabel() : $code;
+        $cap = (is_array($config) && isset($config['cap']) && (int) $config['cap'] > 0)
+            ? (int) $config['cap']
+            : FanOutExpander::DEFAULT_FAN_OUT_CAP;
+
+        return (string) __('for each of %1 (up to %2)', $label, $cap);
     }
 
     private function resolveTriggerLabel(string $triggerType, string $triggerRef, string $entityType): string

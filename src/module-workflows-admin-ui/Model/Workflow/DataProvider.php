@@ -50,6 +50,7 @@ class DataProvider extends AbstractDataProvider
             if (method_exists($model, 'getWebsiteIds')) {
                 $row['website_ids'] = $model->getWebsiteIds();
             }
+            $this->applyFanOut($row);
             $this->loadedData[$model->getId()] = $row;
         }
 
@@ -61,6 +62,27 @@ class DataProvider extends AbstractDataProvider
         }
 
         return $this->loadedData;
+    }
+
+    /**
+     * Decode the fan_out column JSON ({relation, cap}) into the two flat form
+     * fields the fan-out fieldset binds to. The Save controller reassembles
+     * them; leaving them absent renders an empty (no fan-out) fieldset.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function applyFanOut(array &$row): void
+    {
+        $fanOut = $row['fan_out'] ?? null;
+        if (is_string($fanOut) && trim($fanOut) !== '') {
+            $fanOut = json_decode($fanOut, true);
+        }
+        if (is_array($fanOut)) {
+            $row['fan_out_relation'] = (string) ($fanOut['relation'] ?? '');
+            if (isset($fanOut['cap']) && (int) $fanOut['cap'] > 0) {
+                $row['fan_out_cap'] = (int) $fanOut['cap'];
+            }
+        }
     }
 
     /**
