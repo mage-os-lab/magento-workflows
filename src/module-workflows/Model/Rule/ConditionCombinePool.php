@@ -41,11 +41,6 @@ class ConditionCombinePool
         $this->combines = array_merge(self::DEFAULT_COMBINES, $combines);
     }
 
-    public function hasCombine(string $entityType): bool
-    {
-        return isset($this->combines[$entityType]);
-    }
-
     /**
      * Create a fresh root combine for the entity type. Always a new instance:
      * combines are stateful (children, aggregator) and never shareable.
@@ -67,13 +62,5 @@ class ConditionCombinePool
             );
         }
         return $combine;
-    }
-
-    /**
-     * @return array<string, string> entity_type => combine class name
-     */
-    public function getCombineMap(): array
-    {
-        return $this->combines;
     }
 }

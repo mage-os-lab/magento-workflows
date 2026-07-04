@@ -89,19 +89,6 @@ class View extends Template
         return $collection->getItems();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function getContextData(): array
-    {
-        $execution = $this->getExecution();
-        if (!$execution || !$execution->getContext()) {
-            return [];
-        }
-        $decoded = json_decode((string) $execution->getContext(), true);
-        return is_array($decoded) ? $decoded : [];
-    }
-
     public function formatJson(?string $json): string
     {
         if ($json === null || trim($json) === '') {

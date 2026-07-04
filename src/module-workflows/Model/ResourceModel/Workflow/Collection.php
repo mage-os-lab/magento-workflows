@@ -61,21 +61,4 @@ class Collection extends AbstractCollection
         return $this;
     }
 
-    /**
-     * Restrict to workflows linked to any of the given websites
-     *
-     * @param int[] $websiteIds
-     * @return $this
-     */
-    public function addWebsiteFilter(array $websiteIds)
-    {
-        $this->getSelect()->join(
-            ['workflow_website' => $this->getTable(WorkflowResource::LINK_TABLE)],
-            'workflow_website.workflow_id = main_table.workflow_id',
-            []
-        )->where('workflow_website.website_id IN (?)', array_map('intval', $websiteIds))
-            ->group('main_table.workflow_id');
-
-        return $this;
-    }
 }

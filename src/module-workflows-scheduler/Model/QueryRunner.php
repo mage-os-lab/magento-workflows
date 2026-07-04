@@ -26,9 +26,7 @@ use Psr\Log\LoggerInterface;
  *   is queried against the entity's repository, page size 500.
  * - Fallback path: the condition tree could not be index-mapped (nested or
  *   unsupported), so we page through the repository unfiltered by the root
- *   conditions (the watermark filter still applies) within the match cap,
- *   and flag the dispatch payload so the engine knows it must re-evaluate
- *   the root conditions per-execution - it does this anyway.
+ *   conditions (the watermark filter still applies) within the match cap.
  *
  * Collected mode (05 B1): when the workflow carries a `collected` aggregation
  * config, matches are NOT dispatched one-per-row; their projections are
@@ -49,12 +47,6 @@ class QueryRunner
     private const XML_PATH_MATCH_CAP = 'mageos_workflows/scheduler/match_cap';
     private const DEFAULT_MATCH_CAP = 5000;
     private const PAGE_SIZE = 500;
-
-    /**
-     * Marks a dispatch payload as having skipped index-level root-condition
-     * filtering, so the engine knows this candidate was not pre-filtered.
-     */
-    private const FALLBACK_FLAG = '_workflows_scheduler_fallback';
 
     /**
      * @param array<string, object> $repositories entity_type => repository exposing
@@ -138,7 +130,6 @@ class QueryRunner
                 $watermarkField,
                 $previousWatermark,
                 $matchCap,
-                $isMapped,
                 $aggregation
             );
         }
@@ -172,9 +163,6 @@ class QueryRunner
                 }
 
                 $payload = ['entity_id' => $entityId] + $flat;
-                if (!$isMapped) {
-                    $payload[self::FALLBACK_FLAG] = true;
-                }
 
                 $this->dispatcher->dispatch($workflowId, $payload, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
                 $matched++;
@@ -203,7 +191,6 @@ class QueryRunner
         string $watermarkField,
         ?string $previousWatermark,
         int $matchCap,
-        bool $isMapped,
         AggregationConfig $aggregation
     ): ?string {
         $workflowId = (int) $workflow->getWorkflowId();
@@ -269,8 +256,7 @@ class QueryRunner
             $items,
             $itemCap,
             $previousWatermark,
-            $newWatermark,
-            $isMapped
+            $newWatermark
         );
 
         return $newWatermark;
@@ -286,8 +272,7 @@ class QueryRunner
         array $items,
         int $itemCap,
         ?string $windowFrom,
-        ?string $windowTo,
-        bool $isMapped
+        ?string $windowTo
     ): void {
         $workflowId = (int) $workflow->getWorkflowId();
 
@@ -310,9 +295,6 @@ class QueryRunner
             ['from' => $windowFrom, 'to' => $windowTo],
             $itemCap
         );
-        if (!$isMapped) {
-            $context[self::FALLBACK_FLAG] = true;
-        }
 
         $this->dispatcher->dispatch($workflowId, $context, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
     }
