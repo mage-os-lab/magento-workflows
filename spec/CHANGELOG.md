@@ -1,8 +1,31 @@
 # Spec Changelog
 
 Published deliverables: `workflow-definition.schema.json`, `workflow-export.schema.json`,
-and the conformance fixtures under `fixtures/`. One semver event per definition-schema
-revision; the engine (`Model/Definition/Definition.php`) and this spec move in lockstep.
+`workflow-template.schema.json`, and the conformance fixtures under `fixtures/`. One semver
+event per definition-schema revision; the engine (`Model/Definition/Definition.php`) and this
+spec move in lockstep.
+
+## Template schema 1
+
+- **`workflow-template.schema.json` (`mageos-workflow-template/1`)** — the gallery template
+  envelope (`docs/discovery/implementation/06-template-gallery.md`). A thin layer over the
+  export format: `template{code, title, description, category, version, requires, parameters}`
+  plus `workflow{…}`. The `workflow` object carries the export envelope's *fields* but is
+  deliberately **not** itself a valid export envelope — it omits the `format` tag, and its
+  property schemas are `$ref`'d from `workflow-export/1` (`#/properties/*`) so the two lineages
+  cannot drift. `TemplateInstaller` lifts `template.workflow` into a synthetic
+  `mageos-workflow-export/1` envelope (re-injecting the `format` tag) before handing it to the
+  shared import path, so there is one parser/validator lineage.
+- **Localization** — `title`, `description`, and parameter `label` accept either a plain string
+  or a `{locale: string}` map (`minProperties: 1`). That the install locale (or a designated
+  default) is present is *runtime* validation JSON Schema cannot express; it is a typed
+  compatibility reason, not a schema constraint.
+- **`requires`** — `schema` (min definition version), `triggers`, `actions`, `modules`,
+  `edition` (`any|community|enterprise|b2b`); evaluated by `CompatibilityChecker` before the
+  install button is enabled, greying out incompatible cards with the specific reason.
+- **`parameters`** — `%param.<key>%` install-time substitution tokens (distinct from runtime
+  `{{ }}`); typed (`string`, `select`, `duration`, `secret`, `entity:*`), with the F6
+  option-source union (`options` inline / `options_search` reference) for pick fields.
 
 ## Definition schema 3
 

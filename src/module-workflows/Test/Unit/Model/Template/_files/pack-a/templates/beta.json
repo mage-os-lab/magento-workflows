@@ -1,0 +1,17 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "beta-template",
+        "title": {"en_US": "Beta", "de_DE": "Beta DE"},
+        "description": "Second fixture template.",
+        "category": "Testing",
+        "version": "2.1.0"
+    },
+    "workflow": {
+        "name": "Beta workflow",
+        "entity_type": "customer",
+        "trigger_type": "event",
+        "trigger_ref": "customer.created",
+        "definition": {"schema": 1, "entry": null, "steps": {}}
+    }
+}
