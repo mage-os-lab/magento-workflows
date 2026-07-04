@@ -25,6 +25,14 @@
     <preference for="MageOS\Workflows\Api\Data\ValidationMessageInterface"
                 type="MageOS\Workflows\Model\Validation\ValidationMessage"/>
 
+    <!-- Dry-run endpoints (03) -->
+    <preference for="MageOS\Workflows\Api\WorkflowDryRunInterface"
+                type="MageOS\Workflows\Model\Webapi\WorkflowDryRun"/>
+    <preference for="MageOS\Workflows\Api\Data\DryRunResultInterface"
+                type="MageOS\Workflows\Model\Webapi\DryRunResult"/>
+    <preference for="MageOS\Workflows\Api\Data\DryRunTraceStepInterface"
+                type="MageOS\Workflows\Model\Webapi\DryRunTraceStep"/>
+
     <!-- Secrets -->
     <preference for="MageOS\Workflows\Model\Variable\SecretsProviderInterface"
                 type="MageOS\Workflows\Model\Secrets\ConfigSecretsProvider"/>
