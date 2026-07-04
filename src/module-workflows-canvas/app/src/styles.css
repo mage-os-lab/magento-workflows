@@ -1,0 +1,146 @@
+/* Canvas styling. Bundled into canvas.js (cssCodeSplit:false) so no external
+   stylesheet is fetched — CSP-safe, self-contained. */
+
+.wf-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 640px;
+}
+
+.wf-canvas__banner {
+  background: #fff4e5;
+  border: 1px solid #f5a623;
+  color: #7a4f01;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.wf-canvas__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wf-canvas__title {
+  font-size: 15px;
+}
+
+.wf-canvas__overlay-label {
+  color: #1565c0;
+  font-weight: 600;
+}
+
+.wf-canvas__error {
+  color: #c62828;
+}
+
+.wf-canvas__flow {
+  height: 640px;
+  border: 1px solid #d6d6d6;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.wf-canvas__empty {
+  padding: 24px;
+  color: #555;
+}
+
+.wf-node {
+  min-width: 180px;
+  max-width: 240px;
+  background: #fff;
+  border: 2px solid #c4c4c4;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.wf-node--taken {
+  box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.4);
+}
+
+.wf-node--degraded {
+  background: #fff5f5;
+}
+
+.wf-node__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.wf-node__type {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  color: #777;
+}
+
+.wf-node__entry {
+  font-size: 10px;
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.wf-node__summary {
+  font-weight: 600;
+  color: #222;
+  word-break: break-word;
+}
+
+.wf-node__degraded {
+  margin-top: 4px;
+  color: #c62828;
+  font-size: 11px;
+}
+
+.wf-node__status {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.wf-node__error {
+  margin-top: 4px;
+  color: #c62828;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.wf-node__handle-label {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 9px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.wf-outline {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.wf-outline__title {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.wf-outline__key {
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.wf-outline__status {
+  color: #1565c0;
+}
+
+.wf-outline__degraded {
+  color: #c62828;
+}

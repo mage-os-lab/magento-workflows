@@ -1,0 +1,13 @@
+{
+    "schema": 1,
+    "entry": "s1",
+    "steps": {
+        "s1": {
+            "type": "action",
+            "action": "vendor_removed.deprecated_action",
+            "config": { "note": "the module providing this action was uninstalled" },
+            "next": "s2"
+        },
+        "s2": { "type": "stop" }
+    }
+}
