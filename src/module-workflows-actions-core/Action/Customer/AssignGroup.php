@@ -11,6 +11,7 @@ use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
+use MageOS\Workflows\Model\Option\CustomerGroupOptionSource;
 
 /**
  * customer.assign_group — moves the customer into the configured group.
@@ -20,7 +21,8 @@ class AssignGroup extends AbstractAction implements SimulateableActionInterface
 {
     public function __construct(
         private readonly CustomerRepositoryInterface $customerRepository,
-        private readonly GroupRepositoryInterface $groupRepository
+        private readonly GroupRepositoryInterface $groupRepository,
+        private readonly CustomerGroupOptionSource $groupOptionSource
     ) {
     }
 
@@ -46,9 +48,19 @@ class AssignGroup extends AbstractAction implements SimulateableActionInterface
 
     public function getConfigForm(): array
     {
-        return [
-            ['name' => 'group_id', 'label' => 'Customer Group ID', 'type' => 'integer', 'required' => true],
-        ];
+        // Bounded option source (F6): customer groups are small and fully
+        // enumerable, so inline the options. Degrades to a bare integer field
+        // if the source is unavailable at metadata-list time.
+        $field = ['name' => 'group_id', 'label' => 'Customer Group', 'type' => 'select', 'required' => true];
+        try {
+            $options = $this->groupOptionSource->fetch();
+            if ($options !== []) {
+                $field['options'] = $options;
+            }
+        } catch (\Throwable $e) {
+            $field['type'] = 'integer';
+        }
+        return [$field];
     }
 
     public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface

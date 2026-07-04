@@ -41,6 +41,21 @@ class Edit extends Container
                 ]
             );
         }
+
+        // Optional canvas module: "Open in visual editor" entry from the form.
+        // Hidden when the module is absent — admin-ui never depends on it.
+        if ($this->getWorkflowId() && $this->_moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
+            $canvasUrl = $this->getUrl('mageos_workflows_canvas/canvas/view', ['workflow_id' => $this->getWorkflowId()]);
+            $this->buttonList->add(
+                'visual_editor',
+                [
+                    'label' => __('Open in visual editor'),
+                    'class' => 'action-secondary',
+                    'onclick' => "setLocation('{$canvasUrl}')",
+                    'sort_order' => 40,
+                ]
+            );
+        }
     }
 
     /**

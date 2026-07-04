@@ -49,6 +49,64 @@
     <preference for="MageOS\Workflows\Api\Data\RelationMetadataInterface"
                 type="MageOS\Workflows\Model\Webapi\RelationMetadata"/>
 
+    <!-- Remaining F6 metadata endpoints (canvas stage 1): actions, triggers,
+         entity-types, secrets (names), and the option-source union. -->
+    <preference for="MageOS\Workflows\Api\ActionMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\ActionMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\ActionMetadataItemInterface"
+                type="MageOS\Workflows\Model\Webapi\ActionMetadataItem"/>
+    <preference for="MageOS\Workflows\Api\TriggerMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\TriggerMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\TriggerMetadataInterface"
+                type="MageOS\Workflows\Model\Webapi\TriggerMetadata"/>
+    <preference for="MageOS\Workflows\Api\EntityTypeMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\EntityTypeMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\EntityTypeMetadataInterface"
+                type="MageOS\Workflows\Model\Webapi\EntityTypeMetadata"/>
+    <preference for="MageOS\Workflows\Api\SecretMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\SecretMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\OptionSourceProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\OptionSourceProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\OptionItemInterface"
+                type="MageOS\Workflows\Model\Webapi\OptionItem"/>
+
+    <!-- Execution step timeline endpoint (07 / canvas execution overlay). -->
+    <preference for="MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\WorkflowExecutionStepsProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\ExecutionStepStateInterface"
+                type="MageOS\Workflows\Model\Webapi\ExecutionStepState"/>
+
+    <!-- Curated workflow entity-type catalogue (meta/entity-types). Authoritative
+         in core; a module adding an entity type appends to this array. -->
+    <type name="MageOS\Workflows\Model\Webapi\EntityTypeMetadataProvider">
+        <arguments>
+            <argument name="entityTypes" xsi:type="array">
+                <item name="sales_order" xsi:type="string">Order</item>
+                <item name="customer" xsi:type="string">Customer</item>
+                <item name="catalog_product" xsi:type="string">Product</item>
+                <item name="quote" xsi:type="string">Cart</item>
+                <item name="invoice" xsi:type="string">Invoice</item>
+                <item name="creditmemo" xsi:type="string">Credit Memo</item>
+                <item name="shipment" xsi:type="string">Shipment</item>
+                <item name="review" xsi:type="string">Review</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Option-source pool (F6): DI array is the extension surface, mirroring
+         ActionPool / RelationPool. Seed sources: bounded (order statuses,
+         customer groups) + search-typed (cart price rules, email templates). -->
+    <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="order_statuses" xsi:type="object">MageOS\Workflows\Model\Option\OrderStatusOptionSource</item>
+                <item name="customer_groups" xsi:type="object">MageOS\Workflows\Model\Option\CustomerGroupOptionSource</item>
+                <item name="cart_price_rules" xsi:type="object">MageOS\Workflows\Model\Option\CartPriceRuleOptionSource</item>
+                <item name="email_templates" xsi:type="object">MageOS\Workflows\Model\Option\EmailTemplateOptionSource</item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Dry-run endpoints (03) -->
     <preference for="MageOS\Workflows\Api\WorkflowDryRunInterface"
                 type="MageOS\Workflows\Model\Webapi\WorkflowDryRun"/>

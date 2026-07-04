@@ -50,4 +50,22 @@ interface WorkflowExecutionStepInterface
     public function getResumeAt(): ?string;
 
     public function setResumeAt(?string $resumeAt): self;
+
+    /**
+     * When the step began executing (MySQL datetime), or null while pending.
+     * Additive getter (canvas execution overlay, 07): the value column already
+     * exists; this exposes it on the contract so the …/steps endpoint and any
+     * client can derive per-step duration.
+     */
+    public function getStartedAt(): ?string;
+
+    public function setStartedAt(?string $startedAt): self;
+
+    /**
+     * When the step reached a terminal status (complete/failed/skipped), or
+     * null while still pending/running/waiting. Additive getter (07).
+     */
+    public function getFinishedAt(): ?string;
+
+    public function setFinishedAt(?string $finishedAt): self;
 }

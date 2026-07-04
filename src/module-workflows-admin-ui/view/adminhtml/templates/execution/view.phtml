@@ -7,6 +7,14 @@ $execution = $block->getExecution();
 <?php if (!$execution): ?>
     <div class="message message-error"><?= $block->escapeHtml(__('Execution not found.')) ?></div>
 <?php else: ?>
+    <?php $canvasUrl = $block->getCanvasUrl(); ?>
+    <?php if ($canvasUrl): ?>
+        <div class="admin__page-section-title">
+            <a class="action-secondary" href="<?= $block->escapeUrl($canvasUrl) ?>">
+                <span><?= $block->escapeHtml(__('Open in visual canvas')) ?></span>
+            </a>
+        </div>
+    <?php endif; ?>
     <div class="admin__page-section">
         <div class="admin__page-section-title">
             <span class="title"><?= $block->escapeHtml(__('Execution Summary')) ?></span>

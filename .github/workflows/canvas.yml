@@ -1,0 +1,58 @@
+name: Canvas
+
+# The canvas package owns the only Node toolchain in the repo (lint.yml has no
+# Node at all). This workflow is authoritative for the committed IIFE bundle:
+# it rebuilds it, fails on any drift, and runs the vitest suite. It also greps
+# the built bundle for eval / new Function (CSP posture: none allowed).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/module-workflows-canvas/**'
+      - '.github/workflows/canvas.yml'
+      - 'spec/fixtures/**'
+  pull_request:
+    paths:
+      - 'src/module-workflows-canvas/**'
+      - '.github/workflows/canvas.yml'
+      - 'spec/fixtures/**'
+
+defaults:
+  run:
+    working-directory: src/module-workflows-canvas/app
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/module-workflows-canvas/app/package-lock.json
+
+      - name: Install (no lifecycle scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck + vitest
+        run: |
+          npm run typecheck
+          npm run test
+
+      - name: Build IIFE bundle
+        run: npm run build
+
+      - name: CSP gate — no eval / new Function in the bundle
+        run: |
+          set -e
+          if grep -nE '[^a-zA-Z0-9_.]eval\(|new +Function' ../web/js/dist/canvas.js; then
+            echo "::error::eval/new Function found in built bundle (CSP violation)"
+            exit 1
+          fi
+          echo "No eval / new Function in the bundle."
+
+      - name: Drift check — committed dist matches a fresh build
+        run: git diff --exit-code ../web/js/dist
