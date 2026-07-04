@@ -121,7 +121,9 @@ pipeline for a week") — dry-run is the *immediacy* answer. They are complement
   store timezone, business-days/`at` honored, max-delay clamp noted if it fires) and continues.
 - **Waits:** no event will arrive in-process. Default: follow **both** edges and render the trace
   as a tree from that step ("if `sales.order.created` fires within 4h → …; if not → …"). Cap
-  total explored paths (e.g. 16) with the graph validator's help; beyond the cap, follow
+  on **distinct step visits**, not just leaf paths — `on_event`/`on_timeout` commonly reconverge
+  on a shared tail, and a naive per-path walk re-renders that tail once per path (nested waits
+  multiply it); detect rejoin points and render the shared tail once. Beyond the cap, follow
   `on_timeout` and annotate. This both-paths exploration is dry-run's unique value over shadow
   mode — surface it prominently.
 - **Branches/switches after compressed delays:** `revalidate_entity: true` re-hydrates against
@@ -135,6 +137,13 @@ pipeline for a week") — dry-run is the *immediacy* answer. They are complement
   missing entity) marks the step and — where an edge exists — continues, because the merchant
   wants *all* the problems in one pass. Production stops on terminal failure; the trace flags
   "production would stop here."
+- **Branch/switch evaluation failure** needs its own rule (the action-failure rule above doesn't
+  cover it): a malformed condition tree throws in `ConditionEvaluator::decode()`, and a
+  `revalidate_entity: true` re-hydration that finds no entity fails **closed to `false`**
+  (`ConditionEvaluator.php:84–87`) — which silently routes the false edge. Dry-run marks the
+  step failed and explores **both/all** edges (like a wait), annotating which edge production
+  would actually take and why ("entity could not be re-loaded → production follows the false
+  edge"). Without this, a broken branch would fabricate a single confident-looking path.
 - **Missing entity:** trace-level error up front ("order 99999 not found") — mirrors the
   production skipped-on-missing-entity semantics.
 - **Non-simulateable third-party actions:** same fallback the executor uses — record
@@ -149,7 +158,11 @@ This is the recommendation's main liability; controls, in order of leverage:
 1. **Share every semantic component.** `DryRunService` must inject and use the production
    `ConditionEvaluator`, `VariableResolver`, `DelayCalculator`, `ActionPool`, `HydrationProvider`,
    and `Definition`. The only novel logic is walk order, time compression, and trace assembly.
-   Divergence is then confined to *routing*, which is small and testable.
+   Divergence is then confined to *routing*, which is small and testable. **One deliberate
+   exception:** the resolver's secrets source must be swapped (see §6) — config interpolation
+   runs *before* the simulation branch in production (`Executor::runActionStep` resolves config
+   at ~237, ahead of the `isSimulation()` check at ~241), so sharing the production
+   `SecretsProviderInterface` would resolve real secret values into trace content.
 2. **Conformance fixtures run through both engines.** Extend `spec/fixtures/` with paired
    expectations: for each fixture + synthetic payload, the step *sequence* the executor produces
    (in shadow status, via the existing unit-test harness) must equal the path `DryRunService`
@@ -178,11 +191,16 @@ Entry points
   CLI:    workflow:run --dry-run  → runs DryRunService, renders the trace as a console table
           (workflow:run without the flag keeps dispatching real manual executions, unchanged)
 
-Persistence (optional, on by default in admin):
-  execution row with new column mode ENUM('live','dry_run') (shadow stays a workflow status;
-  live executions of shadow workflows remain mode='live'), status=complete, steps written from
+Persistence (optional, on by default in admin — SAVED-workflow runs only):
+  execution row with new column mode ENUM('live','dry_run'), status=complete, steps written from
   the trace → the existing execution view renders it; TTL-pruned aggressively (default 7 days,
-  separate from the 90-day live retention in 10 — Security §PII containment)
+  separate from the 90-day live retention in 10 — Security §PII containment).
+  Constraints acknowledged: execution rows require a workflow_id (NOT NULL, CASCADE FK in
+  db_schema.xml) — dry-runs of UNSAVED definitions render transient trace panels and are not
+  persisted (making workflow_id nullable for their sake is not worth the ripple), and CASCADE
+  means dry-run audit rows die with the workflow. Also: `mode` marks dry-run-feature rows only —
+  it is NOT a side-effect predicate (a mode='live' row under a shadow-status workflow still ran
+  simulated; side effects remain governed by workflow status).
 ```
 
 **ACL:** a new `MageOS_Workflows::dry_run` resource, granted alongside `::manage` by default.
@@ -191,9 +209,16 @@ not be reachable by someone who can only view workflows. It deliberately does **
 `::manual_run` (which gates real side-effectful dispatch).
 
 **Security invariants** (tested, not assumed): no `simulate()` may perform I/O beyond entity
-*reads* — add this to the SDK contract docs; secrets interpolation in dry-run resolves to a
+*reads* — add this to the SDK contract docs. Secrets interpolation in dry-run resolves to a
 redaction marker (`{{ secrets.x }}` → `***x***`), never the value, since traces render in the
-browser and persist in trace rows; the webhook simulate path already conforms.
+browser and persist in trace rows. **This is new work, not existing behavior**: the production
+resolver returns real secret values (`VariableResolver.php:132–134`) and config interpolation
+runs before the simulation branch, so today even shadow mode resolves secrets into simulated
+config (the webhook's `simulate()` merely avoids fetching its *own* `auth_secret` — it still
+receives any `{{ secrets.* }}` already interpolated into its config). Dry-run therefore injects
+a redacting `SecretsProviderInterface` decorator — the one sanctioned deviation from §5's
+share-everything rule — and the same decorator should be offered to shadow mode as a follow-up
+hardening.
 
 ## 7. Quality, maintainability, reliability
 

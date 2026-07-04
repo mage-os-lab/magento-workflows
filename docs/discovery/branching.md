@@ -20,7 +20,7 @@ What exists (verified against source):
 | Cycle detection / reachability analysis | ❌ None — only a runtime `MAX_STEPS_PER_RUN = 1000` cap | `Executor.php:39–41, 150–158` |
 | Multi-way branch (switch / case) | ❌ Must be modeled as a chain of binary branches | — |
 | Parallel split / join | ❌ Single-token walker (`current_step` is one column) | `Executor.php` (`walk`), [18 §Flow control](../18-limitations.md#flow-control--orchestration) |
-| Branch authoring UI | ❌ Raw JSON textarea only; the linear dynamicRows assembler (`buildDefinitionFromRows`) never emits branches | `src/module-workflows-admin-ui/Controller/Adminhtml/Workflow/Save.php:166–211`, `view/adminhtml/ui_component/mageos_workflows_form.xml` |
+| Branch authoring UI | ❌ Raw JSON textarea, or *degenerate* branches via the dynamicRows assembler (`buildDefinitionFromRows` emits branch rows with `on_false` hardwired to null and `on_true` always the next row — it cannot express a real fork, and a branch as the last row yields the both-null dead end §2 lints) | `src/module-workflows-admin-ui/Controller/Adminhtml/Workflow/Save.php:166–211`, `view/adminhtml/ui_component/mageos_workflows_form.xml` |
 | Branch condition authoring | ❌ Serialized JSON pasted inline (`conditions_serialized` on the step) | — |
 
 So "add branching" decomposes into four independent workstreams, evaluated separately below:
@@ -47,7 +47,7 @@ becomes the contract that protects the executor.
 |---|---|---|---|
 | Shape | DFS inside the parser | Parser stays structural; a `Model/Definition/GraphValidator` runs DFS + reachability, called by Save controller, REST save, import, gallery install | Validator exists but only ever warns |
 | Pros | One gate, impossible to bypass | Separates "is this parseable" from "is this runnable"; callers choose severity; executor can keep parsing old stored definitions that predate the rule | Nothing breaks retroactively |
-| Cons | Executor parses stored `definition_snapshot`s — a mid-flight execution whose snapshot has a now-forbidden shape would fail to *load*, which is a correctness regression | Two call sites to keep wired (save + import) | Cycles stay a runtime failure; template/canvas ecosystems inherit the ambiguity |
+| Cons | Executor parses stored `definition_snapshot`s — a mid-flight execution whose snapshot has a now-forbidden shape would fail to *load*, which is a correctness regression | Four-and-growing call sites to keep wired (Save controller, REST save, CLI import, gallery install) | Cycles stay a runtime failure; template/canvas ecosystems inherit the ambiguity |
 
 **Recommendation: A2.** The decisive argument is the snapshot problem: `Executor::execute()`
 re-parses `definition_snapshot` on every resume, so parse-time rules are retroactive across all
@@ -58,7 +58,9 @@ parked executions. Validation policy must live *outside* the parser. Severity sp
 
 Cycles are **errors**, not warnings: the engine has no loop semantics (explicit non-goal,
 [01 §Non-goals](../01-overview.md#non-goals-for-v1)), so a cycle is always authoring error, and
-the runtime cap turns it into 1000 persisted step rows per execution before failing.
+the runtime cap turns it into ~1000 iterations of DB churn per execution (step rows are keyed
+`(execution_id, step_key)` and re-UPDATEd each revisit, plus a context persist + execution save
+per iteration) before `failExecution`.
 
 Cost: small (a DFS over ≤ a few hundred nodes), pure, highly unit-testable. Ship first — the
 canvas, dry-run, and gallery all lean on it.
@@ -176,8 +178,9 @@ Two eras, one decision:
 | Risk | Sunk cost — the canvas obsoletes it within the same phase | Merchants without the canvas module keep JSON-only branching |
 
 **Recommendation: D2.** The delivery plan already moved "branching in UI" (Phase 2) into the
-canvas era de facto — v1's single-post-delay-branch form concept was never built, and building it
-now competes with the canvas for the same budget. What *is* worth doing in the form era, because
+canvas era de facto — v1's single-post-delay-branch form concept only exists as the assembler's
+degenerate branch rows (§1), and building it out properly now competes with the canvas for the
+same budget. What *is* worth doing in the form era, because
 it survives into the canvas era:
 
 1. **Save-time graph validation** (§2) with errors/warnings surfaced next to the JSON editor.
@@ -208,8 +211,8 @@ replacement — no migration).
 
 - **Reliability:** `switch` adds no new persistence states — it is evaluated inline like `branch`,
   so crash-safety analysis is unchanged (the step row is written before edge-follow, same as
-  today). Cycle rejection converts a class of runtime failures (1000 wasted step rows, then
-  `failExecution`) into save-time errors.
+  today). Cycle rejection converts a class of runtime failures (~1000 iterations of wasted
+  step-row/context writes, then `failExecution`) into save-time errors.
 - **Compatibility:** additive schema 3; every stored definition and every parked
   `definition_snapshot` keeps parsing byte-for-byte. The published JSON Schema and fixtures in
   `spec/` version in lockstep — third-party tooling gets the change as a semver minor.

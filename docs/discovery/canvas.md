@@ -17,8 +17,9 @@ architectural choice below is downstream of that.
 Current state (verified): the admin UI contains **zero JavaScript** — no `web/` directory, no
 requirejs-config, nothing. Authoring is a raw JSON textarea
 (`mageos_workflows_form.xml`, "v1 fallback editor"). Meanwhile two ready-made server assets sit
-unconsumed: `ActionMetadataInterface::getConfigForm()` is fully populated across all 22 actions
-with **no consumer anywhere**, and `TriggerRegistry` holds grouped trigger metadata consumed only
+unconsumed: `ActionMetadataInterface::getConfigForm()` is populated on 19 of the 22 actions
+(the three no-config order actions — hold/unhold/cancel — return an empty form by design) with
+**no consumer anywhere**, and `TriggerRegistry` holds groupable trigger metadata consumed only
 server-side. The canvas is largely the story of finally consuming them.
 
 ## 2. Prerequisite: the metadata & validation API (build regardless of canvas choice)
@@ -130,21 +131,36 @@ gauntlet as every other client. The canvas never gets its own save semantics.
 
 ## 5. Layout persistence — where do node coordinates live?
 
+An honesty note first, because it reprices this whole section: **nothing survives the current
+parser except `schema`/`steps`/`entry`.** `Definition::toArray()` re-emits exactly those three
+keys (`Definition.php:227–234`), every save and import round-trips through it
+(`Save.php:67, 81`; `ImportCommand.php:125, 170`), and the published JSON Schema declares
+`additionalProperties: false` at the top level *and* on every step type
+(`spec/workflow-definition.schema.json`). Any layout stored "in the definition" therefore
+requires a deliberate core change — a whitelisted, preserved `ui` bag in
+`fromArray()`/`toArray()` plus a schema relaxation — not a free rider.
+
 | | L1 — nowhere (always auto-layout) | L2 — optional `ui` block in the definition (recommended) | L3 — separate column/table, not exported |
 |---|---|---|---|
 | Shape | deterministic elkjs every load | `"ui": {"nodes": {"s1": {"x":0,"y":120}, …}}` top-level, non-semantic, optional | `mageos_workflow.canvas_state` JSON |
 | Merchant expectation ("it stays where I put it") | ❌ violated on every edit | ✅ | ✅ |
-| Survives export/import & git (agencies) | n/a | ✅ — one artifact stays the whole truth | ❌ layout lost on every export/import |
-| Spec impact | none | JSON Schema gains an optional, explicitly non-semantic `ui` object; engine ignores it (documented) | none |
-| Cost | diff-noise-free | minor export diff noise; snapshot bloat (bytes) | second persistence path + sync bugs |
+| Survives export/import & git (agencies) | n/a | ✅ *once the parser preserves it* — one artifact stays the whole truth | ❌ layout lost on every export/import |
+| Spec impact | none | JSON Schema relaxed to allow exactly one optional, explicitly non-semantic top-level `ui` object | none |
+| Engine impact | none | `Definition` carries+re-emits `ui` verbatim (small, contract-level change to the most shared class in the system — the real cost of L2) | none |
+| Cost | diff-noise-free | parser change + schema relaxation; minor export diff noise; snapshot bloat (bytes) | second persistence path + sync bugs; loses layout exactly where agencies live (git) |
 
-**Recommendation: L2.** [04](../04-definition-format.md) is explicit that the definition is "the
-single artifact that the form UI, the future canvas, import/export, and the executor all read" —
-splitting layout into a side table breaks that for the canvas's own data. Rules: the `ui` block
-is optional (hand-authored/imported definitions auto-layout on first open, then persist), the
-engine parser ignores-and-preserves it, `GraphValidator` never reads it, and the published schema
-documents it as non-semantic so third-party tools know they may drop or regenerate it. Ship in
-the same schema-3 revision as `switch` ([branching.md §3](branching.md)) — one spec bump, not two.
+**Recommendation: still L2, with the cost stated honestly.** [04](../04-definition-format.md) is
+explicit that the definition is "the single artifact that the form UI, the future canvas,
+import/export, and the executor all read" — splitting layout into a side table breaks that for
+the canvas's own data, and L3's "no spec impact" advantage buys a permanent layout-loss bug on
+the workflow-as-code path. Rules: the `ui` block is optional (hand-authored/imported definitions
+auto-layout on first open, then persist); `Definition` preserves it verbatim and *only* it (no
+general unknown-key passthrough — see §7); `GraphValidator` never reads it; the spec documents
+it as non-semantic so third-party tools may drop or regenerate it. Versioning: since `ui`
+carries no executable semantics, it does **not** gate on a schema declaration (consistent with
+[04 §Schema versions](../04-definition-format.md#schema-versions), where the version tracks
+executable features only) — the schema *relaxation* simply ships in the same spec release as
+schema 3 ([branching.md §3](branching.md)), one spec release, one migration note.
 
 ## 6. The condition-editor problem (highest integration risk — spike first)
 
@@ -178,10 +194,18 @@ modernization path *if* E1's UX proves unacceptable — but it would be its own 
 ## 7. Quality, maintainability, reliability
 
 - **Round-trip fidelity is the reliability contract:** parse → graph model → serialize must be
-  lossless, including **unknown fields** (a schema-4 definition opened by an older canvas must
-  not be silently stripped — preserve-unknown-keys in the mapping layer, and refuse *editing*,
-  offering read-only, when `schema` exceeds the canvas's known version). Enforced by CI
-  round-tripping every fixture in `spec/fixtures/` byte-for-byte (modulo `ui`).
+  lossless for everything the format defines. Forward compatibility works by **schema
+  evolution, not unknown-field preservation** — the published schema is
+  `additionalProperties: false` throughout and the server strips anything else on save
+  (`Definition::toArray()`), so a canvas built against schema N handles a schema-N+1 document by
+  checking the declared version and **refusing to edit** (read-only view offered), never by
+  silently carrying fields it doesn't understand into a lossy save. (Note the server-side gate
+  is real today: `SCHEMA_VERSIONS = [1, 2]` — the engine itself rejects anything newer, so the
+  canvas's version check mirrors an enforced contract, and this behavior depends on
+  [branching.md](branching.md)'s version-list bump landing in step.) Enforced by CI
+  round-tripping every fixture in `spec/fixtures/` byte-for-byte through the mapping layer
+  (modulo `ui`), plus a save-path integration test proving canvas-save === textarea-save for
+  identical definitions.
 - **Server is the only authority:** the canvas validates continuously for UX but the save path
   re-validates everything; ACL filtering of the palette is convenience, `authorizeActionCodes`
   on save is the gate. No engine semantics are reimplemented client-side (plain language,
@@ -217,8 +241,9 @@ modernization path *if* E1's UX proves unacceptable — but it would be its own 
 
 Total ≈ 11–14 wks — comfortably the largest Phase-3 item, which is why Phase A is cut to ship
 alone: if Phase B slips, the viewer + overlays + endpoints are independently valuable.
-Dependencies: [branching.md](branching.md) items (GraphValidator, `switch`, schema 3 incl. `ui`
-block) and [dry-run](dry-run.md) should land first; the [template gallery](template-gallery.md)
+Dependencies: [branching.md](branching.md) items (GraphValidator, `switch`, the schema-3 spec
+release carrying the `ui` relaxation and the `Definition` ui-preservation change) and
+[dry-run](dry-run.md) should land first; the [template gallery](template-gallery.md)
 is independent.
 
 ## 9. Open questions

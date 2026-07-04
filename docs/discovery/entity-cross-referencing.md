@@ -13,7 +13,8 @@
 Today this is impossible, and the reason is precise: cross-entity traversal exists but is
 **hardwired to integer foreign keys**. The Order/Quote condition trees expose a Customer subtree
 (`Condition/Customer/Combine.php`), but `resolveCustomer()` reads `customer_id` off the model
-and calls `HydrationProvider::getEntity('customer', (int)$id)` — a guest order
+and calls `HydrationProvider::getEntity('customer', (int)$id, $fresh)` (the `fresh` flag is
+already threaded — load-bearing for §5's revalidation point) — a guest order
 (`customer_id <= 0`) resolves to `null` and the subtree simply validates `false`
 (`Customer/Combine.php:62–86`). There is no way to *look up* an entity by anything other than
 its primary id, and no way to express "no such entity exists" as a positive condition.
@@ -87,14 +88,18 @@ registered relations:
   ≥ 3" works day one). Resolution: `resolveIds()` → `getEntity(target, id)` →
   `propagateHydrationKeys()` — the existing primitive, now fed by the registry.
 - **Cardinality many** gets `ANY` / `ALL` / `NONE` match modes over a capped id list (default cap
-  100, config; over-cap logs and evaluates the first N — same honesty rule as the scheduler's
-  match cap).
+  100, config). Over-cap behavior is mode-dependent: `ANY`/`NONE` evaluate the first N and log
+  (same honesty rule as the scheduler's match cap — a match in the first N is a match); `ALL`
+  over a truncated set is unknowable and **fails toward false with a logged warning** (see §9).
 
 Hydration API extension: none required for the interface above — relations resolve *ids*, then
 reuse `getEntity()` and its identity map. Resolvers that need a query (email→id, customer→open
 order ids) run it themselves via repositories/`SearchCriteria`, memoized in a small per-execution
 `RelationContext` map keyed `(relation_code, source_id)` so a relation referenced by three
-conditions costs one lookup.
+conditions costs one lookup. Memoization requires `source_id > 0` — skip caching when the source
+carries no id (distinct id-less sources would otherwise collide on `(relation, 0)` and return
+false cache hits; relevant the day payload-sourced relations arrive, see
+[fan-out.md §7](fan-out.md)).
 
 - ✅ One concept powers conditions **and** [fan-out](fan-out.md) targets **and** (later)
   variable exposure and UI pickers; relations are enumerable (metadata endpoint for the canvas).
@@ -130,18 +135,27 @@ Each ships with unit tests and a conformance-style fixture. Third-party packs re
 
 - **Website scoping of email lookups.** Magento customer accounts are global or per-website
   (`customer/account_share/scope`). The resolver must honor it: per-website installs scope the
-  lookup by the execution's store → website; global installs search globally. Getting this wrong
-  produces false "customer exists" on multi-site installs — the resolver reads the config, and
-  the tests cover both modes. Case-insensitivity follows Magento's own email semantics.
+  lookup by website; global installs search globally. Getting this wrong produces false
+  "customer exists" on multi-site installs. The website is resolved from the **source entity's
+  own store/website columns** (order/quote carry `store_id`), *not* the execution's store —
+  manual mass-runs and CLI `workflow:run` commonly dispatch with `store_id = 0`, which must not
+  silently fall back to a default website. If the website is genuinely indeterminable in
+  per-website mode, the relation resolves to none (fail-toward-false) with a logged warning.
+  Tests cover both share modes plus the storeless dispatch case. Case-insensitivity follows
+  Magento's own email semantics.
 - **Missing/none:** `resolveIds() = []` → `EXISTS` is false, `NOT EXISTS` is true, child
   conditions are not evaluated (there's nothing to evaluate them against). Resolver *errors*
   (repository exception) evaluate the subtree to `false` and log — fail-toward-false, consistent
   with the aggregate-absence rule in [06](../06-conditions.md#entity-roots-and-attribute-coverage);
   they never fail the execution.
 - **Phase discipline:** relation subtrees are **always phase-2** (they need the DB by
-  definition). The save-time classifier marks any tree containing a `RelatedEntity` combine as
-  `needs_hydration`; snapshot-only workflows keep their zero-query fast path untouched, and
-  short-circuit ordering already defers these subtrees behind cheap leaves.
+  definition). One honest caveat: the existing `AttributeClassifier` classifies leaf
+  *attributes* only — a `RelatedEntity` combine carries no `attribute` key, and the flagship
+  childless `NOT EXISTS` check references zero attributes, so the classifier as-built would
+  misread it as zero-query. The classifier therefore gains **node-type awareness** (any tree
+  containing a `RelatedEntity` node classifies `needs_hydration`) — budgeted in §8, not assumed.
+  Snapshot-only workflows keep their zero-query fast path untouched, and short-circuit ordering
+  already defers nested combines behind cheap leaves (`sortForShortCircuit`).
 - **`revalidate_entity` interplay:** the `fresh` flag propagates through `RelationContext` — a
   post-delay branch with `revalidate_entity: true` re-resolves the relation (the customer may
   have registered *during* the delay — which is exactly the guest-flow point: "wait 3 days; if
@@ -173,7 +187,9 @@ Each ships with unit tests and a conformance-style fixture. Third-party packs re
 
 - **Performance:** bounded and memoized — one resolver query per (relation, source) per
   execution, identity-mapped entity loads, subtrees deferred by short-circuit ordering, to-many
-  caps. The zero-query snapshot path is provably untouched (classifier + phase discipline).
+  caps. Relation-free workflows keep the zero-query snapshot path untouched; for relation-bearing
+  trees that guarantee rests on the §5 classifier extension (new node-type logic, not a free
+  consequence of the existing attribute classifier).
 - **Reliability:** resolvers fail toward false and never abort executions; no new persistence,
   no new queue interactions, no executor changes — this is entirely inside the condition/
   hydration layer.
@@ -190,7 +206,7 @@ Each ships with unit tests and a conformance-style fixture. Third-party packs re
 | Order | Item | Effort |
 |---|---|---|
 | 1 | `RelationInterface` + `RelationPool` + `RelationContext` (memoization, caps, scoping) | ~1 wk |
-| 2 | `RelatedEntity\Combine` (EXISTS/NOT EXISTS, one/many, child-tree wiring) + classifier hook | ~1–1.5 wk |
+| 2 | `RelatedEntity\Combine` (EXISTS/NOT EXISTS, one/many, child-tree wiring) + classifier node-type extension (§5) | ~1–1.5 wk |
 | 3 | Seed relations incl. website-scoped email resolvers + tests + fixture | ~1 wk |
 | 4 | UI surfacing (child-select entries, plain-language rendering: "if no customer account matches the order email") + docs | ~0.5–1 wk |
 
@@ -202,10 +218,14 @@ three enhancement tracks.
 
 1. Should `EXISTS` subtrees with child conditions distinguish "no entity" from "entity exists
    but children fail"? Current proposal: no — `EXISTS` + children means "exists and matches",
-   `NOT EXISTS` ignores children (validated at save: children under NOT EXISTS = warning).
-2. Cap behavior for `ALL` over a truncated to-many list: evaluate-first-N-and-warn vs fail
-   toward false. Leaning fail-toward-false with a logged warning ("ALL over truncated set is
-   unknowable") — correctness over convenience.
+   `NOT EXISTS` ignores children. Note the two operators are then **not complements** once
+   children are present ("exists but children fail" makes both false), so the save-time rule
+   forbidding children under `NOT EXISTS` must be a **hard error**, not an advisory warning —
+   otherwise "NOT EXISTS a customer with orders_count ≥ 3" silently never matches whenever any
+   unqualified customer exists.
+2. ~~Cap behavior for `ALL` over a truncated list~~ — resolved into §3: `ANY`/`NONE` evaluate
+   first-N-and-warn; `ALL` over a truncated set fails toward false with a logged warning
+   (correctness over convenience).
 3. Does `order.orders_by_email` count archived/canceled orders? Proposal: exclude canceled
    (consistent with `CustomerAggregateProvider`), make state list part of the relation's
    definition, not merchant-configurable in v1.

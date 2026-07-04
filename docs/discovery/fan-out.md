@@ -50,20 +50,26 @@ fan_out:  relation = customer.open_orders   →  workflow entity_type = sales_or
 Dispatch flow (all existing seams, verified against `Model/Engine/Dispatcher.php`):
 
 1. `WorkflowNotifier` delivers the event payload as today.
-2. A `FanOutExpander` sits in front of `Dispatcher::dispatch()`: it resolves the relation
-   (the `RelationInterface` registry from
+2. A `FanOutExpander` is invoked **from the notifier** (not merely in front of
+   `Dispatcher::dispatch()` — the notifier is the only place the source event object, and hence
+   its async-events trace UUID, is in hand; `dispatch()` receives payload only): it resolves the
+   relation (the `RelationInterface` registry from
    [entity-cross-referencing.md §3](entity-cross-referencing.md) — same pool, cardinality
-   `many`) against the source payload, hydrates each target to build its trigger snapshot (the
-   same flat shape the target's own events produce, via the existing hydrators), and calls
-   `dispatch()` once per target.
+   `many`) against the source entity snapshot, hydrates each target to build its trigger
+   snapshot (the same flat shape the target's own events produce, via the existing hydrators),
+   and calls `dispatch()` once per target.
 3. Each child is a **normal execution**: `entity_id` = target id, `entity_type` = the workflow's
    entity type (= relation target type, enforced at save), conditions evaluate against the
    *target*, actions act on the *target*. Debounce applies per `(workflow, target)` — a storm of
    group-change events for one customer collapses exactly like any other storm.
-4. The child's context carries the source event under `trigger.origin`
-   (`{event, entity_type, entity_id, payload-summary}`) so conditions (via the Trigger Data
-   leaf, which already does dot-paths) and interpolation can reference why the child exists
-   ("held due to customer group change").
+4. The expander injects an `origin` key (`{event, entity_type, entity_id, trace_uuid,
+   payload-summary}`) into each child's dispatch payload, which lands in `context.trigger` via
+   `createExecution` — so conditions (the Trigger Data leaf resolves dot-paths against the
+   payload root, i.e. `origin.event`, not `trigger.origin.event`) and interpolation
+   (`{{ trigger.origin.event }}`) can reference why the child exists ("held due to customer
+   group change"). Caveat inherited from Trigger Data's snapshot-only design: after a
+   `revalidate_entity: true` branch, the freshly hydrated entity carries no `origin` — so
+   origin-based gating works at the root and pre-delay only.
 
 Why this shape wins: zero executor changes, zero new execution states, every existing guard and
 observability surface applies per child unchanged, and the workflow remains honest — its entity
@@ -115,15 +121,17 @@ work at that point).
 
 ## 3. Guards & storm math (the part that decides if this is safe to ship)
 
-Fan-out multiplies: `events/sec × relation size`. The guard stack, in firing order:
+Fan-out multiplies: `events/sec × relation size`. The guard stack (the expander's cap fires
+first; inside each child dispatch the existing order is status → chain-depth → suppression →
+scope → debounce, per `Dispatcher::dispatch()`):
 
 | Guard | Mechanism | Status |
 |---|---|---|
-| Per-fan-out cap | relation `resolveIds()` bounded; default 100, global ceiling config; **over-cap = truncate + warn + admin-visible marker on the source event log entry** (silent truncation forbidden) | new, cheap |
-| Per-child debounce | existing atomic `(workflow_id, entity_id, time_bucket)` unique-key insert (`Dispatcher.php:233–261`) | exists, applies unchanged |
-| Bulk suppression | `WorkflowSuppression` checked per child dispatch; a suppressed import storm suppresses the children too | exists |
+| Per-fan-out cap (expander, pre-dispatch) | relation `resolveIds()` bounded; default 100, global ceiling config; **over-cap = truncate + warn + admin-visible marker on the source event log entry** (silent truncation forbidden) | new, cheap |
 | Chain depth | children carry `chain_depth + 1` (F2) / source depth (F1 — expansion is not a chain hop, the event caused them directly) | plumbed, finally used |
-| Circuit breaker | per-workflow consecutive-failure trip → suspend; a fan-out workflow whose action fails on every child trips after 10 children, not 10,000 | exists |
+| Bulk suppression | `WorkflowSuppression` checked per child dispatch; a suppressed import storm suppresses the children too | exists |
+| Per-child debounce | existing atomic `(workflow_id, entity_id, time_bucket)` unique-key insert (`Dispatcher.php:233–261`) | exists, applies unchanged |
+| Circuit breaker | per-workflow **consecutive**-failure trip → suspend (resets on any success): an all-children-fail workflow trips after ~10 dispatched children; interleaved successes can stave it off, and already-queued children still run — the residual blast radius is bounded by the fan-out cap, not the breaker | exists |
 | Match-cap precedent | scheduler's 5k cap + honesty logging is the model for cap semantics | exists as pattern |
 
 One decision worth pinning: F1 expansion happens inside the notifier consumer's message handling
@@ -136,10 +144,12 @@ worst-case redelivery delay — document that coupling in the ops guide.
 ## 4. Observability & merchant comprehension
 
 - **Origin correlation:** children record the source event's async-events trace UUID plus a
-  `fan_out` marker in context (`trigger.origin`); the execution grid gains an "origin" filter so
-  "show me everything that customer-group change caused" is one query. No schema change strictly
-  required (context JSON carries it), but an indexed `origin_uuid` column is cheap and makes the
-  grid filter real — recommended.
+  `fan_out` marker in context (`origin` in the trigger payload, §2 point 4 — note this is
+  plumbed by the expander from the notifier; execution UUIDs themselves are freshly generated
+  per execution and are *not* the event trace UUID); the execution grid gains an "origin" filter
+  so "show me everything that customer-group change caused" is one query. No schema change
+  strictly required (context JSON carries it), but an indexed `origin_uuid` column is cheap and
+  makes the grid filter real — recommended.
 - **Plain language:** *"When a customer's group changes, for **each open order** of that
   customer (up to 100): if …, then hold order."* The per-target phrasing is the single most
   important comprehension detail — a merchant who reads this as "runs once" will be surprised in
@@ -158,10 +168,12 @@ worst-case redelivery delay — document that coupling in the ops guide.
   indistinguishable from ordinary executions downstream of dispatch. The novel surface
   (expansion) is a bounded loop over repository-resolved ids with per-iteration guards, and its
   crash story reduces to existing redelivery + debounce.
-- **Performance:** expansion cost is one relation query + N hydrations at dispatch time
-  (hydrations are the same ones the children's phase-2 conditions would do anyway; snapshot
-  reuse makes them the *only* hydration in the common case). Caps bound N; consumers scale
-  horizontally as today.
+- **Performance:** expansion cost is one relation query + N hydrations at dispatch time. For
+  snapshot-only workflows (the common case) the expander's hydration output *is* the child's
+  trigger snapshot, so it's the only entity load in the child's life; workflows with phase-2
+  conditions re-hydrate in the executor's own process (the expander's identity map doesn't cross
+  the consumer boundary), i.e. two loads per child — bounded, but not "reused". Caps bound N;
+  consumers scale horizontally as today.
 - **Maintainability:** one new class (`FanOutExpander`), one workflow-level config block, one
   save-time validator extension; the relation registry does the semantic heavy lifting and is
   shared with [entity-cross-referencing.md](entity-cross-referencing.md). F2 later adds a step
@@ -197,7 +209,7 @@ F1 total ≈ 3 wks on top of the registry.
    target entity — presumably no) or is there demand for source-side pre-conditions ("only fan
    out if the customer is Wholesale")? Proposal: root conditions evaluate against the target
    (consistent: entity_type = target); source-side gating uses a Trigger Data leaf on
-   `trigger.origin.*` paths. Validate with the first real use cases.
+   `origin.*` paths (§2 point 4). Validate with the first real use cases.
 3. Cap breach policy: truncate-and-warn (proposed) vs refuse-entirely (safer for "hold orders"
    style actions where partial application is confusing). Possibly per-workflow choice; decide
    with merchant feedback during beta.

@@ -210,10 +210,15 @@ assertions), and a screenshot/plain-language blurb.
   unknown-action rejection, same ACL re-auth, now guaranteed-uniform via `WorkflowImporter`.
   Bundled distribution adds no new remote surface; the future remote source is quarantined
   behind `TemplateSourceInterface` + signature verification and a config toggle.
-- **Reliability:** installs are a single workflow save — no partial-state risk beyond what save
-  already has; parameter substitution failures abort before any write. Templates in the bundled
-  pack are CI-tested against the engine version they ship with (the compat matrix is composer's,
-  not a runtime guess).
+- **Reliability:** parameter substitution failures abort before any write, and an install whose
+  `secret` parameters all reference *existing* secrets is a single workflow save — no partial
+  state beyond what save already has. The pick-**or-create** secret path is the exception: secret
+  creation is a separate write to `mageos_workflow_secret` (`ConfigSecretsProvider::set()`), so
+  the installer orders it *after* successful workflow save (a definition referencing a
+  not-yet-created secret is valid — secrets resolve at run time) and surfaces a "create these
+  secrets" follow-up on failure, rather than leaving orphaned secrets from a failed install.
+  Templates in the bundled pack are CI-tested against the engine version they ship with (the
+  compat matrix is composer's, not a runtime guess).
 - **Maintainability:** the format layers on the export envelope (one validator lineage); the
   catalog is data, not code — adding a template touches no PHP. Watch-item: templates reference
   action codes and trigger names as strings; the CI fixture test (installs against the real

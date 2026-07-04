@@ -38,9 +38,10 @@ layer.
 The features share foundations; this order lets each ship something user-visible while feeding
 the next:
 
-1. **Branching foundations** — GraphValidator, `switch` (schema 3, including the canvas's `ui`
-   layout block so the spec bumps once), plain-language upgrades. Everything downstream assumes
-   validated graphs.
+1. **Branching foundations** — GraphValidator, `switch` (schema 3; the same spec release also
+   carries the non-semantic `ui`-block relaxation and `Definition` preservation change the
+   canvas needs — one spec release, one migration note), plain-language upgrades. Everything
+   downstream assumes validated graphs.
 2. **Dry-run** — engine-side, no new frontend; adds the metadata the gallery and canvas both
    want to surface ("what would this do?").
 3. **Template gallery** — reuses import + dry-run; its intended UX is install → dry-run → enable.

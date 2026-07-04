@@ -60,6 +60,11 @@ context.trigger = {
 - ⚠️ Only reaches what a root-condition query can express (flat conditions map to
   `SearchCriteria`; nested trees fall back to load-and-filter — existing behavior, fine at
   digest cadence).
+- ⚠️ Item-shape parity with B2 is not automatic: `QueryRunner::toFlatArray()` flattens via
+  `getData()`/`__toArray()` only, while event snapshots flow through `EntityDataConverter`,
+  which lifts custom/extension (EAV) attributes to the top level — so a `|pluck:'my_eav_attr'`
+  would resolve under B2 but come up empty under B1. Route B1 projections through
+  `EntityDataConverter` so both modes produce the same flat item shape.
 
 ### B2 — Event-window accumulator (the full feature)
 
@@ -74,17 +79,25 @@ mageos_workflow_batch_item  (batch_id, entity_id, snapshot JSON (projected, capp
                              UNIQUE(batch_id, entity_id)   -- dedupe: an entity appears once
 ```
 
-Dispatch path (all inside the existing dispatcher guard sequence, after scope/suppression):
-evaluate the workflow's root conditions against the event **snapshot only** (membership filter —
-see §4), then `INSERT … ON DUPLICATE KEY` the item. Storm-proof by construction: one small
-insert per event, no hydration, no execution row.
+Dispatch path: the accumulation branch sits **at the suppression guard** in the dispatcher's
+sequence (an aggregated workflow with `aggregate_suppressed_events` set bypasses the suppression
+drop — §6; today suppression returns before scope/debounce, `Dispatcher.php:86–91`): evaluate
+the workflow's root conditions against the event **snapshot only** (membership filter — see §4),
+then `INSERT … ON DUPLICATE KEY` the item. Storm-proof: no hydration, no execution row, one
+small insert per event — though *not* zero-cost; see §4's honesty note on per-event rule
+evaluation.
 
 Flush path: the existing one-minute resume sweeper cadence gains a batch sweep — batches whose
 `flush_due_at` has passed are claimed with an atomic `open → flushing` conditional UPDATE (the
 same claim idiom as wait-step wakes, `Dispatcher::resumeWaiting`), their items loaded (capped,
 `overflow` flagged), and one execution dispatched with the B1 context shape. Crash between claim
-and dispatch: the sweeper retries `flushing` batches older than a grace period — at-least-once,
-deduped by `UNIQUE(workflow_id, window_key)` on the debounce-style execution insert.
+and dispatch: the sweeper retries `flushing` batches older than a grace period. Idempotency is
+the **batch row itself**, following `resumeWaiting`'s write-before-publish discipline: the flush
+creates the execution row and records its id on the batch row *before* publishing, so a retried
+flush that finds an execution id re-publishes that execution rather than creating a second one
+(`flushed` is stamped after successful publish). This is deliberately *not* the time-bucketed
+debounce table: a retry after a grace period would land in a different `time_bucket` and sail
+through, so the existing debounce mechanism cannot dedupe flushes.
 
 **Window policies** (per workflow):
 - `schedule`: window closes on a cron expression ("daily at 09:00 store time" — reuse the
@@ -110,8 +123,8 @@ A batch execution has **no single entity**, which touches real assumptions:
 
 | Assumption | Resolution |
 |---|---|
-| `entity_id` NOT NULL on executions | `entity_id = 0` + `context.trigger.batch = true`; execution grid renders "batch (143 items)" instead of an entity link. Debounce/uniqueness for batch dispatch keys on `(workflow_id, window_key)`, not entity. |
-| `wait` steps park per entity | **Invalid in aggregated workflows** — rejected at save by `GraphValidator` ([branching.md §2](branching.md), which gains a context: definition validated *for* an aggregated workflow). |
+| `entity_id` NOT NULL on executions | `entity_id = 0` + `context.trigger.batch = true`; execution grid renders "batch (143 items)" instead of an entity link. Flush idempotency keys on the batch row (§2), not the entity debounce. |
+| `wait` steps park per entity | **Invalid in aggregated workflows** — rejected at save by a definition-**profile** check (a step-type allowlist per workflow kind) that runs alongside [branching.md §2](branching.md)'s `GraphValidator`; the topological validator itself stays profile-agnostic. |
 | `revalidate_entity` re-hydrates the trigger entity | Invalid likewise — branches in batch workflows evaluate snapshot-only. |
 | Root conditions can hydrate (phase 2) | **Membership filtering is snapshot-phase only** (§4). |
 | Branch conditions evaluate one entity | Batch-level branching uses the existing **Trigger Data** leaf over the batch context — `count >= 5`, `overflow == true` work today with zero new condition code. Per-item conditions inside the flow are out (that's the membership filter's job). |
@@ -126,10 +139,21 @@ Nothing in the executor changes except tolerating `entity_id = 0`.
 
 The accumulation path runs per event during exactly the storms this feature exists to absorb —
 it must be **zero-query**. Rule: an aggregated workflow's root conditions must classify fully
-`in_snapshot` (the save-time classifier from
-[06 §Two-phase](../06-conditions.md#two-phase-evaluation-the-eav-at-scale-answer) already
-computes this; today it only *orders* evaluation — here it becomes a save-time *constraint* with
-a merchant-readable error: "Batch workflows can only filter on data included in the event").
+`in_snapshot`. The classification logic exists (`Model/Rule/AttributeClassifier.php`, computing
+the `in_snapshot`/`needs_hydration` split described in
+[06 §Two-phase](../06-conditions.md#two-phase-evaluation-the-eav-at-scale-answer)) but is
+currently **unwired** — unit-tested only, with no production caller; evaluation *ordering* is a
+separate mechanism (`sortForShortCircuit`). Batch membership becomes its first production
+consumer: a save-time constraint with a merchant-readable error ("Batch workflows can only
+filter on data included in the event"). Wiring it is greenfield integration work, priced into §8.
+
+Honesty note on cost: zero-*query* is not zero-*cost*. Today the synchronous dispatch path never
+evaluates root conditions (that happens later, in the async executor — `Executor.php:106`);
+accumulation moves a rule-tree instantiation + `validate()` per event into the notifier/dispatch
+hot path. Snapshot-only evaluation is cheap and allocation-bound, but it is *added* synchronous
+work — the honest claim is that the **whole pipeline** gets far cheaper (no execution rows, no
+per-event queue round-trips, one action run instead of thousands), not that the per-event
+dispatch cost drops.
 Cross-entity/aggregate/relation conditions stay available in per-entity workflows; a merchant who
 needs them plus a digest chains features: per-entity workflow → tags/flags → scheduled B1 digest
 over the flag.
@@ -168,24 +192,29 @@ no-code-execution stance:
 Today a bulk import inside `WorkflowSuppression::scope()` silently drops dispatches. With B2, a
 per-workflow flag `aggregate_suppressed_events: true` lets an aggregated workflow keep
 *accumulating* while suppression drops per-entity workflows — the import storm becomes exactly
-one "12,431 products were updated by import" digest. Default **off** (suppression's contract is
-"nothing happens"; opting a workflow into "something happens" must be explicit). This is the
-cheapest genuinely new capability in the whole doc — one condition in the dispatcher's guard
-order — and it directly converts the engine's biggest operational hazard into its own reporting.
+one "12,431 products were updated by import" digest. Default **off**, for two reasons:
+suppression's contract is "nothing happens" (opting a workflow into "something happens" must be
+explicit), and cost — today the suppressed path is nearly free (a static flag check and an
+immediate return, `Dispatcher.php:86–91`), while accumulating replaces that with per-event
+membership evaluation + an insert. Bounded and worthwhile for the workflows that want it, but a
+trade, not a freebie. Implementation is small (one branch at the suppression guard) and it
+directly converts the engine's biggest operational hazard into its own reporting.
 
 ## 7. Quality, maintainability, reliability
 
-- **Reliability:** accumulation is a single idempotent insert per event (no hydration, no
-  execution row) — strictly *cheaper* than today's per-entity path under storm load. Flush uses
-  the established claim idiom (conditional UPDATE) and at-least-once + unique-key dedupe; a
-  missed sweep flushes late, never twice, never silently dropped. Executor changes are limited
-  to tolerating entity-less executions.
+- **Reliability:** accumulation is one snapshot-phase evaluation plus one idempotent insert per
+  event (no hydration, no execution row, no queue round-trip) — far cheaper than today's
+  per-entity pipeline under storm load, though the *synchronous* per-event cost rises slightly
+  (§4). Flush uses the established claim idiom (conditional UPDATE) with write-before-publish
+  idempotency on the batch row; a missed sweep flushes late, never twice, never silently
+  dropped. Executor changes are limited to tolerating entity-less executions.
 - **Correctness honesty:** every cap surfaces (`count`, `overflow`, truncation warnings); the
   restricted definition profile turns would-be runtime surprises (a wait step that can never
   wake) into save-time errors.
 - **Maintainability:** B1 rides `QueryRunner`; B2 adds two tables, one sweeper, one dispatcher
-  branch. The restricted-profile validation concentrates batch-awareness in `GraphValidator` +
-  save-time checks rather than scattering `if (batch)` through the executor and every action.
+  branch. The restricted-profile validation concentrates batch-awareness in one save-time
+  definition-profile check rather than scattering `if (batch)` through the executor and every
+  action.
   Collection formatters extend an existing whitelist mechanism with existing tests.
 - **Scale posture:** batch tables are insert-heavy/short-lived — flushed batches prune with the
   TTL cron; indexes mirror the debounce table's shape. Item caps bound both row size and flush
@@ -197,12 +226,13 @@ order — and it directly converts the engine's biggest operational hazard into 
 
 ## 8. Sequencing & effort
 
-Independent of the cross-referencing/fan-out track; shares `GraphValidator` with
-[branching.md](branching.md) (sequence after it).
+Independent of the cross-referencing/fan-out track; the definition-profile check plugs into the
+save-time validation seam [branching.md](branching.md)'s `GraphValidator` establishes (sequence
+after it).
 
 | Order | Item | Effort |
 |---|---|---|
-| 1 | Batch context shape + restricted-profile validation (GraphValidator context, `supportsBatch`, snapshot-only membership check) | ~1 wk |
+| 1 | Batch context shape + restricted-profile validation (definition-profile check, `supportsBatch`, `AttributeClassifier` wiring for the snapshot-only membership constraint) | ~1 wk |
 | 2 | **B1** collected-mode scheduler dispatch + grid/plain-language rendering of batch executions | ~1–1.5 wk |
 | 3 | Collection formatters (`count/pluck/join/table/json`) + email/webhook paths + tests | ~1 wk |
 | 4 | **B2** accumulator tables, dispatcher branch, flush sweeper, window policies (schedule + interval), TTL pruning, ops-guide updates | ~2.5–3 wk |
