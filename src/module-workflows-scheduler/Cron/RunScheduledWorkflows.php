@@ -13,6 +13,7 @@ use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
+use MageOS\Workflows\Model\WorkflowIndex;
 use MageOS\WorkflowsScheduler\Model\QueryRunner;
 use Psr\Log\LoggerInterface;
 
@@ -27,6 +28,13 @@ use Psr\Log\LoggerInterface;
  * tracks the last fire minute per workflow so a slow run or an overlapping
  * cron tick can't double-fire the same workflow within one minute, plus the
  * watermark QueryRunner needs to avoid reprocessing rows.
+ *
+ * WorkflowIndex::getScheduledWorkflowIds() gates the repository query: on a
+ * tick where the cached index says there are no enabled/shadow schedule
+ * workflows at all, execute() returns immediately without touching the DB.
+ * The repository getList() call remains the authoritative load whenever the
+ * index reports at least one ID, since the index only tracks IDs, not the
+ * full workflow models the cron needs.
  */
 class RunScheduledWorkflows
 {
@@ -41,12 +49,19 @@ class RunScheduledWorkflows
         private readonly TimezoneInterface $timezone,
         private readonly ResourceConnection $resourceConnection,
         private readonly QueryRunner $queryRunner,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly WorkflowIndex $workflowIndex
     ) {
     }
 
     public function execute(): void
     {
+        if ($this->workflowIndex->getScheduledWorkflowIds() === []) {
+            // Cheap cache-backed pre-check: nothing to do this tick, skip the
+            // repository query entirely.
+            return;
+        }
+
         foreach ($this->getScheduleWorkflows() as $workflow) {
             try {
                 $this->processWorkflow($workflow);
