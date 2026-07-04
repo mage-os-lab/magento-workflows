@@ -69,9 +69,12 @@
         </arguments>
     </type>
     <!-- The dry-run validation subset: Structural + Graph + ActionCodes +
-         ConditionsShape. ActionAuthorizationCheck is deliberately absent
-         (dry-run is not an authoring path); ProfileCheck is out of scope for
-         the preview. -->
+         ConditionsShape + RelationConditions. ActionAuthorizationCheck is
+         deliberately absent (dry-run is not an authoring path); ProfileCheck
+         is out of scope for the preview. RelationConditions must stay in:
+         a NOT-EXISTS relation node with children evaluates silently wrong
+         rather than throwing, so without the check a dry-run would render a
+         confident trace for a definition Save would reject. -->
     <virtualType name="MageOS\Workflows\Model\Validation\WorkflowValidatorForDryRun"
                  type="MageOS\Workflows\Model\Validation\WorkflowValidator">
         <arguments>
@@ -80,6 +83,7 @@
                 <item name="graph" xsi:type="object">MageOS\Workflows\Model\Validation\Check\GraphCheck</item>
                 <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>
                 <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
+                <item name="relation_conditions" xsi:type="object">MageOS\Workflows\Model\Validation\Check\RelationConditionsCheck</item>
             </argument>
         </arguments>
     </virtualType>
