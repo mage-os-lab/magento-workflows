@@ -162,6 +162,13 @@
                 </validation>
             </settings>
         </field>
+        <!-- Plain-language preview + save-time validation findings (implementation plan 01,
+             stage 3). Server-rendered from the saved definition on load; the block's
+             "Refresh preview" button re-runs the F2 pipeline over the unsaved textarea
+             content via the admin Preview controller. -->
+        <htmlContent name="definition_preview" sortOrder="20">
+            <argument name="block" xsi:type="object">MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\DefinitionPreview</argument>
+        </htmlContent>
     </fieldset>
     <!-- Embedded executions listing, filtered to the current workflow: the workflow_id from
          the form provider is exported into the external listing provider's request params,
