@@ -49,21 +49,32 @@ class PlainLanguageRenderer
             $workflow->getTriggerRef(),
             $workflow->getEntityType(),
             $workflow->getConditionsSerialized(),
-            $workflow->getDefinition()
+            $workflow->getDefinition(),
+            $workflow->getAggregation()
         );
     }
 
     /**
      * Primitive-typed entry point so callers (e.g. a grid column reading raw row data) don't
      * need to hydrate a full WorkflowInterface just to render the summary.
+     *
+     * An aggregated workflow (non-null $aggregationJson, 05) renders in plain
+     * batch language — "Once a day, as one digest: …" — instead of the
+     * per-entity "When … then …" framing.
      */
     public function renderFromFields(
         string $triggerType,
         string $triggerRef,
         string $entityType,
         ?string $conditionsSerialized,
-        string $definitionJson
+        string $definitionJson,
+        ?string $aggregationJson = null
     ): string {
+        $batchPrefix = $this->batchCadence($aggregationJson);
+        if ($batchPrefix !== '') {
+            return $this->renderBatchSentence($batchPrefix, $conditionsSerialized, $definitionJson);
+        }
+
         $sentence = (string) __('When %1', $this->resolveTriggerLabel($triggerType, $triggerRef, $entityType));
 
         $conditionCount = $this->countConditions($conditionsSerialized);
@@ -88,6 +99,85 @@ class PlainLanguageRenderer
         }
 
         return $sentence . '.';
+    }
+
+    /**
+     * Batch phrasing for aggregated workflows: "<cadence>, as one digest, for
+     * everything that matches <N conditions>: <actions>."
+     */
+    private function renderBatchSentence(string $cadence, ?string $conditionsSerialized, string $definitionJson): string
+    {
+        $conditionCount = $this->countConditions($conditionsSerialized);
+        $sentence = (string) __('%1, as one digest', $cadence);
+        if ($conditionCount > 0) {
+            $sentence .= (string) ($conditionCount === 1
+                ? __(', for everything that matches %1 condition', $conditionCount)
+                : __(', for everything that matches %1 conditions', $conditionCount));
+        } else {
+            $sentence .= (string) __(', for everything');
+        }
+
+        $steps = $this->renderSteps($definitionJson);
+        if ($steps !== []) {
+            $sentence .= (string) __(', then: %1', implode(', ', $steps));
+        }
+
+        return $sentence . '.';
+    }
+
+    /**
+     * Coarse human cadence from the aggregation window policy. Deliberately
+     * approximate (exact cron humanization is out of scope); defensive against
+     * a malformed column (returns '' so the caller falls back to per-entity
+     * phrasing rather than throwing in a grid row).
+     */
+    private function batchCadence(?string $aggregationJson): string
+    {
+        if ($aggregationJson === null || trim($aggregationJson) === '') {
+            return '';
+        }
+        try {
+            $config = \MageOS\Workflows\Model\Aggregation\AggregationConfig::fromJson($aggregationJson);
+        } catch (\InvalidArgumentException $e) {
+            return '';
+        }
+        if ($config === null) {
+            return '';
+        }
+
+        $window = $config->getWindow();
+        $type = $config->getWindowType();
+        if ($config->isCollected() || $type === null) {
+            return (string) __('On a schedule');
+        }
+        if ($type === \MageOS\Workflows\Model\Aggregation\AggregationConfig::WINDOW_INTERVAL) {
+            $duration = $config->getDuration();
+            return $duration !== null
+                ? (string) __('Every %1', $this->humanizeDuration($duration))
+                : (string) __('At an interval');
+        }
+        // schedule
+        $cron = $config->getCron();
+        return $cron !== null ? $this->humanizeCron($cron) : (string) __('On a schedule');
+    }
+
+    private function humanizeCron(string $cron): string
+    {
+        $parts = preg_split('/\s+/', trim($cron)) ?: [];
+        if (count($parts) !== 5) {
+            return (string) __('On a schedule');
+        }
+        [$minute, $hour, $dom, $month, $dow] = $parts;
+        if ($dom === '*' && $month === '*' && $dow === '*' && $hour !== '*' && !str_contains($hour, '*')) {
+            return (string) __('Once a day');
+        }
+        if ($dom === '*' && $month === '*' && $dow !== '*') {
+            return (string) __('Once a week');
+        }
+        if ($hour === '*' && $minute !== '*') {
+            return (string) __('Every hour');
+        }
+        return (string) __('On a schedule');
     }
 
     private function resolveTriggerLabel(string $triggerType, string $triggerRef, string $entityType): string

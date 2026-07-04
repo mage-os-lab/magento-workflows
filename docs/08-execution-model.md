@@ -78,6 +78,12 @@ Executions are **resumable and crash-safe**:
 - Actions should be idempotent where cheap (add-comment dedupes on execution UUID); where not, **at-least-once is documented per action**. Non-idempotent actions check a per-step dedupe key (execution UUID + step key) — e.g., email send logs the key before SMTP.
 - An entity deleted during a delay: the resume path treats missing-entity as `skipped` with an explicit log status, never as an error retry.
 
+## Aggregated (batch) workflows
+
+An [aggregated workflow](discovery/batch-aggregation.md) (its `mageos_workflow.aggregation` column is non-null) collapses N events into **one** execution carrying a collection. The executor learns exactly one thing — tolerate `entity_id = 0` — and every other batch concern lives in save-time validation and the dispatch layer. Two modes: **collected** (the scheduler digests a query at a cadence, `module-workflows-scheduler`) and **window** (the dispatcher accumulates events into a batch that a one-minute flush sweep releases, with write-before-publish idempotency on the batch row).
+
+**Honest cost.** Accumulation is *cheaper for the whole pipeline* (no execution rows, no per-event queue round-trips, one action run instead of thousands) but it is **not** cheaper per event: today the synchronous dispatch path never evaluates root conditions (that happens later, in the async executor), whereas an aggregated window workflow moves a snapshot-only rule-tree `validate()` into the notifier/dispatch hot path — a membership filter run *per event* during exactly the storms this feature absorbs. Snapshot-only evaluation is cheap and allocation-bound (zero queries, guaranteed by the save-time in-snapshot check), but it is *added* synchronous work. The win is downstream, not on the per-event dispatch cost. With `aggregate_suppressed_events` set, the trade is starker still: a bulk import that today hits a near-free "suppressed, return" path instead pays per-event membership + an insert — bounded and worthwhile for the workflows that want one digest out of a 12k-row import, but a trade, not a freebie.
+
 ## Scaling and sizing
 
 Consumers scale horizontally and off-box exactly like async-events consumers — the same ops story clients already run.

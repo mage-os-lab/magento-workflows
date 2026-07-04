@@ -174,6 +174,18 @@ class AggregationConfig
     }
 
     /**
+     * The dispatcher's suppression-guard decision (05 §6): an aggregated
+     * workflow keeps accumulating during a bulk-suppression storm only when it
+     * has explicitly opted in via aggregate_suppressed_events. Default off —
+     * suppression's contract is "nothing happens", and accumulating replaces a
+     * near-free flag check with per-event membership evaluation + an insert.
+     */
+    public function shouldAccumulateUnderSuppression(bool $isSuppressed): bool
+    {
+        return !$isSuppressed || $this->aggregateSuppressedEvents();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

@@ -287,4 +287,54 @@ class PlainLanguageRendererTest extends TestCase
             $sentence
         );
     }
+
+    private function renderBatch(array $definition, string $aggregationJson, ?string $conditions = null): string
+    {
+        return $this->renderer()->renderFromFields(
+            'event',
+            'sales.order.created',
+            'sales_order',
+            $conditions,
+            (string) json_encode($definition),
+            $aggregationJson
+        );
+    }
+
+    public function testAggregatedScheduleWorkflowRendersBatchLanguage(): void
+    {
+        $definition = [
+            'schema' => 1,
+            'entry' => 's1',
+            'steps' => ['s1' => ['type' => 'action', 'action' => 'order.add_comment', 'next' => null]],
+        ];
+        $aggregation = json_encode([
+            'mode' => 'window',
+            'window' => ['type' => 'schedule', 'cron' => '0 9 * * *', 'timezone' => 'UTC'],
+        ]);
+        $conditions = json_encode(['conditions' => [['attribute' => 'status']]]);
+
+        $sentence = $this->renderBatch($definition, (string) $aggregation, (string) $conditions);
+
+        $this->assertSame(
+            'Once a day, as one digest, for everything that matches 1 condition, then: Add Order Comment.',
+            $sentence
+        );
+    }
+
+    public function testAggregatedIntervalWorkflowRendersEveryHour(): void
+    {
+        $definition = [
+            'schema' => 1,
+            'entry' => 's1',
+            'steps' => ['s1' => ['type' => 'stop']],
+        ];
+        $aggregation = json_encode([
+            'mode' => 'window',
+            'window' => ['type' => 'interval', 'duration' => 'PT1H'],
+        ]);
+
+        $sentence = $this->renderBatch($definition, (string) $aggregation);
+
+        $this->assertSame('Every 1 hour, as one digest, for everything, then: stop.', $sentence);
+    }
 }

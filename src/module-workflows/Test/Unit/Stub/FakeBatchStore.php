@@ -156,4 +156,18 @@ class FakeBatchStore implements BatchStoreInterface
     {
         $this->batches[$batchId]['flushing_at'] = $timestamp;
     }
+
+    /**
+     * Force a batch's flush_due_at into the past so the next sweep claims it
+     * (simulates the window closing).
+     */
+    public function makeDue(int $batchId): void
+    {
+        $this->batches[$batchId]['flush_due_at'] = '2000-01-01 00:00:00';
+    }
+
+    public function openBatchCount(): int
+    {
+        return count($this->batches);
+    }
 }

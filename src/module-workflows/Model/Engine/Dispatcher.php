@@ -95,7 +95,7 @@ class Dispatcher implements DispatcherInterface
         // sweep releases one execution per window.
         $aggregation = $this->aggregationConfig($workflow);
         if ($aggregation !== null && $aggregation->isWindow() && $this->batchAccumulator !== null) {
-            if ($this->suppression->isSuppressed() && !$aggregation->aggregateSuppressedEvents()) {
+            if (!$aggregation->shouldAccumulateUnderSuppression($this->suppression->isSuppressed())) {
                 $this->logger->debug('Workflow batch accumulation suppressed (not opted in)', [
                     'workflow_id' => $workflowId,
                 ]);
