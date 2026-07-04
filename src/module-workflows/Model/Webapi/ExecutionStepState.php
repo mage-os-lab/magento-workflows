@@ -1,0 +1,52 @@
+<?php
+declare(strict_types=1);
+
+namespace MageOS\Workflows\Model\Webapi;
+
+use MageOS\Workflows\Api\Data\ExecutionStepStateInterface;
+
+/**
+ * Immutable webapi DTO for one GET /V1/workflow-executions/:id/steps row (07).
+ */
+class ExecutionStepState implements ExecutionStepStateInterface
+{
+    public function __construct(
+        private readonly string $stepKey,
+        private readonly string $status,
+        private readonly ?string $startedAt,
+        private readonly ?string $finishedAt,
+        private readonly ?string $result,
+        private readonly ?string $error
+    ) {
+    }
+
+    public function getStepKey(): string
+    {
+        return $this->stepKey;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function getStartedAt(): ?string
+    {
+        return $this->startedAt;
+    }
+
+    public function getFinishedAt(): ?string
+    {
+        return $this->finishedAt;
+    }
+
+    public function getResult(): ?string
+    {
+        return $this->result;
+    }
+
+    public function getError(): ?string
+    {
+        return $this->error;
+    }
+}

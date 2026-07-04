@@ -69,6 +69,44 @@
         </resources>
     </route>
 
+    <!-- Remaining F6 metadata endpoints (canvas stage 1): palette + config-panel
+         generation. All read-only under ::view; the palette display is
+         ACL-filtered for convenience, the save path is the real gate. -->
+    <route url="/V1/workflows/meta/actions" method="GET">
+        <service class="MageOS\Workflows\Api\ActionMetadataProviderInterface" method="getActions"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/meta/triggers" method="GET">
+        <service class="MageOS\Workflows\Api\TriggerMetadataProviderInterface" method="getTriggers"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/meta/entity-types" method="GET">
+        <service class="MageOS\Workflows\Api\EntityTypeMetadataProviderInterface" method="getEntityTypes"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Secret NAMES only; values are write-only and never leave the server. -->
+    <route url="/V1/workflows/meta/secrets" method="GET">
+        <service class="MageOS\Workflows\Api\SecretMetadataProviderInterface" method="getSecretNames"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Option-source union (F6): ?source=<code>&q=… bind to the method args by
+         name. Bounded sources return their whole list on an empty query;
+         search-typed sources filter + cap. -->
+    <route url="/V1/workflows/meta/options" method="GET">
+        <service class="MageOS\Workflows\Api\OptionSourceProviderInterface" method="getOptions"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+
     <!-- Workflow executions (read-only) -->
     <route url="/V1/workflow-executions" method="GET">
         <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getList"/>
@@ -78,6 +116,14 @@
     </route>
     <route url="/V1/workflow-executions/:executionId" method="GET">
         <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Per-step timeline (07): powers the canvas execution overlay. Step rows
+         are not otherwise REST-exposed. -->
+    <route url="/V1/workflow-executions/:executionId/steps" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface" method="getSteps"/>
         <resources>
             <resource ref="MageOS_Workflows::view"/>
         </resources>
