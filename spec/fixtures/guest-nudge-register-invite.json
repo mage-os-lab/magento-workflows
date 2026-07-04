@@ -1,0 +1,37 @@
+{
+    "format": "mageos-workflow-export/1",
+    "name": "Guest order to registration invite",
+    "entity_type": "sales_order",
+    "trigger_type": "event",
+    "trigger_ref": "sales.order.created",
+    "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"customer_is_guest\",\"operator\":\"==\",\"value\":\"1\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\RelatedEntity\\\\Combine\",\"relation\":\"order.customer_by_email\",\"value\":\"0\",\"match_mode\":\"any\",\"conditions\":[]}]}",
+    "definition": {
+        "schema": 1,
+        "entry": "wait_grace",
+        "steps": {
+            "wait_grace": {
+                "type": "delay",
+                "config": {
+                    "duration": "P3D"
+                },
+                "next": "still_guest"
+            },
+            "still_guest": {
+                "type": "branch",
+                "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\RelatedEntity\\\\Combine\",\"relation\":\"order.customer_by_email\",\"value\":\"0\",\"match_mode\":\"any\",\"conditions\":[]}]}",
+                "revalidate_entity": true,
+                "on_true": "invite",
+                "on_false": null
+            },
+            "invite": {
+                "type": "action",
+                "action": "notify.send_email",
+                "config": {
+                    "template_id": "guest_registration_invite"
+                },
+                "next": null
+            }
+        }
+    },
+    "loop_guard_depth": 1
+}

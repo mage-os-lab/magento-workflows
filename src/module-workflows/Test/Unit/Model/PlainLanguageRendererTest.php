@@ -3,14 +3,54 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Test\Unit\Model;
 
+use Magento\Framework\DataObject;
+use MageOS\Workflows\Api\RelationInterface;
 use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\PlainLanguageRenderer;
+use MageOS\Workflows\Model\Relation\RelationPool;
+use MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine as RelatedEntityCombine;
 use MageOS\Workflows\Model\Trigger\TriggerRegistry;
 use MageOS\Workflows\Test\Unit\Stub\StubAction;
 use PHPUnit\Framework\TestCase;
 
 class PlainLanguageRendererTest extends TestCase
 {
+    private function relationPool(): RelationPool
+    {
+        $relation = new class implements RelationInterface {
+            public function getCode(): string
+            {
+                return 'order.customer_by_email';
+            }
+
+            public function getLabel(): string
+            {
+                return 'a customer account matching the order email';
+            }
+
+            public function getSourceEntityType(): string
+            {
+                return 'sales_order';
+            }
+
+            public function getTargetEntityType(): string
+            {
+                return 'customer';
+            }
+
+            public function getCardinality(): string
+            {
+                return self::CARDINALITY_ONE;
+            }
+
+            public function resolveIds(DataObject $source, ?int $websiteId): array
+            {
+                return [];
+            }
+        };
+        return new RelationPool(['order.customer_by_email' => $relation]);
+    }
+
     private function renderer(): PlainLanguageRenderer
     {
         $registry = new class extends TriggerRegistry {
@@ -34,7 +74,8 @@ class PlainLanguageRendererTest extends TestCase
             new ActionPool([
                 'order.add_comment' => new StubAction('order.add_comment', 'Add Order Comment'),
             ]),
-            $registry
+            $registry,
+            $this->relationPool()
         );
     }
 
@@ -200,5 +241,50 @@ class PlainLanguageRendererTest extends TestCase
         );
 
         $this->assertSame('When Order Created, if 1 condition.', $sentence);
+    }
+
+    public function testBareNotExistsRelationRendersAsClause(): void
+    {
+        // The flagship guest check: childless NOT EXISTS carries zero attribute
+        // leaves, so the count is 0 — the relation clause must still describe it.
+        $conditions = json_encode([
+            'type' => 'combine',
+            'conditions' => [
+                [
+                    'type' => RelatedEntityCombine::class,
+                    'relation' => 'order.customer_by_email',
+                    'value' => '0',
+                ],
+            ],
+        ]);
+
+        $sentence = $this->render(['schema' => 1, 'steps' => [], 'entry' => null], (string) $conditions);
+
+        $this->assertSame(
+            'When Order Created, if a customer account matching the order email does not exist.',
+            $sentence
+        );
+    }
+
+    public function testExistsRelationCombinesWithAttributeCount(): void
+    {
+        $conditions = json_encode([
+            'type' => 'combine',
+            'conditions' => [
+                ['attribute' => 'grand_total'],
+                [
+                    'type' => RelatedEntityCombine::class,
+                    'relation' => 'order.customer_by_email',
+                    'value' => '1',
+                ],
+            ],
+        ]);
+
+        $sentence = $this->render(['schema' => 1, 'steps' => [], 'entry' => null], (string) $conditions);
+
+        $this->assertSame(
+            'When Order Created, if 1 condition and a customer account matching the order email exists.',
+            $sentence
+        );
     }
 }

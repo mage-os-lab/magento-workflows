@@ -7,6 +7,8 @@ use MageOS\Workflows\Api\ActionMetadataInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\Definition\Definition;
+use MageOS\Workflows\Model\Relation\RelationPool;
+use MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine as RelatedEntityCombine;
 use MageOS\Workflows\Model\Trigger\TriggerRegistry;
 
 /**
@@ -35,7 +37,8 @@ class PlainLanguageRenderer
 
     public function __construct(
         private readonly ActionPool $actionPool,
-        private readonly TriggerRegistry $triggerRegistry
+        private readonly TriggerRegistry $triggerRegistry,
+        private readonly RelationPool $relationPool
     ) {
     }
 
@@ -64,10 +67,19 @@ class PlainLanguageRenderer
         $sentence = (string) __('When %1', $this->resolveTriggerLabel($triggerType, $triggerRef, $entityType));
 
         $conditionCount = $this->countConditions($conditionsSerialized);
+        $relationClause = $this->renderRelationClause($conditionsSerialized);
         if ($conditionCount > 0) {
             $sentence .= (string) ($conditionCount === 1
                 ? __(', if %1 condition', $conditionCount)
                 : __(', if %1 conditions', $conditionCount));
+            if ($relationClause !== '') {
+                $sentence .= (string) __(' and %1', $relationClause);
+            }
+        } elseif ($relationClause !== '') {
+            // A bare existence check (the flagship guest node) carries no
+            // attribute leaves, so the count is 0 — describe it explicitly
+            // rather than dropping the whole condition clause.
+            $sentence .= (string) __(', if %1', $relationClause);
         }
 
         $steps = $this->renderSteps($definitionJson);
@@ -134,6 +146,57 @@ class PlainLanguageRenderer
             }
         }
         return $count;
+    }
+
+    /**
+     * Describe the RelatedEntity existence nodes in a condition tree, e.g.
+     * "a customer account matching the order email does not exist". Joined by
+     * "and" and appended to the condition clause so the flagship guest check
+     * (childless NOT EXISTS, zero attribute leaves) still reads in plain
+     * language. Returns '' when the tree has no relation nodes.
+     */
+    private function renderRelationClause(?string $conditionsSerialized): string
+    {
+        if ($conditionsSerialized === null || trim($conditionsSerialized) === '') {
+            return '';
+        }
+        $tree = json_decode($conditionsSerialized, true);
+        if (!is_array($tree)) {
+            return '';
+        }
+        $phrases = [];
+        $this->collectRelationPhrases($tree, $phrases);
+        return implode((string) __(' and '), $phrases);
+    }
+
+    /**
+     * @param string[] $phrases
+     */
+    private function collectRelationPhrases(array $node, array &$phrases): void
+    {
+        if (($node['type'] ?? null) === RelatedEntityCombine::class) {
+            $phrase = $this->relationPhrase($node);
+            if ($phrase !== '') {
+                $phrases[] = $phrase;
+            }
+        }
+        foreach ($node['conditions'] ?? [] as $child) {
+            if (is_array($child)) {
+                $this->collectRelationPhrases($child, $phrases);
+            }
+        }
+    }
+
+    private function relationPhrase(array $node): string
+    {
+        $code = trim((string) ($node['relation'] ?? ''));
+        if ($code === '') {
+            return '';
+        }
+        $label = $this->relationPool->has($code) ? $this->relationPool->get($code)->getLabel() : $code;
+        // EXISTS is value 1; NOT EXISTS is value 0 (absent value = EXISTS).
+        $exists = !array_key_exists('value', $node) || (string) $node['value'] !== '0';
+        return (string) ($exists ? __('%1 exists', $label) : __('%1 does not exist', $label));
     }
 
     /**

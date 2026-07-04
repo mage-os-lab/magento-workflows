@@ -94,7 +94,12 @@ class WorkflowImporterEnvelopeTest extends TestCase
 
     public function testBothSpecFixturesPassTheEnvelopeContract(): void
     {
-        foreach (['multi-region-order-routing', 'canvas-ui-round-trip', 'high-value-order-fraud-check'] as $name) {
+        foreach ([
+            'multi-region-order-routing',
+            'canvas-ui-round-trip',
+            'high-value-order-fraud-check',
+            'guest-nudge-register-invite',
+        ] as $name) {
             $envelope = json_decode(
                 (string) file_get_contents(
                     __DIR__ . '/../../../../../../spec/fixtures/' . $name . '.json'

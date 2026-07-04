@@ -25,6 +25,12 @@
     <preference for="MageOS\Workflows\Api\Data\ValidationMessageInterface"
                 type="MageOS\Workflows\Model\Validation\ValidationMessage"/>
 
+    <!-- Relation metadata endpoint (F6 / entity cross-referencing stage 4) -->
+    <preference for="MageOS\Workflows\Api\RelationMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\RelationMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\RelationMetadataInterface"
+                type="MageOS\Workflows\Model\Webapi\RelationMetadata"/>
+
     <!-- Secrets -->
     <preference for="MageOS\Workflows\Model\Variable\SecretsProviderInterface"
                 type="MageOS\Workflows\Model\Secrets\ConfigSecretsProvider"/>
@@ -59,6 +65,7 @@
                 <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>
                 <item name="action_authorization" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionAuthorizationCheck</item>
                 <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
+                <item name="relation_conditions" xsi:type="object">MageOS\Workflows\Model\Validation\Check\RelationConditionsCheck</item>
             </argument>
         </arguments>
     </type>
@@ -75,7 +82,37 @@
          (entity cross-referencing); extensions append their own. -->
     <type name="MageOS\Workflows\Model\Rule\AttributeClassifier">
         <arguments>
-            <argument name="hydrationForcingNodeTypes" xsi:type="array"/>
+            <argument name="hydrationForcingNodeTypes" xsi:type="array">
+                <item name="related_entity" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Relation registry (F5) — the extension surface for entity
+         cross-referencing. Seed relations (docs/discovery/entity-cross-
+         referencing.md §4); third-party packs append one resolver + one line
+         here (docs/07 SDK note). -->
+    <type name="MageOS\Workflows\Model\Relation\RelationPool">
+        <arguments>
+            <argument name="relations" xsi:type="array">
+                <item name="order.customer" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderCustomer</item>
+                <item name="order.customer_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderCustomerByEmail</item>
+                <item name="quote.customer_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\QuoteCustomerByEmail</item>
+                <item name="order.orders_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderOrdersByEmail</item>
+                <item name="customer.open_orders" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\CustomerOpenOrders</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Child-condition options offered by the RelatedEntity combine, keyed by
+         the relation's target entity type (the leaf classes reused from the
+         target's own condition subtree). Third-party targets append here. -->
+    <type name="MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine">
+        <arguments>
+            <argument name="targetChildConditions" xsi:type="array">
+                <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Customer\Attribute</item>
+                <item name="sales_order" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Order\Attribute</item>
+            </argument>
         </arguments>
     </type>
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">

@@ -5,6 +5,15 @@ namespace Magento\Sales\Model;
 
 class Order
 {
+    public const STATE_NEW = 'new';
+    public const STATE_PENDING_PAYMENT = 'pending_payment';
+    public const STATE_PROCESSING = 'processing';
+    public const STATE_COMPLETE = 'complete';
+    public const STATE_CLOSED = 'closed';
+    public const STATE_CANCELED = 'canceled';
+    public const STATE_HOLDED = 'holded';
+    public const STATE_PAYMENT_REVIEW = 'payment_review';
+
     private int $entityId = 0;
     private string $incrementId = '';
     private string $state = '';
