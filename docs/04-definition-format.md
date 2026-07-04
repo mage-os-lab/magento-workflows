@@ -83,6 +83,46 @@ Imported definitions are validated hard (full detail in [Security Model](10-secu
 - The same check applies to programmatic creation via data patches (documented: patches run as system; agencies own that risk)
 - Exports never contain secret values — definitions reference secrets by name only
 
+## Trigger payload context conventions
+
+Some shared keys can appear at the **root of the trigger payload** (i.e. in
+`context.trigger`, addressable by a Trigger Data leaf as a bare dot-path — e.g.
+`origin.event`, not `trigger.origin.event`). Reserving their names centrally
+keeps features from inventing incompatible variants.
+
+### `origin` — fan-out provenance
+
+When a workflow declares a trigger-level **fan-out** clause
+(see [Fan-out](discovery/fan-out.md)), one triggering event on a source entity
+expands into N ordinary single-entity executions — one per member of a declared
+relation. Each child's trigger payload carries an `origin` object describing why
+the child exists:
+
+```json
+{
+  "origin": {
+    "event": "customer.group_changed",
+    "entity_type": "customer",
+    "entity_id": 7,
+    "trace_uuid": "5f6c…",
+    "via": "fan_out"
+  }
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `event` | The async event name that caused the fan-out |
+| `entity_type` / `entity_id` | The **source** entity the event fired on (the relation source, not the child's own entity) |
+| `trace_uuid` | The async-events trace UUID of the causing event; omitted when the installed async-events version exposes no trace-UUID accessor. Also stamped onto the child's indexed `origin_uuid` column, powering the execution grid's "Caused by" filter |
+| `via` | Always `fan_out` for trigger-level fan-out |
+
+Conditions can gate on `origin.*` (`origin.event == customer.group_changed`) and
+interpolation can reference it (`{{ trigger.origin.event }}`). **Caveat**
+(inherited from Trigger Data's snapshot-only design): after a
+`revalidate_entity: true` branch the freshly hydrated entity carries no
+`origin`, so origin-based gating works at the root and pre-delay only.
+
 ## Published spec
 
 The JSON Schema for this format, the `workflow_triggers.xml` XSD, and a conformance fixture set are published and semver'd deliverables (see [Overview §Strategy](01-overview.md#strategy-open-spec-commercial-layers)) under `spec/`, with revision history in `spec/CHANGELOG.md`.

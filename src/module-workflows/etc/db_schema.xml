@@ -101,6 +101,8 @@
         <column xsi:type="varchar" name="current_step" length="64" nullable="true" comment="Current Step Key"/>
         <column xsi:type="varchar" name="waiting_event" length="128" nullable="true"
                 comment="Event Name A Wait Step Parked This Execution On"/>
+        <column xsi:type="varchar" name="origin_uuid" length="36" nullable="true"
+                comment="Async-Events Trace UUID Of The Causing Event (fan-out children); null otherwise (F1)"/>
         <column xsi:type="timestamp" name="triggered_at" on_update="false" nullable="false"
                 default="CURRENT_TIMESTAMP" comment="Triggered At"/>
         <column xsi:type="timestamp" name="completed_at" on_update="false" nullable="true" comment="Completed At"/>
@@ -125,6 +127,9 @@
             <column name="status"/>
             <column name="waiting_event"/>
             <column name="entity_id"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID" indexType="btree">
+            <column name="origin_uuid"/>
         </index>
     </table>
 

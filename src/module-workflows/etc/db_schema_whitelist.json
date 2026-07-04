@@ -67,13 +67,15 @@
             "current_step": true,
             "triggered_at": true,
             "completed_at": true,
-            "waiting_event": true
+            "waiting_event": true,
+            "origin_uuid": true
         },
         "index": {
             "MAGEOS_WORKFLOW_EXECUTION_WORKFLOW_ID_STATUS": true,
             "MAGEOS_WORKFLOW_EXECUTION_UUID": true,
             "MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT": true,
-            "MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH": true
+            "MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH": true,
+            "MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID": true
         },
         "constraint": {
             "PRIMARY": true,

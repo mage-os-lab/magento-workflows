@@ -58,6 +58,16 @@
                 <label translate="true">UUID</label>
             </settings>
         </column>
+        <!-- Fan-out origin correlation (F1): the async-events trace UUID of the
+             event that caused this execution. Hidden by default; filtering by
+             one source event's UUID returns every child its fan-out produced. -->
+        <column name="origin_uuid">
+            <settings>
+                <filter>text</filter>
+                <visible>false</visible>
+                <label translate="true">Caused By</label>
+            </settings>
+        </column>
         <column name="workflow_id">
             <settings>
                 <filter>textRange</filter>

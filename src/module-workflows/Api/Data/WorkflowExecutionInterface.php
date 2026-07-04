@@ -18,6 +18,7 @@ interface WorkflowExecutionInterface
     public const CHAIN_DEPTH = 'chain_depth';
     public const CURRENT_STEP = 'current_step';
     public const WAITING_EVENT = 'waiting_event';
+    public const ORIGIN_UUID = 'origin_uuid';
     public const TRIGGERED_AT = 'triggered_at';
     public const COMPLETED_AT = 'completed_at';
 
@@ -100,4 +101,14 @@ interface WorkflowExecutionInterface
     public function getWaitingEvent(): ?string;
 
     public function setWaitingEvent(?string $event): self;
+
+    /**
+     * Async-events trace UUID of the event that caused this execution, stamped
+     * on fan-out children from the trigger payload's origin.trace_uuid; null for
+     * ordinary executions (F1). Correlates every child of one source event in
+     * the grid's "caused by" filter.
+     */
+    public function getOriginUuid(): ?string;
+
+    public function setOriginUuid(?string $originUuid): self;
 }

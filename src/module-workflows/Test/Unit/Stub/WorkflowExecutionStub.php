@@ -26,6 +26,7 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
     private int $chainDepth = 0;
     private ?string $currentStep = null;
     private ?string $waitingEvent = null;
+    private ?string $originUuid = null;
 
     public function __construct(
         string $uuid = 'test-uuid-0000',
@@ -177,6 +178,17 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
     public function setWaitingEvent(?string $event): self
     {
         $this->waitingEvent = $event === '' ? null : $event;
+        return $this;
+    }
+
+    public function getOriginUuid(): ?string
+    {
+        return $this->originUuid;
+    }
+
+    public function setOriginUuid(?string $originUuid): self
+    {
+        $this->originUuid = $originUuid === '' ? null : $originUuid;
         return $this;
     }
 }
