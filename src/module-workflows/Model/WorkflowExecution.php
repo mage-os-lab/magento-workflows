@@ -159,6 +159,17 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
         return $this->setData(self::WAITING_EVENT, $event === '' ? null : $event);
     }
 
+    public function getOriginUuid(): ?string
+    {
+        $originUuid = $this->getData(self::ORIGIN_UUID);
+        return $originUuid === null || $originUuid === '' ? null : (string)$originUuid;
+    }
+
+    public function setOriginUuid(?string $originUuid): WorkflowExecutionInterface
+    {
+        return $this->setData(self::ORIGIN_UUID, $originUuid === '' ? null : $originUuid);
+    }
+
     public function getTriggeredAt(): ?string
     {
         $triggeredAt = $this->getData(self::TRIGGERED_AT);

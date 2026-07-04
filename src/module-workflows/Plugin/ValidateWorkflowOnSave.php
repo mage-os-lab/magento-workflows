@@ -62,7 +62,14 @@ class ValidateWorkflowOnSave
         }
 
         $result = $this->validator->validate(
-            new ValidationSubject($workflow->getDefinition(), $workflow->getConditionsSerialized()),
+            new ValidationSubject(
+                $workflow->getDefinition(),
+                $workflow->getConditionsSerialized(),
+                $workflow->getTriggerType(),
+                $workflow->getTriggerRef(),
+                $workflow->getEntityType(),
+                $workflow->getFanOut()
+            ),
             $this->contextResolver->resolve()
         );
         $this->resultRegistry->set($result);
@@ -108,7 +115,10 @@ class ValidateWorkflowOnSave
             return true;
         }
         return $prior->getDefinition() !== $workflow->getDefinition()
-            || ($prior->getConditionsSerialized() ?? '') !== ($workflow->getConditionsSerialized() ?? '');
+            || ($prior->getConditionsSerialized() ?? '') !== ($workflow->getConditionsSerialized() ?? '')
+            // A fan-out clause change (relation/cap) must re-run the alignment
+            // check even when the definition is untouched.
+            || ($prior->getFanOut() ?? '') !== ($workflow->getFanOut() ?? '');
     }
 
     /**

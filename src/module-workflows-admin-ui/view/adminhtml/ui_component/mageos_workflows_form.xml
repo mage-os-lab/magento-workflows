@@ -134,6 +134,44 @@
             </settings>
         </field>
     </fieldset>
+    <!-- Trigger-level fan-out (F1). Leaving the relation empty keeps today's
+         behavior: one execution per triggering entity. Choosing a relation
+         makes the workflow run once PER RELATED ENTITY of the trigger — the
+         plain-language preview leads with that per-target phrasing and the cap.
+         Save-time alignment (trigger source == relation source, relation
+         target == workflow entity type; schedule-type rejected) is enforced by
+         FanOutAlignmentCheck. -->
+    <fieldset name="fan_out">
+        <settings>
+            <label translate="true">Fan-Out (run per related entity)</label>
+            <collapsible>true</collapsible>
+            <opened>false</opened>
+        </settings>
+        <field name="fan_out_relation" formElement="select" sortOrder="10">
+            <settings>
+                <label translate="true">Fan Out Over Relation</label>
+                <dataType>text</dataType>
+                <notice translate="true">When set, one triggering event runs the workflow once for EACH related entity (e.g. "for each open order of that customer"), up to the cap. The workflow's Entity Type must be the relation's target, and the trigger's entity must be the relation's source. Like a manual mass-run, this may run against many entities per trigger.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="MageOS\WorkflowsAdminUi\Model\Source\FanOutRelation"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="fan_out_cap" formElement="input" sortOrder="20">
+            <settings>
+                <label translate="true">Fan-Out Cap</label>
+                <dataType>number</dataType>
+                <notice translate="true">Maximum related entities to fan out to per trigger. Clamped to the global Fan-Out Cap (Stores → Configuration → Workflows → Guards). Leave blank to use the global cap. Excess targets are dropped with an admin-visible marker.</notice>
+                <validation>
+                    <rule name="validate-digits" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+    </fieldset>
     <fieldset name="conditions">
         <settings>
             <label translate="true">Conditions</label>

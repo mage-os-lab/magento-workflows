@@ -108,6 +108,7 @@
                 <item name="action_authorization" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionAuthorizationCheck</item>
                 <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
                 <item name="relation_conditions" xsi:type="object">MageOS\Workflows\Model\Validation\Check\RelationConditionsCheck</item>
+                <item name="fan_out_alignment" xsi:type="object">MageOS\Workflows\Model\Validation\Check\FanOutAlignmentCheck</item>
             </argument>
         </arguments>
     </type>

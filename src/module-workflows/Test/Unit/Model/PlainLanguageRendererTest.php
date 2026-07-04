@@ -90,6 +90,56 @@ class PlainLanguageRendererTest extends TestCase
         );
     }
 
+    public function testFanOutLeadsWithPerTargetPhrasingAndCap(): void
+    {
+        $sentence = $this->renderer()->renderFromFields(
+            'event',
+            'sales.order.created',
+            'sales_order',
+            null,
+            (string) json_encode([
+                'schema' => 1,
+                'entry' => 's1',
+                'steps' => ['s1' => ['type' => 'action', 'action' => 'order.add_comment']],
+            ]),
+            (string) json_encode(['relation' => 'order.customer_by_email', 'cap' => 25])
+        );
+
+        $this->assertSame(
+            'When Order Created, for each of a customer account matching the order email (up to 25), '
+            . 'then: Add Order Comment.',
+            $sentence
+        );
+    }
+
+    public function testFanOutWithoutCapShowsGlobalDefault(): void
+    {
+        $sentence = $this->renderer()->renderFromFields(
+            'event',
+            'sales.order.created',
+            'sales_order',
+            null,
+            (string) json_encode(['schema' => 1, 'entry' => null, 'steps' => []]),
+            (string) json_encode(['relation' => 'order.customer_by_email'])
+        );
+
+        $this->assertStringContainsString(
+            'for each of a customer account matching the order email (up to 100)',
+            $sentence
+        );
+    }
+
+    public function testNoFanOutRendersUnchanged(): void
+    {
+        $sentence = $this->render([
+            'schema' => 1,
+            'entry' => 's1',
+            'steps' => ['s1' => ['type' => 'action', 'action' => 'order.add_comment']],
+        ]);
+
+        $this->assertSame('When Order Created, then: Add Order Comment.', $sentence);
+    }
+
     public function testLinearChainRendersAsBefore(): void
     {
         $sentence = $this->render([

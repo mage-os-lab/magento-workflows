@@ -304,6 +304,16 @@ class Dispatcher implements DispatcherInterface
         $execution->setChainDepth($chainDepth);
         $execution->setCurrentStep(null);
 
+        // Fan-out origin stamp (F1): a fanned-out child carries the causing
+        // event's async-events trace UUID in its trigger payload's `origin`
+        // (the origin context key itself needs no handling here — it already
+        // rides into context.trigger verbatim above). Indexed for the grid's
+        // "caused by" filter; null for ordinary executions.
+        $originUuid = $triggerPayload['origin']['trace_uuid'] ?? null;
+        if (is_string($originUuid) && $originUuid !== '') {
+            $execution->setOriginUuid($originUuid);
+        }
+
         return $execution;
     }
 

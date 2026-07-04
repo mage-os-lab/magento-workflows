@@ -82,6 +82,7 @@ class Save extends Action implements HttpPostActionInterface
                     : null
             );
             $workflow->setDefinition($definition->toJson());
+            $workflow->setFanOut($this->resolveFanOut($data));
             $workflow->setLoopGuardDepth((int) ($data['loop_guard_depth'] ?? 1));
             $workflow->setWebsiteIds(
                 isset($data['website_ids']) ? array_map('intval', (array) $data['website_ids']) : []
@@ -140,6 +141,27 @@ class Save extends Action implements HttpPostActionInterface
         foreach ($result->getWarnings() as $warning) {
             $this->messageManager->addWarningMessage($warning->getMessage());
         }
+    }
+
+    /**
+     * Assemble the fan_out column JSON ({relation, cap}) from the two form
+     * fields; null when no relation is chosen (today's per-entity behavior).
+     * A blank cap defers to the global ceiling — omitted rather than stored 0.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function resolveFanOut(array $data): ?string
+    {
+        $relation = trim((string) ($data['fan_out_relation'] ?? ''));
+        if ($relation === '') {
+            return null;
+        }
+        $config = ['relation' => $relation];
+        $cap = $data['fan_out_cap'] ?? '';
+        if (is_numeric($cap) && (int) $cap > 0) {
+            $config['cap'] = (int) $cap;
+        }
+        return (string) json_encode($config, JSON_UNESCAPED_SLASHES);
     }
 
     private function resolveDefinitionJson(array $data): string

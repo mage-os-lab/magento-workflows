@@ -45,6 +45,10 @@ Trigger metadata for the UI (labels, entity type, payload hints) is declared in 
 
 The `resolver` is the repository-backed hydration entry point used by the condition engine's Phase-2 pass ([Conditions §Two-phase evaluation](06-conditions.md#two-phase-evaluation-the-eav-at-scale-answer)).
 
+### Trigger-level fan-out
+
+An event trigger can optionally declare a **fan-out** clause (`fan_out` = `{relation, cap}`): one event on the source entity expands, in the notifier, into N ordinary single-entity executions — one per member of a declared relation (e.g. *customer group changed → each of the customer's open orders*). The workflow's entity type is the relation **target**, so its conditions and actions author naturally against each fanned-out entity; the causing event is recorded in each child's `origin` context ([Definition Format §Trigger payload context](04-definition-format.md)). Schedule-type triggers cannot fan out (they already fan out over their match query). See [discovery/fan-out.md](discovery/fan-out.md) and the ops [Fan-out section](15-operations.md#fan-out).
+
 ## Scheduled triggers (`workflows-scheduler`)
 
 A schedule-type workflow = cron expression + entity type + the same rule-condition tree used as a **query**.

@@ -38,7 +38,8 @@ class PlainLanguage extends Column
                 (string) ($item['trigger_ref'] ?? ''),
                 (string) ($item['entity_type'] ?? ''),
                 isset($item['conditions_serialized']) ? (string) $item['conditions_serialized'] : null,
-                (string) ($item['definition'] ?? '')
+                (string) ($item['definition'] ?? ''),
+                isset($item['fan_out']) && $item['fan_out'] !== '' ? (string) $item['fan_out'] : null
             );
         }
 

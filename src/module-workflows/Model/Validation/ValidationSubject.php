@@ -10,6 +10,12 @@ use MageOS\Workflows\Model\Definition\Definition;
  * conditions tree. Parsing is memoized so the check pool shares one
  * Definition instance; a parse failure is surfaced by StructuralCheck as a
  * typed result, and getDefinition() stays null for downstream checks.
+ *
+ * The workflow-level attributes (trigger type/ref, entity type, fan-out
+ * clause) are optional and default to null: checks that need them — e.g. the
+ * fan-out type-alignment check — no-op when they are absent, so validate-only
+ * and dry-run passes that construct a subject from definition + conditions
+ * alone are unaffected.
  */
 class ValidationSubject
 {
@@ -21,7 +27,11 @@ class ValidationSubject
 
     public function __construct(
         private readonly string $definitionJson,
-        private readonly ?string $conditionsSerialized = null
+        private readonly ?string $conditionsSerialized = null,
+        private readonly ?string $triggerType = null,
+        private readonly ?string $triggerRef = null,
+        private readonly ?string $entityType = null,
+        private readonly ?string $fanOut = null
     ) {
     }
 
@@ -33,6 +43,30 @@ class ValidationSubject
     public function getConditionsSerialized(): ?string
     {
         return $this->conditionsSerialized;
+    }
+
+    public function getTriggerType(): ?string
+    {
+        return $this->triggerType;
+    }
+
+    public function getTriggerRef(): ?string
+    {
+        return $this->triggerRef;
+    }
+
+    public function getEntityType(): ?string
+    {
+        return $this->entityType;
+    }
+
+    /**
+     * Raw fan-out clause JSON ({relation, cap}), or null when the workflow does
+     * not fan out (F1).
+     */
+    public function getFanOut(): ?string
+    {
+        return $this->fanOut;
     }
 
     /**

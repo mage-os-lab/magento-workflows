@@ -44,6 +44,11 @@
                     <comment>Maximum related-entity ids a single relation lookup may return; excess is dropped with a logged warning.</comment>
                     <validate>validate-digits</validate>
                 </field>
+                <field id="fan_out_cap" translate="label comment" type="text" sortOrder="60" showInDefault="1">
+                    <label>Fan-Out Cap</label>
+                    <comment>Global ceiling on how many executions one triggering event may fan out to. Per-workflow fan-out caps clamp to this value; excess targets are dropped with a logged, admin-visible marker.</comment>
+                    <validate>validate-digits</validate>
+                </field>
             </group>
             <group id="retention" translate="label" type="text" sortOrder="30" showInDefault="1">
                 <label>Execution Retention</label>

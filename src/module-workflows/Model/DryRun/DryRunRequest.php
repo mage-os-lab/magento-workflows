@@ -23,7 +23,8 @@ class DryRunRequest
         private readonly ?int $entityId = null,
         private readonly ?array $triggerPayload = null,
         private readonly ?int $workflowId = null,
-        private readonly string $workflowName = ''
+        private readonly string $workflowName = '',
+        private readonly ?string $fanOut = null
     ) {
     }
 
@@ -65,5 +66,14 @@ class DryRunRequest
     public function getWorkflowName(): string
     {
         return $this->workflowName;
+    }
+
+    /**
+     * Raw fan_out clause JSON ({relation, cap}) of the workflow being previewed,
+     * or null when it does not fan out. Drives the fan-out preview node (04).
+     */
+    public function getFanOut(): ?string
+    {
+        return $this->fanOut;
     }
 }

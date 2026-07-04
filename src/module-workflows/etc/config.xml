@@ -12,6 +12,7 @@
                 <manual_run_cap>1000</manual_run_cap>
                 <max_delay_days>365</max_delay_days>
                 <relation_cap>100</relation_cap>
+                <fan_out_cap>100</fan_out_cap>
             </guards>
             <simulation>
                 <redact_shadow_secrets>0</redact_shadow_secrets>

@@ -24,13 +24,22 @@ class Trace
      * @param ValidationMessageInterface[] $validation
      * @param TraceStep[] $steps
      */
+    /**
+     * @param array{id?: int, name?: string} $workflow
+     * @param array{type: string, id?: ?int} $entity
+     * @param ValidationMessageInterface[] $validation
+     * @param TraceStep[] $steps
+     * @param array<string, mixed>|null $fanOut fan-out preview node (04): what a
+     *        source event would fan out to; null for non-fan-out workflows
+     */
     public function __construct(
         private readonly array $workflow,
         private readonly array $entity,
         private readonly array $validation = [],
         private readonly array $steps = [],
         private readonly bool $skipped = false,
-        private readonly bool $truncated = false
+        private readonly bool $truncated = false,
+        private readonly ?array $fanOut = null
     ) {
     }
 
@@ -97,11 +106,23 @@ class Trace
         return $this->truncated;
     }
 
+    /**
+     * Fan-out preview node (04): "would dispatch N executions (first 3: …)" for
+     * a source event, or null when the workflow does not fan out.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getFanOut(): ?array
+    {
+        return $this->fanOut;
+    }
+
     public function toArray(): array
     {
         return [
             'workflow' => $this->workflow,
             'entity' => $this->entity,
+            'fan_out' => $this->fanOut,
             'validation' => array_map(
                 static fn (ValidationMessageInterface $m): array => [
                     'severity' => $m->getSeverity(),

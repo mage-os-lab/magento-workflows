@@ -160,6 +160,59 @@ class TriggerDataTest extends TestCase
     }
 
     /**
+     * The fan-out origin lands in the trigger snapshot at the payload root, so
+     * a Trigger Data leaf resolves the dot-path `origin.event` (NOT
+     * `trigger.origin.event`) — the same root the dispatcher writes the origin
+     * into via context.trigger (F1, discovery/fan-out.md §2 point 4).
+     */
+    public function testResolvePathOriginEvent(): void
+    {
+        $model = new DataObject([
+            'entity_id' => 55,
+            'origin' => [
+                'event' => 'customer.group_changed',
+                'entity_type' => 'customer',
+                'entity_id' => 7,
+                'via' => 'fan_out',
+            ],
+        ]);
+        $this->assertSame('customer.group_changed', $this->invokeResolvePath($model, 'origin.event'));
+        $this->assertSame('fan_out', $this->invokeResolvePath($model, 'origin.via'));
+    }
+
+    /**
+     * End-to-end: a child execution can gate on why it exists via
+     * `origin.event == customer.group_changed`.
+     */
+    public function testOriginLeafMatchesEventEndToEnd(): void
+    {
+        $this->condition->setAttribute('origin.event');
+        $this->condition->setOperator('==');
+        $this->condition->setValue('customer.group_changed');
+
+        $model = new DataObject(['origin' => ['event' => 'customer.group_changed']]);
+        $this->assertTrue($this->condition->validate($model));
+    }
+
+    /**
+     * Pins the snapshot-only caveat: after a revalidate_entity branch the model
+     * being validated is the freshly hydrated entity, which carries NO origin —
+     * so origin-based gating only works at the root / pre-delay. A hydrated
+     * order model lacks `origin`, and the leaf fails toward false.
+     */
+    public function testHydratedModelLacksOriginPostRevalidate(): void
+    {
+        // What a re-hydrated order snapshot looks like: entity data, no origin.
+        $hydrated = new DataObject(['entity_id' => 55, 'state' => 'processing', 'increment_id' => '100000055']);
+        $this->assertNull($this->invokeResolvePath($hydrated, 'origin.event'));
+
+        $this->condition->setAttribute('origin.event');
+        $this->condition->setOperator('==');
+        $this->condition->setValue('customer.group_changed');
+        $this->assertFalse($this->condition->validate($hydrated));
+    }
+
+    /**
      * Test loadAttributeOptions returns self
      */
     public function testLoadAttributeOptions(): void
