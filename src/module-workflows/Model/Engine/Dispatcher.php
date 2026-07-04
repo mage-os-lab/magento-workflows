@@ -15,6 +15,8 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\DispatcherInterface;
 use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
+use MageOS\Workflows\Model\Aggregation\AggregationConfig;
+use MageOS\Workflows\Model\Aggregation\BatchAccumulator;
 use MageOS\Workflows\Model\Suppression\WorkflowSuppression;
 use Psr\Log\LoggerInterface;
 
@@ -52,7 +54,8 @@ class Dispatcher implements DispatcherInterface
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly ResourceConnection $resourceConnection,
         private readonly PublisherInterface $publisher,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ?BatchAccumulator $batchAccumulator = null
     ) {
     }
 
@@ -80,6 +83,28 @@ class Dispatcher implements DispatcherInterface
                 'chain_depth' => $chainDepth,
                 'loop_guard_depth' => $workflow->getLoopGuardDepth(),
             ]);
+            return null;
+        }
+
+        // Batch accumulation branch (05 B2), guarded on the aggregation column
+        // being non-null so per-entity workflows are entirely unaffected. It
+        // sits AT the suppression guard: an aggregated workflow with
+        // aggregate_suppressed_events set keeps accumulating while suppression
+        // drops per-entity workflows (the storm becomes one digest). The event
+        // is appended to a batch instead of creating an execution — the flush
+        // sweep releases one execution per window.
+        $aggregation = $this->aggregationConfig($workflow);
+        if ($aggregation !== null && $aggregation->isWindow() && $this->batchAccumulator !== null) {
+            if ($this->suppression->isSuppressed() && !$aggregation->aggregateSuppressedEvents()) {
+                $this->logger->debug('Workflow batch accumulation suppressed (not opted in)', [
+                    'workflow_id' => $workflowId,
+                ]);
+                return null;
+            }
+            if (!$this->matchesScope($workflow, $triggerPayload)) {
+                return null;
+            }
+            $this->batchAccumulator->accumulate($workflow, $aggregation, $triggerPayload);
             return null;
         }
 
@@ -310,6 +335,25 @@ class Dispatcher implements DispatcherInterface
     private function extractEntityId(array $payload): int
     {
         return (int) ($payload['entity_id'] ?? $payload['id'] ?? 0);
+    }
+
+    /**
+     * The workflow's aggregation config, or null for a per-entity workflow (or
+     * an unparseable config, which is logged and treated as per-entity so a
+     * bad column never silently swallows every event).
+     */
+    private function aggregationConfig(WorkflowInterface $workflow): ?AggregationConfig
+    {
+        try {
+            return AggregationConfig::fromJson($workflow->getAggregation());
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->error(sprintf(
+                'Workflow %d has an invalid aggregation config; dispatching per-entity. %s',
+                (int) $workflow->getWorkflowId(),
+                $e->getMessage()
+            ));
+            return null;
+        }
     }
 
     /**

@@ -29,6 +29,7 @@ class PruneExecutions
 
     private const EXECUTION_TABLE = 'mageos_workflow_execution';
     private const STEP_TABLE = 'mageos_workflow_execution_step';
+    private const BATCH_TABLE = 'mageos_workflow_batch';
 
     private const BATCH_SIZE = 1000;
 
@@ -72,6 +73,46 @@ class PruneExecutions
                 $days
             ));
         }
+
+        // Batch aggregation (05): flushed batches + their items share the
+        // execution-context retention clock (docs/10 PII posture). batch_item
+        // rows CASCADE on the batch delete.
+        $batchesDeleted = $this->pruneBatches($cutoff);
+        if ($batchesDeleted > 0) {
+            $this->logger->info(sprintf(
+                'Workflow retention pruning removed %d flushed batches before %s',
+                $batchesDeleted,
+                $cutoff
+            ));
+        }
+    }
+
+    /**
+     * Batch-delete flushed batches older than the cutoff (batch_item rows
+     * cascade).
+     */
+    private function pruneBatches(string $cutoff): int
+    {
+        $connection = $this->resourceConnection->getConnection();
+        $batchTable = $this->resourceConnection->getTableName(self::BATCH_TABLE);
+
+        $totalDeleted = 0;
+        do {
+            $batchIds = array_map('intval', $connection->fetchCol(
+                $connection->select()
+                    ->from($batchTable, ['batch_id'])
+                    ->where('status = ?', 'flushed')
+                    ->where('flushed_at IS NOT NULL')
+                    ->where('flushed_at < ?', $cutoff)
+                    ->limit(self::BATCH_SIZE)
+            ));
+            if ($batchIds === []) {
+                break;
+            }
+            $totalDeleted += $connection->delete($batchTable, ['batch_id IN (?)' => $batchIds]);
+        } while (count($batchIds) === self::BATCH_SIZE);
+
+        return $totalDeleted;
     }
 
     /**

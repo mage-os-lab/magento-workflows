@@ -21,6 +21,12 @@
          B1 (collected mode) and B2 (accumulator). -->
     <preference for="MageOS\Workflows\Model\Aggregation\MembershipEvaluatorInterface"
                 type="MageOS\Workflows\Model\Aggregation\MembershipEvaluator"/>
+    <!-- B2 accumulator/flush persistence port. -->
+    <preference for="MageOS\Workflows\Model\Aggregation\BatchStoreInterface"
+                type="MageOS\Workflows\Model\Aggregation\BatchStore"/>
+    <!-- B2 flush execution creation (write-before-publish). -->
+    <preference for="MageOS\Workflows\Model\Aggregation\BatchExecutionFactoryInterface"
+                type="MageOS\Workflows\Model\Aggregation\BatchExecutionFactory"/>
 
     <!-- Validate endpoint (F6) -->
     <preference for="MageOS\Workflows\Api\DefinitionValidationInterface"
