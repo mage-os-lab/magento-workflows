@@ -35,6 +35,12 @@ class View extends Template
         return $this->coreRegistry->registry('mageos_current_execution');
     }
 
+    public function isDryRun(): bool
+    {
+        $execution = $this->getExecution();
+        return $execution !== null && $execution->getMode() === WorkflowExecutionInterface::MODE_DRY_RUN;
+    }
+
     public function getWorkflowName(): string
     {
         $execution = $this->getExecution();

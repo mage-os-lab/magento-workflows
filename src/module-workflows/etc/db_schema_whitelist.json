@@ -60,6 +60,7 @@
             "entity_id": true,
             "store_id": true,
             "status": true,
+            "mode": true,
             "context": true,
             "chain_depth": true,
             "current_step": true,

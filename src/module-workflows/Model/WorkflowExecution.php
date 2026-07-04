@@ -105,6 +105,17 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
         return $this->setData(self::STATUS, $status);
     }
 
+    public function getMode(): string
+    {
+        $mode = $this->getData(self::MODE);
+        return $mode !== null && $mode !== '' ? (string)$mode : self::MODE_LIVE;
+    }
+
+    public function setMode(string $mode): WorkflowExecutionInterface
+    {
+        return $this->setData(self::MODE, $mode);
+    }
+
     public function getContext(): ?string
     {
         $context = $this->getData(self::CONTEXT);
