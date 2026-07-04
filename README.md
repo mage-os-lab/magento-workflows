@@ -43,6 +43,7 @@ See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-go
 | [14 — Risks & Open Questions](docs/14-risks.md) | Risk register with mitigations |
 | [15 — Operations Guide](docs/15-operations.md) | Consumers, cron, health checks, retention, recovery |
 | [16 — Capability Roadmap](docs/16-capability-roadmap.md) | Post-review execution record: waves 1–5 implemented, deferred scope |
+| [17 — Use Cases](docs/17-use-cases.md) | 100+ high-level examples of how merchants and agencies use the engine |
 
 The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).
 
