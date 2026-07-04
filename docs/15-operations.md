@@ -144,6 +144,17 @@ workflow), so unbounded retention is a PII liability, not just disk usage. The
   [Security §PII containment](10-security.md#pii-containment) for the erasure-hook and
   ES field-redaction controls, which are separate from this cron job.
 
+**Dry-run audit rows** (`mode='dry_run'`, from persisted admin dry-runs of saved
+workflows) are previews, not history, and carry entity snapshots — so the same cron
+prunes them first on a **separate, shorter** clock:
+
+- Config path: `mageos_workflows/dry_run/retention_days` (default 7). Independent of the
+  90-day live-execution window above; whatever survives it is still swept by the general
+  retention.
+- `mageos_workflows/dry_run/persist` (default 1) toggles the persistence itself. Set to 0
+  to keep dry-runs transient (no audit rows written at all). Unsaved-definition dry-runs
+  are always transient regardless of this flag.
+
 ## Configuration quick reference
 
 Guard and scheduler keys added by the capability-roadmap waves, alongside the retention
@@ -163,6 +174,15 @@ Workflow CRUD and execution reads are exposed over the standard Magento REST lay
 `::manage` ACL resources, plus read-only `GET /V1/workflow-executions[/:executionId]`
 under `::view`. This is the CI/CD deployment path for workflow definitions when SSH
 (`bin/magento workflow:import`) isn't available.
+
+**Dry-run** is exposed as `POST /V1/workflows/dry-run` (a posted definition + entity ref
+or a synthetic `triggerPayload` for CI, snapshot-only fidelity) and
+`POST /V1/workflows/:workflowId/dry-run` (saved workflow), both under the dedicated
+`MageOS_Workflows::dry_run` resource (which does **not** imply `::manual_run`). The
+response carries the validation findings and, on a sound graph, the flat step trace. The
+route shapes are POST-only and non-colliding with `GET /V1/workflows/:workflowId`, so a
+stray `GET …/dry-run` falls through to `getById('dry-run')` → 404 (pinned by a contract
+test). CLI equivalent: `bin/magento workflow:run <id> --entity-id <n> --dry-run`.
 
 ## Circuit-breaker recovery
 

@@ -20,6 +20,14 @@ Enable a workflow in `shadow` status: conditions evaluate on live traffic, actio
 
 This is the **single highest-leverage confidence feature** for merchants ("run it for a week, look at what it *would have* done") and it costs one enum value plus the simulate path that dry-run already needs. Ship it before dry-run — it's the same machinery with a status flag.
 
+## Dry-run (edit form)
+
+A **"Dry run"** button on the workflow edit form (gated on `MageOS_Workflows::dry_run`) previews what the *currently edited* definition — saved or not — would do to one entity, with no side effects. It stashes the in-progress definition/conditions via `sessionStorage` and opens the dry-run page, which restores them, so a preview never requires a save.
+
+The page carries an **entity picker** backed by a per-entity-type `RecentEntityProvider` (most-recent, up to 20, no condition filtering in v1; manual id entry always available) and, on run, renders the **trace panel**: one row per visited step with a plain-language label ("Would run", "Would fail", "Skipped", "Production would stop before here"), the `would` summary, the edge taken, and a **"Technical details"** expander (interpolated + redacted config, condition detail, delay timing, notes, path ids). Waits show **both** outcomes; a failed step does not stop the preview, so all problems surface at once.
+
+Dry-runs of *saved* workflows are persisted as `mode=dry_run` execution rows by default (audit + reuse of the execution view), pruned aggressively; unsaved-definition runs are transient. See [08 — Execution Model](08-execution-model.md#dry-run-synchronous-preview) for the walker semantics and [15 — Operations](15-operations.md#retention--pii-pruning) for the retention knob.
+
 ## v2 (`workflows-canvas`)
 
 React Flow reading/writing the same [definition JSON](04-definition-format.md). Node palette from trigger/action metadata endpoints. The definition format is the API boundary — the canvas is purely presentational, no engine changes.
