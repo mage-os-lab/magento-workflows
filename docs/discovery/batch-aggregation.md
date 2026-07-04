@@ -1,6 +1,6 @@
 # Discovery — Batch Aggregation (N Events → One Execution)
 
-**Status:** Discovery / evaluation · **Track:** capability enhancements (beyond Phase 3)
+**Status:** Discovery / evaluation · **Track:** capability enhancements (beyond Phase 3) · **Implementation plan:** [implementation/05-batch-aggregation.md](implementation/05-batch-aggregation.md)
 **Related:** [07 — Actions §Loop prevention](../07-actions.md#loop-prevention-storms-and-circuit-breaking) · [18 — Known Boundaries](../18-limitations.md#flow-control--orchestration) · [fan-out.md](fan-out.md) · [branching.md](branching.md)
 
 ---

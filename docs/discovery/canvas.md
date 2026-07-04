@@ -1,6 +1,6 @@
 # Discovery — Canvas (Visual Workflow Builder)
 
-**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md))
+**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md)) · **Implementation plan:** [implementation/07-canvas.md](implementation/07-canvas.md)
 **Related:** [11 — Admin UI](../11-admin-ui.md#v2-workflows-canvas) · [04 — Definition Format](../04-definition-format.md) · [02 — Packages](../02-packages.md) · [branching.md](branching.md) · [dry-run.md](dry-run.md)
 
 ---

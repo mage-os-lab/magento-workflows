@@ -6,6 +6,12 @@ through-lines in [18 — Known Boundaries](../18-limitations.md). One document p
 evaluates approaches and makes a specific recommendation, with architecture, quality,
 maintainability, and reliability treated as first-class inputs.
 
+Each feature also has a high-level **implementation plan** (structure and intent — components,
+seams, data changes, PR-sized stages; not method-level design) under
+[implementation/](implementation/README.md), ordered bottom-up from a
+[shared foundations plan](implementation/00-foundations.md) so the features compose with each
+other and with the shipped engine.
+
 ## Track 1 — Phase 3 & branching
 
 | Doc | Feature | Recommendation in one line | Est. |

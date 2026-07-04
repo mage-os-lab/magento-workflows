@@ -45,7 +45,7 @@ See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-go
 | [16 — Capability Roadmap](docs/16-capability-roadmap.md) | Post-review execution record: waves 1–5 implemented, deferred scope |
 | [17 — Use Cases](docs/17-use-cases.md) | 100+ high-level examples of how merchants and agencies use the engine |
 | [18 — Known Boundaries](docs/18-limitations.md) | ~60 flows the engine does *not* support (yet), each with the architectural reason |
-| [Discovery — Phase 3 & Enhancements](docs/discovery/README.md) | Planning/evaluation docs: canvas, template gallery, dry-run, branching, batch aggregation, fan-out, entity cross-referencing |
+| [Discovery — Phase 3 & Enhancements](docs/discovery/README.md) | Planning/evaluation docs (canvas, template gallery, dry-run, branching, batch aggregation, fan-out, entity cross-referencing) plus bottom-up [implementation plans](docs/discovery/implementation/README.md) |
 
 The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).
 

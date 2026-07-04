@@ -1,6 +1,6 @@
 # Discovery — Fan-Out (One Trigger → N Related Executions)
 
-**Status:** Discovery / evaluation · **Track:** capability enhancements (beyond Phase 3)
+**Status:** Discovery / evaluation · **Track:** capability enhancements (beyond Phase 3) · **Implementation plan:** [implementation/04-fan-out.md](implementation/04-fan-out.md)
 **Related:** [18 — Known Boundaries §Flow control](../18-limitations.md#flow-control--orchestration) · [08 — Execution Model](../08-execution-model.md) · [entity-cross-referencing.md](entity-cross-referencing.md) · [branching.md](branching.md) · [batch-aggregation.md](batch-aggregation.md)
 
 ---

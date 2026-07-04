@@ -1,6 +1,6 @@
 # Discovery — Data Hydrators & Entity Cross-Referencing
 
-**Status:** Discovery / evaluation · **Track:** capability enhancements (beyond Phase 3)
+**Status:** Discovery / evaluation · **Track:** capability enhancements (beyond Phase 3) · **Implementation plan:** [implementation/02-entity-cross-referencing.md](implementation/02-entity-cross-referencing.md)
 **Related:** [06 — Conditions](../06-conditions.md) · [18 — Known Boundaries](../18-limitations.md) · [fan-out.md](fan-out.md) · [batch-aggregation.md](batch-aggregation.md)
 
 ---

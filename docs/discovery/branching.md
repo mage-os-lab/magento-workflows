@@ -1,6 +1,6 @@
 # Discovery — Branching Capabilities
 
-**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md))
+**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md)) · **Implementation plan:** [implementation/01-branching.md](implementation/01-branching.md)
 **Related:** [04 — Definition Format](../04-definition-format.md) · [06 — Conditions](../06-conditions.md) · [08 — Execution Model](../08-execution-model.md) · [18 — Known Boundaries](../18-limitations.md) · [canvas.md](canvas.md) · [dry-run.md](dry-run.md)
 
 ---

@@ -1,6 +1,6 @@
 # Discovery — Template Gallery
 
-**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md))
+**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md)) · **Implementation plan:** [implementation/06-template-gallery.md](implementation/06-template-gallery.md)
 **Related:** [04 — Definition Format](../04-definition-format.md) · [10 — Security §Import](../10-security.md#import-is-untrusted-input) · [17 — Use Cases](../17-use-cases.md) · [01 — Overview §Strategy](../01-overview.md#strategy-open-spec-commercial-layers) · [dry-run.md](dry-run.md)
 
 ---

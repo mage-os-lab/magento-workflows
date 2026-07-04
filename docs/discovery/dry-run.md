@@ -1,6 +1,6 @@
 # Discovery — Dry-Run
 
-**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md))
+**Status:** Discovery / evaluation · **Feeds:** Phase 3 planning ([13 — Delivery Plan](../13-delivery-plan.md)) · **Implementation plan:** [implementation/03-dry-run.md](implementation/03-dry-run.md)
 **Related:** [11 — Admin UI §Shadow mode](../11-admin-ui.md#shadow-mode-v1-nearly-free) · [07 — Actions](../07-actions.md) · [08 — Execution Model](../08-execution-model.md) · [branching.md](branching.md) · [canvas.md](canvas.md)
 
 ---
