@@ -1,0 +1,48 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\History $block
+ *
+ * Change-history panel (docs/11-admin-ui.md): the current plain-language
+ * sentence plus one row per archived revision. Diffs are explicitly out of
+ * scope -- list view only. Renders nothing on the new-workflow form.
+ */
+$workflow = $block->getWorkflow();
+?>
+<?php if ($workflow): ?>
+    <div class="admin__page-section mageos-workflows-history">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml(__('Change History')) ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <p class="mageos-workflows-history-current">
+                <strong><?= $block->escapeHtml(__('Current (v%1):', $workflow->getVersion())) ?></strong>
+                <?= $block->escapeHtml($block->getCurrentSentence()) ?>
+            </p>
+            <?php $entries = $block->getRevisionEntries(); ?>
+            <?php if (!$entries): ?>
+                <p class="note admin__field-note">
+                    <span><?= $block->escapeHtml(__('No prior revisions have been archived yet.')) ?></span>
+                </p>
+            <?php else: ?>
+                <table class="data-table admin__table-primary">
+                    <thead>
+                    <tr>
+                        <th><?= $block->escapeHtml(__('Version')) ?></th>
+                        <th><?= $block->escapeHtml(__('Archived At')) ?></th>
+                        <th><?= $block->escapeHtml(__('Summary')) ?></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($entries as $entry): ?>
+                        <tr>
+                            <td>v<?= $block->escapeHtml((string) $entry['version']) ?></td>
+                            <td><?= $block->escapeHtml((string) ($entry['created_at'] ?? '')) ?></td>
+                            <td><?= $block->escapeHtml($entry['sentence']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
