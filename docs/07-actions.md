@@ -55,6 +55,22 @@ An optional `simulate()` interface is added to the contract in v1 (as an optiona
 
 ⁶ Ad-hoc mode (`subject` + `body`, rendered through a bundled pass-through template) is mutually exclusive with `template_id`; variables work in both, and interpolated values in the ad-hoc body are HTML-escaped.
 
+## Template packs (SDK)
+
+The same one-class-one-registration extension shape the `ActionPool` uses applies to the [template gallery](11-admin-ui.md#template-gallery-marketing--workflow-templates). A template pack is a **data-only** module: `*.json` files in a `templates/` directory, registered by adding the module name to `BundledTemplateSource::packDirectories` via `di.xml`:
+
+```xml
+<type name="MageOS\Workflows\Model\Template\BundledTemplateSource">
+    <arguments>
+        <argument name="packDirectories" xsi:type="array">
+            <item name="acme" xsi:type="string">Acme_WorkflowTemplates</item>
+        </argument>
+    </arguments>
+</type>
+```
+
+Each file is a `mageos-workflow-template/1` envelope ([`spec/workflow-template.schema.json`](../spec/workflow-template.schema.json)): `template{code, title, description, category, version, requires, parameters}` plus a `workflow{…}` node carrying the export envelope's fields. The pack ships **no PHP** — the catalog is data. The first-party pack is `mage-os/workflows-templates`; third-party packs are peers (see its `templates/README.md` for the authoring rules and the CI fixture-test pattern that keeps a pack honest as the action/trigger pools evolve). A future signed remote feed implements `TemplateSourceInterface` behind a default-off toggle without any gallery/installer change.
+
 ## Webhook action with response capture
 
 Sync HTTP POST (Guzzle), JSON body rendered from context, HMAC-SHA256 signature header (same convention as the async-events HTTP notifier so receivers verify identically), configurable timeout (default 5s, cap 30s), `capture_as` key storing the parsed JSON response into `context.steps.<key>`.

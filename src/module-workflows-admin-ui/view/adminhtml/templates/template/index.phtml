@@ -1,0 +1,88 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Template\Index $block
+ */
+$summaries = $block->getSummaries();
+?>
+<div class="admin__page-section">
+    <div class="admin__page-section-title">
+        <span class="title"><?= $block->escapeHtml(__('Workflow Templates')) ?></span>
+    </div>
+    <p class="admin__field-note">
+        <?= $block->escapeHtml(__('Pick a template, answer a few questions, and install a ready-made workflow. Installed templates land disabled or in shadow mode — dry-run and review before enabling.')) ?>
+    </p>
+
+    <?php if ($summaries === []): ?>
+        <div class="message message-notice">
+            <?= $block->escapeHtml(__('No workflow templates are available. Install a template pack to populate the gallery.')) ?>
+        </div>
+    <?php else: ?>
+        <div class="mageos-template-grid">
+            <?php foreach ($summaries as $summary): ?>
+                <?php $compatible = $block->isCompatible($summary); ?>
+                <div class="mageos-template-card<?= $compatible ? '' : ' mageos-template-card--unavailable' ?>">
+                    <div class="mageos-template-card__category">
+                        <?= $block->escapeHtml($summary->getCategory()) ?>
+                    </div>
+                    <div class="mageos-template-card__title">
+                        <?= $block->escapeHtml($block->getTitle($summary)) ?>
+                    </div>
+                    <div class="mageos-template-card__desc">
+                        <?= $block->escapeHtml($block->getDescription($summary)) ?>
+                    </div>
+                    <div class="mageos-template-card__meta">
+                        <span class="mageos-template-card__version">v<?= $block->escapeHtml($summary->getVersion()) ?></span>
+                        <?php if ($compatible): ?>
+                            <span class="grid-severity-notice"><span><?= $block->escapeHtml(__('Compatible')) ?></span></span>
+                        <?php else: ?>
+                            <span class="grid-severity-minor"><span><?= $block->escapeHtml(__('Unavailable')) ?></span></span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if (!$compatible): ?>
+                        <ul class="mageos-template-card__reasons">
+                            <?php foreach ($block->getReasons($summary) as $reason): ?>
+                                <li><?= $block->escapeHtml($reason) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+
+                    <div class="mageos-template-card__actions">
+                        <a class="action-default" href="<?= $block->escapeUrl($block->getViewUrl($summary)) ?>">
+                            <?= $block->escapeHtml(__('Details')) ?>
+                        </a>
+                        <?php if ($compatible): ?>
+                            <a class="action-primary" href="<?= $block->escapeUrl($block->getInstallUrl($summary)) ?>">
+                                <span><?= $block->escapeHtml(__('Install')) ?></span>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+
+<style>
+    .mageos-template-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    .mageos-template-card {
+        border: 1px solid #d6d6d6;
+        border-radius: 4px;
+        padding: 1.25rem;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+    }
+    .mageos-template-card--unavailable { opacity: 0.65; background: #f5f5f5; }
+    .mageos-template-card__category { text-transform: uppercase; font-size: 1.1rem; color: #757575; letter-spacing: .05em; }
+    .mageos-template-card__title { font-size: 1.7rem; font-weight: 600; margin: .35rem 0 .5rem; }
+    .mageos-template-card__desc { flex: 1 1 auto; color: #303030; margin-bottom: .75rem; }
+    .mageos-template-card__meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+    .mageos-template-card__reasons { margin: 0 0 .75rem; padding-left: 1.5rem; color: #757575; font-size: 1.2rem; }
+    .mageos-template-card__actions { display: flex; gap: .75rem; align-items: center; }
+</style>

@@ -54,5 +54,5 @@ jobs:
       - name: JSON validity check
         run: |
           set -e
-          find src -name '*.json' -print0 | xargs -0 -n1 -I{} php -r 'json_decode(file_get_contents("{}"), true, 512, JSON_THROW_ON_ERROR);'
+          find src spec -name '*.json' -print0 | xargs -0 -n1 -I{} php -r 'json_decode(file_get_contents("{}"), true, 512, JSON_THROW_ON_ERROR);'
           echo "All JSON files are valid"

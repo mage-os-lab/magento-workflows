@@ -1,0 +1,128 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mage-os.org/schemas/workflow-template/1.json",
+    "title": "Mage-OS Workflow Template Envelope",
+    "description": "A gallery template: a thin envelope over the export format. `workflow` carries the export envelope's FIELDS but is NOT itself a valid export envelope (it omits the `format` tag); TemplateInstaller lifts it into a synthetic `mageos-workflow-export/1` envelope before handing it to the shared import path. Never contains secret values.",
+    "type": "object",
+    "required": ["format", "template", "workflow"],
+    "additionalProperties": false,
+    "properties": {
+        "format": {"const": "mageos-workflow-template/1"},
+        "template": {
+            "type": "object",
+            "required": ["code", "title", "description", "category", "version"],
+            "additionalProperties": false,
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                    "maxLength": 128,
+                    "description": "Stable machine identifier, kebab-case; unique across a source"
+                },
+                "title": {"$ref": "#/$defs/localizedText"},
+                "description": {"$ref": "#/$defs/localizedText"},
+                "category": {"type": "string", "minLength": 1, "maxLength": 128},
+                "version": {
+                    "type": "string",
+                    "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$",
+                    "description": "Semantic version of the template content"
+                },
+                "requires": {"$ref": "#/$defs/requires"},
+                "parameters": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/parameter"}
+                }
+            }
+        },
+        "workflow": {
+            "type": "object",
+            "description": "The export envelope's fields, minus the `format` tag. Property schemas are $ref'd from the export schema so the two lineages cannot drift.",
+            "required": ["name", "entity_type", "trigger_type", "trigger_ref", "definition"],
+            "additionalProperties": false,
+            "properties": {
+                "name": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/name"},
+                "entity_type": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/entity_type"},
+                "trigger_type": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/trigger_type"},
+                "trigger_ref": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/trigger_ref"},
+                "conditions_serialized": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/conditions_serialized"},
+                "definition": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/definition"},
+                "loop_guard_depth": {"$ref": "https://mage-os.org/schemas/workflow-export/1.json#/properties/loop_guard_depth"}
+            }
+        }
+    },
+    "$defs": {
+        "localizedText": {
+            "description": "Either a plain string or a {locale: string} map. `minProperties: 1` guarantees at least one entry; that the install locale (or a designated default) is present is RUNTIME validation JSON Schema cannot express, surfaced as a typed compatibility reason.",
+            "oneOf": [
+                {"type": "string", "minLength": 1},
+                {
+                    "type": "object",
+                    "minProperties": 1,
+                    "additionalProperties": {"type": "string", "minLength": 1},
+                    "propertyNames": {"pattern": "^[a-z]{2}(_[A-Z]{2})?$"}
+                }
+            ]
+        },
+        "requires": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Minimum definition schema version the engine must support"
+                },
+                "triggers": {"type": "array", "items": {"type": "string"}},
+                "actions": {"type": "array", "items": {"type": "string"}},
+                "modules": {"type": "array", "items": {"type": "string"}},
+                "edition": {
+                    "enum": ["any", "community", "enterprise", "b2b"],
+                    "default": "any"
+                }
+            }
+        },
+        "parameter": {
+            "type": "object",
+            "required": ["key", "type"],
+            "additionalProperties": false,
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+                    "description": "Substituted into the workflow body as %param.<key>%"
+                },
+                "label": {"$ref": "#/$defs/localizedText"},
+                "type": {
+                    "type": "string",
+                    "description": "Drives the install form widget: string, select, duration, secret, or an entity source (e.g. entity:salesrule)"
+                },
+                "default": {},
+                "required": {"type": "boolean", "default": false},
+                "optional": {"type": "boolean", "default": false},
+                "options": {
+                    "type": "array",
+                    "description": "Inline options for a bounded source (F6 option-source union)",
+                    "items": {
+                        "type": "object",
+                        "required": ["value", "label"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {"type": ["string", "integer", "boolean"]},
+                            "label": {"type": "string"}
+                        }
+                    }
+                },
+                "options_search": {
+                    "type": "object",
+                    "description": "Search reference for a large source (F6 option-source union); resolved by the meta/options endpoint (plan 07)",
+                    "required": ["source"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "source": {"type": "string"},
+                        "min_chars": {"type": "integer", "minimum": 0, "default": 2}
+                    }
+                }
+            }
+        }
+    }
+}

@@ -8,5 +8,8 @@
         <add id="MageOS_Workflows::execution_index" title="Workflow Executions" module="MageOS_WorkflowsAdminUi"
              sortOrder="66" parent="Magento_Backend::marketing" action="mageos_workflows/execution/index"
              resource="MageOS_Workflows::view"/>
+        <add id="MageOS_Workflows::template_index" title="Workflow Templates" module="MageOS_WorkflowsAdminUi"
+             sortOrder="67" parent="Magento_Backend::marketing" action="mageos_workflows/template/index"
+             resource="MageOS_Workflows::manage"/>
     </menu>
 </config>

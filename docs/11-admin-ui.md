@@ -28,13 +28,26 @@ The page carries an **entity picker** backed by a per-entity-type `RecentEntityP
 
 Dry-runs of *saved* workflows are persisted as `mode=dry_run` execution rows by default (audit + reuse of the execution view), pruned aggressively; unsaved-definition runs are transient. See [08 — Execution Model](08-execution-model.md#dry-run-synchronous-preview) for the walker semantics and [15 — Operations](15-operations.md#retention--pii-pruning) for the retention knob.
 
+## Template gallery (`Marketing → Workflow Templates`)
+
+A bundled-first gallery ([implementation/06](discovery/implementation/06-template-gallery.md)): a merchant picks a template, answers a few questions, and installs a working workflow — **created disabled or in shadow mode**, never auto-enabled — that they dry-run, inspect in plain language, and enable.
+
+- **Card grid** (`template/index`): one server-rendered card per template with a category, description, version, and compatibility badge. Incompatible templates render greyed-out with the *reason* ("Requires the `marketing.generate_coupon` action, which is not installed") — `CompatibilityChecker` evaluates `requires` (triggers via `TriggerRegistry`, actions via `ActionPool`, `schema ≤ SCHEMA_VERSION`, module presence, edition, and a default-locale check). No `ui_component` grid for ~15–50 items.
+- **Detail** (`template/view`): the plain-language rendering of the workflow with its *default* parameter values substituted (the same `PlainLanguageRenderer` the grid uses), a `requires` panel, and the parameter list.
+- **Install form** (`template/install`): one field per parameter, rendered from the [F6 option-source union](discovery/implementation/00-foundations.md#f6--rest-metadata--validate-endpoints-plainlanguagerenderer-relocation) — a bounded source ships inline `options` (a select); a large/search source (`options_search`, or an `entity:*` type) renders a text input with a note in v1 (the canvas package upgrades it to a searchable picker). `duration` fields note the ISO-8601 format; `secret` fields name a secret and optionally carry a new value. **"Install as shadow" is default-on.** POST installs and redirects to the workflow edit form with a "dry-run, review, then enable" next-steps notice.
+- **Pipeline:** the install path *is* the untrusted-import path — `TemplateInstaller` schema-validates the envelope, compat-checks, substitutes `%param.*%` tokens (leftover = hard error), lifts `template.workflow` into a synthetic `mageos-workflow-export/1` envelope, and hands it to `WorkflowImporter` in `ADMIN_CONTEXT` (so every action re-authorizes against the current admin). Provenance ("installed from X v1.2") records to `mageos_workflow_template_install`; pick-or-create secrets are written **after** a successful save, so a failed install leaves no orphaned secrets.
+- **CLI / patches:** `bin/magento workflow:template:list` and `workflow:template:install <code> --param k=v --params-file f.json` (SYSTEM mode, the same untrusted-import warning); `InstallTemplatePatch::forTemplate('code', [...])` for agency data patches.
+- **ACL:** reuses `MageOS_Workflows::manage` — no new resource; installing a template creates a workflow, and the importer's per-action gates still apply.
+
+Content ships in the peer `mage-os/workflows-templates` pack (trimmable); the UI ships here (everywhere). The template format is published in [`spec/workflow-template.schema.json`](../spec/workflow-template.schema.json) so third parties author templates and ship packs the same way they ship actions.
+
 ## v2 (`workflows-canvas`)
 
 React Flow reading/writing the same [definition JSON](04-definition-format.md). Node palette from trigger/action metadata endpoints. The definition format is the API boundary — the canvas is purely presentational, no engine changes.
 
 Also v2:
 
-- **Template library** — curated JSON definitions installable from a gallery; the import pipeline is already the mechanism.
+- **Template library** — curated JSON definitions installable from a gallery; the import pipeline is already the mechanism (shipped: see the Template gallery section above).
 - **Dry-run mode** — execute with a `simulate` flag; actions render their would-be effect into step results without side effects. Requires `ActionInterface::simulate()`, added to the contract in v1 as an optional interface so the core library is ready.
 
 Note: the canvas replaces the *layout*; the rule widget remains the condition editor even in v2 — it's the only EAV-aware editor that exists.

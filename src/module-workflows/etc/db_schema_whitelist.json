@@ -178,5 +178,23 @@
         "constraint": {
             "PRIMARY": true
         }
+    },
+    "mageos_workflow_template_install": {
+        "column": {
+            "install_id": true,
+            "workflow_id": true,
+            "template_code": true,
+            "template_version": true,
+            "parameters": true,
+            "installed_by": true,
+            "created_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WF_TPL_INSTALL_WORKFLOW_ID": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_TEMPLATE_INSTALL_WORKFLOW_ID": true
+        }
     }
 }

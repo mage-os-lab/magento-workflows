@@ -1,0 +1,21 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "alpha-template",
+        "title": "Alpha",
+        "description": "First fixture template.",
+        "category": "Testing",
+        "version": "1.0.0",
+        "requires": {"schema": 1, "actions": ["notify.email"]},
+        "parameters": [
+            {"key": "subject", "label": "Subject", "type": "string", "default": "Hi"}
+        ]
+    },
+    "workflow": {
+        "name": "Alpha workflow",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.order.created",
+        "definition": {"schema": 1, "entry": null, "steps": {}}
+    }
+}

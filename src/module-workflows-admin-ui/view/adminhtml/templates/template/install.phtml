@@ -1,0 +1,86 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Template\Install $block
+ */
+$parameters = $block->getParameters();
+?>
+<div class="admin__page-section">
+    <div class="admin__page-section-title">
+        <span class="title"><?= $block->escapeHtml(__('Install: %1', $block->getTitle())) ?></span>
+    </div>
+    <p class="admin__field-note">
+        <?= $block->escapeHtml(__('The workflow is created disabled (or in shadow mode). Nothing runs against real orders or customers until you review and enable it.')) ?>
+    </p>
+
+    <form action="<?= $block->escapeUrl($block->getFormActionUrl()) ?>" method="post" id="mageos-template-install-form">
+        <?= $block->getBlockHtml('formkey') ?>
+        <input type="hidden" name="install" value="1"/>
+
+        <?php foreach ($parameters as $parameter): ?>
+            <?php
+            $key = (string) ($parameter['key'] ?? '');
+            $widget = $block->widget($parameter);
+            $note = $block->fieldNote($parameter);
+            $fieldId = 'mageos-param-' . $key;
+            ?>
+            <div class="admin__field<?= $block->isRequired($parameter) ? ' _required' : '' ?>">
+                <label class="admin__field-label" for="<?= $block->escapeHtmlAttr($fieldId) ?>">
+                    <span><?= $block->escapeHtml($block->fieldLabel($parameter)) ?></span>
+                </label>
+                <div class="admin__field-control">
+                    <?php if ($widget === 'select'): ?>
+                        <select id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                                name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                                class="admin__control-select"<?= $block->isRequired($parameter) ? ' required' : '' ?>>
+                            <?php foreach ($block->options($parameter) as $option): ?>
+                                <option value="<?= $block->escapeHtmlAttr($option['value']) ?>"
+                                    <?= $block->fieldValue($parameter) === $option['value'] ? 'selected' : '' ?>>
+                                    <?= $block->escapeHtml($option['label']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php elseif ($widget === 'secret'): ?>
+                        <input type="text" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                               name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                               class="admin__control-text"
+                               value="<?= $block->escapeHtmlAttr($block->fieldValue($parameter)) ?>"
+                               placeholder="<?= $block->escapeHtmlAttr(__('secret name')) ?>"/>
+                        <input type="password" name="secret_value[<?= $block->escapeHtmlAttr($key) ?>]"
+                               class="admin__control-text" autocomplete="new-password"
+                               placeholder="<?= $block->escapeHtmlAttr(__('new value (optional)')) ?>"/>
+                    <?php else: ?>
+                        <input type="text" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                               name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                               class="admin__control-text"
+                               value="<?= $block->escapeHtmlAttr($block->fieldValue($parameter)) ?>"
+                               <?= $block->isRequired($parameter) ? 'required' : '' ?>/>
+                    <?php endif; ?>
+                    <?php if ($note !== null): ?>
+                        <div class="admin__field-note"><span><?= $block->escapeHtml($note) ?></span></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <div class="admin__field">
+            <div class="admin__field-control">
+                <label class="admin__field-label" for="mageos-install-shadow">
+                    <input type="checkbox" id="mageos-install-shadow" name="install_shadow" value="1"
+                        <?= $block->isShadowChecked() ? 'checked' : '' ?>/>
+                    <span><?= $block->escapeHtml(__('Install in shadow mode (recommended): it evaluates and logs but performs no side effects until you enable it.')) ?></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="admin__field">
+            <div class="admin__field-control">
+                <a class="action-default" href="<?= $block->escapeUrl($block->getBackUrl()) ?>">
+                    <?= $block->escapeHtml(__('Cancel')) ?>
+                </a>
+                <button type="submit" class="action-primary">
+                    <span><?= $block->escapeHtml(__('Install workflow')) ?></span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

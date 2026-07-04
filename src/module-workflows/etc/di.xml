@@ -28,6 +28,13 @@
     <preference for="MageOS\Workflows\Model\Aggregation\BatchExecutionFactoryInterface"
                 type="MageOS\Workflows\Model\Aggregation\BatchExecutionFactory"/>
 
+    <!-- Template gallery (06): the bundled source ships now; a future signed
+         remote source registers as a second implementor behind a config toggle,
+         with no gallery/installer changes. Pack modules add their name to
+         BundledTemplateSource::packDirectories (see the templates module). -->
+    <preference for="MageOS\Workflows\Model\Template\TemplateSourceInterface"
+                type="MageOS\Workflows\Model\Template\BundledTemplateSource"/>
+
     <!-- Validate endpoint (F6) -->
     <preference for="MageOS\Workflows\Api\DefinitionValidationInterface"
                 type="MageOS\Workflows\Model\Webapi\DefinitionValidation"/>
@@ -227,6 +234,8 @@
                 <item name="workflowRun" xsi:type="object">MageOS\Workflows\Console\Command\RunCommand</item>
                 <item name="workflowStats" xsi:type="object">MageOS\Workflows\Console\Command\StatsCommand</item>
                 <item name="workflowHealth" xsi:type="object">MageOS\Workflows\Console\Command\HealthCommand</item>
+                <item name="workflowTemplateList" xsi:type="object">MageOS\Workflows\Console\Command\TemplateListCommand</item>
+                <item name="workflowTemplateInstall" xsi:type="object">MageOS\Workflows\Console\Command\TemplateInstallCommand</item>
             </argument>
         </arguments>
     </type>
