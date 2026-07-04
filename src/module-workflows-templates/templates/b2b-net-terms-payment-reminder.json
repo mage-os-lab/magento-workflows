@@ -1,0 +1,51 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "b2b-net-terms-payment-reminder",
+        "title": "B2B net-terms payment reminder",
+        "description": "Reminds a net-terms buyer their invoice is due soon. Edition-gated on purpose -- shows as a greyed-out card on Community/Mage-OS installs.",
+        "category": "B2B",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["sales.invoice.created"],
+            "actions": ["notify.email"],
+            "modules": [],
+            "edition": "b2b"
+        },
+        "parameters": [
+            {"key": "reminder_wait", "label": "Wait after invoicing before the reminder", "type": "duration", "default": "P25D"}
+        ]
+    },
+    "workflow": {
+        "name": "B2B net-terms payment reminder",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.invoice.created",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 1,
+            "entry": "wait_before_reminder",
+            "steps": {
+                "wait_before_reminder": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "%param.reminder_wait%"
+                    },
+                    "next": "send_reminder"
+                },
+                "send_reminder": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "Payment reminder",
+                        "body": "Your net-terms invoice for order {{ trigger.increment_id }} is due soon. Please remit payment at your earliest convenience."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

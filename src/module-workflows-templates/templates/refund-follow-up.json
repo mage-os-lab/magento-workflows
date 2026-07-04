@@ -1,0 +1,51 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "refund-follow-up",
+        "title": "Refund follow-up",
+        "description": "Checks in with the customer a few days after a credit memo is created.",
+        "category": "Orders & fulfillment",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["sales.creditmemo.created"],
+            "actions": ["notify.email"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "followup_wait", "label": "Wait before following up", "type": "duration", "default": "P2D"}
+        ]
+    },
+    "workflow": {
+        "name": "Refund follow-up",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.creditmemo.created",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 1,
+            "entry": "wait_before_followup",
+            "steps": {
+                "wait_before_followup": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "%param.followup_wait%"
+                    },
+                    "next": "send_followup"
+                },
+                "send_followup": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "About your refund",
+                        "body": "Your refund for order {{ trigger.increment_id }} has been processed. Let us know if we can help with anything else."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

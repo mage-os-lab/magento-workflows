@@ -1,0 +1,88 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "high-value-order-fraud-hold",
+        "title": "High-value order fraud hold",
+        "description": "Holds orders over a value threshold, alerts the fraud team by webhook, and escalates if it's still unresolved after a review window.",
+        "category": "Fraud & risk",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["sales.order.created"],
+            "actions": ["order.add_comment", "order.hold", "notify.webhook", "notify.admin"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "value_threshold", "label": "Order total that triggers a hold", "type": "string", "default": "1000"},
+            {"key": "fraud_webhook_url", "label": "Fraud-scoring webhook URL", "type": "string", "required": true},
+            {"key": "fraud_signing_secret", "label": "HMAC secret for the fraud webhook", "type": "secret", "required": true}
+        ]
+    },
+    "workflow": {
+        "name": "High-value order fraud hold",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.order.created",
+        "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"grand_total\",\"operator\":\">=\",\"value\":\"%param.value_threshold%\"}]}",
+        "definition": {
+            "schema": 1,
+            "entry": "flag_comment",
+            "steps": {
+                "flag_comment": {
+                    "type": "action",
+                    "action": "order.add_comment",
+                    "config": {
+                        "comment": "High-value order flagged ({{ trigger.grand_total }}) -- holding for fraud review.",
+                        "is_visible_on_front": false
+                    },
+                    "next": "hold_order"
+                },
+                "hold_order": {
+                    "type": "action",
+                    "action": "order.hold",
+                    "config": {},
+                    "next": "alert_fraud_team"
+                },
+                "alert_fraud_team": {
+                    "type": "action",
+                    "action": "notify.webhook",
+                    "config": {
+                        "url": "%param.fraud_webhook_url%",
+                        "method": "POST",
+                        "body": "{\"order_id\":\"{{ trigger.increment_id }}\",\"grand_total\":\"{{ trigger.grand_total }}\",\"customer_email\":\"{{ trigger.customer_email }}\"}",
+                        "capture_as": "fraud_score",
+                        "timeout": 5,
+                        "sign_with": "{{ secrets.%param.fraud_signing_secret% }}"
+                    },
+                    "next": "wait_review"
+                },
+                "wait_review": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "PT1H"
+                    },
+                    "next": "check_still_held"
+                },
+                "check_still_held": {
+                    "type": "branch",
+                    "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"status\",\"operator\":\"==\",\"value\":\"holded\"}]}",
+                    "revalidate_entity": true,
+                    "on_true": "escalate",
+                    "on_false": "cleared"
+                },
+                "cleared": {"type": "stop"},
+                "escalate": {
+                    "type": "action",
+                    "action": "notify.admin",
+                    "config": {
+                        "title": "Fraud hold unresolved",
+                        "description": "Order {{ trigger.increment_id }} is still on hold after the review window."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

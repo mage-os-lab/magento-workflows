@@ -1,0 +1,70 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "new-customer-welcome-series",
+        "title": "New customer welcome series",
+        "description": "Welcomes new customers, then follows up days later with a first-purchase coupon.",
+        "category": "Customer lifecycle",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["customer.created"],
+            "actions": ["notify.email", "marketing.generate_coupon"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "followup_wait", "label": "Wait before the incentive email", "type": "duration", "default": "P3D"},
+            {"key": "incentive_rule_id", "label": "Cart price rule for the first-purchase coupon", "type": "entity:salesrule", "required": true}
+        ]
+    },
+    "workflow": {
+        "name": "New customer welcome series",
+        "entity_type": "customer",
+        "trigger_type": "event",
+        "trigger_ref": "customer.created",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 1,
+            "entry": "welcome_email",
+            "steps": {
+                "welcome_email": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.email|lower }}",
+                        "subject": "Welcome!",
+                        "body": "Thanks for creating an account with us -- we're glad you're here."
+                    },
+                    "next": "wait_before_incentive"
+                },
+                "wait_before_incentive": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "%param.followup_wait%"
+                    },
+                    "next": "generate_incentive"
+                },
+                "generate_incentive": {
+                    "type": "action",
+                    "action": "marketing.generate_coupon",
+                    "config": {
+                        "rule_id": "%param.incentive_rule_id%"
+                    },
+                    "next": "send_incentive"
+                },
+                "send_incentive": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.email|lower }}",
+                        "subject": "Here's 10% off your first order",
+                        "body": "Use code {{ steps.generate_incentive.coupon_code }} at checkout."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}
