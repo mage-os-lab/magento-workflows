@@ -106,6 +106,17 @@ class WorkflowStub implements WorkflowInterface
         return $this;
     }
 
+    public function getFanOut(): ?string
+    {
+        return $this->data['fan_out'] ?? null;
+    }
+
+    public function setFanOut(?string $fanOut): WorkflowInterface
+    {
+        $this->data['fan_out'] = $fanOut === '' ? null : $fanOut;
+        return $this;
+    }
+
     public function getAggregation(): ?string
     {
         return $this->data['aggregation'] ?? null;

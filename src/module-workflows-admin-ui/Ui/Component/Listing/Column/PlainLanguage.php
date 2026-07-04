@@ -39,7 +39,8 @@ class PlainLanguage extends Column
                 (string) ($item['entity_type'] ?? ''),
                 isset($item['conditions_serialized']) ? (string) $item['conditions_serialized'] : null,
                 (string) ($item['definition'] ?? ''),
-                isset($item['fan_out']) && $item['fan_out'] !== '' ? (string) $item['fan_out'] : null
+                isset($item['fan_out']) && $item['fan_out'] !== '' ? (string) $item['fan_out'] : null,
+                isset($item['aggregation']) && $item['aggregation'] !== '' ? (string) $item['aggregation'] : null
             );
         }
 

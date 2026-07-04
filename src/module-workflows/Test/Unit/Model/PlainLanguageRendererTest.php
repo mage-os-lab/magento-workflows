@@ -346,6 +346,7 @@ class PlainLanguageRendererTest extends TestCase
             'sales_order',
             $conditions,
             (string) json_encode($definition),
+            null,
             $aggregationJson
         );
     }
