@@ -10,6 +10,8 @@ use MageOS\AsyncEvents\Service\AsyncEvent\NotifierResultFactory;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\DispatcherInterface;
+use MageOS\Workflows\Model\Engine\FanOutExpander;
+use MageOS\Workflows\Model\Engine\FanOutResult;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -32,6 +34,12 @@ use Psr\Log\LoggerInterface;
  * - NotifierResult exposes setSuccess(bool), setSubscriptionId(int),
  *   setResponseData(string). If your version instead exposes
  *   setUuid()/setNotificationData(), adapt buildResult() only.
+ * - AsyncEventDisplayInterface::getUuid() carries the async-events trace UUID
+ *   of this delivery, stamped onto each fanned-out child's origin (F1). This
+ *   accessor is not verifiable against the vendored interface here; if the
+ *   installed version names it differently or omits it, extractTraceUuid()
+ *   falls back to null and origin_uuid is simply omitted — the rest of the
+ *   origin context still travels.
  */
 class WorkflowNotifier implements NotifierInterface
 {
@@ -58,6 +66,7 @@ class WorkflowNotifier implements NotifierInterface
     public function __construct(
         private readonly DispatcherInterface $dispatcher,
         private readonly NotifierResultFactory $notifierResultFactory,
+        private readonly FanOutExpander $fanOutExpander,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -81,6 +90,46 @@ class WorkflowNotifier implements NotifierInterface
                     'Subscription recipient "%s" does not carry a workflow id',
                     (string) $asyncEvent->getRecipientUrl()
                 ),
+            ]);
+        }
+
+        // Trigger-level fan-out (F1): a workflow carrying a fan_out clause
+        // expands this one event into per-target executions. The expander
+        // returns null for the overwhelming majority — workflows without a
+        // fan_out clause — which fall through to the ordinary single dispatch
+        // below (the early-exit branch).
+        try {
+            $fanOut = $this->fanOutExpander->expand(
+                $workflowId,
+                $data,
+                (string) $asyncEvent->getEventName(),
+                $this->extractTraceUuid($asyncEvent)
+            );
+        } catch (\Throwable $exception) {
+            // Pre-expansion failure (relation resolution threw before any child
+            // dispatched): report failure so async-events redelivers. Re-expansion
+            // is safe — per-child debounce collapses anything already dispatched.
+            $this->logger->error(
+                sprintf('Workflow #%d fan-out expansion failed: %s', $workflowId, $exception->getMessage()),
+                ['exception' => $exception, 'event_name' => (string) $asyncEvent->getEventName()]
+            );
+
+            return $this->buildResult($asyncEvent, false, [
+                'status' => 'error',
+                'workflow_id' => $workflowId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        if ($fanOut instanceof FanOutResult) {
+            // The relation resolved: SUCCESS regardless of per-child skips (those
+            // are recorded, not retried — see the mid-expansion failure policy).
+            return $this->buildResult($asyncEvent, true, [
+                'status' => 'fanned_out',
+                'workflow_id' => $workflowId,
+                'dispatched' => $fanOut->getDispatched(),
+                'skipped' => $fanOut->getSkipped(),
+                'truncated' => $fanOut->isTruncated(),
             ]);
         }
 
@@ -168,6 +217,23 @@ class WorkflowNotifier implements NotifierInterface
         $id = substr($recipient, strlen(self::RECIPIENT_PREFIX));
 
         return ctype_digit($id) && (int) $id > 0 ? (int) $id : null;
+    }
+
+    /**
+     * The async-events trace UUID of this delivery, stamped onto each
+     * fanned-out child's origin (F1). Pinned assumption: getUuid() carries it
+     * (see class docblock). Guarded with is_callable so an installed version
+     * lacking the accessor degrades to null — origin_uuid is then omitted and
+     * the rest of origin still travels, never a hard failure.
+     */
+    private function extractTraceUuid(AsyncEventDisplayInterface $asyncEvent): ?string
+    {
+        if (!is_callable([$asyncEvent, 'getUuid'])) {
+            return null;
+        }
+        $uuid = $asyncEvent->getUuid();
+
+        return is_string($uuid) && $uuid !== '' ? $uuid : null;
     }
 
     /**

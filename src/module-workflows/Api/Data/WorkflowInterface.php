@@ -15,6 +15,7 @@ interface WorkflowInterface
     public const DEFINITION = 'definition';
     public const VERSION = 'version';
     public const LOOP_GUARD_DEPTH = 'loop_guard_depth';
+    public const FAN_OUT = 'fan_out';
     public const CREATED_AT = 'created_at';
     public const UPDATED_AT = 'updated_at';
 
@@ -69,6 +70,15 @@ interface WorkflowInterface
     public function getLoopGuardDepth(): int;
 
     public function setLoopGuardDepth(int $depth): self;
+
+    /**
+     * Trigger-level fan-out config as raw JSON ({relation, cap}), or null when
+     * the workflow dispatches one execution per triggering entity as usual (F1,
+     * docs/discovery/implementation/04-fan-out.md).
+     */
+    public function getFanOut(): ?string;
+
+    public function setFanOut(?string $fanOut): self;
 
     /**
      * @return int[]

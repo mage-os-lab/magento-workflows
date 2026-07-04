@@ -11,6 +11,7 @@
             "definition": true,
             "version": true,
             "loop_guard_depth": true,
+            "fan_out": true,
             "created_at": true,
             "updated_at": true
         },

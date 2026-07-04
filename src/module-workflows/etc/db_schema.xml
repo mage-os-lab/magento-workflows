@@ -20,6 +20,8 @@
                 comment="Definition Version"/>
         <column xsi:type="smallint" name="loop_guard_depth" unsigned="true" nullable="false" default="1"
                 comment="Loop Guard Depth"/>
+        <column xsi:type="json" name="fan_out" nullable="true"
+                comment="Trigger-Level Fan-Out Config JSON {relation, cap}; null = no fan-out (F1)"/>
         <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
                 comment="Created At"/>
         <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"
