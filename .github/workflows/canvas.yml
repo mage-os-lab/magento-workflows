@@ -45,6 +45,18 @@ jobs:
       - name: Build IIFE bundle
         run: npm run build
 
+      # The smoke drives the real built bundle through the mount contract (load
+      # fixture -> edit -> save -> assert posted definition) with a mocked admin
+      # page — no Magento. GitHub runners ship no browsers, so install just
+      # Chromium here (the agent dev env preinstalls it; CI does not). A FULL
+      # end-to-end against a real store is a separate, unautomated check —
+      # documented in docs/11-admin-ui.md (needs a Magento fixture + admin auth).
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright smoke (mount contract)
+        run: npm run test:e2e
+
       - name: CSP gate — no eval / new Function in the bundle
         run: |
           set -e

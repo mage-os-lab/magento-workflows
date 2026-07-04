@@ -130,7 +130,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const selectedNode = useMemo(() => graph.nodes.find((n) => n.id === selected) ?? null, [graph, selected]);
 
   return (
-    <div className="wf-canvas wf-canvas--editor">
+    <div className="wf-canvas wf-canvas--editor" role="application" aria-label="Workflow visual editor">
       {readOnly && (
         <div className="wf-canvas__banner" role="alert">
           This workflow declares schema {graph.schema}, newer than this canvas understands. Shown
@@ -196,17 +196,24 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         )}
       </div>
 
-      {pinned.document.length > 0 && (
-        <ul className="wf-canvas__doc-messages" role="alert">
-          {pinned.document.map((m, i) => (
-            <li key={`${m.code}-${i}`} className={`wf-msg wf-msg--${m.severity}`}>
-              {m.message}
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="wf-canvas__doc-messages" role="status" aria-live="polite">
+        {pinned.document.length > 0 && (
+          <ul>
+            {pinned.document.map((m, i) => (
+              <li key={`${m.code}-${i}`} className={`wf-msg wf-msg--${m.severity}`}>
+                {m.message}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-      <Outline graph={graph} overlay={{ nodeStatus: {}, nodeError: {}, durationMs: {}, takenEdgeIds: new Set() }} />
+      <Outline
+        graph={graph}
+        overlay={{ nodeStatus: {}, nodeError: {}, durationMs: {}, takenEdgeIds: new Set() }}
+        onSelect={setSelected}
+        selected={selected}
+      />
 
       {conditionStep && (
         <ConditionSlideOut
