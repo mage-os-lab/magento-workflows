@@ -25,9 +25,27 @@ class View extends Template
         private readonly Registry $coreRegistry,
         private readonly WorkflowRepositoryInterface $workflowRepository,
         private readonly CollectionFactory $stepCollectionFactory,
+        private readonly \Magento\Framework\Module\Manager $moduleManager,
         array $data = []
     ) {
         parent::__construct($context, $data);
+    }
+
+    /**
+     * URL of the visual canvas overlay for this execution, or null when the
+     * optional canvas module is not installed/enabled (link then hidden).
+     * admin-ui never depends on the canvas module.
+     */
+    public function getCanvasUrl(): ?string
+    {
+        $execution = $this->getExecution();
+        if ($execution === null || !$this->moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
+            return null;
+        }
+        return $this->getUrl('mageos_workflows_canvas/canvas/view', [
+            'workflow_id' => $execution->getWorkflowId(),
+            'execution_id' => $execution->getExecutionId(),
+        ]);
     }
 
     public function getExecution(): ?WorkflowExecutionInterface

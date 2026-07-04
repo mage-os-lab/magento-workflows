@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
+    <!-- Optional, purely presentational module. NOTHING else may depend on it
+         (docs/discovery/canvas.md §1) — the dependency arrow only ever points
+         inward, from canvas to module-workflows. -->
+    <module name="MageOS_WorkflowsCanvas">
+        <sequence>
+            <module name="MageOS_Workflows"/>
+            <module name="MageOS_WorkflowsAdminUi"/>
+            <module name="Magento_Backend"/>
+        </sequence>
+    </module>
+</config>
