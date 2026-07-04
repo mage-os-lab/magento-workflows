@@ -234,6 +234,8 @@
                 <item name="workflowRun" xsi:type="object">MageOS\Workflows\Console\Command\RunCommand</item>
                 <item name="workflowStats" xsi:type="object">MageOS\Workflows\Console\Command\StatsCommand</item>
                 <item name="workflowHealth" xsi:type="object">MageOS\Workflows\Console\Command\HealthCommand</item>
+                <item name="workflowTemplateList" xsi:type="object">MageOS\Workflows\Console\Command\TemplateListCommand</item>
+                <item name="workflowTemplateInstall" xsi:type="object">MageOS\Workflows\Console\Command\TemplateInstallCommand</item>
             </argument>
         </arguments>
     </type>

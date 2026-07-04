@@ -279,4 +279,31 @@
             <column name="key"/>
         </constraint>
     </table>
+
+    <table name="mageos_workflow_template_install" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Template Install Provenance (06, F8): installed from template X vN">
+        <column xsi:type="int" name="install_id" unsigned="true" nullable="false" identity="true"
+                comment="Install ID"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false"
+                comment="Workflow ID created by the install"/>
+        <column xsi:type="varchar" name="template_code" length="128" nullable="false"
+                comment="Installed Template Code"/>
+        <column xsi:type="varchar" name="template_version" length="64" nullable="false"
+                comment="Installed Template Version (fork-on-install; no upgrade path in v1)"/>
+        <column xsi:type="json" name="parameters" nullable="true"
+                comment="Parameter Values Snapshot JSON (never secret values; secret params record key names only)"/>
+        <column xsi:type="varchar" name="installed_by" length="128" nullable="false" default="system"
+                comment="Installer (admin username, or 'system' for CLI/patch)"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Installed At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="install_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_TPL_INSTALL_WORKFLOW_ID"
+                    table="mageos_workflow_template_install" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_TEMPLATE_INSTALL_WORKFLOW_ID" indexType="btree">
+            <column name="workflow_id"/>
+        </index>
+    </table>
 </schema>
