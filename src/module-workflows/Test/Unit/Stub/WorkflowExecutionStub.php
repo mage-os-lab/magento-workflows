@@ -21,6 +21,7 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
     private int $entityId = 0;
     private int $storeId = 0;
     private string $status = self::STATUS_PENDING;
+    private ?string $triggerType = null;
     private string $mode = self::MODE_LIVE;
     private ?string $context = null;
     private int $chainDepth = 0;
@@ -123,6 +124,17 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
     public function setStatus(string $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function getTriggerType(): ?string
+    {
+        return $this->triggerType;
+    }
+
+    public function setTriggerType(?string $triggerType): self
+    {
+        $this->triggerType = $triggerType === '' ? null : $triggerType;
         return $this;
     }
 

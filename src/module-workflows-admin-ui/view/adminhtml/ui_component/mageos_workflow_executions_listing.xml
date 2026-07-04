@@ -108,6 +108,14 @@
                 <label translate="true">Status</label>
             </settings>
         </column>
+        <column name="trigger_type" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\TriggerType"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Trigger Type</label>
+            </settings>
+        </column>
         <column name="mode" component="Magento_Ui/js/grid/columns/select">
             <settings>
                 <options class="MageOS\WorkflowsAdminUi\Model\Source\ExecutionMode"/>

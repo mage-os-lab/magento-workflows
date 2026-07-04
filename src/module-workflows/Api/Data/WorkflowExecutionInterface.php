@@ -13,6 +13,7 @@ interface WorkflowExecutionInterface
     public const ENTITY_ID = 'entity_id';
     public const STORE_ID = 'store_id';
     public const STATUS = 'status';
+    public const TRIGGER_TYPE = 'trigger_type';
     public const MODE = 'mode';
     public const CONTEXT = 'context';
     public const CHAIN_DEPTH = 'chain_depth';
@@ -72,6 +73,14 @@ interface WorkflowExecutionInterface
     public function getStatus(): string;
 
     public function setStatus(string $status): self;
+
+    /**
+     * Trigger type that dispatched this execution (one of
+     * WorkflowInterface::TRIGGER_TYPE_*); null on legacy rows predating this column
+     */
+    public function getTriggerType(): ?string;
+
+    public function setTriggerType(?string $triggerType): self;
 
     /**
      * Execution mode (live|dry_run); defaults to live

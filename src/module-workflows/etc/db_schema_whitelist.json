@@ -62,6 +62,7 @@
             "entity_id": true,
             "store_id": true,
             "status": true,
+            "trigger_type": true,
             "mode": true,
             "context": true,
             "chain_depth": true,

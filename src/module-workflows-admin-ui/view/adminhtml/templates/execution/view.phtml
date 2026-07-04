@@ -47,6 +47,10 @@ $execution = $block->getExecution();
                     <td><?= $block->escapeHtml($execution->getStatus()) ?></td>
                 </tr>
                 <tr>
+                    <th><?= $block->escapeHtml(__('Trigger Type')) ?></th>
+                    <td><?= $block->escapeHtml($execution->getTriggerType() ?? '—') ?></td>
+                </tr>
+                <tr>
                     <th><?= $block->escapeHtml(__('Run Mode')) ?></th>
                     <td>
                         <?php if ($block->isDryRun()): ?>

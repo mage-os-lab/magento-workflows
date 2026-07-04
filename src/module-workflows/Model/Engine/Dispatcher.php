@@ -25,7 +25,7 @@ use Psr\Log\LoggerInterface;
  *
  * Guards, in order: workflow status, loop depth, bulk suppression, website
  * scope, atomic debounce. Survivors get an execution row (pending, definition
- * snapshot pinned) published to the mageos.workflow.execute queue.
+ * snapshot pinned, trigger type recorded) published to the mageos.workflow.execute queue.
  */
 class Dispatcher implements DispatcherInterface
 {
@@ -129,7 +129,7 @@ class Dispatcher implements DispatcherInterface
             return null;
         }
 
-        $execution = $this->createExecution($workflow, $triggerPayload, $entityId, $chainDepth);
+        $execution = $this->createExecution($workflow, $triggerPayload, $triggerType, $entityId, $chainDepth);
         $execution = $this->executionRepository->save($execution);
 
         $this->publisher->publish(self::TOPIC_EXECUTE, (string) $execution->getExecutionId());
@@ -302,6 +302,7 @@ class Dispatcher implements DispatcherInterface
     private function createExecution(
         WorkflowInterface $workflow,
         array $triggerPayload,
+        string $triggerType,
         int $entityId,
         int $chainDepth
     ): WorkflowExecutionInterface {
@@ -325,6 +326,7 @@ class Dispatcher implements DispatcherInterface
         $execution->setEntityId($entityId);
         $execution->setStoreId((int) ($triggerPayload['store_id'] ?? 0));
         $execution->setStatus(WorkflowExecutionInterface::STATUS_PENDING);
+        $execution->setTriggerType($triggerType);
         $execution->setContext(json_encode($context, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
         $execution->setChainDepth($chainDepth);
         $execution->setCurrentStep(null);

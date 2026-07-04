@@ -105,6 +105,17 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
         return $this->setData(self::STATUS, $status);
     }
 
+    public function getTriggerType(): ?string
+    {
+        $triggerType = $this->getData(self::TRIGGER_TYPE);
+        return $triggerType === null || $triggerType === '' ? null : (string)$triggerType;
+    }
+
+    public function setTriggerType(?string $triggerType): WorkflowExecutionInterface
+    {
+        return $this->setData(self::TRIGGER_TYPE, $triggerType === '' ? null : $triggerType);
+    }
+
     public function getMode(): string
     {
         $mode = $this->getData(self::MODE);

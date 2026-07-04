@@ -94,6 +94,8 @@
         <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" comment="Store ID"/>
         <column xsi:type="varchar" name="status" length="16" nullable="false"
                 comment="Status (pending|running|waiting|complete|skipped|failed|cancelled)"/>
+        <column xsi:type="varchar" name="trigger_type" length="16" nullable="true"
+                comment="Trigger Type That Dispatched This Execution (event|schedule|manual); null on legacy rows"/>
         <column xsi:type="varchar" name="mode" length="16" nullable="false" default="live"
                 comment="Execution Mode (live|dry_run) — dry-run feature marker only, NOT a side-effect predicate"/>
         <column xsi:type="json" name="context" nullable="true"
