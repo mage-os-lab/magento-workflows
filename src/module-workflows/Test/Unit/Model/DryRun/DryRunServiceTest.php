@@ -4,9 +4,15 @@ declare(strict_types=1);
 namespace MageOS\Workflows\Test\Unit\Model\DryRun;
 
 use Magento\Framework\DataObject;
+use Magento\Framework\DataObjectFactory;
 use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\DryRun\DryRunRequest;
 use MageOS\Workflows\Model\DryRun\DryRunService;
+use MageOS\Workflows\Model\DryRun\FanOutTracePreview;
+use MageOS\Workflows\Model\Relation\RelationContext;
+use MageOS\Workflows\Model\Relation\RelationPool;
+use MageOS\Workflows\Test\Unit\Stub\StubStoreManager;
+use Psr\Log\NullLogger;
 use MageOS\Workflows\Model\DryRun\TraceStepStatus;
 use MageOS\Workflows\Model\DryRun\Walker;
 use MageOS\Workflows\Model\Engine\DelayCalculator;
@@ -61,7 +67,19 @@ class DryRunServiceTest extends TestCase
             new StubConditionEvaluator($conditionResults),
             new StubHydrationProvider($entities),
             $walker,
-            new StubSimulationContextFactory()
+            new StubSimulationContextFactory(),
+            new FanOutTracePreview(
+                new RelationPool([]),
+                new RelationContext(
+                    new RelationPool([]),
+                    new StubStoreManager(),
+                    new StubScopeConfig([]),
+                    new NullLogger()
+                ),
+                new StubHydrationProvider($entities),
+                new DataObjectFactory(),
+                new StubScopeConfig([])
+            )
         );
     }
 

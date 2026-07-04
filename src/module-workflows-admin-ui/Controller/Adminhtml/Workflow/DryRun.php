@@ -90,7 +90,8 @@ class DryRun extends Action implements HttpGetActionInterface, HttpPostActionInt
                 $entityId,
                 null,
                 $workflowId ?: null,
-                $input['workflow_name']
+                $input['workflow_name'],
+                $workflow?->getFanOut()
             ));
 
             if ($workflow !== null && $entityId !== null && $this->matchesSavedDefinition($definitionJson, $workflow)) {

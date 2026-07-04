@@ -92,6 +92,34 @@ $recent = is_array($input['recent'] ?? null) ? $input['recent'] : [];
             </div>
         <?php endif; ?>
 
+        <?php $fanOut = $trace->getFanOut(); ?>
+        <?php if (is_array($fanOut)): ?>
+            <div class="message message-notice">
+                <?php $sample = $fanOut['sample_target_ids'] ?? []; ?>
+                <?php if (($fanOut['note'] ?? '') === 'unknown_relation'): ?>
+                    <?= $block->escapeHtml(__('Fan-out: the relation "%1" is not registered.', $fanOut['relation'] ?? '')) ?>
+                <?php elseif (in_array($fanOut['note'] ?? '', ['no_source_entity', 'source_not_found'], true)): ?>
+                    <?= $block->escapeHtml(__(
+                        'Fan-out over "%1": enter the source (%2) entity id to preview how many executions it would dispatch.',
+                        $fanOut['relation'] ?? '',
+                        $fanOut['source_type'] ?? ''
+                    )) ?>
+                <?php else: ?>
+                    <strong><?= $block->escapeHtml(__(
+                        'Fan-out: would dispatch %1 execution(s) — one per %2.',
+                        (int) ($fanOut['would_dispatch'] ?? 0),
+                        $fanOut['relation'] ?? ''
+                    )) ?></strong>
+                    <?php if ($sample !== []): ?>
+                        <?= $block->escapeHtml(__('First %1: %2', count($sample), implode(', ', array_map('intval', $sample)))) ?>
+                    <?php endif; ?>
+                    <?php if (!empty($fanOut['truncated'])): ?>
+                        <?= $block->escapeHtml(__('(truncated to the fan-out cap)')) ?>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if ($trace->getSteps() !== []): ?>
             <table class="admin__table-secondary">
                 <thead>

@@ -38,7 +38,8 @@ class DryRunService
         private readonly ConditionEvaluator $conditionEvaluator,
         private readonly HydrationProviderInterface $hydrationProvider,
         private readonly Walker $walker,
-        private readonly SimulationContextFactory $contextFactory
+        private readonly SimulationContextFactory $contextFactory,
+        private readonly FanOutTracePreview $fanOutTracePreview
     ) {
     }
 
@@ -57,6 +58,11 @@ class DryRunService
         }
 
         $definition = Definition::fromJson($request->getDefinitionJson());
+
+        // Fan-out preview (04): resolve the relation live against the subject
+        // (as the fan-out source) and report "would dispatch N (first 3: …)".
+        // Purely additive — null for non-fan-out workflows.
+        $fanOutNode = $this->fanOutTracePreview->build($request->getFanOut(), $request->getEntityId());
 
         // 2. Missing entity is a trace-level error up front, mirroring the
         //    production skipped-on-missing-entity semantics (real-entity runs only).
@@ -81,12 +87,12 @@ class DryRunService
         // 3. Root condition gate: an entity the workflow would not fire on
         //    yields an empty, flagged trace — honest about the skip.
         if (!$this->rootConditionsMatch($request, $ctx)) {
-            return new Trace($header['workflow'], $header['entity'], [], [], true);
+            return new Trace($header['workflow'], $header['entity'], [], [], true, false, $fanOutNode);
         }
 
         $entryKey = $definition->getEntryKey();
         if ($entryKey === null) {
-            return new Trace($header['workflow'], $header['entity']);
+            return new Trace($header['workflow'], $header['entity'], [], [], false, false, $fanOutNode);
         }
 
         $walk = $this->walker->walk(
@@ -103,7 +109,8 @@ class DryRunService
             [],
             $walk['steps'],
             false,
-            $walk['truncated']
+            $walk['truncated'],
+            $fanOutNode
         );
     }
 

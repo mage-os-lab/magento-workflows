@@ -165,6 +165,10 @@ and circuit-breaker keys documented in their own sections:
   `P1Y` cannot park an execution silently.
 - `mageos_workflows/scheduler/stock_threshold` (default 5) — quantity boundary for the
   `mageos_workflows_stock_threshold` detector job; `0` disables the detector entirely.
+- `mageos_workflows/guards/fan_out_cap` (default 100) — global ceiling on how many
+  executions one triggering event may fan out to (see **Fan-out** below). Per-workflow
+  fan-out caps clamp to this value; excess targets are dropped with a logged,
+  admin-visible marker.
 
 ## REST API
 
@@ -183,6 +187,35 @@ response carries the validation findings and, on a sound graph, the flat step tr
 route shapes are POST-only and non-colliding with `GET /V1/workflows/:workflowId`, so a
 stray `GET …/dry-run` falls through to `getById('dry-run')` → 404 (pinned by a contract
 test). CLI equivalent: `bin/magento workflow:run <id> --entity-id <n> --dry-run`.
+
+## Fan-out
+
+A workflow with a **fan-out** clause turns one triggering event into N ordinary
+single-entity executions — one per member of a declared relation resolved against the
+source entity (e.g. *customer group changed → hold each of the customer's open orders*).
+Each child is an ordinary execution: full guard stack (debounce, scope, suppression,
+circuit breaker) and grid visibility, distinguishable only by its `origin` context and
+indexed `origin_uuid`.
+
+Operational notes:
+
+- **Cap the blast radius.** `mageos_workflows/guards/fan_out_cap` (default 100) is the
+  global ceiling; a per-workflow cap clamps to it. Storm math is
+  `events/sec × relation size`, so review the cap before enabling a fan-out workflow on a
+  high-frequency trigger.
+- **Debounce window ≥ worst-case redelivery delay (load-bearing).** Fan-out expansion
+  happens inside the notifier consumer. If it crashes mid-expansion, async-events
+  redelivers and the expander **re-expands from scratch** — the per-child debounce
+  (`mageos_workflows/guards/debounce_window_seconds`, default 60) is what collapses the
+  already-dispatched children so redelivery does not double-dispatch. That safety holds
+  only while the debounce window comfortably exceeds the queue's worst-case redelivery
+  delay. If you raise redelivery backoff, raise the debounce window to match.
+- **Truncation is never silent.** Over-cap expansions log a `fan_out_truncated` warning
+  and record `{dispatched, skipped, truncated}` on the notifier result; the dry-run
+  preview and plain-language rendering both surface the cap.
+- **"Caused by" filter.** The execution grid's `origin_uuid` column (filter: *Caused by*)
+  returns every child of one source event's trace UUID — the one-query answer to "show me
+  everything that group change caused".
 
 ## Circuit-breaker recovery
 
