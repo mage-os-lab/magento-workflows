@@ -11,6 +11,7 @@ Composer packages, mirroring the `mageos-async-events` family layout:
 | `mage-os/workflows-scheduler` | Cron/query-based triggers |
 | `mage-os/workflows-b2b` | B2B triggers/conditions/actions (suggest: Adobe Commerce only) |
 | `mage-os/workflows-canvas` | v2 React Flow builder (optional, reads the same definition) |
+| `mage-os/workflows-import-suppression` | Suppresses dispatch during ImportExport CSV imports (optional; keeps core free of a hard ImportExport dependency) |
 
 ## Dependencies
 

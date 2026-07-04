@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Plugin;
+namespace MageOS\WorkflowsImportSuppression\Plugin;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\ImportExport\Model\Import;
@@ -30,6 +30,11 @@ use MageOS\Workflows\Model\Suppression\WorkflowSuppression;
  * enabled): imports are the common case this plugin exists for, so the safe
  * default suppresses them. Disable it for a store that deliberately wants
  * per-row workflow reactions during import (accepting the storm risk).
+ *
+ * Ships as its own module (MageOS_WorkflowsImportSuppression) so the core
+ * engine carries no hard dependency on Magento_ImportExport: a plugin target
+ * must exist at di:compile time, and packaging the wiring separately keeps
+ * that requirement scoped to installs that actually have ImportExport.
  */
 class SuppressWorkflowsDuringImport
 {

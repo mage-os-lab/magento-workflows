@@ -17,11 +17,6 @@
                     <comment>Emergency switch and bulk-operation guard: no new executions are created while enabled.</comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="suppress_bulk_imports" translate="label comment" type="select" sortOrder="20" showInDefault="1">
-                    <label>Suppress Workflow Dispatch During Import</label>
-                    <comment>Wraps Data/System > Import runs in the suppression scope so a large CSV import (e.g. catalog_product_import) does not fire one dispatch evaluation per row. Disable only if a store deliberately wants per-row workflow reactions during import.</comment>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                </field>
             </group>
             <group id="guards" translate="label" type="text" sortOrder="20" showInDefault="1">
                 <label>Guards</label>

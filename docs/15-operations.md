@@ -201,11 +201,13 @@ updated" digest instead of silent drops. Off by default (it trades suppression's
 drop for per-event membership evaluation + an insert — see
 [08 — Execution Model](08-execution-model.md#aggregated-batch-workflows)).
 
-The known-bulk-path wiring for CSV imports (Data/System > Import) is
-`mageos_workflows/general/suppress_bulk_imports` — enabled by default, it
-wraps the whole import run in `WorkflowSuppression::scope()` so a 100k-row
-`catalog_product_import` doesn't fire one dispatch per row; disable it only
-if a store deliberately wants per-row workflow reactions during import.
+The known-bulk-path wiring for CSV imports (Data/System > Import) ships in the
+optional `mage-os/workflows-import-suppression` package (so the core engine has
+no hard ImportExport dependency): `mageos_workflows/general/suppress_bulk_imports`
+— enabled by default when the package is installed — wraps the whole import run
+in `WorkflowSuppression::scope()` so a 100k-row `catalog_product_import` doesn't
+fire one dispatch per row; disable it only if a store deliberately wants per-row
+workflow reactions during import.
 
 **Remediation:**
 

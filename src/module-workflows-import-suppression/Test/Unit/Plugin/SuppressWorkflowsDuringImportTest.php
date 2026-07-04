@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Test\Unit\Plugin;
+namespace MageOS\WorkflowsImportSuppression\Test\Unit\Plugin;
 
 use Magento\ImportExport\Model\Import;
 use MageOS\Workflows\Model\Suppression\WorkflowSuppression;
-use MageOS\Workflows\Plugin\SuppressWorkflowsDuringImport;
+use MageOS\WorkflowsImportSuppression\Plugin\SuppressWorkflowsDuringImport;
 use MageOS\Workflows\Test\Unit\Stub\StubScopeConfig;
 use PHPUnit\Framework\TestCase;
 

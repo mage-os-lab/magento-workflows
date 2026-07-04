@@ -5,7 +5,6 @@
         <mageos_workflows>
             <general>
                 <suppress_all>0</suppress_all>
-                <suppress_bulk_imports>1</suppress_bulk_imports>
             </general>
             <guards>
                 <debounce_window_seconds>60</debounce_window_seconds>
