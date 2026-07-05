@@ -171,6 +171,11 @@ class ResolverTest extends TestCase
                 throw new \BadMethodCallException(__METHOD__);
             }
 
+            public function deleteById($id)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
             public function getList($searchCriteria)
             {
                 $items = $this->items;

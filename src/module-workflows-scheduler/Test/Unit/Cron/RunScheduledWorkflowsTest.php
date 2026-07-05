@@ -273,6 +273,17 @@ class RunScheduledWorkflowsTest extends TestCase
             {
                 throw new \LogicException('not used in this test');
             }
+            public function setIsSingleStoreModeAllowed($value) { throw new \BadMethodCallException(__METHOD__); }
+            public function hasSingleStore() { return false; }
+            public function isSingleStoreMode() { return false; }
+            public function getStores($withDefault = false, $codeKey = false) { return []; }
+            public function getWebsite($websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getWebsites($withDefault = false, $codeKey = false) { return []; }
+            public function reinitStores() {}
+            public function getDefaultStoreView() { return null; }
+            public function getGroup($groupId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getGroups($withDefault = false) { return []; }
+            public function setCurrentStore($store) {}
         };
     }
 

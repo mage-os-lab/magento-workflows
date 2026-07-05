@@ -84,6 +84,7 @@ class CreateCreditmemoTest extends TestCase
             public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
             public function delete(\Magento\Sales\Api\Data\OrderInterface $entity) { throw new \BadMethodCallException(__METHOD__); }
             public function save(\Magento\Sales\Api\Data\OrderInterface $entity) { throw new \BadMethodCallException(__METHOD__); }
+            public function deleteById($id) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 
