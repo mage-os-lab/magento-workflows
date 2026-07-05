@@ -36,7 +36,7 @@ class DecisionPanel extends Template
         private readonly OpenTaskLookup $openTaskLookup,
         private readonly GateConfigReader $gateConfigReader,
         private readonly AuthorizationInterface $authorization,
-        private readonly FormKey $formKey,
+        private readonly FormKey $formKeyProvider,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -114,7 +114,7 @@ class DecisionPanel extends Template
 
     public function getFormKey(): string
     {
-        return $this->formKey->getFormKey();
+        return $this->formKeyProvider->getFormKey();
     }
 
     /**
