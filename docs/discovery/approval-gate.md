@@ -91,7 +91,7 @@ task `expired`).
   escalation fall out of the existing timeout machinery; every observability surface
   (execution timeline, stats, sweeper) applies unchanged.
 - ⚠️ Cost: a schema bump, a new table + service + two ACL resources, an admin grid, REST
-  routes, canvas node — itemized in §7.
+  routes, canvas node — split between core and an addon module in §7, staged in §9.
 
 ### A2 — Reuse the `wait` step verbatim + a "post synthetic event" API
 
@@ -120,7 +120,7 @@ externally consumable; the admin surface (§6) makes it usable with zero integra
 
 ## 3. Data model
 
-One new table, `mageos_workflow_approval` (module-workflows, alongside the execution tables):
+One new table, `mageos_workflow_approval` (shipped by the addon module — §7):
 
 | Column | Notes |
 |---|---|
@@ -192,7 +192,8 @@ Admin/integration-token authenticated web API, same conventions as the existing 
 | `/V1/workflow-approvals/:uuid` | GET | `::approvals_view` | one task, incl. title/instructions/entity refs |
 | `/V1/workflow-approvals/:uuid/decision` | POST | `::approvals_decide` | body `{"decision": "approved"\|"rejected", "note": "…", "payload": {…}}` |
 
-Two new ACL resources under `MageOS_Workflows::workflows` (`acl.xml`):
+Two new ACL resources under `MageOS_Workflows::workflows` (declared in the addon's `acl.xml`,
+parented into the existing tree):
 `::approvals_view` (sortOrder 47) and `::approvals_decide` (sortOrder 48). Deciding is
 deliberately **not** implied by `::manage` — the people who approve refunds are usually not
 the people who author workflows. If the task carries an `assignee_role`, decide additionally
@@ -250,7 +251,52 @@ placeholder output (`{resolution: "approved", payload: {approved_amount: "SIMULA
 declared field) so downstream interpolation renders. **Canvas**: one new node type (three
 labeled handles) via the same palette/config-panel metadata path as `switch`.
 
-## 7. Quality, maintainability, reliability
+## 7. Packaging — thin core seam + `module-workflows-approvals` addon
+
+Approvals ship as an optional addon module over a minimal core seam, following the
+scheduler / canvas / templates / admin-extension precedent: core owns only what is inseparable
+from the definition contract; the entire product surface installs separately.
+
+**Why the step type itself cannot leave core:** step types are spec-level, not DI-level. The
+`approval` type touches the parser (`Definition::STEP_TYPES`, shape validator,
+`getStepEdges()`), the executor walk, `ResumeConsumer` routing, the dry-run walker,
+`GraphCheck`, the plain-language renderer, and the published `spec/` JSON Schema — and the
+definition JSON is "the contract everything shares" with no unknown-key passthrough
+([04](../04-definition-format.md)), so an addon-private step type would break export/import
+portability. Actions and validation checks are the DI-extensible seams (`ActionPool`, the
+di.xml `checks` pools); step types are deliberately not.
+
+**The split:**
+
+| Core (`module-workflows`) | Addon (`module-workflows-approvals` / `MageOS_WorkflowsApprovals`) |
+|---|---|
+| Schema-4 `approval` step: parser shape validator, three named edges, spec release + conformance fixtures | `mageos_workflow_approval` table (§3) + retention pruning |
+| Executor park handler + `ResumeConsumer` routing, delegating task lifecycle through a small `ApprovalTaskManagerInterface` (create at park, expire at timeout, orphan at failure) | The `ApprovalTaskManagerInterface` implementation + `ApprovalService::decide()` (§4) |
+| Save-time validation: `APPROVAL_MODULE_MISSING` (error when no task manager is bound), `GRAPH_POST_DELAY_STALE` extension, seam for the `allow_bulk`-vs-required-payload check | REST routes + the two ACL resources (§5), in the addon's `webapi.xml` / `acl.xml` |
+| Dry-run three-edge exploration + placeholder payload output; plain-language rendering | Approvals grid, decision view, execution-view decision panel (layout-handle injection into the admin-ui execution page — the admin-extension pattern), park notifications |
+| — | Canvas node metadata, contributed through the existing metadata endpoints (renders only when both optional packages are present) |
+
+**Missing-module posture** mirrors uninstalled action modules exactly: a definition containing
+an `approval` step saves/imports only where the addon is installed — core's validation check
+rejects it with a stable machine code otherwise, the same way unknown action codes already
+fail ([04 §Import](../04-definition-format.md#import-is-untrusted-input)). The runtime
+backstop (an `approval` step reached with no bound task manager — possible only via a data
+patch that bypassed validation) is a terminal step failure, never a silent skip. Uninstalling
+the addon while gates are parked is the one rough edge: parked executions still resume by
+timeout (sweeper and routing are core) but tasks orphan and decisions become impossible —
+document "disable gate workflows before uninstalling" in the ops guide.
+
+*Considered and set aside — a zero-core-change composition:* an addon-registered
+`approval.request` action + a schema-2 `wait` on a reserved per-gate event name + a `switch`
+on the decision payload, with the decision service calling the public
+`DispatcherInterface::resumeWaiting()`. It works on today's engine with no schema bump and
+would have validated demand cheaply, but authoring becomes a three-step pattern with
+event-name footguns, and plain-language, canvas, and dry-run all render a generic wait — the
+comprehension cost lands on exactly the merchants the feature serves. Its service/table/REST
+layer is essentially this design's addon, so little would have carried over wasted; going
+straight to the step type simply avoids shipping two authoring shapes.
+
+## 8. Quality, maintainability, reliability
 
 - **Reliability:** no new park state, no queue-topology change, no executor-walk change beyond
   one step handler; both wake paths reuse the proven atomic-claim + result-before-publish +
@@ -272,29 +318,31 @@ labeled handles) via the same palette/config-panel metadata path as `switch`.
   request cannot bulk-decide a gate that didn't opt in.
 - **Maintainability:** one table, one service, one step handler, one routing extension, two
   controllers + grid, three REST routes. The service is the single decision path for UI and
-  API — no parallel logic.
+  API — no parallel logic. The core/addon boundary (§7) keeps all of it out of installs that
+  don't want approvals; core grows only the step semantics and one delegation interface.
 - **Testability:** unit — park idempotency, claim races (decision-vs-decision,
   decision-vs-timeout, publish-failure rollback), payload validation matrix, routing;
   conformance — schema-4 fixtures + dry-run three-edge exploration; the shim harness covers
   all of it like the existing engine suites.
 
-## 8. Sequencing & effort
+## 9. Sequencing & effort
 
 No dependency on other discovery-track features (relation registry, fan-out, etc.); depends
 only on the shipped wait/resume spine. Estimates in the same currency as
 [13 — Delivery Plan](../13-delivery-plan.md).
 
-| Order | Item | Effort |
-|---|---|---|
-| 1 | Engine: step type + schema 4 + spec release, park handler, `ApprovalService::decide()`, `ResumeConsumer` routing, timeout/orphan marking, task table | ~1.5 wk |
-| 2 | REST routes + ACL resources + payload validation + audit; `GRAPH_POST_DELAY_STALE` extension; plain-language rendering | ~1 wk |
-| 3 | Admin: approvals grid, decision view, execution-view panel, park notifications | ~1.5 wk |
-| 4 | Dry-run three-edge exploration, canvas node, docs (04/07/08/09/15/18 updates), test suites | ~1 wk |
+| Order | Owner | Item | Effort |
+|---|---|---|---|
+| 1 | Core | Step type + schema 4 + spec release, park handler + `ApprovalTaskManagerInterface` seam, `ResumeConsumer` routing, module-missing + staleness validation, dry-run three-edge exploration, plain-language rendering | ~2 wk |
+| 2 | Addon | Task table + pruning, task-manager implementation, `ApprovalService::decide()` (claims/races/audit), REST routes + ACL + payload validation | ~1 wk |
+| 3 | Addon | Approvals grid, decision view, execution-view panel, park notifications, bulk mass-action (`allow_bulk`) | ~1.5 wk |
+| 4 | Both | Canvas node (canvas package), docs (02/04/07/08/09/15/18 updates), split core/addon test suites | ~1 wk |
 
-Total ≈ **5 wk**. Stages 1–2 are independently shippable as an API-only feature (external
-tools can decide before the grid exists); stage 3 is what makes it a merchant feature.
+Total ≈ **5–5.5 wk** (the delegation seam adds a little to stage 1 and pays it back in stage
+2). Stages 1–2 are independently shippable as an API-only feature (external tools can decide
+before the grid exists); stage 3 is what makes it a merchant feature.
 
-## 9. Resolved decisions (July 2026 review)
+## 10. Resolved decisions (July 2026 review)
 
 Originally open questions; resolved with the project owner. The body sections above reflect
 these outcomes.
@@ -315,3 +363,9 @@ these outcomes.
    ([exploration §1](exploration-composition-creation-long-span.md)); if the invoke step
    happens to be committed before the schema-4 spec release ships, merging into one revision
    remains an option, not a dependency.
+6. **Module packaging — thin core seam + `module-workflows-approvals` addon (§7).** Core
+   carries only the schema-4 step semantics and the `ApprovalTaskManagerInterface` delegation
+   seam; the table, service, REST, ACL, and admin surface ship as an optional module, with
+   missing-module save/import rejection mirroring uninstalled action modules. The
+   zero-core-change composition variant (action + `wait` + `switch`) was considered and set
+   aside (§7).
