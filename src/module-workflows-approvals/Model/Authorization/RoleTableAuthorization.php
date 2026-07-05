@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsApprovals\Model\Authorization;
 
+use Magento\Authorization\Model\UserContextInterface;
 use Magento\Framework\App\ResourceConnection;
 use MageOS\WorkflowsApprovals\Api\ApprovalAuthorizationInterface;
 use Psr\Log\LoggerInterface;
@@ -17,9 +18,11 @@ use Psr\Log\LoggerInterface;
  * documented async-events assumptions): every admin user AND every API
  * integration gets one row in `authorization_role` with role_type='U',
  * user_id = the admin user id / integration id, and user_type disambiguating
- * which (0 = admin, per Magento\Authorization\Model\UserContextInterface::USER_TYPE_ADMIN;
- * 3 = integration, per USER_TYPE_INTEGRATION). That row's parent_id points at
- * the role_type='G' row carrying the actual permission grant — role_name for
+ * which — the values are NOT this class's to pin: they come from
+ * Magento\Authorization\Model\UserContextInterface (USER_TYPE_ADMIN = 2,
+ * USER_TYPE_INTEGRATION = 1), referenced directly below so this class can
+ * never drift from the interface. That row's parent_id points at the
+ * role_type='G' row carrying the actual permission grant — role_name for
  * admin roles, and the auto-generated per-integration role for integrations.
  *
  * Matching rule:
@@ -47,9 +50,6 @@ class RoleTableAuthorization implements ApprovalAuthorizationInterface
 {
     private const ROLE_TABLE = 'authorization_role';
     private const RULE_TABLE = 'authorization_rule';
-
-    private const USER_TYPE_ADMIN = 0;
-    private const USER_TYPE_INTEGRATION = 3;
 
     private const ROLE_TYPE_GROUP = 'G';
     private const ROLE_TYPE_USER = 'U';
@@ -88,7 +88,7 @@ class RoleTableAuthorization implements ApprovalAuthorizationInterface
 
     private function adminHoldsRole(int $adminUserId, string $role): bool
     {
-        $roleName = $this->assignedRoleName($adminUserId, self::USER_TYPE_ADMIN);
+        $roleName = $this->assignedRoleName($adminUserId, UserContextInterface::USER_TYPE_ADMIN);
         if ($roleName === null) {
             return false;
         }
@@ -101,7 +101,7 @@ class RoleTableAuthorization implements ApprovalAuthorizationInterface
         if ($namedRoleId === null) {
             return false;
         }
-        $integrationRoleId = $this->assignedRoleId($integrationId, self::USER_TYPE_INTEGRATION);
+        $integrationRoleId = $this->assignedRoleId($integrationId, UserContextInterface::USER_TYPE_INTEGRATION);
         if ($integrationRoleId === null) {
             return false;
         }

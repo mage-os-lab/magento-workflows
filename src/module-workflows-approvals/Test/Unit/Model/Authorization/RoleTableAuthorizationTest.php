@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsApprovals\Test\Unit\Model\Authorization;
 
+use Magento\Authorization\Model\UserContextInterface;
 use Magento\Framework\App\ResourceConnection;
 use MageOS\WorkflowsApprovals\Model\Authorization\RoleTableAuthorization;
 use Psr\Log\NullLogger;
@@ -27,10 +28,20 @@ class RoleTableAuthorizationTest extends TestCase
         $connection = new FakeAuthConnection();
         $connection->addAdminRole(5, 'Sales Managers');
 
-        $this->assertTrue($this->authorization($connection)->actorHoldsRole('admin', '5', 'sales_managers') === false);
-        // Case-insensitive match against the EXACT role name, trimmed.
+        // Case-insensitive, trimmed match against the exact role name content.
         $this->assertTrue($this->authorization($connection)->actorHoldsRole('admin', '5', 'SALES MANAGERS'));
         $this->assertTrue($this->authorization($connection)->actorHoldsRole('admin', '5', '  Sales Managers  '));
+    }
+
+    public function testAdminMatchingIsContentNotFormatEquivalence(): void
+    {
+        // "sales_managers" (underscored) is NOT treated as equivalent to the
+        // stored "Sales Managers" (spaced) — only case and surrounding
+        // whitespace are normalized, never separator style.
+        $connection = new FakeAuthConnection();
+        $connection->addAdminRole(5, 'Sales Managers');
+
+        $this->assertFalse($this->authorization($connection)->actorHoldsRole('admin', '5', 'sales_managers'));
     }
 
     public function testAdminWithoutRoleAssignmentDenies(): void
@@ -59,7 +70,7 @@ class RoleTableAuthorizationTest extends TestCase
         $connection->addIntegrationRole(9, ['MageOS_Workflows::view', 'MageOS_Workflows::manage', 'Some_Other::resource']);
 
         $this->assertTrue($this->authorization($connection)->actorHoldsRole('integration', '9', 'Sales Managers'));
-        $this->assertIsInt($roleId);
+        $this->assertTrue($roleId > 0);
     }
 
     public function testIntegrationMissingOneRequiredResourceIsDenied(): void
@@ -117,8 +128,11 @@ class RoleTableAuthorizationTest extends TestCase
  * mirroring the pinned schema assumptions in its docblock: authorization_role
  * rows of role_type 'G' (the permission-holding role, keyed by role_id) and
  * 'U' (a user/integration assignment row whose parent_id points at its 'G'
- * role), disambiguated by user_type (0 admin, 3 integration); authorization_rule
- * rows of (role_id, resource_id, permission).
+ * role), disambiguated by user_type — seeded from the REAL
+ * Magento\Authorization\Model\UserContextInterface constants (ADMIN = 2,
+ * INTEGRATION = 1), never local literals, so this test only passes when the
+ * class under test queries the values the real schema contains;
+ * authorization_rule rows of (role_id, resource_id, permission).
  */
 class FakeAuthConnection
 {
@@ -138,7 +152,11 @@ class FakeAuthConnection
     public function addAdminRole(int $adminUserId, string $roleName): int
     {
         $roleId = $this->addNamedRole($roleName, []);
-        $this->userRoleAssignments[] = ['parent_id' => $roleId, 'user_id' => $adminUserId, 'user_type' => 0];
+        $this->userRoleAssignments[] = [
+            'parent_id' => $roleId,
+            'user_id' => $adminUserId,
+            'user_type' => UserContextInterface::USER_TYPE_ADMIN,
+        ];
         return $roleId;
     }
 
@@ -149,7 +167,11 @@ class FakeAuthConnection
     {
         $roleId = $this->nextRoleId++;
         $this->grants[$roleId] = $resources;
-        $this->userRoleAssignments[] = ['parent_id' => $roleId, 'user_id' => $integrationId, 'user_type' => 3];
+        $this->userRoleAssignments[] = [
+            'parent_id' => $roleId,
+            'user_id' => $integrationId,
+            'user_type' => UserContextInterface::USER_TYPE_INTEGRATION,
+        ];
         return $roleId;
     }
 
