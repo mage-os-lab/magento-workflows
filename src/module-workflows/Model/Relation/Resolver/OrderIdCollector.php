@@ -9,7 +9,7 @@ namespace MageOS\Workflows\Model\Relation\Resolver;
  * to-many order resolvers stay trivially unit-testable with plain DTO stubs;
  * the RelationContext cap then keeps the most recent ids.
  */
-final class OrderIdCollector
+class OrderIdCollector
 {
     /**
      * @param iterable<object> $orders order DTOs exposing getEntityId()/getId()

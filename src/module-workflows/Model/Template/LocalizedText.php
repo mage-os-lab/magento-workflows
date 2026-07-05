@@ -15,7 +15,7 @@ namespace MageOS\Workflows\Model\Template;
  * isResolvable() requires the requested locale, its language prefix, or the
  * canonical DEFAULT_LOCALE to be present in a map.
  */
-final class LocalizedText
+class LocalizedText
 {
     /**
      * The canonical fallback a localized map must carry when the install locale

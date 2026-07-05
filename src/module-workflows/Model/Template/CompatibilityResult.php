@@ -8,7 +8,7 @@ namespace MageOS\Workflows\Model\Template;
  * The gallery greys out cards with reasons; TemplateInstaller refuses to
  * install one (a compat failure aborts before any write).
  */
-final class CompatibilityResult
+class CompatibilityResult
 {
     /**
      * @param CompatibilityReason[] $reasons

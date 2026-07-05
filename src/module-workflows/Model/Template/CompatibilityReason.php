@@ -10,7 +10,7 @@ use Magento\Framework\Phrase;
  * appears under a greyed-out card ("requires the B2B pack") and the stable
  * machine code a test or the install controller asserts on.
  */
-final class CompatibilityReason
+class CompatibilityReason
 {
     public const MISSING_TRIGGER = 'MISSING_TRIGGER';
     public const MISSING_ACTION = 'MISSING_ACTION';

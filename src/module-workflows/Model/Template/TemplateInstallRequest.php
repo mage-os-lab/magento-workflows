@@ -16,7 +16,7 @@ use MageOS\Workflows\Model\Validation\ValidationContext;
  * *value* — supplied only by the merchant at install time — lives here and is
  * never persisted to provenance.
  */
-final class TemplateInstallRequest
+class TemplateInstallRequest
 {
     /**
      * @param array<string, mixed> $parameters key => value (form / CLI / patch)

@@ -9,7 +9,7 @@ namespace MageOS\Workflows\Model\Template;
  * their raw envelope shape (string | {locale: string} map) so a consumer
  * resolves them against its own locale.
  */
-final class TemplateSummary
+class TemplateSummary
 {
     /**
      * @param mixed $title raw localized text (string | {locale: string})

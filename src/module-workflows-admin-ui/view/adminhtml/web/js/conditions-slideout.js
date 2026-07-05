@@ -36,16 +36,16 @@ define([
             entityType = $root.data('entityType') || '';
 
         var $field = $(fieldSelector);
-        var $dialog = $('<div/>', {'class': 'mageos-conditions-slideout'});
-        var $textarea = $('<textarea/>', {
+        var $dialog = $('<div></div>', {'class': 'mageos-conditions-slideout'});
+        var $textarea = $('<textarea></textarea>', {
             'class': 'mageos-conditions-json',
             'rows': 16,
             'spellcheck': 'false',
             'aria-label': $t('Condition tree (JSON)')
         });
-        var $messages = $('<div/>', {'class': 'mageos-conditions-messages', 'role': 'alert'});
+        var $messages = $('<div></div>', {'class': 'mageos-conditions-messages', 'role': 'alert'});
         $dialog.append(
-            $('<p/>').text($t('Edit the serialized condition tree. Leave blank for "always run". The server re-validates the shape.')),
+            $('<p></p>').text($t('Edit the serialized condition tree. Leave blank for "always run". The server re-validates the shape.')),
             $textarea,
             $messages
         );
@@ -130,7 +130,7 @@ define([
     }
 
     function showMessage($messages, text, severity) {
-        var $line = $('<div/>', {'class': 'mageos-conditions-message mageos-conditions-message--' + (severity || 'notice')});
+        var $line = $('<div></div>', {'class': 'mageos-conditions-message mageos-conditions-message--' + (severity || 'notice')});
         $line.text(text);
         $messages.append($line);
     }

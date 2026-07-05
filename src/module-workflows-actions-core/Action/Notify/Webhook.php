@@ -400,13 +400,13 @@ class Webhook extends AbstractAction implements SimulateableActionInterface, Bat
     private function resolveIps(string $host): array
     {
         $ips = [];
-        $records = @dns_get_record($host, DNS_A);
+        $records = @dns_get_record($host, DNS_A); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
         foreach (is_array($records) ? $records : [] as $record) {
             if (!empty($record['ip'])) {
                 $ips[] = (string)$record['ip'];
             }
         }
-        $records = @dns_get_record($host, DNS_AAAA);
+        $records = @dns_get_record($host, DNS_AAAA); // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
         foreach (is_array($records) ? $records : [] as $record) {
             if (!empty($record['ipv6'])) {
                 $ips[] = (string)$record['ipv6'];

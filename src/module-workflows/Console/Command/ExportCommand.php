@@ -101,7 +101,7 @@ class ExportCommand extends Command
 
         $file = $input->getOption(self::OPT_FILE);
         if ($file !== null) {
-            if (@file_put_contents($file, $json . PHP_EOL) === false) {
+            if (@file_put_contents($file, $json . PHP_EOL) === false) { // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
                 $output->writeln(sprintf('<error>Could not write export to "%s"</error>', $file));
                 return Command::FAILURE;
             }

@@ -14,7 +14,7 @@ use MageOS\Workflows\Model\Import\ImportResult;
  * as a "create these secrets" follow-up (the workflow still exists; a definition
  * referencing a not-yet-created secret is valid — secrets resolve at run time).
  */
-final class TemplateInstallResult
+class TemplateInstallResult
 {
     /**
      * @param string[] $createdSecrets
