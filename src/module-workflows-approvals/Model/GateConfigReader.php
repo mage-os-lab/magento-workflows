@@ -57,8 +57,11 @@ class GateConfigReader
 
     /**
      * @return string[] validated recipient addresses; malformed/absent config
-     *                   degrades to an empty list rather than a failure (§6:
-     *                   notify_emails is passthrough-only in Stage 1 validation)
+     *                   degrades to an empty list rather than a failure. Save-time
+     *                   validation (Definition::assertApprovalStep) already requires
+     *                   a non-empty list of non-empty strings when notify_emails is
+     *                   present; this reader additionally tolerates a bare string
+     *                   (runtime leniency) and filters to RFC-valid addresses.
      */
     public function getNotifyEmails(int $executionId, string $stepKey): array
     {

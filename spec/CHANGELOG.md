@@ -37,7 +37,9 @@ spec move in lockstep.
   `config` requires `title` (interpolated at park time) and `timeout` (**required**
   — no indefinite parks); optional `instructions`, `assignee_role`, `allow_bulk`
   (default `false`), and `payload_fields[]` (each `{key, label, type: string|
-  number|boolean, required?}`, `key` unique). The step output exposes
+  number|boolean, required?}`, `key` unique). Also optional: `notify_emails[]`
+  (non-empty list of non-empty strings) — direct-email recipients notified at
+  park time, in addition to the admin-inbox notice. The step output exposes
   `{task_uuid}` at park and `{resolution, note, payload, decided_by}` after a
   decision (`{resolution: 'timeout'}` on timeout). Documents using `approval`
   MUST declare `"schema": 4`; the parser rejects it below that.
@@ -49,7 +51,8 @@ spec move in lockstep.
   also fires for a `revalidate_entity:false` branch/switch directly after an
   approval gate.
 - New conformance fixture: `fixtures/goodwill-credit-approval.json` (approval
-  gate with a `payload_fields` value flowing into a downstream credit memo).
+  gate with a `payload_fields` value flowing into a downstream credit memo,
+  and a `notify_emails` entry).
 
 **Migration note for third parties:** schema 1–3 documents remain valid unchanged.
 Consumers that walk step edges learn one new shape: `approval` has three named

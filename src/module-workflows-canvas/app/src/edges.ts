@@ -10,6 +10,7 @@ import type { EdgeMap, StepNode } from './types';
  *   branch       => { on_true, on_false }
  *   wait         => { on_event, on_timeout }
  *   switch       => { 'case:<key>': …, …, default }
+ *   approval     => { on_approved, on_rejected, on_timeout }
  *   stop         => {}
  */
 export function getStepEdges(step: StepNode): EdgeMap {
@@ -24,6 +25,12 @@ export function getStepEdges(step: StepNode): EdgeMap {
       return { on_true: edge(step.on_true), on_false: edge(step.on_false) };
     case 'wait':
       return { on_event: edge(step.on_event), on_timeout: edge(step.on_timeout) };
+    case 'approval':
+      return {
+        on_approved: edge(step.on_approved),
+        on_rejected: edge(step.on_rejected),
+        on_timeout: edge(step.on_timeout),
+      };
     case 'switch': {
       const edges: EdgeMap = {};
       for (const c of step.cases ?? []) {
@@ -62,6 +69,10 @@ export function edgeLabel(edgeName: string): string {
       return 'on event';
     case 'on_timeout':
       return 'on timeout';
+    case 'on_approved':
+      return 'approved';
+    case 'on_rejected':
+      return 'rejected';
     case 'default':
       return 'default';
     default:

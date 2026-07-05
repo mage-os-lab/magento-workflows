@@ -1,6 +1,6 @@
 # Discovery — Approval / Decision Gate (Human-in-the-Loop Step)
 
-**Status:** Discovery / evaluation · **Track:** human-in-the-loop (graduated from [exploration](exploration-composition-creation-long-span.md))
+**Status:** Implemented (July 2026) · **Track:** human-in-the-loop (graduated from [exploration](exploration-composition-creation-long-span.md))
 **Related:** [18 — Known Boundaries §Human-in-the-loop](../18-limitations.md#human-in-the-loop) · [08 — Execution Model §Wait steps](../08-execution-model.md#wait-steps-schema-2) · [04 — Definition Format](../04-definition-format.md) · [06 — Conditions §Delay semantics](../06-conditions.md#delay-semantics) · [dry-run.md](dry-run.md)
 
 ---

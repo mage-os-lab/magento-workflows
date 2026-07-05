@@ -208,6 +208,60 @@ class DefinitionV4Test extends TestCase
         Definition::fromArray($data);
     }
 
+    public function testNotifyEmailsOptional(): void
+    {
+        $data = $this->approvalDefinition();
+        unset($data['steps']['gate']['config']['notify_emails']);
+
+        $definition = Definition::fromArray($data);
+        $this->assertTrue($definition->hasStep('gate'));
+    }
+
+    public function testNotifyEmailsValidListAccepted(): void
+    {
+        $data = $this->approvalDefinition();
+        $data['steps']['gate']['config']['notify_emails'] = ['sales-managers@example.com', 'ops@example.com'];
+
+        $definition = Definition::fromArray($data);
+        $this->assertSame(
+            ['sales-managers@example.com', 'ops@example.com'],
+            $definition->getStep('gate')['config']['notify_emails']
+        );
+    }
+
+    public function testNotifyEmailsNonListRejected(): void
+    {
+        $data = $this->approvalDefinition();
+        $data['steps']['gate']['config']['notify_emails'] = 'sales-managers@example.com';
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('notify_emails must be a non-empty list');
+
+        Definition::fromArray($data);
+    }
+
+    public function testNotifyEmailsEmptyListRejected(): void
+    {
+        $data = $this->approvalDefinition();
+        $data['steps']['gate']['config']['notify_emails'] = [];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('notify_emails must be a non-empty list');
+
+        Definition::fromArray($data);
+    }
+
+    public function testNotifyEmailsNonStringEntryRejected(): void
+    {
+        $data = $this->approvalDefinition();
+        $data['steps']['gate']['config']['notify_emails'] = ['ok@example.com', 42];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('notify_emails #1 must be a non-empty string');
+
+        Definition::fromArray($data);
+    }
+
     public function testDanglingApprovedEdgeRejected(): void
     {
         $data = $this->approvalDefinition();

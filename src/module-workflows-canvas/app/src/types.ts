@@ -10,12 +10,25 @@ export type StepType =
   | 'branch'
   | 'wait'
   | 'switch'
+  | 'approval'
   | 'stop';
 
 export interface SwitchCase {
   key: string;
   conditions_serialized?: string | null;
   next?: string | null;
+  [k: string]: unknown;
+}
+
+/**
+ * One `approval` step's payload_fields[] entry (schema 4). Mirrors
+ * Definition::assertApprovalStep's field shape server-side.
+ */
+export interface ApprovalPayloadField {
+  key: string;
+  label: string;
+  type: 'string' | 'number' | 'boolean';
+  required?: boolean;
   [k: string]: unknown;
 }
 
@@ -37,6 +50,8 @@ export interface StepNode {
   on_false?: string | null;
   on_event?: string | null;
   on_timeout?: string | null;
+  on_approved?: string | null;
+  on_rejected?: string | null;
   default?: string | null;
   [k: string]: unknown;
 }
@@ -198,4 +213,18 @@ export interface MountConfig {
   triggers: TriggerMeta[];
   /** Secret NAMES only (never values) for the variable picker. */
   secrets: string[];
+  /**
+   * Whether the MageOS_WorkflowsApprovals addon is installed on this instance
+   * (docs/discovery/approval-gate.md §7: "renders only when both optional
+   * packages are present" — this package is present by definition since the
+   * bundle is running; this flag is the other half). Gates whether the
+   * "Approval gate" palette entry is offered for NEW authoring; an existing
+   * `approval` step in a loaded definition always renders (read-only viewing
+   * and dry-run must work regardless — the addon only gates the runtime task
+   * record and admin decision surface, not core's schema-4 step semantics).
+   * Mirrors the server's own `?ApprovalTaskManagerInterface = null` seam
+   * (Model/Validation/Check/ApprovalCheck.php) that produces
+   * APPROVAL_MODULE_MISSING at save time when this is false.
+   */
+  approvalsAvailable: boolean;
 }

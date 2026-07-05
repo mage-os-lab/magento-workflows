@@ -19,7 +19,16 @@ import type {
  *   - the edge model mirrors Definition::getStepEdges exactly.
  */
 
-const EDGE_KEYS = ['next', 'on_true', 'on_false', 'on_event', 'on_timeout', 'default'] as const;
+const EDGE_KEYS = [
+  'next',
+  'on_true',
+  'on_false',
+  'on_event',
+  'on_timeout',
+  'on_approved',
+  'on_rejected',
+  'default',
+] as const;
 
 export function isReadOnly(schema: number, knownSchemaVersion: number): boolean {
   return schema > knownSchemaVersion;
@@ -118,14 +127,15 @@ export function toDefinition(graph: Graph, options: ToDefinitionOptions = {}): D
 /**
  * Deep-clone a step and set its edge fields from the graph edges. For switch,
  * case targets are written back into the matching case by key; the `default`
- * edge and the simple edge fields are set directly. Non-edge fields (config,
+ * edge and the simple edge fields (including approval's on_approved /
+ * on_rejected / on_timeout) are set directly. Non-edge fields (config,
  * conditions_serialized, revalidate_entity, action, …) survive untouched.
  */
 function rebuildStep(original: StepNode, edges: GraphEdge[]): StepNode {
   const step: StepNode = structuredCloneSafe(original);
   const byHandle = new Map(edges.map((e) => [e.sourceHandle, e.target]));
 
-  // Simple + branch + wait + switch-default edges.
+  // Simple + branch + wait + approval + switch-default edges.
   for (const key of EDGE_KEYS) {
     if (key in step || byHandle.has(key)) {
       const target = byHandle.get(key);

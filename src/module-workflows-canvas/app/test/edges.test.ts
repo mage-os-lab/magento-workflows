@@ -54,6 +54,22 @@ describe('getStepEdges — per step type edge-rule table', () => {
     });
   });
 
+  it('approval exposes on_approved / on_rejected / on_timeout', () => {
+    expect(
+      getStepEdges({
+        type: 'approval',
+        config: { title: 't', timeout: 'P3D' },
+        on_approved: 'a',
+        on_rejected: 'b',
+        on_timeout: 'c',
+      }),
+    ).toEqual({ on_approved: 'a', on_rejected: 'b', on_timeout: 'c' });
+    // Legacy/partial shape: absent edges -> null, same convention as branch/wait.
+    expect(
+      getStepEdges({ type: 'approval', config: { title: 't', timeout: 'P3D' } }),
+    ).toEqual({ on_approved: null, on_rejected: null, on_timeout: null });
+  });
+
   it('stop has no edges', () => {
     expect(getStepEdges({ type: 'stop' })).toEqual({});
   });
@@ -66,12 +82,17 @@ describe('getStepEdges — per step type edge-rule table', () => {
     expect(
       edgeHandles({ type: 'switch', cases: [{ key: 'k' }], default: null }),
     ).toEqual(['case:k', 'default']);
+    expect(
+      edgeHandles({ type: 'approval', config: { title: 't', timeout: 'P3D' }, on_approved: 'a' }),
+    ).toEqual(['on_approved', 'on_rejected', 'on_timeout']);
   });
 
   it('edgeLabel humanizes handle names', () => {
     expect(edgeLabel('on_true')).toBe('yes');
     expect(edgeLabel('on_false')).toBe('no');
     expect(edgeLabel('on_timeout')).toBe('on timeout');
+    expect(edgeLabel('on_approved')).toBe('approved');
+    expect(edgeLabel('on_rejected')).toBe('rejected');
     expect(edgeLabel('case:high')).toBe('high');
     expect(edgeLabel('default')).toBe('default');
     expect(edgeLabel('next')).toBe('');

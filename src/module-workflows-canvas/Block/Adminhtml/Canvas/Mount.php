@@ -8,6 +8,7 @@ use Magento\Backend\Block\Template\Context;
 use Magento\Framework\AuthorizationInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use MageOS\Workflows\Api\ActionMetadataProviderInterface;
+use MageOS\Workflows\Api\ApprovalTaskManagerInterface;
 use MageOS\Workflows\Api\Data\ActionMetadataItemInterface;
 use MageOS\Workflows\Api\SecretMetadataProviderInterface;
 use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
@@ -26,6 +27,11 @@ use MageOS\Workflows\Model\Definition\Definition;
  * the known schema version). Interactive overlays (execution steps, dry-run)
  * are fetched at runtime from same-origin, session-authed admin JSON endpoints
  * whose URLs are also in the config — never from a third-party origin.
+ *
+ * `approvalsAvailable` is bootstrapped the same way: read from the nullable
+ * ApprovalTaskManagerInterface seam (bound only when MageOS_WorkflowsApprovals
+ * is installed), so the palette can gate the "Approval gate" node the same
+ * way the server's save-time ApprovalCheck gates authoring it.
  */
 class Mount extends Template
 {
@@ -36,7 +42,16 @@ class Mount extends Template
         private readonly TriggerMetadataProviderInterface $triggerMetadataProvider,
         private readonly SecretMetadataProviderInterface $secretMetadataProvider,
         private readonly AuthorizationInterface $authorization,
-        array $data = []
+        array $data = [],
+        // Optional (nullable) dependency — the SAME seam core's own
+        // Model/Validation/Check/ApprovalCheck.php uses to detect whether the
+        // MageOS_WorkflowsApprovals addon is installed: absent addon -> no
+        // di.xml preference bound -> null here. Canvas has no module.xml
+        // dependency on the addon (docs/discovery/canvas.md §1: "the
+        // dependency arrow only ever points inward, from canvas to
+        // module-workflows") — it only optionally consumes a core-declared
+        // interface, exactly like the save-time check does.
+        private readonly ?ApprovalTaskManagerInterface $approvalTaskManager = null
     ) {
         parent::__construct($context, $data);
     }
@@ -83,6 +98,12 @@ class Mount extends Template
             'triggers' => $this->triggers(),
             // Secret NAMES only — values are write-only and never bootstrapped.
             'secrets' => $this->secretMetadataProvider->getSecretNames(),
+            // Gates the "Approval gate" palette entry (docs/discovery/approval-gate.md
+            // §7: canvas node metadata "renders only when both optional packages
+            // are present"). A loaded definition's existing `approval` step still
+            // renders/dry-runs regardless — this only controls whether NEW ones
+            // may be authored, mirroring the save-time APPROVAL_MODULE_MISSING gate.
+            'approvalsAvailable' => $this->approvalTaskManager !== null,
         ];
 
         if ($workflow !== null) {

@@ -12,6 +12,7 @@ async-events event.trigger.consumer ──> WorkflowNotifier ──> workflow.di
                             switch  -> evaluate cases top-down, follow first match (or default)
                             delay   -> persist state=waiting, resume_at; RELEASE message
                             wait    -> persist state=waiting + waiting_event; park until event or timeout
+                            approval-> persist state=waiting + open approval task; park until decision or timeout
                             stop    -> complete
 ```
 
@@ -41,6 +42,22 @@ A `switch` step is a multi-way `branch`: `Executor::runSwitchStep()` hydrates th
 
 `switch` adds no new persistence state: exactly like `branch`, the step row is written **before** the edge is followed, so crash-safety analysis is unchanged. The step result records `{matched: <key>|null}`, feeding the execution timeline, dry-run traces, and plain-language rendering. Edge topology comes from `Definition::getStepEdges()`, the single source of a step's outgoing edges.
 
+## Approval steps (schema 4)
+
+An `approval` step is a `wait` whose "event" is a human decision instead of a Magento event, and whose timeout **is** the SLA clock ([Approval Gate discovery](discovery/approval-gate.md)). It parks exactly like `wait`: `status = waiting`, `resume_at = now + config.timeout` (same `DelayCalculator`, same max-delay ceiling), with **`current_step` left on the gate itself**. The park path additionally opens one approval task through the core `ApprovalTaskManagerInterface` seam — idempotent on `(execution_id, step_key)`, so a redelivered park after a crash re-attaches to the existing open task rather than creating a second.
+
+Where `wait` has two wake paths, an approval gate has three, all converging on the existing `workflow.resume` consumer:
+
+- **Decision** (admin UI or the optional addon's REST API) — `ApprovalService::decide()` races through the same two atomic claims `resumeWaiting()` uses: a task claim (`UPDATE … WHERE uuid=? AND status='open'` — the decision-vs-decision arbiter, first click wins) and an execution claim (the same conditional `waiting → pending` UPDATE — the decision-vs-timeout arbiter: if the sweeper already claimed the execution, the task claim rolls back to `open` and the caller is told the gate already expired). Result is written to the parked step row **before** the resume is published; a publish failure rolls both claims back.
+- **Timeout** — the existing resume sweeper claims the execution once `resume_at` passes; zero new sweep code, the sweep *is* the SLA breach. `ResumeConsumer` marks the task `expired`.
+- (No event path — a gate that also wants event resolution is composed as two steps.)
+
+`ResumeConsumer::routeWaitStep()` extends its existing result-driven routing to the gate: `resolution: 'approved' -> on_approved`, `'rejected' -> on_rejected`, no decision result -> `on_timeout` (and the task is marked `expired`). The step output exposes `{task_uuid}` at park time and `{resolution, note, payload, decided_by}` after a decision (`{resolution: "timeout"}` on timeout) — available to downstream branches and interpolation as `steps.<key>.*`, the same convention `wait` uses. The flagship use is a decider-supplied value (e.g. `payload.approved_amount`) flowing into a downstream action's config — the one sanctioned way a human-entered value enters a running execution mid-flight.
+
+**Orphans and reconciliation.** If the execution leaves `waiting` by any path other than a decision or a timeout (execution failure, a future cancel surface), the open task must not stay `open` — `failExecution` orphans it. A reconciliation sweep, piggybacked on the existing `ResumeSweeper` cadence, catches anything that slips through: an `open` task whose execution is already terminal is a bug marker, never a valid steady state (see [15 — Operations](15-operations.md#reconciliation-sweep)).
+
+**Packaging.** The step semantics (parser, executor park handler, `ResumeConsumer` routing, dry-run, plain-language) live in core; the task record, `ApprovalService::decide()`, REST/ACL, and admin surface ship in the optional `mage-os/workflows-approvals` addon behind the `ApprovalTaskManagerInterface` delegation seam (see [02 — Packages](02-packages.md)). With no addon installed, an `approval` step is unauthorable (`APPROVAL_MODULE_MISSING`, [§Static graph validation](#static-graph-validation)); a data-patched one reached at runtime with no bound task manager fails the step terminally, never silently.
+
 ## Static graph validation
 
 The runtime `MAX_STEPS_PER_RUN` cap (≈1000) is a backstop, not the primary defense. Every authoring path (admin Save, REST save, CLI import, gallery install) funnels through the save-time validation pipeline behind `WorkflowRepositoryInterface::save`, whose `GraphCheck` runs a DFS over `getStepEdges()` from `entry`:
@@ -50,7 +67,10 @@ The runtime `MAX_STEPS_PER_RUN` cap (≈1000) is a backstop, not the primary def
 | Cycle reachable from `entry` | `GRAPH_CYCLE` | **error** (blocks save) — the engine has no loop semantics, so a cycle is always an authoring error; catching it at save time converts ~1000 iterations of wasted step-row/context churn into an immediate rejection |
 | Step unreachable from `entry` | `GRAPH_UNREACHABLE_STEP` | warning |
 | `branch`/`switch` with **all** edges null | `GRAPH_DEAD_EDGE` | warning (the shipped form assembler can emit exactly this as a last-row branch, so it must stay re-savable) |
-| `branch`/`switch` directly after a `delay` with `revalidate_entity: false` | `GRAPH_POST_DELAY_STALE` | warning (see [Conditions §Delay semantics](06-conditions.md#delay-semantics)) |
+| `branch`/`switch` directly after a `delay` or `approval` with `revalidate_entity: false` | `GRAPH_POST_DELAY_STALE` | warning (see [Conditions §Delay semantics](06-conditions.md#delay-semantics)) |
+| `approval` step present with no `ApprovalTaskManagerInterface` bound (addon not installed) | `APPROVAL_MODULE_MISSING` | **error** (blocks save) — mirrors an unregistered action code |
+| `approval` step with `allow_bulk: true` and a required `payload_fields` entry | `APPROVAL_BULK_REQUIRED_PAYLOAD` | **error** — a bulk decision cannot supply a per-task value |
+| `approval` step referencing `{{ secrets.* }}` in `title`/`instructions` | `APPROVAL_SECRET_IN_PROMPT` | **error** — these render in the approvals grid and emails |
 
 Errors block the save; warnings travel with it (admin form messages, REST responses, CLI output). Validation policy lives **outside** the parser: `Executor` re-parses `definition_snapshot` on every resume, so parse-time rules would be retroactive across parked executions — the pipeline never touches the executor's load path. The same pipeline runs read-only over an unsaved draft via `POST /V1/workflows/validate` and the edit form's "Refresh preview" button (see [Definition Format §Save-time validation](04-definition-format.md#save-time-validation)).
 

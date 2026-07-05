@@ -80,20 +80,30 @@ class GateConfigReaderTest extends TestCase
         $this->assertSame($fields, $reader->getPayloadFields(self::EXEC_ID, 'gate'));
     }
 
-    public function testGetNotifyEmailsFiltersMalformedAndInvalid(): void
+    public function testGetNotifyEmailsFiltersInvalidAddressFormat(): void
     {
+        // Definition-level validation (Definition::assertApprovalStep) only requires a
+        // non-empty list of non-empty strings; it does not check email-address format.
+        // GateConfigReader applies the stricter FILTER_VALIDATE_EMAIL filter on top.
         $reader = $this->reader([
             'title' => 'x',
             'timeout' => 'P1D',
-            'notify_emails' => ['ok@example.com', 'not-an-email', 42, null],
+            'notify_emails' => ['ok@example.com', 'not-an-email'],
         ]);
         $this->assertSame(['ok@example.com'], $reader->getNotifyEmails(self::EXEC_ID, 'gate'));
     }
 
-    public function testGetNotifyEmailsAcceptsSingleString(): void
+    public function testGetNotifyEmailsLegacyBareStringDegradesToEmpty(): void
     {
+        // The authoring format is a list only (Definition::assertApprovalStep rejects a bare
+        // string). A snapshot carrying the pre-fix bare-string shape now fails to parse as a
+        // Definition at all, so the whole step config — not just notify_emails — degrades to
+        // empty, per this reader's class-level "never throws" contract. GateConfigReader's own
+        // string-tolerance in getNotifyEmails() is retained as defense in depth but is not
+        // reachable through this parse path.
         $reader = $this->reader(['title' => 'x', 'timeout' => 'P1D', 'notify_emails' => 'ok@example.com']);
-        $this->assertSame(['ok@example.com'], $reader->getNotifyEmails(self::EXEC_ID, 'gate'));
+        $this->assertSame([], $reader->getNotifyEmails(self::EXEC_ID, 'gate'));
+        $this->assertSame([], $reader->getConfig(self::EXEC_ID, 'gate'));
     }
 
     public function testGetNotifyEmailsAbsentDegradesToEmpty(): void
@@ -104,6 +114,8 @@ class GateConfigReaderTest extends TestCase
 
     public function testGetNotifyEmailsMalformedNonArrayDegradesToEmpty(): void
     {
+        // Also an unparseable shape post-fix (non-list, non-string) — same full-config
+        // degradation as the bare-string case above, not per-field filtering.
         $reader = $this->reader(['title' => 'x', 'timeout' => 'P1D', 'notify_emails' => 12345]);
         $this->assertSame([], $reader->getNotifyEmails(self::EXEC_ID, 'gate'));
     }

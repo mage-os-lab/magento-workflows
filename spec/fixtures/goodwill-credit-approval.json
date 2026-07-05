@@ -17,6 +17,7 @@
                     "timeout": "P3D",
                     "assignee_role": "sales_managers",
                     "allow_bulk": false,
+                    "notify_emails": ["sales-managers@example.com"],
                     "payload_fields": [
                         {
                             "key": "approved_amount",

@@ -29,6 +29,7 @@ function config(actions: MountConfig['actions']): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    approvalsAvailable: false,
   };
 }
 

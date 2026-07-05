@@ -93,6 +93,13 @@ below no longer include them.
   view/create deep links on the Orders / Customers / Products grids
   ([issue #5](https://github.com/rhoerr/magento-workflows/issues/5)).
   [entity-grid-visibility](discovery/entity-grid-visibility.md).
+- **Approval / decision gate** — an `approval` step (schema 4) that parks on the wait spine
+  and routes on a human decision: `on_approved` / `on_rejected` / a required-timeout
+  `on_timeout`. A decision comes from the admin approvals grid or an authenticated REST
+  endpoint, carries an optional validated payload into step output (e.g. an approver-entered
+  amount), and tiers of sign-off are modeled as chained gate steps. Packaged as a thin core
+  seam + optional `mage-os/workflows-approvals` addon.
+  [approval-gate](discovery/approval-gate.md).
 
 What remains genuinely unsupported is below.
 
@@ -178,11 +185,34 @@ What remains genuinely unsupported is below.
 
 ## Human-in-the-loop
 
-*Root cause: approval-chain UI is an explicit non-goal; the only human touchpoint is a notification.*
+The [approval / decision gate](#recently-closed-july-2026-capability-wave) reverses what this
+section used to say: a workflow can now *stop and branch on what a human decides*, not just
+notify. What v1 ships, and what still doesn't exist, per
+[approval-gate.md](discovery/approval-gate.md):
 
-- **Multi-step approval chains with an approver UI** (sign-offs, reassignment) — explicitly out of scope.
-- **Assign a task to a specific admin with accept/reject/reassign** — no task surface beyond a broadcast admin-inbox notification.
-- **First-class SLA timers with tiered escalation and breach tracking** — approximable with delay+notify, but there's no native SLA/escalation construct.
+- **Single-gate sign-off with an approver UI** — the `approval` step type, an admin approvals
+  grid (view / decide split by ACL), and a REST decision endpoint for external tools (Slack
+  bots, middleware). *Ships.*
+- **Tiered approval chains** — modeled as **chained gate steps**, each with its own
+  timeout/escalation edge, not as a dedicated chain object. *Ships, as composition — there is
+  no multi-tier "chain" construct to author in one step.*
+- **A required SLA timer with a timeout branch** — `timeout` is mandatory on every gate (no
+  indefinite parks); `on_timeout` is an ordinary edge, so escalation is "chain another gate" or
+  "notify + stop," authored like any other branch. *Ships, at the single-gate granularity —
+  there is still no native tiered-escalation *construct* (e.g. "escalate after 4h, then again
+  after 24h" as one declared policy) beyond composing steps for it.*
+- **Per-decider payload entering the flow** — a gate can declare `payload_fields`, allowlisted
+  and type-coerced into the decision, so an approver-entered value (e.g. a partial refund
+  amount) flows into a downstream action's config. *Ships* — the one sanctioned way a
+  human-entered value enters a running execution.
+- **Reassignment / delegation of an open task** — a task targets a role (`assignee_role`), not
+  an individual, and there is no "hand this off to someone else" affordance. *Out of scope.*
+- **Reminder pings before timeout** — a reminder is a delay+notify step the author can already
+  build manually; there's no native "nudge the assignee at T-minus-N" construct. *Out of
+  scope for v1 — revisit if merchants ask.*
+- **A general task-management surface** — the task exists to resolve one parked step and
+  nothing else: no ad-hoc tasks, no task list independent of a workflow, no due-date-only
+  reminders unrelated to a gate. *Out of scope.*
 
 ## Channels, marketing depth & intelligence
 

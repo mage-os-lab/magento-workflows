@@ -20,7 +20,11 @@ These decisions were carried in from prior analysis and are treated as constrain
 - Storefront-facing anything
 - Adobe I/O Events interop
 - Loops/iterators over collections
-- Approval-chain UI (B2B native approvals remain in Commerce core)
+- Approval-chain UI (B2B native approvals remain in Commerce core) — since narrowed and
+  implemented at its narrowest point: a single `approval` step gate (schema 4), with tiers
+  modeled as chained gate steps, not a dedicated chain/task-management subsystem (see
+  [Known Boundaries §Human-in-the-loop](18-limitations.md#human-in-the-loop),
+  [approval-gate.md](discovery/approval-gate.md))
 
 ## Strategy: open spec, commercial layers
 

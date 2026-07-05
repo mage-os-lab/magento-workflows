@@ -136,6 +136,16 @@ export function blankStep(type: StepType, action?: string): StepNode {
       return { type: 'wait', config: { event: '' }, on_event: null, on_timeout: null };
     case 'switch':
       return { type: 'switch', cases: [], default: null };
+    case 'approval':
+      // P7D default mirrors the form suggestion in docs/discovery/approval-gate.md §4
+      // ("No indefinite parks" — timeout is required, P7D is the suggested default).
+      return {
+        type: 'approval',
+        config: { title: '', timeout: 'P7D' },
+        on_approved: null,
+        on_rejected: null,
+        on_timeout: null,
+      };
     case 'stop':
     default:
       return { type: 'stop' };

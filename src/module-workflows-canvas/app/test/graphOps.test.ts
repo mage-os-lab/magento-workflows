@@ -43,6 +43,17 @@ describe('addNode', () => {
     expect(g.nodes).toHaveLength(0);
     expect(g2.nodes).toHaveLength(1);
   });
+
+  it('blankStep("approval") seeds a required timeout and all three null edges', () => {
+    const step = blankStep('approval');
+    expect(step).toEqual({
+      type: 'approval',
+      config: { title: '', timeout: 'P7D' },
+      on_approved: null,
+      on_rejected: null,
+      on_timeout: null,
+    });
+  });
 });
 
 describe('connect / disconnect', () => {

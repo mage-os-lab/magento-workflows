@@ -23,6 +23,7 @@ describe('readMountConfig', () => {
       formKey: 'abc',
       workflow: { id: 7, name: 'W', entityType: 'sales_order', triggerType: 'event', triggerRef: 'x', definition: null },
       actions: { 'order.add_comment': { label: 'Add Comment', group: 'Sales' } },
+      approvalsAvailable: true,
     });
     const config = readMountConfig(el);
     expect(config).not.toBeNull();
@@ -32,6 +33,7 @@ describe('readMountConfig', () => {
     expect(config?.grants.dryRun).toBe(false);
     expect(config?.endpoints.executionSteps).toBe('/steps');
     expect(config?.actions['order.add_comment'].label).toBe('Add Comment');
+    expect(config?.approvalsAvailable).toBe(true);
   });
 
   it('returns null for a missing element or attribute', () => {
@@ -54,5 +56,8 @@ describe('readMountConfig', () => {
     expect(config?.workflowId).toBeNull();
     expect(config?.grants.manage).toBe(false);
     expect(config?.actions).toEqual({});
+    // Missing addon-availability flag degrades safely to "not available" —
+    // the palette must never offer a node type that cannot save.
+    expect(config?.approvalsAvailable).toBe(false);
   });
 });

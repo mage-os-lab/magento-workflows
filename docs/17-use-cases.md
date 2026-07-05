@@ -5,14 +5,16 @@ Each is a merchant- or agency-level outcome expressed in one line; all are compo
 from the engine's **trigger → condition → action** primitives (event/schedule/manual
 triggers, the four-root condition engine with EAV auto-discovery and related-entity
 cross-referencing, the core action pool, delays/waits and `branch`/`switch` multi-way
-branching, trigger-level fan-out and batch-digest aggregation, webhooks, secrets, dry-run,
-a bundled template gallery, an optional drag-and-drop canvas, and workflow-as-code).
+branching, a human-decision `approval` gate, trigger-level fan-out and batch-digest
+aggregation, webhooks, secrets, dry-run, a bundled template gallery, an optional
+drag-and-drop canvas, and workflow-as-code).
 
 These are illustrative, not an exhaustive list — the DI-registered action pool and open
 definition format mean the combinations are effectively unbounded. The July 2026 capability
 wave (branching, cross-referencing, fan-out, batch aggregation, dry-run, template gallery,
-canvas) is reflected throughout; the flip side — flows the engine still does *not* support —
-is catalogued in [18 — Known Boundaries](18-limitations.md).
+canvas, the [approval gate](discovery/approval-gate.md)) is reflected throughout; the flip
+side — flows the engine still does *not* support — is catalogued in
+[18 — Known Boundaries](18-limitations.md).
 
 ## Orders & fulfillment
 
@@ -27,6 +29,7 @@ is catalogued in [18 — Known Boundaries](18-limitations.md).
 - Add a gift-wrap prep comment when the order contains any SKU in the "Gift" category.
 - Escalate any order that has sat in "Processing" for more than 5 business days.
 - Fan out from one customer event to every one of that customer's open orders and act on each (capped fan-out).
+- Park a goodwill-credit request for a sales-manager decision; issue the approved amount on approval, send a policy email on rejection, escalate on silence (`approval` gate).
 
 ## Fraud, risk & payments
 

@@ -14,6 +14,7 @@
 - Executions run under a **system context** (`AppArea` = crontab-like), with the authoring admin recorded on the definition for audit.
 - Definition saves are logged (plays well with admin-activity modules).
 - Scope is re-checked at *execution* time, not just authoring time — a workflow scoped to website 1 whose author lost website-1 access gets suspended, not silently escalated ([Security §Deferred privilege escalation](10-security.md#deferred-privilege-escalation-the-core-threat-model)).
+- **Approval tasks split viewing from deciding** ([Approval Gate discovery §5](discovery/approval-gate.md#5-rest-api-the-post-a-decision-and-payload-surface)): the optional `mage-os/workflows-approvals` addon declares `MageOS_Workflows::approvals_view` and `MageOS_Workflows::approvals_decide` under the `MageOS_Workflows::workflows` tree. Deciding is deliberately **not** implied by `::manage` — the people who approve refunds are usually not the people who author workflows — and `::approvals_view` stays separate from the execution grid's `::view` because approval tasks carry interpolated PII (title/instructions snapshots) the execution grid doesn't surface as prominently. If a gate declares `assignee_role`, deciding additionally requires the actor to hold that role, enforced at decide time (not just filtered in the grid).
 
 ## Observability
 

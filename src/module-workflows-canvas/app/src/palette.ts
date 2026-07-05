@@ -2,7 +2,8 @@ import type { MountConfig, PaletteAction, StepType, TriggerMeta } from './types'
 
 /**
  * The editor palette (Phase B). Two sections:
- *   - flow primitives (delay/branch/wait/switch/stop) — always available;
+ *   - flow primitives (delay/branch/wait/switch/stop, always available, plus
+ *     approval when the optional addon is installed — see below);
  *   - actions grouped by their metadata group (Sales/Customer/…).
  * Plus the trigger reference section for context.
  *
@@ -11,6 +12,16 @@ import type { MountConfig, PaletteAction, StepType, TriggerMeta } from './types'
  * current admin lacks never appears. That is a display convenience only; the
  * save path re-authorizes every action code (authorizeActionCodes), so hiding
  * here is never the gate. This module only re-shapes the already-filtered list.
+ *
+ * The `approval` step type is spec-level and always understood by core (it
+ * renders, dry-runs, and views regardless of the addon), but ACTUALLY SAVING
+ * one requires the optional MageOS_WorkflowsApprovals addon — the server
+ * rejects it with APPROVAL_MODULE_MISSING otherwise (ApprovalCheck.php). The
+ * palette entry is offered only when `config.approvalsAvailable` is true
+ * (bootstrapped from the same nullable ApprovalTaskManagerInterface seam the
+ * server-side check uses), so authors are never invited to drop a node that
+ * cannot save — matching docs/discovery/approval-gate.md §7 ("renders only
+ * when both optional packages are present").
  */
 
 export interface PaletteFlowItem {
@@ -39,8 +50,10 @@ const FLOW_ITEMS: PaletteFlowItem[] = [
   { kind: 'flow', type: 'branch', label: 'Branch (if/else)' },
   { kind: 'flow', type: 'wait', label: 'Wait for event' },
   { kind: 'flow', type: 'switch', label: 'Switch (multi-way)' },
-  { kind: 'flow', type: 'stop', label: 'Stop' },
 ];
+
+/** The always-last sink item; approval (when available) is inserted before it. */
+const STOP_ITEM: PaletteFlowItem = { kind: 'flow', type: 'stop', label: 'Stop' };
 
 /**
  * Build the grouped palette from the bootstrap. The flow group is first; action
@@ -48,7 +61,12 @@ const FLOW_ITEMS: PaletteFlowItem[] = [
  * group, actions are sorted by label. Empty groups are dropped.
  */
 export function buildPalette(config: MountConfig): PaletteGroup[] {
-  const groups: PaletteGroup[] = [{ label: 'Flow', items: [...FLOW_ITEMS] }];
+  const flowItems: PaletteFlowItem[] = [...FLOW_ITEMS];
+  if (config.approvalsAvailable) {
+    flowItems.push({ kind: 'flow', type: 'approval', label: 'Approval gate' });
+  }
+  flowItems.push(STOP_ITEM);
+  const groups: PaletteGroup[] = [{ label: 'Flow', items: flowItems }];
 
   const byGroup = new Map<string, PaletteActionItem[]>();
   for (const action of config.actionsMeta) {

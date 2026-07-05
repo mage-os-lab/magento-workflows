@@ -44,6 +44,7 @@ function config(overrides: Partial<MountConfig> = {}): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    approvalsAvailable: false,
     ...overrides,
   };
 }

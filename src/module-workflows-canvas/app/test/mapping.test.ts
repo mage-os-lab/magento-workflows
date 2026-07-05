@@ -34,6 +34,7 @@ function config(def: Definition, knownSchemaVersion = 3): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    approvalsAvailable: false,
   };
 }
 

@@ -45,6 +45,7 @@ export function readMountConfig(el: Element | null): MountConfig | null {
     actionsMeta: Array.isArray(c.actionsMeta) ? c.actionsMeta : [],
     triggers: Array.isArray(c.triggers) ? c.triggers : [],
     secrets: Array.isArray(c.secrets) ? c.secrets : [],
+    approvalsAvailable: Boolean(c.approvalsAvailable),
   };
 }
 

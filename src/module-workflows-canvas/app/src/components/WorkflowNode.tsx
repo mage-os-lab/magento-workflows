@@ -5,9 +5,10 @@ import { getStepEdges, edgeLabel } from '../edges';
 /**
  * One typed node renderer for every step type. Handles are placed per the edge
  * model (getStepEdges): branch = on_true/on_false, switch = one per case +
- * default, wait = on_event/on_timeout, action/delay = next, stop = none. Every
- * server-provided string (summary, labels, error) renders as a React text node
- * — never dangerouslySetInnerHTML.
+ * default, wait = on_event/on_timeout, approval = on_approved/on_rejected/
+ * on_timeout, action/delay = next, stop = none. Every server-provided string
+ * (summary, labels, error) renders as a React text node — never
+ * dangerouslySetInnerHTML.
  */
 
 export interface NodeData extends Record<string, unknown> {
@@ -41,6 +42,7 @@ const TYPE_LABEL: Record<string, string> = {
   branch: 'Branch',
   wait: 'Wait',
   switch: 'Switch',
+  approval: 'Approval',
   stop: 'Stop',
   degraded: 'Unavailable',
 };
@@ -129,6 +131,7 @@ export const nodeTypes = {
   branch: WorkflowNode,
   wait: WorkflowNode,
   switch: WorkflowNode,
+  approval: WorkflowNode,
   stop: WorkflowNode,
   degraded: WorkflowNode,
 };

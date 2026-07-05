@@ -19,6 +19,13 @@ const def: Definition = {
     br: { type: 'branch', conditions_serialized: null, on_true: null, on_false: null },
     wt: { type: 'wait', config: { event: 'e' }, on_event: null, on_timeout: null },
     sw: { type: 'switch', cases: [{ key: 'hi', next: null }], default: null },
+    ap: {
+      type: 'approval',
+      config: { title: 'Approve', timeout: 'P3D' },
+      on_approved: null,
+      on_rejected: null,
+      on_timeout: null,
+    },
     st: { type: 'stop' },
     sink: { type: 'stop' },
   },
@@ -48,6 +55,13 @@ describe('canConnect — valid handles per step type', () => {
     expect(canConnect(graph, { source: 'sw', sourceHandle: 'case:hi', target: 'sink' }).ok).toBe(true);
     expect(canConnect(graph, { source: 'sw', sourceHandle: 'default', target: 'sink' }).ok).toBe(true);
     expect(canConnect(graph, { source: 'sw', sourceHandle: 'case:nope', target: 'sink' }).ok).toBe(false);
+  });
+
+  it('approval accepts on_approved, on_rejected, and on_timeout only', () => {
+    expect(canConnect(graph, { source: 'ap', sourceHandle: 'on_approved', target: 'sink' }).ok).toBe(true);
+    expect(canConnect(graph, { source: 'ap', sourceHandle: 'on_rejected', target: 'sink' }).ok).toBe(true);
+    expect(canConnect(graph, { source: 'ap', sourceHandle: 'on_timeout', target: 'sink' }).ok).toBe(true);
+    expect(canConnect(graph, { source: 'ap', sourceHandle: 'on_true', target: 'sink' }).ok).toBe(false);
   });
 
   it('stop originates nothing (no source handles)', () => {

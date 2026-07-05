@@ -25,6 +25,23 @@ describe('buildPalette', () => {
     expect(groups[1].items.map((i) => (i.kind === 'action' ? i.label : ''))).toEqual(['Alpha', 'Beta']);
   });
 
+  it('omits the Approval gate item when the addon is not installed', () => {
+    const groups = buildPalette(makeConfig({ actionsMeta: [], approvalsAvailable: false }));
+    expect(groups[0].items.map((i) => i.type)).toEqual(['delay', 'branch', 'wait', 'switch', 'stop']);
+  });
+
+  it('offers the Approval gate item (before Stop) only when the addon is installed', () => {
+    const groups = buildPalette(makeConfig({ actionsMeta: [], approvalsAvailable: true }));
+    expect(groups[0].items.map((i) => i.type)).toEqual([
+      'delay',
+      'branch',
+      'wait',
+      'switch',
+      'approval',
+      'stop',
+    ]);
+  });
+
   it('only surfaces actions present in the (server ACL-filtered) bootstrap', () => {
     // The provider hides actions the admin cannot author; the palette reflects
     // exactly that list — it never re-adds a hidden action.

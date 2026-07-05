@@ -250,6 +250,15 @@
                                     }
                                 }
                             }
+                        },
+                        "notify_emails": {
+                            "type": "array",
+                            "minItems": 1,
+                            "description": "Optional direct-email recipients notified at park time, in addition to the admin-inbox notice; entries should be email addresses. The gate owns this because only the gate knows the task UUID.",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            }
                         }
                     }
                 },

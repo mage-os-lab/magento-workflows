@@ -99,6 +99,9 @@ export function ConfigPanel({
             onChange={(v) => set('event', v)}
           />
         )}
+        {step.type === 'approval' && (
+          <ApprovalFields step={step} readOnly={readOnly} onChange={set} />
+        )}
       </div>
 
       {variablePaths.length > 0 && (
@@ -140,6 +143,146 @@ function DelayFields({
       readOnly={readOnly}
       onChange={(v) => onChange('duration', v)}
     />
+  );
+}
+
+/**
+ * Approval gate config (schema 4). Same fidelity as the wait/switch panels
+ * above: plain fields for the scalar config (title/instructions/timeout/
+ * assignee_role/allow_bulk), and — for the two array-shaped fields
+ * (payload_fields, notify_emails) — the same "edit as JSON" fallback already
+ * established for structured config in this codebase (ConditionSlideOut's
+ * condition-tree textarea), rather than a bespoke per-row array editor. The
+ * server re-validates everything on save (Definition::assertApprovalStep).
+ */
+function ApprovalFields({
+  step,
+  readOnly,
+  onChange,
+}: {
+  step: StepNode;
+  readOnly: boolean;
+  onChange: (name: string, value: unknown) => void;
+}): JSX.Element {
+  const config = (step.config ?? {}) as Record<string, unknown>;
+  return (
+    <>
+      <TextField
+        label="Title *"
+        value={String(config.title ?? '')}
+        readOnly={readOnly}
+        onChange={(v) => onChange('title', v)}
+      />
+      <label className="wf-field">
+        <span className="wf-field__label">Instructions</span>
+        <textarea
+          value={String(config.instructions ?? '')}
+          disabled={readOnly}
+          onChange={(e) => onChange('instructions', e.target.value)}
+        />
+      </label>
+      <TextField
+        label="Timeout (ISO-8601, e.g. P3D) *"
+        value={String(config.timeout ?? '')}
+        readOnly={readOnly}
+        onChange={(v) => onChange('timeout', v)}
+      />
+      <TextField
+        label="Assignee role"
+        value={String(config.assignee_role ?? '')}
+        readOnly={readOnly}
+        onChange={(v) => onChange('assignee_role', v)}
+      />
+      <label className="wf-field wf-field--bool">
+        <input
+          type="checkbox"
+          checked={Boolean(config.allow_bulk)}
+          disabled={readOnly}
+          onChange={(e) => onChange('allow_bulk', e.target.checked)}
+        />
+        Allow bulk decisions
+      </label>
+      <JsonArrayField
+        label="Payload fields (JSON array, e.g. [{&quot;key&quot;:&quot;amount&quot;,&quot;label&quot;:&quot;Amount&quot;,&quot;type&quot;:&quot;number&quot;}])"
+        value={config.payload_fields}
+        readOnly={readOnly}
+        onChange={(v) => onChange('payload_fields', v)}
+      />
+      <JsonArrayField
+        label="Notify emails (JSON array of strings)"
+        value={config.notify_emails}
+        readOnly={readOnly}
+        onChange={(v) => onChange('notify_emails', v)}
+      />
+    </>
+  );
+}
+
+/**
+ * A JSON-array-backed field: local text buffer, committed on blur only when
+ * it parses as valid JSON array (or is empty, which clears the config key via
+ * writeValue's undefined convention). Invalid JSON is left uncommitted with an
+ * inline notice — the same buffer/apply shape as ConditionSlideOut, just
+ * inline instead of in a slide-out (these fields are short, optional lists).
+ */
+function JsonArrayField({
+  label,
+  value,
+  readOnly,
+  onChange,
+}: {
+  label: string;
+  value: unknown;
+  readOnly: boolean;
+  onChange: (value: unknown) => void;
+}): JSX.Element {
+  const [text, setText] = useState(() => (value === undefined ? '' : JSON.stringify(value, null, 2)));
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setText(value === undefined ? '' : JSON.stringify(value, null, 2));
+    setError('');
+  }, [value]);
+
+  const commit = (raw: string): void => {
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      setError('');
+      onChange(undefined);
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      setError('Not valid JSON.');
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      setError('Must be a JSON array.');
+      return;
+    }
+    setError('');
+    onChange(parsed);
+  };
+
+  return (
+    <label className="wf-field">
+      <span className="wf-field__label">{label}</span>
+      <textarea
+        value={text}
+        disabled={readOnly}
+        spellCheck={false}
+        rows={4}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={(e) => commit(e.target.value)}
+      />
+      {error && (
+        <span className="wf-field__notice" role="alert">
+          {error}
+        </span>
+      )}
+    </label>
   );
 }
 

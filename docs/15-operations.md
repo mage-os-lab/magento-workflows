@@ -161,6 +161,44 @@ CASCADE) are pruned by the same `mageos_workflows_prune_executions` cron on the 
 `mageos_workflows/retention/days` clock. Open/flushing batches are never pruned — they are
 still accumulating or mid-flush.
 
+**Approval task rows** (`mageos_workflow_approval`, from the optional
+`mage-os/workflows-approvals` addon — [Approval Gate discovery §3](discovery/approval-gate.md#3-data-model))
+carry `title`/`instructions` interpolated **at park time**, plus any decision `note`/`payload` —
+the same PII class as execution `context` snapshots, so they are not pruned independently:
+`execution_id` is `onDelete CASCADE`, so a task row disappears the moment
+`mageos_workflows_prune_executions` deletes its parent execution on the general retention
+clock above. There is no separate approvals retention setting.
+
+## Reconciliation sweep
+
+The addon's `mageos_workflows_approval_reconcile` cron job (`MageOS\WorkflowsApprovals\Cron\ReconcileApprovals`,
+`* * * * *`, same one-minute cadence as the core resume sweeper) is the backstop for approval
+tasks whose execution moved on without going through a decision or the timeout path
+([Approval Gate discovery §4 "Orphans"](discovery/approval-gate.md#4-decision-semantics-and-races)):
+
+- An open task whose execution reached a terminal status (`complete` / `cancelled` /
+  `failed` / `skipped`) is marked `orphaned` — this is a backstop for `failExecution`, which
+  already orphans inline; anything the sweep finds here is a bug marker, not a valid steady
+  state, and is logged as such.
+- An open task whose execution is still live but whose `current_step` has moved off that
+  gate's `step_key` is marked `expired` — the backstop for a best-effort `expireTask` failure
+  in `ResumeConsumer::routeApprovalStep` (logged and swallowed there to avoid a routing loop).
+- An open task whose execution's `current_step` still equals its `step_key` is never touched,
+  regardless of execution status — the gate may be genuinely parked, mid-park, or just
+  claimed for resume; every transition above is additionally guarded on `status = 'open'`, so
+  a decision that claimed the task microseconds earlier is never overwritten.
+
+**Uninstalling `mage-os/workflows-approvals`.** The step semantics (parser, park handler,
+`ResumeConsumer` routing) live in core, so a parked `approval` gate still resumes by timeout
+after the addon is removed — the sweeper and routing don't need it. But the task record,
+decision service, REST API, and admin grid go with the addon: decisions become impossible,
+and any still-open tasks orphan with no reconciliation sweep to clean them up (the cron job
+above is the addon's). **Disable (or otherwise drain) any workflow with a live gate before
+uninstalling the addon** — the same caveat as removing any action module a workflow still
+references, sharper here because the consequence is a silently undecidable, permanently
+`waiting` execution rather than a save-time rejection
+([Approval Gate discovery §7 "Missing-module posture"](discovery/approval-gate.md#7-packaging--thin-core-seam--module-workflows-approvals-addon)).
+
 ## Batch aggregation (event-window digests)
 
 An [aggregated workflow](discovery/batch-aggregation.md) turns N events into one digest

@@ -259,6 +259,24 @@ class Definition
             );
         }
 
+        $notifyEmails = $config['notify_emails'] ?? null;
+        if ($notifyEmails !== null) {
+            if (!is_array($notifyEmails) || $notifyEmails === []
+                || array_keys($notifyEmails) !== range(0, count($notifyEmails) - 1)
+            ) {
+                throw new \InvalidArgumentException(
+                    sprintf('Approval step "%s" config.notify_emails must be a non-empty list', $key)
+                );
+            }
+            foreach ($notifyEmails as $index => $email) {
+                if (!is_string($email) || $email === '') {
+                    throw new \InvalidArgumentException(
+                        sprintf('Approval step "%s" notify_emails #%d must be a non-empty string', $key, $index)
+                    );
+                }
+            }
+        }
+
         $payloadFields = $config['payload_fields'] ?? null;
         if ($payloadFields === null) {
             return;

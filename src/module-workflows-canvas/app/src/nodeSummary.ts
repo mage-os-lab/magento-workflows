@@ -32,6 +32,10 @@ export function nodeSummary(
       const count = (step.cases ?? []).length;
       return `Switch (${count} ${count === 1 ? 'case' : 'cases'})`;
     }
+    case 'approval': {
+      const timeout = String(step.config?.timeout ?? '');
+      return timeout ? `Approval gate (up to ${humanizeDuration(timeout)})` : 'Approval gate';
+    }
     case 'stop':
       return 'Stop';
     default:
