@@ -231,12 +231,12 @@ class FakeAuthResourceConnection extends ResourceConnection
     {
     }
 
-    public function getConnection(string $resourceName = self::DEFAULT_CONNECTION)
+    public function getConnection($resourceName = self::DEFAULT_CONNECTION)
     {
         return new FakeAuthAdapter($this->connection);
     }
 
-    public function getTableName($modelEntity, string $connectionName = self::DEFAULT_CONNECTION)
+    public function getTableName($modelEntity, $connectionName = self::DEFAULT_CONNECTION)
     {
         return (string) $modelEntity;
     }

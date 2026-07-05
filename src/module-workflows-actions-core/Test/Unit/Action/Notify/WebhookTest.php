@@ -110,7 +110,10 @@ class WebhookTest extends TestCase
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
         $method->setAccessible(true);
-        $this->assertFalse($method->invoke($this->webhook, '2001:db8::1'));
+        // 2606:4700:4700::1111 (Cloudflare) is genuine global-unicast; unlike the
+        // 2001:db8::/32 documentation range, filter_var classifies it as public on
+        // every PHP version (8.1's reserved-range list rejects 2001:db8::).
+        $this->assertFalse($method->invoke($this->webhook, '2606:4700:4700::1111'));
     }
 
     public function testBuildHeadersWithEmptyConfig(): void

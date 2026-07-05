@@ -80,9 +80,13 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
         return (int)$this->getData(self::ENTITY_ID);
     }
 
-    public function setEntityId(int $entityId): WorkflowExecutionInterface
+    /**
+     * @param int $entityId
+     * @return WorkflowExecutionInterface
+     */
+    public function setEntityId($entityId): WorkflowExecutionInterface
     {
-        return $this->setData(self::ENTITY_ID, $entityId);
+        return $this->setData(self::ENTITY_ID, (int)$entityId);
     }
 
     public function getStoreId(): int

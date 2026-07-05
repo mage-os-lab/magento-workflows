@@ -181,6 +181,11 @@ jobs:
           tools: composer:v${{ matrix.composer }}
           coverage: none
 
+      # Gate on phpcs ERRORS (including PHP 8.5 compatibility errors). The
+      # Magento2 standard also emits advisory docblock/style WARNINGS across
+      # this pre-alpha tree; those are non-blocking here so the pipeline tracks
+      # real breakage rather than a docblock backlog.
       - uses: graycoreio/github-actions-magento2/coding-standard@main
         with:
           path: src
+          ignore_warnings: true

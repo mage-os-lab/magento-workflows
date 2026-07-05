@@ -79,9 +79,13 @@ class Approval extends AbstractModel implements ApprovalInterface
         return (int) $this->getData(self::ENTITY_ID);
     }
 
-    public function setEntityId(int $entityId): ApprovalInterface
+    /**
+     * @param int $entityId
+     * @return ApprovalInterface
+     */
+    public function setEntityId($entityId): ApprovalInterface
     {
-        return $this->setData(self::ENTITY_ID, $entityId);
+        return $this->setData(self::ENTITY_ID, (int)$entityId);
     }
 
     public function getTitle(): string
