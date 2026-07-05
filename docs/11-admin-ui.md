@@ -91,7 +91,7 @@ Ships as the **optional** `mage-os/workflows-canvas` module (`MageOS_WorkflowsCa
 Also v2:
 
 - **Template library** — curated JSON definitions installable from a gallery; the import pipeline is already the mechanism (shipped: see the Template gallery section above).
-- **Dry-run mode** — execute with a `simulate` flag; actions render their would-be effect into step results without side effects. Requires `ActionInterface::simulate()`, added to the contract in v1 as an optional interface so the core library is ready.
+- **Dry-run mode** — execute with a `simulate` flag; actions render their would-be effect into step results without side effects (shipped: `DryRunService` + the dry-run panel documented above, backed by the realized optional `SimulateableActionInterface`).
 
 Note: the canvas replaces the *layout* only. The condition editor is a shared slide-out sharing one serialized-tree contract across the canvas and the classic form; it ships as the JSON tree editor (E1 spike verdict above), with the stock EAV-aware rule widget as the deferred upgrade that drops into the same slide-out + endpoint when a full install can host it.
 

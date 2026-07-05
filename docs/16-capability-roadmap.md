@@ -1,7 +1,7 @@
 # 16 — Capability Roadmap (post-review execution plan)
 
 **Status:** Implemented — waves 1–5 landed (July 2026); wave 6 test coverage in progress. This plan operationalized the July 2026 state-and-outlook review.
-**Scope rule:** everything from the review **except** Phase 3 (canvas, template gallery, dry-run UI, connectors program) and the B2B company pack. Those remain deferred per [13 — Delivery Plan](13-delivery-plan.md).
+**Scope rule:** everything from the review **except** Phase 3 (canvas, template gallery, dry-run UI, connectors program) and the B2B company pack. (Canvas, the template gallery, and the dry-run UI were subsequently implemented via the discovery track — pending live-install verification — see [docs/discovery/](discovery/README.md); the connectors program and the B2B company pack remain deferred per [13 — Delivery Plan](13-delivery-plan.md).)
 
 ## Waves
 
@@ -56,9 +56,9 @@ Definition schema bumped to **version 2** (`schema: 1|2` accepted; v1 documents 
 
 ### Wave 6 — Test coverage (in progress, continuous through all waves)
 
-- Standalone runner extended to discover `Test/Unit` in **all five modules**, with an autoload fallback shim layer (`dev/tests/shims/`) providing minimal Magento interface definitions when Magento isn't installed. Runs unmodified under real PHPUnit in CI.
+- Standalone runner extended to discover `Test/Unit` across the module suite (the original five, now joined by the admin-extension, canvas, templates, and import-suppression modules), with an autoload fallback shim layer (`dev/tests/shims/`) providing minimal Magento interface definitions when Magento isn't installed. Runs unmodified under real PHPUnit in CI. The canvas additionally carries a TypeScript test suite.
 - New suites: actions (webhook SSRF/auth, email idempotency + ad-hoc, order lifecycle guards, denylists), conditions (quote root, aggregates, relative dates, trigger-data), engine (definition v2, delay math incl. business days/`at`, wait step routing, max-delay clamp), variable formatters, scheduler detectors (abandoned cart, stock threshold, quote queries).
 
-## Still deferred (unchanged)
+## Still deferred
 
-Phase 3 (canvas, template gallery, dry-run UI, connectors program) and the B2B pack — see [13 — Delivery Plan](13-delivery-plan.md) and [12 — B2B Pack](12-b2b.md). Live-install verification (`setup:di:compile`, RabbitMQ path, async-events seam fidelity) remains the gate before any GA claim and cannot be done in this repository alone.
+The **connectors program** and the **B2B pack** — see [13 — Delivery Plan](13-delivery-plan.md) and [12 — B2B Pack](12-b2b.md). The rest of Phase 3 (canvas, template gallery, dry-run UI) plus a set of capability enhancements (multi-way branching, entity cross-referencing, fan-out, batch aggregation) have since been implemented via the discovery track ([docs/discovery/](discovery/README.md)). Either way, **live-install verification** (`setup:di:compile`, RabbitMQ path, async-events seam fidelity) remains the gate before any GA claim and cannot be done in this repository alone.

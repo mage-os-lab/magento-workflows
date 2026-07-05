@@ -52,19 +52,23 @@ The original consolidated architecture document is preserved at [docs/architectu
 ## Repository layout
 
 ```
-src/module-workflows/               mage-os/workflows            MageOS_Workflows (core engine)
-src/module-workflows-admin-ui/      mage-os/workflows-admin-ui   MageOS_WorkflowsAdminUi
-src/module-workflows-actions-core/  mage-os/workflows-actions-core  MageOS_WorkflowsActionsCore
-src/module-workflows-triggers-core/ mage-os/workflows-triggers-core MageOS_WorkflowsTriggersCore
-src/module-workflows-scheduler/     mage-os/workflows-scheduler  MageOS_WorkflowsScheduler
-spec/                               Published definition + export JSON Schemas, conformance fixtures
-docs/                               Architecture documentation
+src/module-workflows/                 mage-os/workflows              MageOS_Workflows (core engine)
+src/module-workflows-admin-ui/        mage-os/workflows-admin-ui     MageOS_WorkflowsAdminUi
+src/module-workflows-actions-core/    mage-os/workflows-actions-core MageOS_WorkflowsActionsCore
+src/module-workflows-triggers-core/   mage-os/workflows-triggers-core MageOS_WorkflowsTriggersCore
+src/module-workflows-scheduler/       mage-os/workflows-scheduler    MageOS_WorkflowsScheduler
+src/module-workflows-canvas/          mage-os/workflows-canvas       MageOS_WorkflowsCanvas (optional React Flow viewer + editor)
+src/module-workflows-templates/       mage-os/workflows-templates    MageOS_WorkflowsTemplates (bundled gallery content pack)
+src/module-workflows-admin-extension/ mage-os/workflows-admin-extension MageOS_WorkflowsAdminExtension (native-grid visibility addon)
+src/module-workflows-import-suppression/ mage-os/workflows-import-suppression MageOS_WorkflowsImportSuppression (optional bulk-import suppression)
+spec/                                 Published definition + export JSON Schemas, conformance fixtures
+docs/                                 Architecture documentation
 ```
 
 The core module ships the domain model (`etc/db_schema.xml`), two-phase condition engine (`Model/Rule/`), graph-walking executor and queue topology (`Model/Engine/`, `Model/Queue/`), variable resolver and secrets (`Model/Variable/`, `Model/Secrets/`), and the `workflow:*` CLI commands. Actions register into `ActionPool` via `di.xml` — see `src/module-workflows-actions-core/etc/di.xml` for the pattern; that *is* the connector SDK.
 
 ## Status
 
-**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 22 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. A standalone test runner exercises `Test/Unit` across all five modules (via a Magento shim layer, `dev/tests/shims/`), with CI lint + units on PHP 8.1–8.4.
+**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 22 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. The follow-on discovery-track build ([docs/discovery/](docs/discovery/README.md)) added, behind default-off flags and optional modules: multi-way `switch` branching with save-time graph validation (definition schema 3), entity cross-referencing (relation registry), a side-effect-free dry-run (CLI/REST/admin trace panel), trigger-level fan-out, batch aggregation, the template gallery (14 bundled recipes), the optional React Flow canvas, and the native-grid visibility addon. A standalone test runner exercises `Test/Unit` across the module suite (via a Magento shim layer, `dev/tests/shims/`), plus the canvas's TypeScript tests, with CI lint + units on PHP 8.1–8.4.
 
-Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end), full unit/integration coverage (the runner exists; suites are still growing), the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and the v2 canvas. Class-name fidelity against `mageos-async-events` internals needs verification on a real install — assumptions are documented in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks.
+Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end — this remains the gate before any GA claim), full unit/integration coverage (the runner exists; suites are still growing), the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and a signed remote template feed. Class-name fidelity against `mageos-async-events` internals needs verification on a real install — assumptions are documented in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks.

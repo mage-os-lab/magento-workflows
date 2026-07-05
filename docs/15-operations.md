@@ -233,6 +233,10 @@ and circuit-breaker keys documented in their own sections:
   executions one triggering event may fan out to (see **Fan-out** below). Per-workflow
   fan-out caps clamp to this value; excess targets are dropped with a logged,
   admin-visible marker.
+- `mageos_workflows/guards/relation_cap` (default 100) — maximum related-entity ids a
+  single relation lookup may return (the cross-referencing condition and the fan-out
+  expander share this path); excess is dropped with a logged warning, and an `ALL` match
+  over a truncated set fails toward `false`.
 
 ## REST API
 

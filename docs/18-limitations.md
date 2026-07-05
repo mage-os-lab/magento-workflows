@@ -59,7 +59,7 @@ Flows this document originally listed as unsupported that have since been implem
 the wave 1–5 roadmap ([16](16-capability-roadmap.md)) and the follow-on discovery-track
 build ([docs/discovery/](discovery/README.md)). They ship behind default-off flags where
 they add runtime behavior and are shim-tested; live-install verification remains the GA gate
-([16 §Still deferred](16-capability-roadmap.md#still-deferred-unchanged)). The gap lists
+([16 §Still deferred](16-capability-roadmap.md#still-deferred)). The gap lists
 below no longer include them.
 
 - **Multi-way branching** — a `switch` step (schema 3, first-match-wins with a `default`

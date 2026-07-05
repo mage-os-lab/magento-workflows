@@ -9,6 +9,7 @@
 ## ACL
 
 - Resources for **view / manage / enable** workflows.
+- A dedicated **`MageOS_Workflows::dry_run`** resource gates the dry-run panel and REST endpoints; it deliberately does **not** imply `::manual_run` (previewing a workflow is not running it — see [Operations §Dry-run](15-operations.md)).
 - **Per-action-group authoring gates** (`MageOS_Workflows::action_sales`, etc.): a merchant admin who can't cancel orders can't author a cancel-order step.
 - Executions run under a **system context** (`AppArea` = crontab-like), with the authoring admin recorded on the definition for audit.
 - Definition saves are logged (plays well with admin-activity modules).
@@ -19,6 +20,8 @@
 - **Execution grid** — filterable by workflow / status / entity.
 - **Drill-down timeline** per execution showing each step's status, duration, result, and error.
 - **Correlated tracing:** executions link to the async-events trace UUID, so the full path *event → delivery → execution* is one correlated view.
+- **Fan-out lineage:** fanned-out child executions carry an indexed `origin_uuid`; the execution grid's "Caused by" filter returns every child dispatched from one source event.
+- **Dry-run rows:** admin dry-runs persist as `mode = 'dry_run'` execution rows (a marker only — never a side-effect predicate), feeding the same execution grid and trace panel as live runs.
 - **ES indexing:** reuse the async-events ES indexing hook to index execution records for the same Lucene querying. Indexing is redaction-by-default — metadata + IDs; full payloads opt-in ([Security §PII containment](10-security.md#pii-containment)).
 - **Monitoring events:** emit `workflow_execution_complete` / `workflow_execution_failed` as ordinary Magento events for monitoring integrations.
 - **CLI counters:** a `workflow:stats` command for quick prod triage.

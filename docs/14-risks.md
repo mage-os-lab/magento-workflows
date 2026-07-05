@@ -10,7 +10,7 @@
 | Order-status action vs. custom order-state extensions | Validate transitions via core guards; document that exotic state machines need custom actions |
 | SSRF via webhook action | Hardened by default ([Security](10-security.md#ssrf-hardening-the-webhook-action)): private-range denial, DNS-pin, redirect re-validation, response caps |
 | Deferred privilege escalation (workflows run as system) | Authoring ACL + attribute denylists + execution-time scope re-check + import re-authorization ([Security](10-security.md#deferred-privilege-escalation-the-core-threat-model)) |
-| Event storm from imports/mass-actions | Suppression API + config-flagged bulk paths; aggregate triggers in Phase 2 ([Actions §Guards](07-actions.md#loop-prevention-storms-and-circuit-breaking)) |
+| Event storm from imports/mass-actions | Suppression API (packaged as `workflows-import-suppression`) + config-flagged bulk paths; aggregate triggers now implemented (pending live-install verification) ([Actions §Guards](07-actions.md#loop-prevention-storms-and-circuit-breaking), [Execution Model §Aggregated (batch) workflows](08-execution-model.md)) |
 | Runaway/misconfigured workflow | Circuit breaker auto-suspend + digest notification ([Actions §Guards](07-actions.md#loop-prevention-storms-and-circuit-breaking)) |
 | Duplicate side effects on at-least-once redelivery | Step claim timestamps + per-step dedupe key (execution UUID + step key) checked by non-idempotent actions (email send logs the key before SMTP) |
 | Entity deleted during a delay | Resume path treats missing-entity as `skipped` with explicit log status, never as error retry |

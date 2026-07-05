@@ -11,7 +11,7 @@
 
 ## Post-review execution (July 2026)
 
-The July 2026 state-and-outlook review produced a capability roadmap, since executed: waves 1–5 of [16 — Capability Roadmap](16-capability-roadmap.md) are implemented (wait step + delay upgrades, quote condition root + customer aggregates, action-library completion, stock-threshold publisher, variable formatters, REST API), with wave-6 test coverage in progress. Phase 3 (canvas, template gallery, dry-run UI, connectors program) and the B2B pack remain deferred as planned.
+The July 2026 state-and-outlook review produced a capability roadmap, since executed: waves 1–5 of [16 — Capability Roadmap](16-capability-roadmap.md) are implemented (wait step + delay upgrades, quote condition root + customer aggregates, action-library completion, stock-threshold publisher, variable formatters, REST API), with wave-6 test coverage in progress. A follow-on discovery-track build ([docs/discovery/](discovery/README.md)) then implemented most of Phase 3 plus a set of capability enhancements — canvas, template gallery, dry-run, multi-way branching, entity cross-referencing, trigger-level fan-out, and batch aggregation are all now coded (pending live-install verification). Only the **connectors program** and the **B2B pack** remain deferred as planned.
 
 ## Test strategy
 

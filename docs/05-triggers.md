@@ -70,6 +70,10 @@ Each matching entity spawns a normal execution through the same dispatcher.
 
 Schedules evaluate in *store* timezone with the store recorded on the execution — see [Risks §Timezones](14-risks.md), the #1 support-ticket generator in every scheduler ever shipped.
 
+### Aggregate (batch) triggers
+
+The inverse of fan-out: an aggregation clause (`aggregation` = `{mode, …}`) collapses **N events into one digest execution** rather than dispatching per entity. Two modes ship (implemented July 2026, pending live-install verification): **collected** — a scheduled sweep runs the condition tree as a query and emits a single execution carrying the whole matched collection; and **window** — an event-window accumulator appends matching events to an open batch and flushes it on a cron/interval boundary. The batch execution carries the collection in `context.trigger.items` (rendered with the `count`/`pluck`/`join`/`table`/`json` collection formatters) and shows `entity_id = 0`. See [Execution Model §Aggregated (batch) workflows](08-execution-model.md) and [discovery/batch-aggregation.md](discovery/batch-aggregation.md).
+
 ## Manual triggers
 
 - Admin mass-action on order/customer/product grids ("Run workflow…")

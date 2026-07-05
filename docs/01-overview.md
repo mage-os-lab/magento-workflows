@@ -12,7 +12,7 @@ These decisions were carried in from prior analysis and are treated as constrain
 | **`mageos-async-events` is the event bus** | Inherits queue transport, quadratic-backoff retry, UUID trace logging, ES/Lucene search, subscription model |
 | **Conditions extend `Magento\Rule\Model`** | Free EAV introspection, merchant-familiar UI widget, battle-tested evaluation |
 | **Actions are a DI-registered pool** | Standard Magento pattern (payment methods, totals collectors); third-party extensible by `di.xml` |
-| **v1 UI is adminhtml forms, not a canvas** | ~20% of the cost of React Flow; AutomateWoo proves the model. Canvas is v2 |
+| **v1 UI is adminhtml forms, not a canvas** | ~20% of the cost of React Flow; AutomateWoo proves the model. Canvas is v2 (since implemented as the optional `workflows-canvas` module — pending live-install verification) |
 | **External connectors via webhook action → iPaaS** | Don't compete with 400-connector ecosystems; own the data model instead |
 
 ## Non-goals for v1
@@ -27,7 +27,7 @@ These decisions were carried in from prior analysis and are treated as constrain
 The engine is only "merchant-facing" if a non-developer can trust and understand it, and it only wins the ecosystem if third parties can build on it:
 
 - **Open spec as strategy:** publish and semver the definition JSON Schema, the `workflow_triggers.xml` XSD, and a conformance fixture set. Third parties (canvas alternatives, CI linters, AI tools, competing UIs) building on the format grow the moat rather than eroding it — the format wins, and the reference engine is the default implementation.
-- **Licensing:** core engine under OSL-3.0/MIT via Mage-OS maximizes install base; the commercial layer is the [B2B pack](12-b2b.md), template gallery, and support.
+- **Licensing:** core engine under OSL-3.0/MIT via Mage-OS maximizes install base. The template gallery *UI* ships open (only the bundled content pack, `workflows-templates`, is trimmable); the commercial layer is the [B2B pack](12-b2b.md), curated/premium template packs, and support.
 - **Agencies are the actual buyers:** workflow-as-code (import/export CLI, data-patch installability, git-versionable definitions — see [Definition Format](04-definition-format.md)) matters more to agencies than the canvas does.
 - **Positioning vs. Adobe App Builder:** different market — on-prem/OS merchants and agencies who won't take a SaaS dependency; the engine also runs on Adobe Commerce PaaS untouched.
 
