@@ -213,7 +213,8 @@ The park/resume spine is solid and mostly reusable:
 
 ### What's missing, and the plausible shape of each piece
 
-**G1 — Human approval gate.** Today's only human touchpoint is a broadcast admin notification —
+**G1 — Human approval gate.** *Graduated to its own discovery doc:
+[approval-gate.md](approval-gate.md).* Today's only human touchpoint is a broadcast admin notification —
 not a gate (nothing parks, no accept/reject, no assignee); approval-chain UI is an explicit v1
 non-goal. But the `wait` step already models the semantics, so the design is a near-clone:
 

@@ -48,6 +48,16 @@ layer.
 Independent of Tracks 1–2 (pure surface layer over the existing repository and metadata
 catalogue); can ship any time.
 
+## Track 4 — Human-in-the-loop
+
+| Doc | Feature | Recommendation in one line | Est. |
+|---|---|---|---|
+| [approval-gate.md](approval-gate.md) | Approval / decision gate step | New `approval` step type (schema 4) on the existing wait/park spine — three edges (`on_approved`/`on_rejected`/`on_timeout`), a task table + approvals grid, and an authenticated REST decision endpoint accepting a validated payload that flows into step output; required timeout = the SLA clock | ~5 wk |
+
+Independent of Tracks 1–3 (depends only on the shipped wait/resume machinery). Reverses the
+v1 approval-chain non-goal at its narrowest point: one gate step, not a chain/task-management
+subsystem.
+
 ## Pre-discovery explorations
 
 Earlier-stage than the tracks above: architecture mapping with no recommendation or committed
