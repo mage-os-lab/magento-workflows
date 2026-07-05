@@ -13,11 +13,17 @@
     <preference for="MageOS\WorkflowsApprovals\Api\ApprovalManagementInterface"
                 type="MageOS\WorkflowsApprovals\Model\ApprovalManagement"/>
 
-    <!-- Role-enforcement seam (§5): deny-safe until Stage 3 / webapi binds the
-         real Magento authorization. A role-gated task is undecidable rather
-         than silently decidable while no real check is wired. -->
+    <!-- Role-enforcement seam (§5, §6 Stage 3): real Magento role/ACL checking,
+         backed by the authorization_role / authorization_rule tables (see
+         RoleTableAuthorization's docblock for the pinned schema assumptions).
+         One global binding covers both areas ApprovalService::decide() is
+         called from (adminhtml Decide controller, webapi ApprovalManagement) —
+         it is the single shared decision path, so there is no per-area
+         behavioral difference to bind separately. DenyRoleAuthorization remains
+         in the module as the documented deny-safe fallback shape; it is simply
+         no longer the bound default now that the real check is wired. -->
     <preference for="MageOS\WorkflowsApprovals\Api\ApprovalAuthorizationInterface"
-                type="MageOS\WorkflowsApprovals\Model\Authorization\DenyRoleAuthorization"/>
+                type="MageOS\WorkflowsApprovals\Model\Authorization\RoleTableAuthorization"/>
 
     <!-- The core task seam (docs/discovery/approval-gate.md §7): binding the
          implementation here is what turns approval steps from unauthorable
@@ -47,5 +53,16 @@
         <arguments>
             <argument name="approvalTaskManager" xsi:type="object">MageOS\WorkflowsApprovals\Model\ApprovalTaskManager</argument>
         </arguments>
+    </type>
+
+    <!-- Park notification (§6): the gate owns this because only the gate knows
+         the task uuid (createTask's return value). An `around` plugin on the
+         INTERFACE (not the concrete ApprovalTaskManager) so any future
+         alternate implementation still gets notified — see
+         Plugin\Notification\NotifyOnTaskCreation's docblock for why `around`
+         (redelivery/idempotency) rather than `after`. -->
+    <type name="MageOS\Workflows\Api\ApprovalTaskManagerInterface">
+        <plugin name="mageos_workflows_approvals_notify_on_task_creation"
+                type="MageOS\WorkflowsApprovals\Plugin\Notification\NotifyOnTaskCreation"/>
     </type>
 </config>

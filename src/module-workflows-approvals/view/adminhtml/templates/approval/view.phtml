@@ -1,0 +1,101 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsApprovals\Block\Adminhtml\Approval\View $block
+ */
+$approval = $block->getApproval();
+?>
+<?php if (!$approval): ?>
+    <div class="message message-error"><?= $block->escapeHtml(__('Approval task not found.')) ?></div>
+<?php else: ?>
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml($approval->getTitle()) ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <?php if ($approval->getInstructions()): ?>
+                <p><?= $block->escapeHtml($approval->getInstructions()) ?></p>
+            <?php endif; ?>
+            <table class="admin__table-secondary">
+                <tbody>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Workflow')) ?></th>
+                    <td><?= $block->escapeHtml($block->getWorkflowName()) ?> (#<?= $block->escapeHtml((string) $approval->getWorkflowId()) ?>)</td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Entity')) ?></th>
+                    <td>
+                        <?php $entityUrl = $block->getEntityUrl(); ?>
+                        <?php if ($entityUrl): ?>
+                            <a href="<?= $block->escapeUrl($entityUrl) ?>">
+                                <?= $block->escapeHtml($approval->getEntityType()) ?> #<?= $block->escapeHtml((string) $approval->getEntityId()) ?>
+                            </a>
+                        <?php else: ?>
+                            <?= $block->escapeHtml($approval->getEntityType()) ?> #<?= $block->escapeHtml((string) $approval->getEntityId()) ?>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Status')) ?></th>
+                    <td><?= $block->escapeHtml($approval->getStatus()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Assignee Role')) ?></th>
+                    <td><?= $block->escapeHtml($approval->getAssigneeRole() ?? '—') ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Due')) ?></th>
+                    <td><?= $block->escapeHtml($block->getDueInText()) ?> (<?= $block->escapeHtml((string) $approval->getDueAt()) ?>)</td>
+                </tr>
+                <?php if ($approval->getDecidedByType()): ?>
+                    <tr>
+                        <th><?= $block->escapeHtml(__('Decided By')) ?></th>
+                        <td><?= $block->escapeHtml($approval->getDecidedByType() . ':' . $approval->getDecidedById()) ?> at <?= $block->escapeHtml((string) $approval->getDecidedAt()) ?></td>
+                    </tr>
+                    <?php if ($approval->getDecisionNote()): ?>
+                        <tr>
+                            <th><?= $block->escapeHtml(__('Decision Note')) ?></th>
+                            <td><?= $block->escapeHtml($approval->getDecisionNote()) ?></td>
+                        </tr>
+                    <?php endif; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $block->escapeHtml(__('Execution Timeline')) ?></span>
+        </div>
+        <div class="admin__page-section-content">
+            <table class="data-table admin__table-primary">
+                <thead>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Step')) ?></th>
+                    <th><?= $block->escapeHtml(__('Status')) ?></th>
+                    <th><?= $block->escapeHtml(__('Started')) ?></th>
+                    <th><?= $block->escapeHtml(__('Finished')) ?></th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php $steps = $block->getSteps(); ?>
+                <?php if (!$steps): ?>
+                    <tr>
+                        <td colspan="4"><?= $block->escapeHtml(__('No step data recorded yet.')) ?></td>
+                    </tr>
+                <?php endif; ?>
+                <?php foreach ($steps as $step): ?>
+                    <tr>
+                        <td><?= $block->escapeHtml($step->getStepKey()) ?></td>
+                        <td><?= $block->escapeHtml($step->getStatus()) ?></td>
+                        <td><?= $block->escapeHtml((string) $step->getStartedAt()) ?></td>
+                        <td><?= $block->escapeHtml((string) $step->getFinishedAt()) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <?= $block->getChildHtml('decision_panel') ?>
+<?php endif; ?>

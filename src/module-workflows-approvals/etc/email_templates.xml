@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!-- Bundled template backing ParkNotifier's optional direct-email channel
+     (docs/discovery/approval-gate.md §6). Mirrors module-workflows-actions-core's
+     notify.email ad-hoc template exactly: the body is pre-escaped in PHP
+     (ParkNotifier::notifyEmail) before being handed to the template, so the
+     template's |raw output is already-safe HTML. -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Email:etc/email_templates.xsd">
+    <template id="mageos_workflows_approvals_park_notification" label="Approval Task Park Notification"
+              file="park_notification.html" type="html" module="MageOS_WorkflowsApprovals" area="frontend"/>
+</config>

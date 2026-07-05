@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <!-- Sibling of admin-ui's Workflows / Workflow Executions / Workflow
+             Templates entries (all flat children of Magento_Backend::marketing) —
+             mirrors that layout rather than nesting under a submenu. -->
+        <add id="MageOS_WorkflowsApprovals::approval_index" title="Approval Tasks" module="MageOS_WorkflowsApprovals"
+             sortOrder="68" parent="Magento_Backend::marketing" action="mageos_workflows_approvals/approval/index"
+             resource="MageOS_WorkflowsApprovals::approvals_view"/>
+    </menu>
+</config>

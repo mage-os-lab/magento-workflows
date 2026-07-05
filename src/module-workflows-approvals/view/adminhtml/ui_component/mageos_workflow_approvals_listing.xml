@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<!-- Approvals grid (docs/discovery/approval-gate.md §6). Default filter
+     status=open is applied by Controller/Adminhtml/Approval/Index via the
+     filters_modifier redirect (the same mechanism
+     MageOS\WorkflowsAdminExtension\ViewModel\GridStrip::getViewUrl uses to
+     deep-link a pre-filtered grid), not baked into this component, so the
+     filter stays visible and changeable in the toolbar. -->
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_components.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">mageos_workflow_approvals_listing.mageos_workflow_approvals_listing_data_source</item>
+        </item>
+    </argument>
+    <settings>
+        <spinner>mageos_workflow_approvals_columns</spinner>
+        <deps>
+            <dep>mageos_workflow_approvals_listing.mageos_workflow_approvals_listing_data_source</dep>
+        </deps>
+    </settings>
+    <dataSource name="mageos_workflow_approvals_listing_data_source">
+        <argument name="dataProvider" xsi:type="configurableObject">
+            <argument name="class" xsi:type="string">Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider</argument>
+            <argument name="name" xsi:type="string">mageos_workflow_approvals_listing_data_source</argument>
+            <argument name="primaryFieldName" xsi:type="string">approval_id</argument>
+            <argument name="requestFieldName" xsi:type="string">id</argument>
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="update_url" xsi:type="url" path="mui/index/render"/>
+                </item>
+            </argument>
+        </argument>
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/grid/provider</item>
+            </item>
+        </argument>
+    </dataSource>
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filters name="listing_filters"/>
+        <massaction name="listing_massaction">
+            <action name="approve">
+                <settings>
+                    <url path="mageos_workflows_approvals/approval/massApprove"/>
+                    <type>approve</type>
+                    <label translate="true">Approve</label>
+                    <confirm>
+                        <title translate="true">Approve Task(s)</title>
+                        <message translate="true">Are you sure you want to approve the selected task(s)? Only tasks whose gate allows bulk decisions will be approved; the rest are skipped and reported.</message>
+                    </confirm>
+                </settings>
+            </action>
+            <action name="reject">
+                <settings>
+                    <url path="mageos_workflows_approvals/approval/massReject"/>
+                    <type>reject</type>
+                    <label translate="true">Reject</label>
+                    <confirm>
+                        <title translate="true">Reject Task(s)</title>
+                        <message translate="true">Are you sure you want to reject the selected task(s)? Only tasks whose gate allows bulk decisions will be rejected; the rest are skipped and reported.</message>
+                    </confirm>
+                </settings>
+            </action>
+        </massaction>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+    <columns name="mageos_workflow_approvals_columns">
+        <selectionsColumn name="ids">
+            <settings>
+                <indexField>approval_id</indexField>
+            </settings>
+        </selectionsColumn>
+        <column name="approval_id">
+            <settings>
+                <filter>textRange</filter>
+                <sorting>desc</sorting>
+                <label translate="true">ID</label>
+            </settings>
+        </column>
+        <column name="title">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Title</label>
+            </settings>
+        </column>
+        <column name="workflow_id" class="MageOS\WorkflowsApprovals\Ui\Component\Listing\Column\ApprovalWorkflow">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Workflow</label>
+            </settings>
+        </column>
+        <column name="entity_id" class="MageOS\WorkflowsApprovals\Ui\Component\Listing\Column\ApprovalEntity">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Entity</label>
+            </settings>
+        </column>
+        <column name="due_at" class="MageOS\WorkflowsApprovals\Ui\Component\Listing\Column\ApprovalDueIn">
+            <settings>
+                <filter>dateRange</filter>
+                <label translate="true">Due In</label>
+            </settings>
+        </column>
+        <column name="status" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="MageOS\WorkflowsApprovals\Model\Source\ApprovalStatus"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Status</label>
+            </settings>
+        </column>
+        <column name="assignee_role">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Assignee Role</label>
+            </settings>
+        </column>
+        <actionsColumn name="actions" class="MageOS\WorkflowsApprovals\Ui\Component\Listing\Column\ApprovalActions">
+            <settings>
+                <indexField>approval_id</indexField>
+                <sortable>false</sortable>
+                <filter>false</filter>
+            </settings>
+        </actionsColumn>
+    </columns>
+</listing>
