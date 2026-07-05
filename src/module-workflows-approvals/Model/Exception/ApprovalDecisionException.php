@@ -33,7 +33,7 @@ class ApprovalDecisionException extends LocalizedException
 
     private readonly string $approvalCode;
 
-    public function __construct(string $approvalCode, Phrase $phrase, ?\Throwable $cause = null)
+    public function __construct(string $approvalCode, Phrase $phrase, ?\Exception $cause = null)
     {
         $this->approvalCode = $approvalCode;
         parent::__construct($phrase, $cause);
