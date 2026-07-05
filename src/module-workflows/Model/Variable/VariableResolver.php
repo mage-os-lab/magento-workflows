@@ -166,7 +166,10 @@ class VariableResolver
                 if ($timestamp === false) {
                     return $value;
                 }
-                return gmdate($arg !== null && $arg !== '' ? $arg : 'Y-m-d H:i:s', $timestamp);
+                // date() (not gmdate) so strtotime()/format round-trip in the same
+                // timezone — the formatted wall-clock matches the input regardless
+                // of the server's default timezone (gmdate shifted by the offset).
+                return date($arg !== null && $arg !== '' ? $arg : 'Y-m-d H:i:s', $timestamp);
             case 'default':
                 return $value === '' ? (string) $arg : $value;
             default:

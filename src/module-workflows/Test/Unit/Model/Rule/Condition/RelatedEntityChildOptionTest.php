@@ -26,7 +26,11 @@ class RelatedEntityChildOptionTest extends TestCase
         return new class extends AbstractWorkflowCombine {
             public function __construct()
             {
-                parent::__construct(null, []);
+                parent::__construct(new class extends \Magento\Rule\Model\Condition\Context {
+                    public function __construct()
+                    {
+                    }
+                }, []);
             }
 
             /**

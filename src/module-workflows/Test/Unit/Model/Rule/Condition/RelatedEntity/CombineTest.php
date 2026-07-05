@@ -193,7 +193,11 @@ class CombineTest extends TestCase
         $logger = $this->capturingLogger();
         $relationContext = new RelationContext($pool, $storeManager, $scopeConfig, $logger);
 
-        $combine = new Combine(new Context(), $relationContext, $pool, $logger, [], []);
+        $combine = new Combine(new class extends Context {
+            public function __construct()
+            {
+            }
+        }, $relationContext, $pool, $logger, [], []);
         if ($relationCode !== '') {
             $combine->setData('relation', $relationCode);
         }

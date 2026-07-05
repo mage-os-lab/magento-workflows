@@ -15,7 +15,13 @@ class TriggerDataTest extends TestCase
 
     public function setUp(): void
     {
-        $this->condition = new TriggerData(new Context());
+        // Real Magento's Rule Context needs 5 constructor deps; the condition
+        // under test never uses them, so pass a bare Context (empty constructor).
+        $this->condition = new TriggerData(new class extends Context {
+            public function __construct()
+            {
+            }
+        });
     }
 
     /**
