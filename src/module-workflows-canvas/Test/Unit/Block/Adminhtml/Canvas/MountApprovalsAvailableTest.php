@@ -130,7 +130,7 @@ class MountApprovalsAvailableTest extends TestCase
                 };
             }
 
-            protected function getUrl($route = '', $params = [])
+            public function getUrl($route = '', $params = [])
             {
                 return '/' . ltrim((string) $route, '/');
             }
