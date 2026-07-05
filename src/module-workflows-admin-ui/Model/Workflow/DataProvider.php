@@ -6,6 +6,7 @@ namespace MageOS\WorkflowsAdminUi\Model\Workflow;
 use Magento\Framework\App\Request\DataPersistorInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Ui\DataProvider\AbstractDataProvider;
+use MageOS\Workflows\Api\EntityTypeMetadataProviderInterface;
 use MageOS\Workflows\Model\ResourceModel\Workflow\CollectionFactory;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Save;
 
@@ -31,6 +32,7 @@ class DataProvider extends AbstractDataProvider
         CollectionFactory $collectionFactory,
         private readonly DataPersistorInterface $dataPersistor,
         private readonly RequestInterface $request,
+        private readonly EntityTypeMetadataProviderInterface $metadataProvider,
         array $meta = [],
         array $data = []
     ) {
@@ -54,6 +56,8 @@ class DataProvider extends AbstractDataProvider
             $this->loadedData[$model->getId()] = $row;
         }
 
+        $this->seedNewWorkflow();
+
         $persisted = $this->dataPersistor->get(Save::PERSISTOR_KEY);
         if (is_array($persisted) && $persisted !== []) {
             $id = !empty($persisted['workflow_id']) ? (int) $persisted['workflow_id'] : null;
@@ -62,6 +66,37 @@ class DataProvider extends AbstractDataProvider
         }
 
         return $this->loadedData;
+    }
+
+    /**
+     * On the new-workflow form (no workflow_id in the request), default the
+     * entity_type select from an `entity_type` request param -- the "create a
+     * workflow from the <entity> grid" deep link. The param is honoured only
+     * when it matches a known entity-type code (the authoritative core
+     * catalogue, EntityTypeMetadataProviderInterface); unknown values are
+     * silently ignored. Seeded under the null id key so persisted merchant
+     * input (merged next in getData) still wins.
+     */
+    private function seedNewWorkflow(): void
+    {
+        if ($this->request->getParam($this->getRequestFieldName())) {
+            return;
+        }
+        $entityType = (string) $this->request->getParam('entity_type');
+        if ($entityType === '' || !$this->isKnownEntityType($entityType)) {
+            return;
+        }
+        $this->loadedData[null] = ['entity_type' => $entityType];
+    }
+
+    private function isKnownEntityType(string $code): bool
+    {
+        foreach ($this->metadataProvider->getEntityTypes() as $entityType) {
+            if ($entityType->getCode() === $code) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
