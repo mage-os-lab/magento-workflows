@@ -1,0 +1,50 @@
+<?php
+/**
+ * Workflow discoverability strip in a native admin grid's actions toolbar
+ * (docs/discovery/entity-grid-visibility.md §4). Renders nothing unless the
+ * view model clears its gates (toggle on, view ACL, something to show). Plain
+ * admin typography, no icons, no dismissible banner — the config toggle is the
+ * dismissal. All output escaped.
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+use MageOS\WorkflowsAdminExtension\ViewModel\GridStrip;
+
+$viewModel = $block->getData('view_model');
+$entityType = (string) $block->getData('entity_type');
+
+if (!$viewModel instanceof GridStrip || $entityType === '' || !$viewModel->shouldRender($entityType)) {
+    return;
+}
+
+$label = $viewModel->getEntityLabel($entityType);
+$enabled = $viewModel->getEnabledCount($entityType);
+$total = $viewModel->getTotalCount($entityType);
+$viewUrl = $viewModel->getViewUrl($entityType);
+$createUrl = $viewModel->getCreateUrl($entityType);
+$canManage = $viewModel->canManage();
+?>
+<div class="mageos-workflows-grid-strip"
+     style="margin: 0 0 1rem; color: #6f6f6f; font-size: 1.3rem;">
+    <?php if ($total === 0): ?>
+        <span class="mageos-workflows-grid-strip-summary">
+            <?= $escaper->escapeHtml(__('Workflows: none yet for %1', $label)) ?>
+        </span>
+        <?php if ($canManage): ?>
+            &middot;
+            <a href="<?= $escaper->escapeUrl($createUrl) ?>"><?= $escaper->escapeHtml(__('Create one')) ?></a>
+        <?php endif; ?>
+    <?php else: ?>
+        <span class="mageos-workflows-grid-strip-summary">
+            <?= $escaper->escapeHtml(__('Workflows: %1 active for %2', $enabled, $label)) ?>
+        </span>
+        &middot;
+        <a href="<?= $escaper->escapeUrl($viewUrl) ?>"><?= $escaper->escapeHtml(__('View')) ?></a>
+        <?php if ($canManage): ?>
+            &middot;
+            <a href="<?= $escaper->escapeUrl($createUrl) ?>"><?= $escaper->escapeHtml(__('Create workflow')) ?></a>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>

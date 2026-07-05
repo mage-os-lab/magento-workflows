@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- Extends the mageos_workflows section defined by MageOS_Workflows
+     (module sequence guarantees load order); only the field this module
+     owns is declared here. -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="mageos_workflows">
+            <group id="general">
+                <field id="expose_on_entity_grids" translate="label comment" type="select" sortOrder="30" showInDefault="1">
+                    <label>Show Workflow Links on Entity Grids</label>
+                    <comment>Renders a compact "N active for Orders · View · Create workflow" strip in the actions toolbar of the native admin grids (Orders, Customers, Products, Reviews, Invoices, Shipments, Credit Memos) so the workflow feature is discoverable where the entity lives. Disable to hide it everywhere; it is also hidden per-page for admins without the Workflows view permission.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

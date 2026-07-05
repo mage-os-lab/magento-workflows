@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Grid-count cache invalidation: the repository is the single write
+         chokepoint for every authoring path, so cleaning the count cache tag
+         after save/delete keeps the strip's numbers current. Global scope so a
+         REST or CLI write invalidates the admin-rendered counts too. -->
+    <type name="MageOS\Workflows\Api\WorkflowRepositoryInterface">
+        <plugin name="mageos_workflows_invalidate_grid_count_cache"
+                type="MageOS\WorkflowsAdminExtension\Plugin\InvalidateCountCache"/>
+    </type>
+</config>

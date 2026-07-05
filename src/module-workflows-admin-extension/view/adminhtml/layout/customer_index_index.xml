@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!-- Native Customers grid. -->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="page.main.actions">
+            <block class="Magento\Framework\View\Element\Template"
+                   name="mageos_workflows_grid_strip.customer"
+                   template="MageOS_WorkflowsAdminExtension::strip.phtml">
+                <arguments>
+                    <argument name="entity_type" xsi:type="string">customer</argument>
+                    <argument name="view_model" xsi:type="object">MageOS\WorkflowsAdminExtension\ViewModel\GridStrip</argument>
+                </arguments>
+            </block>
+        </referenceContainer>
+    </body>
+</page>
