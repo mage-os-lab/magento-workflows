@@ -117,11 +117,11 @@ class SetCategoriesTest extends TestCase
     {
         return new class implements ProductRepositoryInterface {
             public function getById($productId, $editMode = false, $storeId = null, $forceReload = false) { throw new \RuntimeException('Should not be called'); }
-            public function save(\Magento\Catalog\Api\Data\ProductInterface $product, $saveOptions = false) { throw new \BadMethodCallException(__METHOD__); }
+            public function save($product, $saveOptions = false) { throw new \BadMethodCallException(__METHOD__); }
             public function get($sku, $editMode = false, $storeId = null, $forceReload = false) { throw new \BadMethodCallException(__METHOD__); }
-            public function delete(\Magento\Catalog\Api\Data\ProductInterface $product) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($product) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($sku) { throw new \BadMethodCallException(__METHOD__); }
-            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 

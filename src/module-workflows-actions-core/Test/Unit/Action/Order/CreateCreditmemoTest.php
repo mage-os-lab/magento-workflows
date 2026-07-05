@@ -80,10 +80,10 @@ class CreateCreditmemoTest extends TestCase
     private function createOrderRepositoryStub(): OrderRepositoryInterface
     {
         return new class implements OrderRepositoryInterface {
-            public function get($orderId) { throw new \RuntimeException('Should not be called'); }
-            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
-            public function delete(\Magento\Sales\Api\Data\OrderInterface $entity) { throw new \BadMethodCallException(__METHOD__); }
-            public function save(\Magento\Sales\Api\Data\OrderInterface $entity) { throw new \BadMethodCallException(__METHOD__); }
+            public function get($id) { throw new \RuntimeException('Should not be called'); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($entity) { throw new \BadMethodCallException(__METHOD__); }
+            public function save($entity) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($id) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
@@ -91,7 +91,7 @@ class CreateCreditmemoTest extends TestCase
     private function createRefundOrderStub(): RefundOrderInterface
     {
         return new class implements RefundOrderInterface {
-            public function execute($orderId, array $items = [], $notify = false, $appendComment = false, ?\Magento\Sales\Api\Data\CreditmemoCommentCreationInterface $comment = null, ?\Magento\Sales\Api\Data\CreditmemoCreationArgumentsInterface $arguments = null): int { throw new \RuntimeException('Should not be called'); }
+            public function execute($orderId, array $items = [], $notify = false, $appendComment = false, $comment = null, $arguments = null): int { throw new \RuntimeException('Should not be called'); }
         };
     }
 }

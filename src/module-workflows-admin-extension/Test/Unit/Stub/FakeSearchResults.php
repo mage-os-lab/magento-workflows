@@ -37,7 +37,7 @@ class FakeSearchResults implements SearchResultsInterface
         throw new \BadMethodCallException(__METHOD__);
     }
 
-    public function setSearchCriteria(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria)
+    public function setSearchCriteria($searchCriteria)
     {
         throw new \BadMethodCallException(__METHOD__);
     }

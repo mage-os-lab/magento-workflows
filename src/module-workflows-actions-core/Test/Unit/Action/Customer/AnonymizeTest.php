@@ -19,15 +19,15 @@ class AnonymizeTest extends TestCase
             public function getById($customerId) { throw new \RuntimeException('Should not be called'); }
             public function save($customer, $passwordHash = null) { throw new \RuntimeException('Should not be called'); }
             public function get($email, $websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
-            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
-            public function delete(\Magento\Customer\Api\Data\CustomerInterface $customer) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($customer) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($customerId) { throw new \BadMethodCallException(__METHOD__); }
         };
         $subscriptionManager = new class implements SubscriptionManagerInterface {
-            public function unsubscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
-            public function subscribe(string $email, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function unsubscribe(string $email, int $storeId, string $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function subscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
+            public function subscribe($email, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribe($email, $storeId, $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function subscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
         };
 
         $action = new Anonymize($customerRepo, $subscriptionManager);
@@ -46,15 +46,15 @@ class AnonymizeTest extends TestCase
             public function getById($customerId) { throw new \RuntimeException('Should not be called'); }
             public function save($customer, $passwordHash = null) { throw new \RuntimeException('Should not be called'); }
             public function get($email, $websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
-            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
-            public function delete(\Magento\Customer\Api\Data\CustomerInterface $customer) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($customer) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($customerId) { throw new \BadMethodCallException(__METHOD__); }
         };
         $subscriptionManager = new class implements SubscriptionManagerInterface {
-            public function unsubscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
-            public function subscribe(string $email, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function unsubscribe(string $email, int $storeId, string $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function subscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
+            public function subscribe($email, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribe($email, $storeId, $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function subscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
         };
 
         $action = new Anonymize($customerRepo, $subscriptionManager);
@@ -73,15 +73,15 @@ class AnonymizeTest extends TestCase
             public function getById($customerId) { throw new \RuntimeException('Should not be called'); }
             public function save($customer, $passwordHash = null) { throw new \RuntimeException('Should not be called'); }
             public function get($email, $websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
-            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
-            public function delete(\Magento\Customer\Api\Data\CustomerInterface $customer) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($customer) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($customerId) { throw new \BadMethodCallException(__METHOD__); }
         };
         $subscriptionManager = new class implements SubscriptionManagerInterface {
-            public function unsubscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
-            public function subscribe(string $email, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function unsubscribe(string $email, int $storeId, string $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function subscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
+            public function subscribe($email, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribe($email, $storeId, $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function subscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
         };
 
         $action = new Anonymize($customerRepo, $subscriptionManager);
@@ -99,15 +99,15 @@ class AnonymizeTest extends TestCase
             public function getById($customerId) { throw new \RuntimeException('Should not be called'); }
             public function save($customer, $passwordHash = null) { throw new \RuntimeException('Should not be called'); }
             public function get($email, $websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
-            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
-            public function delete(\Magento\Customer\Api\Data\CustomerInterface $customer) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($customer) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($customerId) { throw new \BadMethodCallException(__METHOD__); }
         };
         $subscriptionManager = new class implements SubscriptionManagerInterface {
-            public function unsubscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
-            public function subscribe(string $email, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function unsubscribe(string $email, int $storeId, string $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function subscribeCustomer(int $customerId, int $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \RuntimeException('Should not be called'); }
+            public function subscribe($email, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function unsubscribe($email, $storeId, $confirmCode): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
+            public function subscribeCustomer($customerId, $storeId): \Magento\Newsletter\Model\Subscriber { throw new \BadMethodCallException(__METHOD__); }
         };
 
         $action = new Anonymize($customerRepo, $subscriptionManager);
