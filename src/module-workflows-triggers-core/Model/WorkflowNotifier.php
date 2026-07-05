@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsTriggersCore\Model;
 
-use MageOS\AsyncEvents\Api\Data\AsyncEventDisplayInterface;
+use CloudEvents\V1\CloudEventImmutable;
+use MageOS\AsyncEvents\Api\Data\AsyncEventInterface;
 use MageOS\AsyncEvents\Service\AsyncEvent\NotifierInterface;
 use MageOS\AsyncEvents\Service\AsyncEvent\NotifierResult;
 use MageOS\AsyncEvents\Service\AsyncEvent\NotifierResultFactory;
@@ -17,29 +18,24 @@ use Psr\Log\LoggerInterface;
 /**
  * Async-events notifier delivering events to the workflow engine.
  *
- * Registered in the async-events NotifierFactory pool under the name
- * "workflow" (see etc/di.xml); hidden subscriptions created by
+ * Registered in the async-events NotifierFactory pool under the name "workflow"
+ * (see etc/di.xml, argument `notifierClasses`); hidden subscriptions created by
  * SubscriptionManager carry metadata = "workflow" so the delivery consumer
- * resolves this notifier. $data arrives pre-hydrated by the event's declared
- * service class and becomes the execution's trigger snapshot.
+ * resolves this notifier. The trigger snapshot ($data) is the CloudEvent
+ * payload (`$event->getData()`), and the async-events trace UUID is the
+ * CloudEvent id (`$event->getId()`), stamped onto each fanned-out child's
+ * origin (F1).
  *
  * A dispatch suppressed on purpose (workflow disabled meanwhile, debounce,
- * loop guard, bulk suppression) is reported as SUCCESS: it must not enter
- * the async-events retry/dead-letter path. Only unexpected exceptions are
- * reported as failure and thereby retried with backoff.
+ * loop guard, bulk suppression) is reported as successful and NOT retryable:
+ * it must not enter the async-events retry/dead-letter path. Only unexpected
+ * exceptions are reported as unsuccessful + retryable and thereby redelivered
+ * with backoff.
  *
- * Async-events API assumptions (centralized here, adjust in one place if the
- * installed version differs):
- * - NotifierInterface::notify(AsyncEventDisplayInterface, array): NotifierResult
- * - NotifierResult exposes setSuccess(bool), setSubscriptionId(int),
- *   setResponseData(string). If your version instead exposes
- *   setUuid()/setNotificationData(), adapt buildResult() only.
- * - AsyncEventDisplayInterface::getUuid() carries the async-events trace UUID
- *   of this delivery, stamped onto each fanned-out child's origin (F1). This
- *   accessor is not verifiable against the vendored interface here; if the
- *   installed version names it differently or omits it, extractTraceUuid()
- *   falls back to null and origin_uuid is simply omitted — the rest of the
- *   origin context still travels.
+ * Contract (verified against mage-os/mageos-async-events >= 4.0):
+ * - NotifierInterface::notify(AsyncEventInterface, CloudEventImmutable): NotifierResult
+ * - NotifierResult exposes setSubscriptionId(int), setIsSuccessful(bool),
+ *   setIsRetryable(bool), setResponseData(string).
  */
 class WorkflowNotifier implements NotifierInterface
 {
@@ -74,8 +70,10 @@ class WorkflowNotifier implements NotifierInterface
     /**
      * @inheritDoc
      */
-    public function notify(AsyncEventDisplayInterface $asyncEvent, array $data): NotifierResult
+    public function notify(AsyncEventInterface $asyncEvent, CloudEventImmutable $event): NotifierResult
     {
+        $data = $this->extractPayload($event);
+
         $waitTarget = $this->extractWaitTarget($asyncEvent);
         if ($waitTarget !== null) {
             return $this->notifyWait($asyncEvent, $waitTarget[0], $waitTarget[1], $data);
@@ -103,7 +101,7 @@ class WorkflowNotifier implements NotifierInterface
                 $workflowId,
                 $data,
                 (string) $asyncEvent->getEventName(),
-                $this->extractTraceUuid($asyncEvent)
+                $this->extractTraceUuid($event)
             );
         } catch (\Throwable $exception) {
             // Pre-expansion failure (relation resolution threw before any child
@@ -172,9 +170,11 @@ class WorkflowNotifier implements NotifierInterface
      * Delivery on a wait subscription: resume parked executions instead of
      * dispatching a new one. Zero matches is a normal outcome (nothing was
      * waiting) and must never enter the retry path.
+     *
+     * @param array<string, mixed> $data
      */
     private function notifyWait(
-        AsyncEventDisplayInterface $asyncEvent,
+        AsyncEventInterface $asyncEvent,
         int $workflowId,
         string $event,
         array $data
@@ -204,11 +204,29 @@ class WorkflowNotifier implements NotifierInterface
     }
 
     /**
+     * The trigger snapshot is the CloudEvent payload. Accept an associative
+     * array verbatim, decode a JSON-string payload, and treat anything else
+     * (null/scalar) as an empty snapshot rather than failing the delivery.
+     *
+     * @return array<string, mixed>
+     */
+    private function extractPayload(CloudEventImmutable $event): array
+    {
+        $payload = $event->getData();
+        if (is_string($payload)) {
+            $decoded = json_decode($payload, true);
+            $payload = is_array($decoded) ? $decoded : [];
+        }
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    /**
      * Resolves the workflow id from the hidden subscription's recipient URL
      * ("workflow:<id>"). The recipient doubles as the ownership marker, so no
      * extra metadata field is needed.
      */
-    private function extractWorkflowId(AsyncEventDisplayInterface $asyncEvent): ?int
+    private function extractWorkflowId(AsyncEventInterface $asyncEvent): ?int
     {
         $recipient = (string) $asyncEvent->getRecipientUrl();
         if (!str_starts_with($recipient, self::RECIPIENT_PREFIX)) {
@@ -220,20 +238,15 @@ class WorkflowNotifier implements NotifierInterface
     }
 
     /**
-     * The async-events trace UUID of this delivery, stamped onto each
-     * fanned-out child's origin (F1). Pinned assumption: getUuid() carries it
-     * (see class docblock). Guarded with is_callable so an installed version
-     * lacking the accessor degrades to null — origin_uuid is then omitted and
-     * the rest of origin still travels, never a hard failure.
+     * The async-events trace UUID of this delivery is the CloudEvent id; it is
+     * stamped onto each fanned-out child's origin (F1). An empty id degrades to
+     * null and origin_uuid is simply omitted — the rest of origin still travels.
      */
-    private function extractTraceUuid(AsyncEventDisplayInterface $asyncEvent): ?string
+    private function extractTraceUuid(CloudEventImmutable $event): ?string
     {
-        if (!is_callable([$asyncEvent, 'getUuid'])) {
-            return null;
-        }
-        $uuid = $asyncEvent->getUuid();
+        $id = $event->getId();
 
-        return is_string($uuid) && $uuid !== '' ? $uuid : null;
+        return $id !== '' ? $id : null;
     }
 
     /**
@@ -241,7 +254,7 @@ class WorkflowNotifier implements NotifierInterface
      *
      * @return array{0: int, 1: string}|null [workflow id, event] or null when not a wait recipient
      */
-    private function extractWaitTarget(AsyncEventDisplayInterface $asyncEvent): ?array
+    private function extractWaitTarget(AsyncEventInterface $asyncEvent): ?array
     {
         $recipient = (string) $asyncEvent->getRecipientUrl();
         if (!str_starts_with($recipient, self::RECIPIENT_PREFIX)) {
@@ -265,14 +278,17 @@ class WorkflowNotifier implements NotifierInterface
      * @param array<string, mixed> $responseData
      */
     private function buildResult(
-        AsyncEventDisplayInterface $asyncEvent,
+        AsyncEventInterface $asyncEvent,
         bool $success,
         array $responseData
     ): NotifierResult {
         /** @var NotifierResult $result */
         $result = $this->notifierResultFactory->create();
-        $result->setSuccess($success);
         $result->setSubscriptionId((int) $asyncEvent->getSubscriptionId());
+        $result->setIsSuccessful($success);
+        // Only genuine failures (unexpected exceptions) re-enter the async-events
+        // retry/backoff path; intentional skips are successful and terminal.
+        $result->setIsRetryable(!$success);
         $result->setResponseData((string) json_encode($responseData));
 
         return $result;

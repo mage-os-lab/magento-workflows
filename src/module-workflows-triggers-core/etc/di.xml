@@ -4,9 +4,9 @@
  * DI wiring for the trigger layer.
  *
  * Notifier pool: registers WorkflowNotifier under the name "workflow" in the
- * async-events NotifierFactory (argument name 'notifiers' — Aligent lineage;
- * if your async-events version names the pool argument differently, adjust
- * the <argument name> below).
+ * async-events NotifierFactory. The pool argument is `notifierClasses` and its
+ * entries are resolved to NotifierInterface instances (xsi:type="object"),
+ * verified against mage-os/mageos-async-events >= 4.0.
  *
  * No wiring is required for the core module's workflow_triggers.xml reader
  * quartet (MageOS\Workflows\Model\Trigger\Config\*): Reader, SchemaLocator
@@ -19,7 +19,7 @@
     <!-- Register the workflow notifier in the async-events notifier pool -->
     <type name="MageOS\AsyncEvents\Service\AsyncEvent\NotifierFactory">
         <arguments>
-            <argument name="notifiers" xsi:type="array">
+            <argument name="notifierClasses" xsi:type="array">
                 <item name="workflow" xsi:type="object">MageOS\WorkflowsTriggersCore\Model\WorkflowNotifier</item>
             </argument>
         </arguments>

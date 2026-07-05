@@ -128,22 +128,15 @@ jobs:
         working-directory: ${{ steps.setup-magento.outputs.path }}
         run: vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist --testsuite MageOS_Workflows_Unit
 
-  # NON-BLOCKING (continue-on-error). setup:di:compile loads every class against
-  # real Magento on PHP 8.5. The mechanical PHP-8.5/real-Magento defects it found
-  # are fixed (AbstractModel::setEntityId param widening; the DecisionPanel
-  # readonly-$formKey collision). The remaining blocker is orthogonal to PHP 8.5:
-  # MageOS_WorkflowsTriggersCore's WorkflowNotifier implements the real
-  # mageos-async-events NotifierInterface with an ASSUMED signature —
-  # notify(AsyncEventDisplayInterface, array): NotifierResult — while the real
-  # contract is notify(AsyncEventInterface, CloudEventImmutable): ResultInterface.
-  # The class documents these as unverified assumptions, and README flags async-
-  # events class fidelity as the pre-GA live-install gate. Correcting it is a real
-  # behavior change against the dependency's API (best verified on a live install),
-  # so this job reports but does not block until that adaptation lands.
+  # BLOCKING. setup:di:compile loads every class against real Magento on PHP 8.5.
+  # All defects it surfaced are fixed: AbstractModel::setEntityId param widening,
+  # the DecisionPanel readonly-$formKey collision, and WorkflowNotifier — now
+  # implementing the real mageos-async-events contract
+  # notify(AsyncEventInterface, CloudEventImmutable): NotifierResult (with the
+  # notifierClasses DI pool wiring corrected).
   compile-extension:
     runs-on: ${{ matrix.os }}
     needs: compute_matrix
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
