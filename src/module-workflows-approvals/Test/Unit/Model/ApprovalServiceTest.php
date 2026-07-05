@@ -210,6 +210,32 @@ class ApprovalServiceTest extends TestCase
         $this->assertSame([], $this->publisher->published);
     }
 
+    public function testStaleTaskOnLaterParkIsRejectedAndRolledBack(): void
+    {
+        // A best-effort expireTask miss left this task open while its execution
+        // routed on_timeout and parked again at a LATER step. The execution IS
+        // waiting — just not on this gate — so the current_step-scoped claim
+        // must miss: the decision may not hijack a park it does not own.
+        $id = $this->seed();
+        $this->connection->executions[self::EXEC_ID]['current_step'] = 'later_wait';
+
+        try {
+            $this->service()->decide(self::UUID, 'approved', 'note', [], 'admin', '5');
+            $this->fail('Expected execution-gone rejection for the stale task');
+        } catch (ApprovalDecisionException $e) {
+            $this->assertSame(ApprovalDecisionException::CODE_EXECUTION_GONE, $e->getApprovalCode());
+        }
+
+        // Task claim rolled back so the reconciliation sweep can expire it.
+        $row = $this->connection->approvals[$id];
+        $this->assertSame(ApprovalInterface::STATUS_OPEN, $row['status']);
+        $this->assertNull($row[ApprovalInterface::DECIDED_BY_TYPE]);
+        // The later park is untouched: still waiting, no result write, no resume.
+        $this->assertSame('waiting', $this->connection->executions[self::EXEC_ID]['status']);
+        $this->assertSame([], $this->connection->stepResults);
+        $this->assertSame([], $this->publisher->published);
+    }
+
     public function testPublishFailureRollsBackBothClaimsAndClearsResult(): void
     {
         $id = $this->seed();

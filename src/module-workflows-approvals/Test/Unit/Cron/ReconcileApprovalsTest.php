@@ -12,9 +12,10 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The reconciliation backstop (§4): open tasks orphan when their execution is
- * terminal and expire when their execution is no longer waiting on the gate;
- * a task whose execution still waits on its step, and any already-decided task,
- * are left untouched.
+ * terminal and expire only when the live execution's current_step moved OFF the
+ * gate. A task whose execution's current_step is still the gate — parked,
+ * being parked, or being resumed — and any already-decided task are left
+ * untouched.
  */
 class ReconcileApprovalsTest extends TestCase
 {
@@ -45,6 +46,26 @@ class ReconcileApprovalsTest extends TestCase
         $this->assertSame(ApprovalInterface::STATUS_OPEN, $connection->approvals[$c]['status']);
         $this->assertSame(ApprovalInterface::STATUS_EXPIRED, $connection->approvals[$d]['status']);
         $this->assertSame(ApprovalInterface::STATUS_APPROVED, $connection->approvals[$e]['status']);
+    }
+
+    public function testParkInProgressGateIsNeverExpired(): void
+    {
+        // Executor::walk persists current_step=<gate> with status 'running'
+        // BEFORE runApprovalStep parks (state-before-side-effect), and
+        // createTask runs before the waiting-save — so an open task can
+        // legitimately coexist with a running execution whose current_step is
+        // the gate. A sweep firing in that window must not expire it.
+        $connection = new InMemoryConnection();
+        $connection->seedExecution(['execution_id' => 9, 'status' => 'running', 'current_step' => 'gate']);
+        $id = $connection->seedApproval([
+            'execution_id' => 9,
+            'step_key' => 'gate',
+            'status' => ApprovalInterface::STATUS_OPEN,
+        ]);
+
+        (new ReconcileApprovals(new FakeResourceConnection($connection), new NullLogger()))->execute();
+
+        $this->assertSame(ApprovalInterface::STATUS_OPEN, $connection->approvals[$id]['status']);
     }
 
     public function testNoOpenTasksIsANoOp(): void

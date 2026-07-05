@@ -28,8 +28,13 @@ class InMemoryConnection
     /** @var array<int, string|null> execution_id => parked step result */
     public array $stepResults = [];
 
-    /** Rows affected by the waiting -> pending execution claim (0 = sweeper won). */
-    public int $executionClaimResult = 1;
+    /**
+     * Forced result for the waiting -> pending execution claim: null (default)
+     * evaluates the claim's WHERE predicates against the seeded row (so
+     * status/current_step scoping is really exercised); 0 simulates the sweeper
+     * winning the race regardless of the row.
+     */
+    public ?int $executionClaimResult = null;
 
     /** @var array<int, array{table: string, bind: array, where: array}> */
     public array $updates = [];
@@ -90,10 +95,18 @@ class InMemoryConnection
             $newStatus = $bind['status'] ?? null;
             $executionId = $this->intValue($where, 'execution_id');
             if ($newStatus === 'pending') {
-                if ($this->executionClaimResult >= 1 && $executionId !== null && isset($this->executions[$executionId])) {
-                    $this->executions[$executionId]['status'] = 'pending';
+                if ($this->executionClaimResult !== null) {
+                    if ($this->executionClaimResult >= 1 && $executionId !== null && isset($this->executions[$executionId])) {
+                        $this->executions[$executionId]['status'] = 'pending';
+                    }
+                    return $this->executionClaimResult;
                 }
-                return $this->executionClaimResult;
+                $row = $executionId !== null ? ($this->executions[$executionId] ?? null) : null;
+                if ($row !== null && $this->matches($row, $this->whereList($where))) {
+                    $this->executions[$executionId]['status'] = 'pending';
+                    return 1;
+                }
+                return 0;
             }
             if ($newStatus === 'waiting') {
                 if ($executionId !== null && isset($this->executions[$executionId])) {
