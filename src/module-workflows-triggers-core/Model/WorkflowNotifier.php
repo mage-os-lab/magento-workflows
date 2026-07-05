@@ -5,9 +5,9 @@ namespace MageOS\WorkflowsTriggersCore\Model;
 
 use CloudEvents\V1\CloudEventImmutable;
 use MageOS\AsyncEvents\Api\Data\AsyncEventInterface;
+use MageOS\AsyncEvents\Helper\NotifierResult;
+use MageOS\AsyncEvents\Helper\NotifierResultFactory;
 use MageOS\AsyncEvents\Service\AsyncEvent\NotifierInterface;
-use MageOS\AsyncEvents\Service\AsyncEvent\NotifierResult;
-use MageOS\AsyncEvents\Service\AsyncEvent\NotifierResultFactory;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\DispatcherInterface;
