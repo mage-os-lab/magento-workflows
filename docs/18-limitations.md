@@ -11,6 +11,15 @@ backlog commitment. Many entries trace to explicit v1 non-goals ([01 — Overvie
 Plan](13-delivery-plan.md), [16 — Capability Roadmap](16-capability-roadmap.md)); those
 are noted so this doubles as a gap-to-roadmap cross-reference.
 
+> **Revised July 2026.** A capability wave since the first draft — the wave 1–5 roadmap
+> ([16](16-capability-roadmap.md)) plus the follow-on discovery-track build
+> ([docs/discovery/](discovery/README.md)) — closed a number of the flows originally listed
+> here: branching (`switch` + graph validation), entity cross-referencing, dry-run,
+> trigger-level fan-out, batch aggregation, the template gallery, and the visual canvas.
+> Those are collected under [Recently closed](#recently-closed-july-2026-capability-wave)
+> and removed from the per-section gap lists below, which now describe only what remains
+> genuinely unsupported.
+
 ## The five structural through-lines
 
 Most individual gaps below trace back to one of these root constraints. Read these
@@ -19,21 +28,73 @@ first; the per-flow "why" clauses reference them.
 1. **Async, post-event — never synchronous.** The engine reacts *after* a Magento event
    fires. It can't sit inline in a live storefront session or checkout. → kills the
    entire class of real-time / checkout / storefront decisioning.
-2. **No loops, no fan-out, no sub-workflows.** The executor walks a single
-   `next`/`branch` graph per execution ([08 — Execution Model](08-execution-model.md));
-   iteration over collections is an explicit non-goal. → kills per-item, per-collection,
-   and reusable-journey patterns.
+2. **No loops, no fork-join, no sub-workflows — the executor walks one graph.** Each
+   execution walks a single `next`/`branch`/`switch` graph ([08 — Execution
+   Model](08-execution-model.md)); iteration over collections is an explicit non-goal.
+   *Dispatch-layer* fan-out (one trigger → N single-entity executions) and batch
+   aggregation (N events → one digest execution) landed in July 2026 and sit in front of
+   the executor, but the executor itself still never loops, forks and joins, or invokes
+   another workflow. → still kills in-graph per-item iteration, parallel/join, and
+   reusable sub-routines.
 3. **Four condition roots + `async_events.xml` event coverage.** Roots are
    `sales_order`, `customer`, `quote`, `catalog_product`; triggerable events equal what
-   is declared in async-events XML. → anything outside those (wishlist, RMA, reward
-   points, CMS, subscriptions) is invisible.
+   is declared in async-events XML. The July 2026 relation registry lets a condition
+   cross-reference a *registered* related entity (e.g. a guest order → the customer account
+   matching its email), but the trigger and root set is unchanged. → anything outside those
+   roots (wishlist, RMA, reward points, CMS, subscriptions) is still invisible.
 4. **Restricted variable resolver.** Dot-path access plus a fixed formatter whitelist
-   (`upper/lower/trim/number/date/default`), no expressions ([07 — Actions §Variable
+   (`upper/lower/trim/number/date/default`, plus `count/pluck/join/table/json` for
+   collections in batch digests), no expressions ([07 — Actions §Variable
    resolution](07-actions.md#variable-resolution)). → no computed values; anything
    needing math or conditional content must be pushed to an external webhook.
 5. **Webhook-only, outbound-only egress.** The single external integration surface is
    the sync-POST webhook action; triggers are Magento events / schedule / manual. → no
    inbound triggers, no async callbacks, no non-HTTP transports.
+
+---
+
+## Recently closed (July 2026 capability wave)
+
+Flows this document originally listed as unsupported that have since been implemented — by
+the wave 1–5 roadmap ([16](16-capability-roadmap.md)) and the follow-on discovery-track
+build ([docs/discovery/](discovery/README.md)). They ship behind default-off flags where
+they add runtime behavior and are shim-tested; live-install verification remains the GA gate
+([16 §Still deferred](16-capability-roadmap.md#still-deferred-unchanged)). The gap lists
+below no longer include them.
+
+- **Multi-way branching** — a `switch` step (schema 3, first-match-wins with a `default`
+  fall-through) plus save-time graph validation (cycle / unreachable-step / dead-edge).
+  [01 — Branching](discovery/implementation/01-branching.md). *Parallel fork-join is still
+  not supported.*
+- **Entity cross-referencing** — a DI-registered relation registry and a generic
+  EXISTS / NOT-EXISTS related-entity condition (`order.customer`, `order.customer_by_email`,
+  `order.orders_by_email`, `quote.customer_by_email`, `customer.open_orders`). Flagship: a
+  guest order whose email has **no** customer account → send a registration invite.
+  [02 — Cross-referencing](discovery/implementation/02-entity-cross-referencing.md).
+- **Dry-run** — a synchronous, side-effect-free "what would this do to entity X now," over
+  the production evaluator/resolver, via CLI (`--dry-run`), REST
+  (`POST /V1/workflows/dry-run`), and an admin trace panel.
+  [03 — Dry-run](discovery/implementation/03-dry-run.md).
+- **Fan-out** — one trigger → N ordinary single-entity executions over a declared relation
+  (e.g. every open order of a customer), capped and default-off, each child carrying the
+  full guard stack. *Trigger-level only — no mid-flow fan-out step and no join/fan-in.*
+  [04 — Fan-out](discovery/implementation/04-fan-out.md).
+- **Batch aggregation** — N events → one digest execution (scheduler collected-mode and
+  event-window accumulator), with `count/pluck/join/table/json` collection formatters —
+  "email me everything that stocked out today."
+  [05 — Batch aggregation](discovery/implementation/05-batch-aggregation.md).
+- **Template gallery** — an admin gallery + CLI over 14 bundled recipes, installed
+  (parameterized) in shadow/disabled mode on an install → dry-run → enable path. *A signed
+  remote feed stays deferred.* [06 — Template gallery](discovery/implementation/06-template-gallery.md).
+- **Canvas** — an optional React-Flow package: a read-only viewer with execution and
+  dry-run overlays, plus a full drag-and-drop editor (palette, connect, config,
+  undo/redo, validate + save). [07 — Canvas](discovery/implementation/07-canvas.md).
+- **Workflows on native entity grids** — an addon surfacing per-entity workflow counts and
+  view/create deep links on the Orders / Customers / Products grids
+  ([issue #5](https://github.com/rhoerr/magento-workflows/issues/5)).
+  [entity-grid-visibility](discovery/entity-grid-visibility.md).
+
+What remains genuinely unsupported is below.
 
 ---
 
@@ -55,13 +116,11 @@ first; the per-flow "why" clauses reference them.
 
 *Root cause: through-line 2 (single-graph walk, no iteration) + per-event execution scope.*
 
-- **Loop over order line items and act per item** — iterators over collections are an explicit v1 non-goal.
-- **Fan out from one trigger to N related entities** (e.g., act on every open order of a customer) — no collection fan-out.
-- **Run steps in parallel and join** — the graph is a linear walk with branches; no parallel/fork-join.
+- **Loop over order line items and act per item** — iterators over collections are an explicit v1 non-goal. (Trigger-level [fan-out](#recently-closed-july-2026-capability-wave) dispatches one execution *per related entity*, but there is still no in-graph iteration over an entity's own collection.)
+- **Run steps in parallel and join** — the graph is a linear walk with branches (`branch`/`switch`); no parallel/fork-join. (Fan-out dispatches N independent executions but never joins their results.)
 - **Reuse one workflow as a sub-routine of another** — there's no sub-workflow/invoke primitive.
 - **Maintain a long-lived per-customer journey with a goal/exit condition** across many events — executions are per-event; there's no persistent multi-trigger journey state (the AutomateWoo/Klaviyo model).
 - **Wait until a customer does X *or* Y across different entities** — `wait` parks on one named event for the *same* entity only ([04 — Definition Format](04-definition-format.md)).
-- **Batch an event storm into one action** ("email me everything that stocked out today") — aggregate/batch triggers are deferred to Phase 2 ([07 — Actions §Bulk-operation suppression](07-actions.md#loop-prevention-storms-and-circuit-breaking)); v1 is strictly per-entity.
 - **Global frequency capping across all workflows** — debounce is per `(workflow, entity)`; there's no cross-workflow comms governor, so a customer can be hit by five workflows at once.
 - **Continue only after a vendor's async callback returns** — `wait` resumes on Magento events, never on an inbound external call.
 
@@ -101,10 +160,10 @@ first; the per-flow "why" clauses reference them.
 
 - **Arithmetic in a value** ("total × 0.1", "days until expiry") — no math or expression language.
 - **String transforms beyond the whitelist** (regex, split, concat logic) — not available in interpolation.
-- **Conditional text inside a message** ("if VIP say X else Y") — no in-template conditionals; must be modeled as separate branch steps.
+- **Conditional text inside a message** ("if VIP say X else Y") — no in-template conditionals; must be modeled as separate `branch`/`switch` steps.
 - **Compare or normalize across currencies** — totals are in store currency with no conversion, so cross-currency thresholds are apples-to-oranges.
-- **Condition on aggregate catalog facts** ("if category X has < 5 in-stock SKUs") — conditions evaluate one entity; the only cross-entity aggregates are the fixed customer order-history set ([06 — Conditions](06-conditions.md)).
-- **Use external data directly in a trigger condition** — external data can only enter mid-flow via a webhook's captured response, not at trigger time.
+- **Condition on aggregate catalog facts** ("if category X has < 5 in-stock SKUs") — conditions evaluate one entity; the only cross-entity reach is the fixed customer order-history aggregates and the [relation registry](#recently-closed-july-2026-capability-wave)'s registered EXISTS/NOT-EXISTS lookups, not arbitrary aggregate queries ([06 — Conditions](06-conditions.md)).
+- **Use *external* data directly in a trigger condition** — external data can only enter mid-flow via a webhook's captured response, not at trigger time. (A related *Magento* entity's data can now enter a trigger condition via the relation registry; external data still cannot.)
 
 ## External integration
 
@@ -132,22 +191,24 @@ first; the per-flow "why" clauses reference them.
 - **Honor a central multi-channel consent/preference center** — only newsletter subscribe/unsubscribe is modeled.
 - **Predictive/ML segmentation** (churn, propensity, next-best-offer) — conditions are deterministic rules; scoring only exists if you call an external service via webhook.
 - **Trigger on trends/time-series** ("revenue down 15% WoW") — conditions match one entity's current state, not store-wide trends over time.
-- **Identity resolution / merging guest orders into a profile** — no identity graph; customer aggregates key off existing customer records only.
+- **Identity resolution / merging guest orders into a profile** — the [relation registry](#recently-closed-july-2026-capability-wave) can now *detect* that a guest order's email matches an existing customer (and count that email's prior orders), but there is still no identity graph that *merges* guest activity into a unified profile; customer aggregates key off existing customer records only.
 
 ## Deferred platform & B2B capabilities
 
-*Root cause: named deferred scope ([13](13-delivery-plan.md), [16](16-capability-roadmap.md), [12](12-b2b.md)).*
+*Root cause: named deferred scope ([13](13-delivery-plan.md), [12](12-b2b.md)). The canvas,
+template gallery, and dry-run UI listed here originally have since shipped — see
+[Recently closed](#recently-closed-july-2026-capability-wave).*
 
-- **Anything in the B2B pack** (PO approvals, negotiable-quote routing, company credit, requisition lists) — the pack is deferred, not shipped.
-- **A drag-and-drop canvas** for non-technical authors of complex branching — v1 is forms + a JSON editor; the canvas is deferred.
-- **A template gallery / one-click recipe install** — deferred to Phase 3.
-- **A safe interactive dry-run/preview UI** — shadow mode exists at the engine level, but the dry-run *UI* is deferred.
+- **Anything in the B2B pack** (PO approvals, negotiable-quote routing, company credit, requisition lists) — the pack is deferred, not shipped. No `module-workflows-actions-b2b` / `-triggers-b2b` exists; the only B2B artifact is a single *edition-gated* net-terms-reminder template that runs on generic `sales.invoice.created` + `notify.email` (its card greys out on Community).
+- **A signed remote template feed** — the [template gallery](#recently-closed-july-2026-capability-wave) ships a bundled pack only; a `RemoteTemplateSource` with signature verification stays deferred behind the `TemplateSourceInterface` seam.
+- **A packaged connectors program / connector marketplace** — a custom action is still one class plus a `di.xml` entry (the connector SDK); there is no curated connectors program.
 
 ---
 
 ## How to read this against the roadmap
 
-- **Explicit non-goals** (storefront, loops/iterators, approval-chain UI, Adobe I/O interop) are deliberate scope boundaries, not oversights — revisiting them is a strategy decision, not a bug fix.
-- **Deferred scope** (B2B pack, canvas, template gallery, dry-run UI, aggregate triggers) is already on the roadmap; those flows unlock as that scope lands.
-- **Structural limits** (through-lines 1–5) are the load-bearing ones: each blocks a whole *class* of flows, so the highest-leverage roadmap questions are about those, not any single bullet.
+- **Explicit non-goals** (storefront, loops/iterators, fork-join, approval-chain UI, Adobe I/O interop) are deliberate scope boundaries, not oversights — revisiting them is a strategy decision, not a bug fix.
+- **Recently landed** (branching/`switch`, cross-referencing, fan-out, batch aggregation, dry-run, template gallery, canvas — see [Recently closed](#recently-closed-july-2026-capability-wave)) closed a swath of the original list; they are engine-complete behind default-off flags, with live-install verification the remaining GA gate ([16](16-capability-roadmap.md)).
+- **Still deferred** (the B2B pack, a signed remote template feed, a connectors program) is on the roadmap; those flows unlock as that scope lands.
+- **Structural limits** (through-lines 1–5) are the load-bearing ones: each blocks a whole *class* of flows, so the highest-leverage roadmap questions are about those, not any single bullet. The July 2026 wave *relaxed* two of them at their seams — cross-referencing widened root #3's reach to registered relations, and dispatch-layer fan-out/aggregation worked around #2 without touching the single-graph executor — rather than removing them.
 </content>

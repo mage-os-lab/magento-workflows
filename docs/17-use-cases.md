@@ -3,11 +3,16 @@
 A catalog of 100+ high-level automations the Mage-OS Workflow Engine makes possible.
 Each is a merchant- or agency-level outcome expressed in one line; all are composed
 from the engine's **trigger → condition → action** primitives (event/schedule/manual
-triggers, the four-root condition engine with EAV auto-discovery, the core action pool,
-delays/waits/branches, webhooks, secrets, and workflow-as-code).
+triggers, the four-root condition engine with EAV auto-discovery and related-entity
+cross-referencing, the core action pool, delays/waits and `branch`/`switch` multi-way
+branching, trigger-level fan-out and batch-digest aggregation, webhooks, secrets, dry-run,
+a bundled template gallery, an optional drag-and-drop canvas, and workflow-as-code).
 
 These are illustrative, not an exhaustive list — the DI-registered action pool and open
-definition format mean the combinations are effectively unbounded.
+definition format mean the combinations are effectively unbounded. The July 2026 capability
+wave (branching, cross-referencing, fan-out, batch aggregation, dry-run, template gallery,
+canvas) is reflected throughout; the flip side — flows the engine still does *not* support —
+is catalogued in [18 — Known Boundaries](18-limitations.md).
 
 ## Orders & fulfillment
 
@@ -21,6 +26,7 @@ definition format mean the combinations are effectively unbounded.
 - Auto-unhold orders once a captured fraud-score webhook returns a low-risk result.
 - Add a gift-wrap prep comment when the order contains any SKU in the "Gift" category.
 - Escalate any order that has sat in "Processing" for more than 5 business days.
+- Fan out from one customer event to every one of that customer's open orders and act on each (capped fan-out).
 
 ## Fraud, risk & payments
 
@@ -47,6 +53,8 @@ definition format mean the combinations are effectively unbounded.
 - Auto-subscribe customers to the newsletter after their second completed order.
 - Build a "New Parent" segment when a customer buys from the Baby category twice.
 - Re-engage lapsed VIPs with a personalized offer the day they cross 90 days inactive.
+- Invite a guest checkout to register when their email has no account yet, or nudge them to log in when it does (entity cross-referencing).
+- Spot a guest placing their third order under the same email and route them into an account-creation offer (cross-referenced order history).
 
 ## Cart abandonment & recovery
 
@@ -172,6 +180,10 @@ definition format mean the combinations are effectively unbounded.
 - Git-version workflow definitions and deploy them through CI without SSH access.
 - Manage workflow CRUD entirely through the REST API from a deployment pipeline.
 - Roll out a new automation in shadow mode first, reviewing simulated actions before going live.
+- Dry-run a definition against a real order — from the CLI, the REST API, or the admin trace panel — and read step-by-step what it would do before enabling it.
+- Design complex multi-way branching visually on the optional drag-and-drop canvas, then export the very same JSON definition.
+- Install a vetted recipe from the built-in template gallery — parameterized, in shadow mode — then dry-run and enable it.
+- Surface which workflows already run on the Orders/Customers/Products grids, right where merchants work, via the entity-grid visibility addon.
 - Re-authorize imported definitions against the importing admin's ACL to enforce least privilege.
 - Reuse one definition across websites, letting each store's timezone and scope resolve locally.
 - Package a custom action as one class plus a `di.xml` entry — the connector SDK, no new plumbing.
