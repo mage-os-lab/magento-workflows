@@ -43,6 +43,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Capture a payment-risk vendor's response and branch the workflow on its returned verdict.
 - Alert finance when a single customer's lifetime refunds cross a defined threshold.
 - Flag orders using a payment method newly seen for an otherwise long-standing customer.
+- Hold a high-risk order and park it for a fraud-team decision: on approve unhold and invoice, on reject cancel and notify, on 4-hour silence escalate to a second reviewer (`approval` gate).
 
 ## Customer lifecycle & segmentation
 
@@ -97,6 +98,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Auto-apply a loyalty-tier price attribute when a customer is promoted to a VIP group.
 - Schedule a "release at 09:00 store time" price drop the morning of a product launch.
 - End a promotion and restore regular pricing after exactly 7 business days.
+- Detect a price drop steeper than 30% and revert it unless a merchandiser confirms within 24 hours (`approval` gate with a required timeout).
 
 ## Marketing, reviews & post-purchase
 

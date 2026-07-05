@@ -176,7 +176,7 @@ What remains genuinely unsupported is below.
 
 *Root cause: through-line 5 (webhook-only, outbound-only).*
 
-- **Let an external system start a workflow by calling in** — there's no inbound trigger endpoint; the REST API covers CRUD and execution *reads*, not execution *starts*.
+- **Let an external system start a workflow by calling in** — there's no inbound trigger endpoint; the REST API covers CRUD and execution *reads*, not execution *starts*. (An external tool *can* now **resume** an execution already parked on an [approval gate](#recently-closed-july-2026-capability-wave), by posting a decision to the authenticated `/V1/workflow-approvals/:uuid/decision` endpoint — but that advances an in-flight execution, it does not *start* a new one.)
 - **Integrate over anything but HTTP POST** — no GET/PUT, no SOAP/GraphQL client, no SFTP/file, no direct DB or queue egress.
 - **Consume a message off a queue/topic to trigger work** — no arbitrary pub/sub consumer.
 - **Two-way sync with conflict resolution** against an external system — the engine is one-directional fire-and-capture.
