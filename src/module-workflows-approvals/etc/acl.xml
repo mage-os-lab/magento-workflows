@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <!-- Grafts two resources into the existing core tree (declared
+                     in module-workflows-admin-ui acl.xml). Deciding is
+                     deliberately separate from ::manage — the people who approve
+                     refunds are usually not the people who author workflows (§5,
+                     §10.4). -->
+                <resource id="MageOS_Workflows::workflows">
+                    <resource id="MageOS_WorkflowsApprovals::approvals_view"
+                              title="View Approval Tasks" sortOrder="47"/>
+                    <resource id="MageOS_WorkflowsApprovals::approvals_decide"
+                              title="Decide Approval Tasks" sortOrder="48"/>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

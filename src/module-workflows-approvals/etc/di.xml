@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Data + service contracts -->
+    <preference for="MageOS\WorkflowsApprovals\Api\Data\ApprovalInterface"
+                type="MageOS\WorkflowsApprovals\Model\Approval"/>
+    <preference for="MageOS\WorkflowsApprovals\Api\Data\ApprovalSearchResultsInterface"
+                type="MageOS\WorkflowsApprovals\Model\ApprovalSearchResults"/>
+    <preference for="MageOS\WorkflowsApprovals\Api\Data\ApprovalDecisionResultInterface"
+                type="MageOS\WorkflowsApprovals\Model\ApprovalDecisionResult"/>
+    <preference for="MageOS\WorkflowsApprovals\Api\ApprovalRepositoryInterface"
+                type="MageOS\WorkflowsApprovals\Model\ApprovalRepository"/>
+    <preference for="MageOS\WorkflowsApprovals\Api\ApprovalManagementInterface"
+                type="MageOS\WorkflowsApprovals\Model\ApprovalManagement"/>
+
+    <!-- Role-enforcement seam (§5): deny-safe until Stage 3 / webapi binds the
+         real Magento authorization. A role-gated task is undecidable rather
+         than silently decidable while no real check is wired. -->
+    <preference for="MageOS\WorkflowsApprovals\Api\ApprovalAuthorizationInterface"
+                type="MageOS\WorkflowsApprovals\Model\Authorization\DenyRoleAuthorization"/>
+
+    <!-- The core task seam (docs/discovery/approval-gate.md §7): binding the
+         implementation here is what turns approval steps from unauthorable
+         (save-time APPROVAL_MODULE_MISSING) into a live feature. -->
+    <preference for="MageOS\Workflows\Api\ApprovalTaskManagerInterface"
+                type="MageOS\WorkflowsApprovals\Model\ApprovalTaskManager"/>
+
+    <!--
+        The core seam is an OPTIONAL (nullable) constructor argument on every
+        consumer (Executor, ResumeConsumer, ApprovalCheck) so core installs
+        without this addon. A <preference> alone does NOT fill a nullable
+        optional argument that defaults to null — the object manager leaves the
+        default in place. Each consumer must be wired explicitly (Stage 1
+        finding) or the addon would install and still behave as if absent.
+    -->
+    <type name="MageOS\Workflows\Model\Engine\Executor">
+        <arguments>
+            <argument name="approvalTaskManager" xsi:type="object">MageOS\WorkflowsApprovals\Model\ApprovalTaskManager</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Model\Queue\ResumeConsumer">
+        <arguments>
+            <argument name="approvalTaskManager" xsi:type="object">MageOS\WorkflowsApprovals\Model\ApprovalTaskManager</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Model\Validation\Check\ApprovalCheck">
+        <arguments>
+            <argument name="approvalTaskManager" xsi:type="object">MageOS\WorkflowsApprovals\Model\ApprovalTaskManager</argument>
+        </arguments>
+    </type>
+</config>

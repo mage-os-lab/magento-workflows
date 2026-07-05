@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Approval-task reconciliation (docs/discovery/approval-gate.md §4):
+             marks orphaned/expired any open task whose execution has moved on.
+             Rides the same one-minute cadence as the core resume sweeper.
+             Retention pruning is NOT here — the execution_id FK cascade removes
+             task rows when PruneExecutions deletes their execution. -->
+        <job name="mageos_workflows_approval_reconcile"
+             instance="MageOS\WorkflowsApprovals\Cron\ReconcileApprovals"
+             method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
+    </group>
+</config>

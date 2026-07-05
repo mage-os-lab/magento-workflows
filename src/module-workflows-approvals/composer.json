@@ -1,0 +1,18 @@
+{
+    "name": "mage-os/workflows-approvals",
+    "description": "Mage-OS Workflow Engine: approval / decision gate — task record, decision service, and REST API over the schema-4 approval step",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0",
+        "magento/framework": ">=103.0.4",
+        "magento/module-authorization": "*",
+        "mage-os/workflows": "*"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "MageOS\\WorkflowsApprovals\\": ""
+        }
+    }
+}

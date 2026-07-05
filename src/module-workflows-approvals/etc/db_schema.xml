@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <!--
+        Approval task record (docs/discovery/approval-gate.md §3). One row per
+        parked approval gate: the API/deep-link handle (uuid), the denormalized
+        entity refs the grid filters on, the interpolated park-time prompt
+        snapshot, and the decision audit trail.
+
+        Retention: the execution_id FK is onDelete CASCADE, so task rows are
+        pruned together with their execution by the core retention clock
+        (MageOS\Workflows\Cron\PruneExecutions deletes the execution row; the
+        cascade removes the task) — no separate task-prune cron is needed. Task
+        rows carry the same PII class as execution context rows
+        (docs/15-operations.md §Retention), and title/instructions are
+        interpolated snapshots that must be treated as PII-bearing.
+    -->
+    <table name="mageos_workflow_approval" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Approval Tasks (human-decision gate records)">
+        <column xsi:type="bigint" name="approval_id" unsigned="true" nullable="false" identity="true"
+                comment="Approval Task ID (internal PK; never exposed — the API uses uuid)"/>
+        <column xsi:type="varchar" name="uuid" length="36" nullable="false"
+                comment="Approval Task UUID (the API/deep-link handle exposed as steps.&lt;key&gt;.task_uuid)"/>
+        <column xsi:type="bigint" name="execution_id" unsigned="true" nullable="false"
+                comment="Parked Execution ID"/>
+        <column xsi:type="varchar" name="step_key" length="64" nullable="false"
+                comment="Approval Step Key Within The Execution"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false"
+                comment="Workflow ID (denormalized for grid filtering/linking)"/>
+        <column xsi:type="varchar" name="entity_type" length="64" nullable="false"
+                comment="Subject Entity Type (denormalized from the execution context workflow block)"/>
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false"
+                comment="Subject Entity ID (denormalized for grid filtering/linking)"/>
+        <column xsi:type="text" name="title" nullable="false"
+                comment="Request Label (interpolated at park time — PII-bearing snapshot)"/>
+        <column xsi:type="text" name="instructions" nullable="true"
+                comment="Decider Instructions (interpolated at park time — PII-bearing snapshot)"/>
+        <column xsi:type="varchar" name="assignee_role" length="128" nullable="true"
+                comment="Role Code The Decision Requires (nullable; enforced at decide time when set)"/>
+        <column xsi:type="varchar" name="status" length="16" nullable="false" default="open"
+                comment="Status (open|approved|rejected|expired|orphaned)"/>
+        <column xsi:type="timestamp" name="due_at" on_update="false" nullable="true"
+                comment="Due At (= the step resume_at; the SLA clock)"/>
+        <column xsi:type="varchar" name="decided_by_type" length="16" nullable="true"
+                comment="Decider Type (admin|integration); null until decided"/>
+        <column xsi:type="varchar" name="decided_by_id" length="128" nullable="true"
+                comment="Decider Actor ID; null until decided"/>
+        <column xsi:type="text" name="decision_note" nullable="true" comment="Decision Note Text"/>
+        <column xsi:type="text" name="decision_payload" nullable="true"
+                comment="Validated Decision Payload JSON (§5)"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="timestamp" name="decided_at" on_update="false" nullable="true"
+                comment="Decided At (when a decision claimed the task)"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="approval_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_APPROVAL_UUID">
+            <column name="uuid"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_APPROVAL_EXECUTION_ID_STEP_KEY">
+            <column name="execution_id"/>
+            <column name="step_key"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_APPROVAL_EXECUTION_ID"
+                    table="mageos_workflow_approval" column="execution_id"
+                    referenceTable="mageos_workflow_execution" referenceColumn="execution_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_APPROVAL_WORKFLOW_ID" indexType="btree">
+            <column name="workflow_id"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_APPROVAL_ENTITY_TYPE_ENTITY_ID" indexType="btree">
+            <column name="entity_type"/>
+            <column name="entity_id"/>
+        </index>
+        <!-- The inbox query: open tasks ordered by SLA (status=open filter + due_at sort) -->
+        <index referenceId="MAGEOS_WORKFLOW_APPROVAL_STATUS_DUE_AT" indexType="btree">
+            <column name="status"/>
+            <column name="due_at"/>
+        </index>
+        <!-- assignee_role inbox filter (§5) -->
+        <index referenceId="MAGEOS_WORKFLOW_APPROVAL_ASSIGNEE_ROLE" indexType="btree">
+            <column name="assignee_role"/>
+        </index>
+    </table>
+</schema>

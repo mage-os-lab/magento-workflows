@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <!-- Approvals inbox (§5): searchCriteria list for external tools; filter
+         status=open, assignee_role, due_at. -->
+    <route url="/V1/workflow-approvals" method="GET">
+        <service class="MageOS\WorkflowsApprovals\Api\ApprovalRepositoryInterface" method="getList"/>
+        <resources>
+            <resource ref="MageOS_WorkflowsApprovals::approvals_view"/>
+        </resources>
+    </route>
+    <!-- One task by its uuid handle (never the int PK). -->
+    <route url="/V1/workflow-approvals/:uuid" method="GET">
+        <service class="MageOS\WorkflowsApprovals\Api\ApprovalRepositoryInterface" method="getByUuid"/>
+        <resources>
+            <resource ref="MageOS_WorkflowsApprovals::approvals_view"/>
+        </resources>
+    </route>
+    <!-- Post a decision + payload. Gated by ::approvals_decide, which is NOT
+         implied by ::manage — deciding and authoring are separate grants (§5). -->
+    <route url="/V1/workflow-approvals/:uuid/decision" method="POST">
+        <service class="MageOS\WorkflowsApprovals\Api\ApprovalManagementInterface" method="decide"/>
+        <resources>
+            <resource ref="MageOS_WorkflowsApprovals::approvals_decide"/>
+        </resources>
+    </route>
+</routes>
