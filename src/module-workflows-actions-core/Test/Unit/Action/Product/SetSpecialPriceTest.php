@@ -147,7 +147,10 @@ class SetSpecialPriceTest extends TestCase
     private function createProductActionStub(): object
     {
         return new class extends \Magento\Catalog\Model\Product\Action {
-            public function updateAttributes(array $productIds, array $attributes, int $storeId): void { throw new \RuntimeException('Should not be called'); }
+            // Bypass AbstractModel's DI constructor; widen updateAttributes to the
+            // untyped parent signature (real: updateAttributes($productIds, $attrData, $storeId)).
+            public function __construct() {}
+            public function updateAttributes($productIds, $attributes, $storeId) { throw new \RuntimeException('Should not be called'); }
         };
     }
 }
