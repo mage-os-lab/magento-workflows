@@ -7,8 +7,8 @@ use Magento\Backend\Block\Template;
 use Magento\Backend\Block\Template\Context;
 use Magento\Framework\AuthorizationInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Module\Manager as ModuleManager;
 use MageOS\Workflows\Api\ActionMetadataProviderInterface;
-use MageOS\Workflows\Api\ApprovalTaskManagerInterface;
 use MageOS\Workflows\Api\Data\ActionMetadataItemInterface;
 use MageOS\Workflows\Api\SecretMetadataProviderInterface;
 use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
@@ -28,10 +28,16 @@ use MageOS\Workflows\Model\Definition\Definition;
  * are fetched at runtime from same-origin, session-authed admin JSON endpoints
  * whose URLs are also in the config — never from a third-party origin.
  *
- * `approvalsAvailable` is bootstrapped the same way: read from the nullable
- * ApprovalTaskManagerInterface seam (bound only when MageOS_WorkflowsApprovals
- * is installed), so the palette can gate the "Approval gate" node the same
- * way the server's save-time ApprovalCheck gates authoring it.
+ * `approvalsAvailable` is bootstrapped the same way: Module\Manager reports
+ * whether MageOS_WorkflowsApprovals is enabled, so the palette can gate the
+ * "Approval gate" node the same way the server's save-time ApprovalCheck
+ * (APPROVAL_MODULE_MISSING) gates authoring it — an enabled addon is what
+ * binds the ApprovalTaskManagerInterface preference that check keys off, so
+ * the two signals agree. Module presence is probed through the framework's
+ * Module\Manager (not a DI seam) because neither optional package may depend
+ * on the other, and the addon's di.xml cannot safely reference a canvas class
+ * that may not be installed (docs/discovery/approval-gate.md §7: "renders
+ * only when both optional packages are present").
  */
 class Mount extends Template
 {
@@ -42,16 +48,13 @@ class Mount extends Template
         private readonly TriggerMetadataProviderInterface $triggerMetadataProvider,
         private readonly SecretMetadataProviderInterface $secretMetadataProvider,
         private readonly AuthorizationInterface $authorization,
-        array $data = [],
-        // Optional (nullable) dependency — the SAME seam core's own
-        // Model/Validation/Check/ApprovalCheck.php uses to detect whether the
-        // MageOS_WorkflowsApprovals addon is installed: absent addon -> no
-        // di.xml preference bound -> null here. Canvas has no module.xml
-        // dependency on the addon (docs/discovery/canvas.md §1: "the
-        // dependency arrow only ever points inward, from canvas to
-        // module-workflows") — it only optionally consumes a core-declared
-        // interface, exactly like the save-time check does.
-        private readonly ?ApprovalTaskManagerInterface $approvalTaskManager = null
+        // Framework class, so this adds no module dependency: canvas keeps
+        // depending only inward on module-workflows (docs/discovery/canvas.md
+        // §1). Used solely to probe whether the optional approvals addon is
+        // enabled — see the class docblock for why this is a module-presence
+        // check rather than a nullable DI seam.
+        private readonly ModuleManager $moduleManager,
+        array $data = []
     ) {
         parent::__construct($context, $data);
     }
@@ -103,7 +106,7 @@ class Mount extends Template
             // are present"). A loaded definition's existing `approval` step still
             // renders/dry-runs regardless — this only controls whether NEW ones
             // may be authored, mirroring the save-time APPROVAL_MODULE_MISSING gate.
-            'approvalsAvailable' => $this->approvalTaskManager !== null,
+            'approvalsAvailable' => $this->moduleManager->isEnabled('MageOS_WorkflowsApprovals'),
         ];
 
         if ($workflow !== null) {
