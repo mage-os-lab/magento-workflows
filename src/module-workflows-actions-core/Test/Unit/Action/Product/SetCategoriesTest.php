@@ -116,14 +116,20 @@ class SetCategoriesTest extends TestCase
     private function createProductRepositoryStub(): ProductRepositoryInterface
     {
         return new class implements ProductRepositoryInterface {
-            public function getById(int $productId) { throw new \RuntimeException('Should not be called'); }
+            public function getById($productId, $editMode = false, $storeId = null, $forceReload = false) { throw new \RuntimeException('Should not be called'); }
+            public function save(\Magento\Catalog\Api\Data\ProductInterface $product, $saveOptions = false) { throw new \BadMethodCallException(__METHOD__); }
+            public function get($sku, $editMode = false, $storeId = null, $forceReload = false) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete(\Magento\Catalog\Api\Data\ProductInterface $product) { throw new \BadMethodCallException(__METHOD__); }
+            public function deleteById($sku) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 
     private function createCategoryLinkManagementStub(): CategoryLinkManagementInterface
     {
         return new class implements CategoryLinkManagementInterface {
-            public function assignProductToCategories(string $sku, array $categoryIds) { throw new \RuntimeException('Should not be called'); }
+            public function assignProductToCategories($sku, array $categoryIds) { throw new \RuntimeException('Should not be called'); }
+            public function getAssignedProducts($categoryId) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 }

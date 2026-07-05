@@ -24,7 +24,11 @@ class ConditionToSearchCriteriaRelationTest extends TestCase
     {
         // Builders that explode if used: the relation path must return null
         // before any of them is touched.
-        $searchCriteriaBuilder = new class implements SearchCriteriaBuilder {
+        $searchCriteriaBuilder = new class extends SearchCriteriaBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 throw new \RuntimeException('builder must not be used on the relation fallback path');
@@ -60,7 +64,11 @@ class ConditionToSearchCriteriaRelationTest extends TestCase
                 throw new \RuntimeException('unused');
             }
         };
-        $filterBuilder = new class implements FilterBuilder {
+        $filterBuilder = new class extends FilterBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 throw new \RuntimeException('unused');
@@ -81,7 +89,11 @@ class ConditionToSearchCriteriaRelationTest extends TestCase
                 throw new \RuntimeException('unused');
             }
         };
-        $filterGroupBuilder = new class implements FilterGroupBuilder {
+        $filterGroupBuilder = new class extends FilterGroupBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 throw new \RuntimeException('unused');

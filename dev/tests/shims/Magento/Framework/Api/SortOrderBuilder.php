@@ -5,13 +5,26 @@ namespace Magento\Framework\Api;
 
 /**
  * Minimal shim for Magento\Framework\Api\SortOrderBuilder.
- * Returns stub objects; intended for interface verification only.
+ *
+ * Real Magento declares this as a concrete CLASS (extends
+ * AbstractSimpleObjectBuilder), so the shim is a class too — doubles `extends`
+ * it. Inert methods; the no-argument constructor lets anonymous-class doubles
+ * instantiate without the real builder's DI dependencies.
  */
-interface SortOrderBuilder
+class SortOrderBuilder
 {
-    public function create();
+    public function create()
+    {
+        return null;
+    }
 
-    public function setField($field);
+    public function setField($field)
+    {
+        return $this;
+    }
 
-    public function setDirection($direction);
+    public function setDirection($direction)
+    {
+        return $this;
+    }
 }

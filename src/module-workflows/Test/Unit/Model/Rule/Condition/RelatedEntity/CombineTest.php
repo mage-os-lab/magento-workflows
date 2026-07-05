@@ -119,12 +119,12 @@ class CombineTest extends TestCase
             {
             }
 
-            public function getValue(string $path, string $scope = 'default', ?string $scopeCode = null)
+            public function getValue($path, $scope = 'default', $scopeCode = null)
             {
                 return $this->config[$path] ?? null;
             }
 
-            public function isSetFlag(string $path, string $scope = 'default', ?string $scopeCode = null): bool
+            public function isSetFlag($path, $scope = 'default', $scopeCode = null): bool
             {
                 return (bool) ($this->config[$path] ?? false);
             }
@@ -133,6 +133,61 @@ class CombineTest extends TestCase
             public function getStore($storeId = null)
             {
                 return new DataObject(['website_id' => 1]);
+            }
+
+            public function setIsSingleStoreModeAllowed($value)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function hasSingleStore()
+            {
+                return false;
+            }
+
+            public function isSingleStoreMode()
+            {
+                return false;
+            }
+
+            public function getStores($withDefault = false, $codeKey = false)
+            {
+                return [];
+            }
+
+            public function getWebsite($websiteId = null)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getWebsites($withDefault = false, $codeKey = false)
+            {
+                return [];
+            }
+
+            public function reinitStores()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getDefaultStoreView()
+            {
+                return null;
+            }
+
+            public function getGroup($groupId = null)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getGroups($withDefault = false)
+            {
+                return [];
+            }
+
+            public function setCurrentStore($store)
+            {
+                throw new \BadMethodCallException(__METHOD__);
             }
         };
         $logger = $this->capturingLogger();

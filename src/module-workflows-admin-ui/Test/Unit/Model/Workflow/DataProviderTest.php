@@ -61,6 +61,46 @@ class DataProviderTest extends TestCase
             {
                 return $this->params[$key] ?? $default;
             }
+
+            public function getModuleName()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function setModuleName($name)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getActionName()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function setActionName($name)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function setParams($params)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getParams()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getCookie($name, $default)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function isSecure()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
         };
 
         $persistor = new class($persisted) implements DataPersistorInterface {

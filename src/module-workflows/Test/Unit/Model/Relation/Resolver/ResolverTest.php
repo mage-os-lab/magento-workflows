@@ -33,7 +33,7 @@ class ResolverTest extends TestCase
     private function criteriaBuilder(): SearchCriteriaBuilder
     {
         $test = $this;
-        return new class ($test) implements SearchCriteriaBuilder {
+        return new class ($test) extends SearchCriteriaBuilder {
             public function __construct(private readonly ResolverTest $test)
             {
             }
@@ -102,14 +102,29 @@ class ResolverTest extends TestCase
             {
             }
 
-            public function getById(int $customerId)
+            public function getById($customerId)
             {
                 throw new \RuntimeException('unused');
             }
 
-            public function save($customer)
+            public function save($customer, $passwordHash = null)
             {
                 throw new \RuntimeException('unused');
+            }
+
+            public function get($email, $websiteId = null)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function delete($customer)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function deleteById($customerId)
+            {
+                throw new \BadMethodCallException(__METHOD__);
             }
 
             public function getList($searchCriteria)
@@ -141,9 +156,19 @@ class ResolverTest extends TestCase
             {
             }
 
-            public function get(int $orderId)
+            public function get($orderId)
             {
                 throw new \RuntimeException('unused');
+            }
+
+            public function delete($entity)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function save($entity)
+            {
+                throw new \BadMethodCallException(__METHOD__);
             }
 
             public function getList($searchCriteria)

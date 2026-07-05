@@ -79,12 +79,57 @@ class OpenTaskLookupTest extends TestCase
      */
     private function searchCriteriaBuilder(): SearchCriteriaBuilder
     {
-        return new class implements SearchCriteriaBuilder {
+        return new class extends SearchCriteriaBuilder {
             public array $filters = [];
+
+            // SearchCriteriaBuilder is a concrete class with a collaborator-heavy
+            // constructor this test never exercises; skip it entirely.
+            public function __construct()
+            {
+            }
 
             public function create()
             {
                 return new class implements SearchCriteriaInterface {
+                    public function getFilterGroups()
+                    {
+                        return [];
+                    }
+
+                    public function setFilterGroups($filterGroups = null)
+                    {
+                        return $this;
+                    }
+
+                    public function getSortOrders()
+                    {
+                        return null;
+                    }
+
+                    public function setSortOrders($sortOrders = null)
+                    {
+                        return $this;
+                    }
+
+                    public function getPageSize()
+                    {
+                        return null;
+                    }
+
+                    public function setPageSize($pageSize)
+                    {
+                        return $this;
+                    }
+
+                    public function getCurrentPage()
+                    {
+                        return null;
+                    }
+
+                    public function setCurrentPage($currentPage)
+                    {
+                        return $this;
+                    }
                 };
             }
 

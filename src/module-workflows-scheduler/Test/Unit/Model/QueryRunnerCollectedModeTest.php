@@ -40,13 +40,52 @@ class QueryRunnerCollectedModeTest extends TestCase
 
     private function searchCriteriaBuilder(): SearchCriteriaBuilder
     {
-        return new class implements SearchCriteriaBuilder {
+        return new class extends SearchCriteriaBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new class implements \Magento\Framework\Api\SearchCriteriaInterface {
                     public function getFilterGroups(): array
                     {
                         return [];
+                    }
+
+                    public function setFilterGroups(?array $filterGroups = null)
+                    {
+                        return $this;
+                    }
+
+                    public function getSortOrders()
+                    {
+                        return [];
+                    }
+
+                    public function setSortOrders(?array $sortOrders = null)
+                    {
+                        return $this;
+                    }
+
+                    public function getPageSize()
+                    {
+                        return null;
+                    }
+
+                    public function setPageSize($pageSize)
+                    {
+                        return $this;
+                    }
+
+                    public function getCurrentPage()
+                    {
+                        return null;
+                    }
+
+                    public function setCurrentPage($currentPage)
+                    {
+                        return $this;
                     }
                 };
             }
@@ -90,7 +129,11 @@ class QueryRunnerCollectedModeTest extends TestCase
 
     private function filterBuilder(): FilterBuilder
     {
-        return new class implements FilterBuilder {
+        return new class extends FilterBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new DataObject();
@@ -115,7 +158,11 @@ class QueryRunnerCollectedModeTest extends TestCase
 
     private function filterGroupBuilder(): FilterGroupBuilder
     {
-        return new class implements FilterGroupBuilder {
+        return new class extends FilterGroupBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new DataObject();
@@ -130,7 +177,11 @@ class QueryRunnerCollectedModeTest extends TestCase
 
     private function sortOrderBuilder(): SortOrderBuilder
     {
-        return new class implements SortOrderBuilder {
+        return new class extends SortOrderBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new \Magento\Framework\Api\SortOrder();

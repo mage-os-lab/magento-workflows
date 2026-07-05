@@ -94,6 +94,31 @@ class RunScheduledWorkflowsTest extends TestCase
                     {
                         return $this->items;
                     }
+
+                    public function setItems(array $items)
+                    {
+                        throw new \BadMethodCallException(__METHOD__);
+                    }
+
+                    public function getSearchCriteria()
+                    {
+                        throw new \BadMethodCallException(__METHOD__);
+                    }
+
+                    public function setSearchCriteria($searchCriteria)
+                    {
+                        throw new \BadMethodCallException(__METHOD__);
+                    }
+
+                    public function getTotalCount()
+                    {
+                        throw new \BadMethodCallException(__METHOD__);
+                    }
+
+                    public function setTotalCount($totalCount)
+                    {
+                        throw new \BadMethodCallException(__METHOD__);
+                    }
                 };
             }
 
@@ -111,10 +136,53 @@ class RunScheduledWorkflowsTest extends TestCase
 
     private function searchCriteriaBuilder(): SearchCriteriaBuilder
     {
-        return new class implements SearchCriteriaBuilder {
+        return new class extends SearchCriteriaBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new class implements SearchCriteriaInterface {
+                    public function getFilterGroups()
+                    {
+                        return [];
+                    }
+
+                    public function setFilterGroups(?array $filterGroups = null)
+                    {
+                        return $this;
+                    }
+
+                    public function getSortOrders()
+                    {
+                        return [];
+                    }
+
+                    public function setSortOrders(?array $sortOrders = null)
+                    {
+                        return $this;
+                    }
+
+                    public function getPageSize()
+                    {
+                        return null;
+                    }
+
+                    public function setPageSize($pageSize)
+                    {
+                        return $this;
+                    }
+
+                    public function getCurrentPage()
+                    {
+                        return null;
+                    }
+
+                    public function setCurrentPage($currentPage)
+                    {
+                        return $this;
+                    }
                 };
             }
 
@@ -152,7 +220,11 @@ class RunScheduledWorkflowsTest extends TestCase
 
     private function filterBuilder(): FilterBuilder
     {
-        return new class implements FilterBuilder {
+        return new class extends FilterBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new DataObject();
@@ -177,7 +249,11 @@ class RunScheduledWorkflowsTest extends TestCase
 
     private function filterGroupBuilder(): FilterGroupBuilder
     {
-        return new class implements FilterGroupBuilder {
+        return new class extends FilterGroupBuilder {
+            public function __construct()
+            {
+            }
+
             public function create()
             {
                 return new DataObject();
@@ -224,6 +300,31 @@ class RunScheduledWorkflowsTest extends TestCase
         };
     }
 
+    /**
+     * Inert ResourceConnection double: bypasses the real constructor (no
+     * ConfigInterface/ConnectionFactory/DeploymentConfig in the standalone
+     * runner) and is never touched, since the index gate short-circuits the
+     * cron before it reaches the query path.
+     */
+    private function resourceConnection(): ResourceConnection
+    {
+        return new class extends ResourceConnection {
+            public function __construct()
+            {
+            }
+
+            public function getConnection($resourceName = self::DEFAULT_CONNECTION)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getTableName($modelEntity, $connectionName = self::DEFAULT_CONNECTION)
+            {
+                return (string) $modelEntity;
+            }
+        };
+    }
+
     private function cron(WorkflowIndex $index, object $repository): RunScheduledWorkflows
     {
         return new RunScheduledWorkflows(
@@ -233,7 +334,7 @@ class RunScheduledWorkflowsTest extends TestCase
             $this->filterGroupBuilder(),
             $this->storeManager(),
             $this->timezone(),
-            new ResourceConnection(),
+            $this->resourceConnection(),
             $this->queryRunner(),
             new NullLogger(),
             $index

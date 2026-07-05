@@ -188,20 +188,24 @@ class EmailTest extends TestCase
     private function createTransportBuilderStub(): TransportBuilder
     {
         return new class extends TransportBuilder {
-            public function setTemplateIdentifier(string $id): self { throw new \RuntimeException('Should not be called'); }
-            public function setTemplateOptions(array $options): self { throw new \RuntimeException('Should not be called'); }
-            public function setTemplateVars(array $vars): self { throw new \RuntimeException('Should not be called'); }
-            public function setFromByScope(string $scope, int $storeId): self { throw new \RuntimeException('Should not be called'); }
-            public function addTo(string $email): self { throw new \RuntimeException('Should not be called'); }
+            // Bypass the real TransportBuilder's DI constructor.
+            public function __construct() {}
+            public function setTemplateIdentifier($id): self { throw new \RuntimeException('Should not be called'); }
+            public function setTemplateOptions($options): self { throw new \RuntimeException('Should not be called'); }
+            public function setTemplateVars($vars): self { throw new \RuntimeException('Should not be called'); }
+            public function setFromByScope($scope, $storeId = null): self { throw new \RuntimeException('Should not be called'); }
+            public function addTo($email, $name = ''): self { throw new \RuntimeException('Should not be called'); }
         };
     }
 
     private function createCacheStub(): CacheInterface
     {
         return new class implements CacheInterface {
-            public function load(string $identifier) { return false; }
-            public function save(string $data, string $identifier, array $tags = [], ?int $lifeTime = null) {}
-            public function remove(string $identifier) {}
+            public function load($identifier) { return false; }
+            public function save($data, $identifier, $tags = [], $lifeTime = null) {}
+            public function remove($identifier) {}
+            public function getFrontend() { throw new \BadMethodCallException(__METHOD__); }
+            public function clean($tags = []) { return true; }
         };
     }
 }

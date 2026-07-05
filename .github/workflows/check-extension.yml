@@ -54,19 +54,17 @@ jobs:
           kind: latest
       - run: echo '${{ steps.supported-version.outputs.matrix }}'
 
-  # NON-BLOCKING (continue-on-error). This runs the whole Test/Unit suite under
-  # the host Magento's real PHPUnit. The suites were authored against this repo's
-  # Magento shim layer (dev/tests/shims/), so their anonymous test doubles carry
-  # shim-shaped signatures that fatal against real Magento class/interface
-  # signatures (e.g. CustomerRepositoryInterface::save has a 2nd $passwordHash
-  # param the doubles omit). Reconciling ~28 double-bearing test files to real
-  # Magento is a separate test-infrastructure task; until then this job reports
-  # but does not block. Unit coverage on PHP 8.1–8.5 ships today via the shim
-  # runner in lint.yml (php dev/tests/standalone-runner.php).
+  # BLOCKING. Runs the whole Test/Unit suite under the host Magento's real
+  # PHPUnit on PHP 8.5. The suites are authored against this repo's shim layer
+  # (dev/tests/shims/) AND run here under real Magento: their test doubles were
+  # reconciled to the real Magento class/interface signatures (every double
+  # implements the full interface; params widened to the untyped Magento
+  # contracts; Api builders extend the real concrete classes). The same doubles
+  # still pass the shim runner in lint.yml (php dev/tests/standalone-runner.php)
+  # on PHP 8.1–8.5, since every change was additive/widening.
   unit-test-extension:
     runs-on: ${{ matrix.os }}
     needs: compute_matrix
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}

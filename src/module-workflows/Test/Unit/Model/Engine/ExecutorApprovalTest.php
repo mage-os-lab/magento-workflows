@@ -158,19 +158,29 @@ class ExecutorApprovalTest extends TestCase
     {
         // Never tripped by the approval paths under test; construct with inert doubles.
         $cache = new class implements CacheInterface {
-            public function load(string $identifier)
+            public function load($identifier)
             {
                 return false;
             }
 
-            public function save(string $data, string $identifier, array $tags = [], ?int $lifeTime = null)
+            public function save($data, $identifier, $tags = [], $lifeTime = null)
             {
                 return true;
             }
 
-            public function remove(string $identifier)
+            public function remove($identifier)
             {
                 return true;
+            }
+
+            public function getFrontend()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function clean($tags = [])
+            {
+                throw new \BadMethodCallException(__METHOD__);
             }
         };
         $notifier = new class implements NotifierInterface {
@@ -178,19 +188,19 @@ class ExecutorApprovalTest extends TestCase
             {
             }
 
-            public function addCritical($title, $description, $url = '')
+            public function addCritical($title, $description, $url = '', $isInternal = true)
             {
             }
 
-            public function addMajor($title, $description, $url = '')
+            public function addMajor($title, $description, $url = '', $isInternal = true)
             {
             }
 
-            public function addMinor($title, $description, $url = '')
+            public function addMinor($title, $description, $url = '', $isInternal = true)
             {
             }
 
-            public function addNotice($title, $description, $url = '')
+            public function addNotice($title, $description, $url = '', $isInternal = true)
             {
             }
 
@@ -381,12 +391,12 @@ class CapturingConnection
             {
             }
 
-            public function getConnection(string $resourceName = self::DEFAULT_CONNECTION)
+            public function getConnection($resourceName = self::DEFAULT_CONNECTION)
             {
                 return $this->capture->adapter();
             }
 
-            public function getTableName($modelEntity, string $connectionName = self::DEFAULT_CONNECTION)
+            public function getTableName($modelEntity, $connectionName = self::DEFAULT_CONNECTION)
             {
                 return (string) $modelEntity;
             }

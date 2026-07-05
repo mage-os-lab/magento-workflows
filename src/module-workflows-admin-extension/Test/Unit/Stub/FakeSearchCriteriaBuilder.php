@@ -11,14 +11,57 @@ use Magento\Framework\Api\SearchCriteriaInterface;
  * assert the count provider filtered on entity_type; create() returns an empty
  * SearchCriteria stub.
  */
-class FakeSearchCriteriaBuilder implements SearchCriteriaBuilder
+class FakeSearchCriteriaBuilder extends SearchCriteriaBuilder
 {
     /** @var array<int, array{field: mixed, value: mixed, conditionType: mixed}> */
     public array $filters = [];
 
+    public function __construct()
+    {
+    }
+
     public function create()
     {
         return new class implements SearchCriteriaInterface {
+            public function getFilterGroups()
+            {
+                return [];
+            }
+
+            public function setFilterGroups(?array $filterGroups = null)
+            {
+                return $this;
+            }
+
+            public function getSortOrders()
+            {
+                return [];
+            }
+
+            public function setSortOrders(?array $sortOrders = null)
+            {
+                return $this;
+            }
+
+            public function getPageSize()
+            {
+                return null;
+            }
+
+            public function setPageSize($pageSize)
+            {
+                return $this;
+            }
+
+            public function getCurrentPage()
+            {
+                return null;
+            }
+
+            public function setCurrentPage($currentPage)
+            {
+                return $this;
+            }
         };
     }
 

@@ -87,6 +87,46 @@ class MountApprovalsAvailableTest extends TestCase
                     {
                         return $default;
                     }
+
+                    public function getModuleName()
+                    {
+                        return '';
+                    }
+
+                    public function setModuleName($name)
+                    {
+                        return $this;
+                    }
+
+                    public function getActionName()
+                    {
+                        return '';
+                    }
+
+                    public function setActionName($name)
+                    {
+                        return $this;
+                    }
+
+                    public function setParams(array $params)
+                    {
+                        return $this;
+                    }
+
+                    public function getParams()
+                    {
+                        return [];
+                    }
+
+                    public function getCookie($name, $default)
+                    {
+                        return $default;
+                    }
+
+                    public function isSecure()
+                    {
+                        return false;
+                    }
                 };
             }
 

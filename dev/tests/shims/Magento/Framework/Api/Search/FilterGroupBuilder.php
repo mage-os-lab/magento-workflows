@@ -5,10 +5,21 @@ namespace Magento\Framework\Api\Search;
 
 /**
  * Minimal shim for Magento\Framework\Api\Search\FilterGroupBuilder.
- * Returns stub objects; intended for interface verification only.
+ *
+ * Real Magento declares this as a concrete CLASS (extends
+ * AbstractSimpleObjectBuilder), so the shim is a class too — doubles `extends`
+ * it. Inert methods; the no-argument constructor lets anonymous-class doubles
+ * instantiate without the real builder's DI dependencies.
  */
-interface FilterGroupBuilder
+class FilterGroupBuilder
 {
-    public function create();
-    public function setFilters($filters);
+    public function create()
+    {
+        return null;
+    }
+
+    public function setFilters($filters)
+    {
+        return $this;
+    }
 }

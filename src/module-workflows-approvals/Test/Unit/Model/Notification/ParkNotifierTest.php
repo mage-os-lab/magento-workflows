@@ -33,6 +33,118 @@ class ParkNotifierTest extends TestCase
                 }
                 return 'https://admin.test/' . $routePath . '/uuid/' . ($routeParams['uuid'] ?? '');
             }
+
+            // Remaining \Magento\Framework\UrlInterface members.
+            public function getUseSession()
+            {
+                return false;
+            }
+
+            public function getBaseUrl($params = [])
+            {
+                return '';
+            }
+
+            public function getCurrentUrl()
+            {
+                return '';
+            }
+
+            public function getRouteUrl($routePath = null, $routeParams = null)
+            {
+                return '';
+            }
+
+            public function addSessionParam()
+            {
+                return $this;
+            }
+
+            public function addQueryParams(array $data)
+            {
+                return $this;
+            }
+
+            public function setQueryParam($key, $data)
+            {
+                return $this;
+            }
+
+            public function escape($value)
+            {
+                return '';
+            }
+
+            public function getDirectUrl($url, $params = [])
+            {
+                return '';
+            }
+
+            public function sessionUrlVar($html)
+            {
+                return '';
+            }
+
+            public function isOwnOriginUrl()
+            {
+                return false;
+            }
+
+            public function getRedirectUrl($url)
+            {
+                return '';
+            }
+
+            public function setScope($params)
+            {
+                return $this;
+            }
+
+            // \Magento\Backend\Model\UrlInterface members.
+            public function getSecretKey($routeName = null, $controller = null, $action = null)
+            {
+                return '';
+            }
+
+            public function useSecretKey()
+            {
+                return false;
+            }
+
+            public function turnOnSecretKey()
+            {
+                return $this;
+            }
+
+            public function turnOffSecretKey()
+            {
+                return $this;
+            }
+
+            public function renewSecretUrls()
+            {
+                return $this;
+            }
+
+            public function getStartupPageUrl()
+            {
+                return '';
+            }
+
+            public function setSession($session)
+            {
+                return $this;
+            }
+
+            public function getAreaFrontName()
+            {
+                return '';
+            }
+
+            public function findFirstAvailableMenu()
+            {
+                return '';
+            }
         };
     }
 
@@ -49,19 +161,19 @@ class ParkNotifierTest extends TestCase
             {
             }
 
-            public function addCritical($title, $description, $url = '')
+            public function addCritical($title, $description, $url = '', $isInternal = true)
             {
             }
 
-            public function addMajor($title, $description, $url = '')
+            public function addMajor($title, $description, $url = '', $isInternal = true)
             {
             }
 
-            public function addMinor($title, $description, $url = '')
+            public function addMinor($title, $description, $url = '', $isInternal = true)
             {
             }
 
-            public function addNotice($title, $description, $url = '')
+            public function addNotice($title, $description, $url = '', $isInternal = true)
             {
                 if ($this->throws) {
                     throw new \RuntimeException('notifier down');
@@ -89,27 +201,27 @@ class ParkNotifierTest extends TestCase
             {
             }
 
-            public function setTemplateIdentifier(string $id): self
+            public function setTemplateIdentifier($id): self
             {
                 return $this;
             }
 
-            public function setTemplateOptions(array $options): self
+            public function setTemplateOptions($options): self
             {
                 return $this;
             }
 
-            public function setTemplateVars(array $vars): self
+            public function setTemplateVars($vars): self
             {
                 return $this;
             }
 
-            public function setFromByScope(string $scope, int $storeId): self
+            public function setFromByScope($scope, $storeId = null): self
             {
                 return $this;
             }
 
-            public function addTo(string $email): self
+            public function addTo($email, $name = ''): self
             {
                 $this->lastTo = $email;
                 return $this;

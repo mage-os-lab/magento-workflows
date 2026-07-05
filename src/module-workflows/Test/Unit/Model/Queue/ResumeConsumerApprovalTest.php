@@ -125,7 +125,7 @@ class ResumeConsumerApprovalTest extends TestCase
             {
             }
 
-            public function getConnection(string $resourceName = self::DEFAULT_CONNECTION)
+            public function getConnection($resourceName = self::DEFAULT_CONNECTION)
             {
                 return new class ($this->row) {
                     public function __construct(private readonly array $row)
@@ -164,7 +164,7 @@ class ResumeConsumerApprovalTest extends TestCase
                 };
             }
 
-            public function getTableName($modelEntity, string $connectionName = self::DEFAULT_CONNECTION)
+            public function getTableName($modelEntity, $connectionName = self::DEFAULT_CONNECTION)
             {
                 return (string) $modelEntity;
             }

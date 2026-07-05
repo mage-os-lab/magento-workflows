@@ -16,6 +16,71 @@ class EntityUrlResolverTest extends TestCase
             {
                 return 'https://admin.test/' . $routePath . '/' . http_build_query((array) $routeParams);
             }
+
+            public function getUseSession()
+            {
+                return false;
+            }
+
+            public function getBaseUrl($params = [])
+            {
+                return '';
+            }
+
+            public function getCurrentUrl()
+            {
+                return '';
+            }
+
+            public function getRouteUrl($routePath = null, $routeParams = null)
+            {
+                return '';
+            }
+
+            public function addSessionParam()
+            {
+                return $this;
+            }
+
+            public function addQueryParams(array $data)
+            {
+                return $this;
+            }
+
+            public function setQueryParam($key, $data)
+            {
+                return $this;
+            }
+
+            public function escape($value)
+            {
+                return '';
+            }
+
+            public function getDirectUrl($url, $params = [])
+            {
+                return '';
+            }
+
+            public function sessionUrlVar($html)
+            {
+                return '';
+            }
+
+            public function isOwnOriginUrl()
+            {
+                return false;
+            }
+
+            public function getRedirectUrl($url)
+            {
+                return '';
+            }
+
+            public function setScope($params)
+            {
+                return $this;
+            }
         };
     }
 
