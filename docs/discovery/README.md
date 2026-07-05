@@ -48,6 +48,15 @@ layer.
 Independent of Tracks 1–2 (pure surface layer over the existing repository and metadata
 catalogue); can ship any time.
 
+## Pre-discovery explorations
+
+Earlier-stage than the tracks above: architecture mapping with no recommendation or committed
+scope. Each section graduates into its own discovery doc if it advances.
+
+| Doc | Covers |
+|---|---|
+| [exploration-composition-creation-long-span.md](exploration-composition-creation-long-span.md) | Sub-workflows (invoke / await / inline fragments), entity-creation actions with enforced constraints, long-spanned multi-gate workflows (approval gates, multi-event waits, inbound callbacks) |
+
 ## Recommended cross-feature sequence (Track 1)
 
 The features share foundations; this order lets each ship something user-visible while feeding
