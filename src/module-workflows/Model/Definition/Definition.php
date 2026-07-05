@@ -10,7 +10,9 @@ namespace MageOS\Workflows\Model\Definition;
  * Schema versions: v1 is the original action/delay/branch/stop set. v2 adds
  * the "wait" step (park until an event fires for the same entity, with a
  * timeout edge) and optional delay fields business_days / at. v3 adds the
- * "switch" step (first-match-wins multi-way branch with a default edge).
+ * "switch" step (first-match-wins multi-way branch with a default edge). v4
+ * adds the "approval" step (a human-decision gate parked on the wait spine,
+ * with on_approved / on_rejected / on_timeout edges and a required timeout).
  * A document using features of a later schema than it declares is rejected —
  * bump "schema" to use them.
  *
@@ -21,8 +23,8 @@ namespace MageOS\Workflows\Model\Definition;
  */
 class Definition
 {
-    public const SCHEMA_VERSION = 3;
-    public const SCHEMA_VERSIONS = [1, 2, 3];
+    public const SCHEMA_VERSION = 4;
+    public const SCHEMA_VERSIONS = [1, 2, 3, 4];
 
     public const STEP_ACTION = 'action';
     public const STEP_DELAY = 'delay';
@@ -30,6 +32,7 @@ class Definition
     public const STEP_STOP = 'stop';
     public const STEP_WAIT = 'wait';
     public const STEP_SWITCH = 'switch';
+    public const STEP_APPROVAL = 'approval';
 
     public const STEP_TYPES = [
         self::STEP_ACTION,
@@ -38,6 +41,7 @@ class Definition
         self::STEP_STOP,
         self::STEP_WAIT,
         self::STEP_SWITCH,
+        self::STEP_APPROVAL,
     ];
 
     /**
@@ -86,7 +90,7 @@ class Definition
             if (!in_array($type, self::STEP_TYPES, true)) {
                 throw new \InvalidArgumentException(sprintf('Step "%s" has invalid type "%s"', $key, (string) $type));
             }
-            foreach (['next', 'on_true', 'on_false', 'on_event', 'on_timeout'] as $edge) {
+            foreach (['next', 'on_true', 'on_false', 'on_event', 'on_timeout', 'on_approved', 'on_rejected'] as $edge) {
                 $target = $step[$edge] ?? null;
                 if ($target !== null && !isset($steps[$target])) {
                     throw new \InvalidArgumentException(
@@ -117,6 +121,9 @@ class Definition
             }
             if ($type === self::STEP_SWITCH) {
                 self::assertSwitchStep($step, $steps, $key, (int) $schema);
+            }
+            if ($type === self::STEP_APPROVAL) {
+                self::assertApprovalStep($step, $key, (int) $schema);
             }
         }
         $entry = $data['entry'] ?? null;
@@ -202,6 +209,106 @@ class Definition
             throw new \InvalidArgumentException(
                 sprintf('Switch step "%s" revalidate_entity must be boolean', $key)
             );
+        }
+    }
+
+    /**
+     * Approval step (schema 4): a human-decision gate parked on the wait spine.
+     * config.title is the request label (interpolated at park time); timeout is
+     * REQUIRED — a gate that never times out would leave an open task forever
+     * (docs/discovery/approval-gate.md §4 "No indefinite parks"). Optional
+     * payload_fields declare the value form the decider fills in; each entry's
+     * key is unique and constrained so it can key context output safely.
+     *
+     * @throws \InvalidArgumentException on invalid approval shape or schema < 4
+     */
+    private static function assertApprovalStep(array $step, string $key, int $schema): void
+    {
+        if ($schema < 4) {
+            throw new \InvalidArgumentException(
+                sprintf('Step "%s": approval steps require definition schema 4', $key)
+            );
+        }
+        $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+
+        $title = $config['title'] ?? null;
+        if (!is_string($title) || $title === '') {
+            throw new \InvalidArgumentException(
+                sprintf('Approval step "%s" is missing a valid config.title', $key)
+            );
+        }
+        $instructions = $config['instructions'] ?? null;
+        if ($instructions !== null && !is_string($instructions)) {
+            throw new \InvalidArgumentException(
+                sprintf('Approval step "%s" config.instructions must be a string', $key)
+            );
+        }
+        // Required: a gate must be able to resolve itself by the timeout clock.
+        self::assertDuration($config['timeout'] ?? null, $key, 'config.timeout');
+
+        $assigneeRole = $config['assignee_role'] ?? null;
+        if ($assigneeRole !== null && (!is_string($assigneeRole) || $assigneeRole === '')) {
+            throw new \InvalidArgumentException(
+                sprintf('Approval step "%s" config.assignee_role must be a non-empty string', $key)
+            );
+        }
+        $allowBulk = $config['allow_bulk'] ?? null;
+        if ($allowBulk !== null && !is_bool($allowBulk)) {
+            throw new \InvalidArgumentException(
+                sprintf('Approval step "%s" config.allow_bulk must be boolean', $key)
+            );
+        }
+
+        $payloadFields = $config['payload_fields'] ?? null;
+        if ($payloadFields === null) {
+            return;
+        }
+        if (!is_array($payloadFields) || $payloadFields === []
+            || array_keys($payloadFields) !== range(0, count($payloadFields) - 1)
+        ) {
+            throw new \InvalidArgumentException(
+                sprintf('Approval step "%s" config.payload_fields must be a non-empty list', $key)
+            );
+        }
+        $seenKeys = [];
+        foreach ($payloadFields as $index => $field) {
+            if (!is_array($field)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Approval step "%s" payload_fields #%d must be an object', $key, $index)
+                );
+            }
+            $fieldKey = $field['key'] ?? null;
+            if (!is_string($fieldKey) || !preg_match('/^[a-zA-Z0-9_]{1,64}$/', $fieldKey)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Approval step "%s" payload_fields #%d has an invalid "key"', $key, $index)
+                );
+            }
+            if (isset($seenKeys[$fieldKey])) {
+                throw new \InvalidArgumentException(
+                    sprintf('Approval step "%s" declares duplicate payload_fields key "%s"', $key, $fieldKey)
+                );
+            }
+            $seenKeys[$fieldKey] = true;
+            if (!is_string($field['label'] ?? null) || ($field['label'] ?? '') === '') {
+                throw new \InvalidArgumentException(
+                    sprintf('Approval step "%s" payload_fields "%s" is missing a "label"', $key, $fieldKey)
+                );
+            }
+            if (!in_array($field['type'] ?? null, ['string', 'number', 'boolean'], true)) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Approval step "%s" payload_fields "%s" type must be one of string|number|boolean',
+                    $key,
+                    $fieldKey
+                ));
+            }
+            $required = $field['required'] ?? null;
+            if ($required !== null && !is_bool($required)) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Approval step "%s" payload_fields "%s" required must be boolean',
+                    $key,
+                    $fieldKey
+                ));
+            }
         }
     }
 
@@ -292,6 +399,7 @@ class Definition
      *   branch       => ['on_true' => …, 'on_false' => …]
      *   wait         => ['on_event' => …, 'on_timeout' => …]
      *   switch       => ['case:<key>' => …, …, 'default' => …]
+     *   approval     => ['on_approved' => …, 'on_rejected' => …, 'on_timeout' => …]
      *   stop         => []
      *
      * @return array<string, ?string> edge name => target step key or null
@@ -311,6 +419,12 @@ class Definition
                 return ['on_true' => $edge($step, 'on_true'), 'on_false' => $edge($step, 'on_false')];
             case self::STEP_WAIT:
                 return ['on_event' => $edge($step, 'on_event'), 'on_timeout' => $edge($step, 'on_timeout')];
+            case self::STEP_APPROVAL:
+                return [
+                    'on_approved' => $edge($step, 'on_approved'),
+                    'on_rejected' => $edge($step, 'on_rejected'),
+                    'on_timeout' => $edge($step, 'on_timeout'),
+                ];
             case self::STEP_SWITCH:
                 $edges = [];
                 foreach ((array) ($step['cases'] ?? []) as $case) {

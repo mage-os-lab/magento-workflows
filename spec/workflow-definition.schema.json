@@ -1,14 +1,14 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://mage-os.org/schemas/workflow-definition/3.json",
+    "$id": "https://mage-os.org/schemas/workflow-definition/4.json",
     "title": "Mage-OS Workflow Definition",
-    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 3 adds the switch step (first-match-wins multi-way branch); documents using it MUST declare schema 3. Version 2 adds the wait step and the optional delay fields business_days / at; documents using them MUST declare schema 2 or later. Version 1 and 2 documents remain valid. The optional top-level ui block is non-semantic (canvas layout persistence), legal at any schema version, never read by the engine, and preserved verbatim.",
+    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 4 adds the approval step (a human-decision gate parked on the wait spine, with on_approved / on_rejected / on_timeout edges and a required timeout); documents using it MUST declare schema 4. Version 3 adds the switch step (first-match-wins multi-way branch); documents using it MUST declare schema 3. Version 2 adds the wait step and the optional delay fields business_days / at; documents using them MUST declare schema 2 or later. Version 1, 2, and 3 documents remain valid. The optional top-level ui block is non-semantic (canvas layout persistence), legal at any schema version, never read by the engine, and preserved verbatim.",
     "type": "object",
     "required": ["schema", "steps", "entry"],
     "additionalProperties": false,
     "properties": {
         "schema": {
-            "enum": [1, 2, 3]
+            "enum": [1, 2, 3, 4]
         },
         "entry": {
             "$ref": "#/$defs/stepKeyOrNull",
@@ -26,7 +26,8 @@
                     {"$ref": "#/$defs/branchStep"},
                     {"$ref": "#/$defs/stopStep"},
                     {"$ref": "#/$defs/waitStep"},
-                    {"$ref": "#/$defs/switchStep"}
+                    {"$ref": "#/$defs/switchStep"},
+                    {"$ref": "#/$defs/approvalStep"}
                 ]
             }
         },
@@ -182,6 +183,79 @@
                     "description": "true: re-hydrate the entity fresh before evaluating the cases (correct default after delays); false: evaluate against the frozen trigger snapshot"
                 },
                 "default": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "approvalStep": {
+            "type": "object",
+            "required": ["type", "config"],
+            "additionalProperties": false,
+            "description": "Schema 4 only. A human-decision gate parked on the wait spine: the execution parks (status waiting) with resume_at = now + timeout and an approval task is opened; a decision (admin UI or REST) or the timeout sweeper wakes it. Routes approved -> on_approved, rejected -> on_rejected, no decision -> on_timeout. The step output exposes {task_uuid} at park time and {resolution, note, payload, decided_by} after a decision (or {resolution:'timeout'}). Requires the MageOS_WorkflowsApprovals addon to save.",
+            "properties": {
+                "type": {"const": "approval"},
+                "config": {
+                    "type": "object",
+                    "required": ["title", "timeout"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Request label, interpolated at park time; renders in the approvals grid and emails. May not contain {{ secrets.* }}."
+                        },
+                        "instructions": {
+                            "type": "string",
+                            "description": "Longer decision context, interpolated at park time. May not contain {{ secrets.* }}."
+                        },
+                        "timeout": {
+                            "$ref": "#/$defs/iso8601Duration",
+                            "description": "REQUIRED. Timeout after which on_timeout fires; ceiling-clamped by the max-delay guard. No indefinite parks."
+                        },
+                        "assignee_role": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Nullable role code the decision requires (matches a Magento authorization role); targeting + decide-time enforcement."
+                        },
+                        "allow_bulk": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Opt-in per gate: whether the approvals grid may bulk-decide this task. Incompatible with any required payload_fields entry."
+                        },
+                        "payload_fields": {
+                            "type": "array",
+                            "minItems": 1,
+                            "description": "Value form the decider fills in; keys are allowlisted into execution context. Absent = note-only.",
+                            "items": {
+                                "type": "object",
+                                "required": ["key", "label", "type"],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "key": {
+                                        "type": "string",
+                                        "pattern": "^[a-zA-Z0-9_]{1,64}$",
+                                        "description": "Context output key, unique within the step"
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "description": "Form field label shown to the decider"
+                                    },
+                                    "type": {
+                                        "enum": ["string", "number", "boolean"],
+                                        "description": "Scalar type the decided value is coerced to"
+                                    },
+                                    "required": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "Enforced on approval only (never on reject/timeout)"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "on_approved": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_rejected": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_timeout": {"$ref": "#/$defs/stepKeyOrNull"}
             }
         }
     }

@@ -253,6 +253,35 @@ class PlainLanguageRendererTest extends TestCase
         );
     }
 
+    public function testApprovalStepRendersAllThreeOutcomesInline(): void
+    {
+        $sentence = $this->render([
+            'schema' => 4,
+            'entry' => 'gate',
+            'steps' => [
+                'gate' => [
+                    'type' => 'approval',
+                    'config' => [
+                        'title' => 'Approve credit',
+                        'timeout' => 'P3D',
+                        'assignee_role' => 'sales_managers',
+                    ],
+                    'on_approved' => 'act',
+                    'on_rejected' => null,
+                    'on_timeout' => null,
+                ],
+                'act' => ['type' => 'action', 'action' => 'order.add_comment', 'next' => null],
+            ],
+        ]);
+
+        $this->assertSame(
+            'When Order Created, then: wait up to 3 days for a decision (role: sales_managers): '
+            . 'if approved → Add Order Comment, if rejected → the workflow ends, '
+            . 'if no decision by then → the workflow ends.',
+            $sentence
+        );
+    }
+
     public function testCycleTerminates(): void
     {
         $sentence = $this->render([

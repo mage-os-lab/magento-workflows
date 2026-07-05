@@ -1,0 +1,63 @@
+{
+    "format": "mageos-workflow-export/1",
+    "name": "Goodwill credit approval",
+    "entity_type": "sales_order",
+    "trigger_type": "event",
+    "trigger_ref": "sales.order.goodwill_requested",
+    "conditions_serialized": null,
+    "definition": {
+        "schema": 4,
+        "entry": "gate",
+        "steps": {
+            "gate": {
+                "type": "approval",
+                "config": {
+                    "title": "Approve goodwill credit for order {{ trigger.increment_id }}",
+                    "instructions": "Customer requested a credit outside the 30-day window. Order total: {{ trigger.grand_total|number:2 }}. Approve an amount at or below the total.",
+                    "timeout": "P3D",
+                    "assignee_role": "sales_managers",
+                    "allow_bulk": false,
+                    "payload_fields": [
+                        {
+                            "key": "approved_amount",
+                            "label": "Approved amount",
+                            "type": "number",
+                            "required": true
+                        }
+                    ]
+                },
+                "on_approved": "issue_credit",
+                "on_rejected": "policy_email",
+                "on_timeout": "escalate"
+            },
+            "issue_credit": {
+                "type": "action",
+                "action": "order.create_creditmemo",
+                "config": {
+                    "adjustment_positive": "{{ steps.gate.payload.approved_amount }}",
+                    "comment": "Goodwill credit approved by {{ steps.gate.decided_by }} (task {{ steps.gate.task_uuid }})"
+                },
+                "next": null
+            },
+            "policy_email": {
+                "type": "action",
+                "action": "notify.email",
+                "config": {
+                    "to": "{{ trigger.customer_email }}",
+                    "subject": "About your credit request for order {{ trigger.increment_id }}",
+                    "body": "We are unable to issue the requested credit. {{ steps.gate.note }}"
+                },
+                "next": null
+            },
+            "escalate": {
+                "type": "action",
+                "action": "notify.admin",
+                "config": {
+                    "message": "Goodwill credit for order {{ trigger.increment_id }} was not decided within 3 days and has been escalated."
+                },
+                "next": null
+            }
+        }
+    },
+    "loop_guard_depth": 1
+}

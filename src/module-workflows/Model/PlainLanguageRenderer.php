@@ -25,8 +25,9 @@ use MageOS\Workflows\Model\Trigger\TriggerRegistry;
  * Rendering coverage: action, delay, stop, branch (both edges — a non-null on_false
  * renders an inline "otherwise: …" chain; the legacy on_false = null shape renders
  * byte-identically to the pre-relocation output so existing grid rows do not change),
- * wait (event + timeout), and switch (case keys listed, walk continues down the first
- * case). Edge topology comes from Definition::getStepEdges (F1).
+ * wait (event + timeout), switch (case keys listed, walk continues down the first
+ * case), and approval (all three outcomes described inline — the timeout consequence
+ * must be unmissable). Edge topology comes from Definition::getStepEdges (F1).
  *
  * Deliberately defensive: a malformed/partial definition or condition tree (mid-edit, bad
  * import) degrades to omitting that clause rather than throwing -- this class is called from
@@ -384,6 +385,11 @@ class PlainLanguageRenderer
                     $summaries[] = $this->renderSwitchStep($edges);
                     $key = $this->firstSwitchTarget($edges);
                     break;
+                case Definition::STEP_APPROVAL:
+                    // All three outcomes render inline, so the main chain ends here.
+                    $summaries[] = $this->renderApprovalStep($definition, $step, $edges, $visited);
+                    $key = null;
+                    break;
                 case Definition::STEP_STOP:
                     $summaries[] = (string) __('stop');
                     $key = null;
@@ -461,6 +467,52 @@ class PlainLanguageRenderer
             return (string) __('wait for "%1"', $event);
         }
         return (string) __('wait for "%1" up to %2', $event, $this->humanizeDuration($timeout));
+    }
+
+    /**
+     * Approval gate (docs/discovery/approval-gate.md §6): "wait up to 3 days for
+     * a decision (role: sales_managers): if approved → …, if rejected → …, if no
+     * decision by then → …". All three outcomes are described inline (recursing
+     * over the shared $visited budget like a branch's "otherwise"); the timeout
+     * consequence must be unmissable — silence takes a branch.
+     *
+     * @param array<string, ?string> $edges
+     * @param array<string, true> $visited
+     */
+    private function renderApprovalStep(Definition $definition, array $step, array $edges, array &$visited): string
+    {
+        $timeout = (string) ($step['config']['timeout'] ?? '');
+        $role = trim((string) ($step['config']['assignee_role'] ?? ''));
+
+        $lead = $timeout === ''
+            ? (string) __('wait for a decision')
+            : (string) __('wait up to %1 for a decision', $this->humanizeDuration($timeout));
+        if ($role !== '') {
+            $lead .= (string) __(' (role: %1)', $role);
+        }
+
+        return (string) __(
+            '%1: if approved → %2, if rejected → %3, if no decision by then → %4',
+            $lead,
+            $this->renderOutcome($definition, $edges['on_approved'] ?? null, $visited),
+            $this->renderOutcome($definition, $edges['on_rejected'] ?? null, $visited),
+            $this->renderOutcome($definition, $edges['on_timeout'] ?? null, $visited)
+        );
+    }
+
+    /**
+     * One approval outcome edge: its continuation chain, or "the workflow ends"
+     * when the edge is null (a legal author choice for on_timeout).
+     *
+     * @param array<string, true> $visited
+     */
+    private function renderOutcome(Definition $definition, ?string $key, array &$visited): string
+    {
+        if ($key === null) {
+            return (string) __('the workflow ends');
+        }
+        $chain = $this->renderChain($definition, $key, $visited);
+        return $chain === [] ? (string) __('the workflow ends') : implode(', ', $chain);
     }
 
     /**

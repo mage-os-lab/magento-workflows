@@ -122,6 +122,27 @@ class ConformanceRoutingTest extends TestCase
         $this->assertTrue(isset($steps['s4']));
     }
 
+    public function testGoodwillApprovalFansOutAllThreeOutcomesWithPlaceholderPayload(): void
+    {
+        $steps = $this->walkFixture(
+            'goodwill-credit-approval.json',
+            [],
+            ['sales_order:1' => new DataObject(['entity_id' => 1])]
+        );
+
+        // The gate explores all three edges (no edge "taken"), like a wait.
+        $this->assertNull($steps['gate']->getEdgeTaken());
+        $this->assertNotNull($steps['gate']->getTiming());
+        $this->assertCount(3, $steps['gate']->getNotes());
+        $this->assertTrue(isset($steps['issue_credit']));
+        $this->assertTrue(isset($steps['policy_email']));
+        $this->assertTrue(isset($steps['escalate']));
+
+        // The placeholder payload flows into the downstream credit-memo config so
+        // {{ steps.gate.payload.approved_amount }} renders instead of collapsing.
+        $this->assertSame('SIMULATED', $steps['issue_credit']->getConfig()['adjustment_positive'] ?? null);
+    }
+
     public function testAbandonedCartWaitFansOutBothOutcomes(): void
     {
         $steps = $this->walkFixture(

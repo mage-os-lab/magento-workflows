@@ -149,6 +149,51 @@ class GraphCheckTest extends TestCase
         $this->assertSame([], $messages);
     }
 
+    public function testPostApprovalBranchWithoutRevalidationIsWarning(): void
+    {
+        // A gate can park for days; a branch after it evaluating the frozen
+        // trigger snapshot has the same staleness hazard as post-delay.
+        $messages = $this->check([
+            'schema' => 4,
+            'entry' => 'gate',
+            'steps' => [
+                'gate' => [
+                    'type' => 'approval',
+                    'config' => ['title' => 'Approve', 'timeout' => 'P3D'],
+                    'on_approved' => 'b1',
+                    'on_rejected' => null,
+                    'on_timeout' => null,
+                ],
+                'b1' => ['type' => 'branch', 'revalidate_entity' => false, 'on_true' => 's1', 'on_false' => null],
+                's1' => ['type' => 'stop'],
+            ],
+        ]);
+
+        $this->assertSame([GraphCheck::CODE_POST_DELAY_STALE], $this->codes($messages));
+        $this->assertSame('b1', $messages[0]->getStepKey());
+    }
+
+    public function testPostApprovalBranchWithRevalidationIsClean(): void
+    {
+        $messages = $this->check([
+            'schema' => 4,
+            'entry' => 'gate',
+            'steps' => [
+                'gate' => [
+                    'type' => 'approval',
+                    'config' => ['title' => 'Approve', 'timeout' => 'P3D'],
+                    'on_approved' => 'b1',
+                    'on_rejected' => null,
+                    'on_timeout' => null,
+                ],
+                'b1' => ['type' => 'branch', 'revalidate_entity' => true, 'on_true' => 's1', 'on_false' => null],
+                's1' => ['type' => 'stop'],
+            ],
+        ]);
+
+        $this->assertSame([], $messages);
+    }
+
     public function testEmptyDefinitionYieldsNoMessages(): void
     {
         $this->assertSame([], $this->check(['schema' => 1, 'steps' => [], 'entry' => null]));

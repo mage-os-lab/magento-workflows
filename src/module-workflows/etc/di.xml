@@ -185,6 +185,7 @@
                 <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
                 <item name="relation_conditions" xsi:type="object">MageOS\Workflows\Model\Validation\Check\RelationConditionsCheck</item>
                 <item name="fan_out_alignment" xsi:type="object">MageOS\Workflows\Model\Validation\Check\FanOutAlignmentCheck</item>
+                <item name="approval" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ApprovalCheck</item>
             </argument>
         </arguments>
     </type>

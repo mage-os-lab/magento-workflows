@@ -11,6 +11,7 @@ use Magento\Store\Model\ScopeInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionStepInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
+use MageOS\Workflows\Api\ApprovalTaskManagerInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
@@ -57,7 +58,8 @@ class Executor
         private readonly LoggerInterface $logger,
         private readonly DelayCalculator $delayCalculator,
         private readonly ScopeConfigInterface $scopeConfig,
-        private readonly ?VariableResolver $redactingVariableResolver = null
+        private readonly ?VariableResolver $redactingVariableResolver = null,
+        private readonly ?ApprovalTaskManagerInterface $approvalTaskManager = null
     ) {
     }
 
@@ -202,6 +204,10 @@ class Executor
                 case Definition::STEP_WAIT:
                     $this->runWaitStep($execution, $ctx, $currentKey, $step);
                     return; // parked until the event fires or the timeout sweeps
+
+                case Definition::STEP_APPROVAL:
+                    $this->runApprovalStep($execution, $ctx, $currentKey, $step);
+                    return; // parked until a decision arrives or the timeout sweeps
 
                 case Definition::STEP_BRANCH:
                     $currentKey = $this->runBranchStep($execution, $ctx, $workflow, $definition, $currentKey, $step);
@@ -371,6 +377,79 @@ class Executor
         $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
         $execution->setCurrentStep($stepKey);
         $execution->setWaitingEvent((string) ($config['event'] ?? ''));
+        $this->persistContext($execution, $ctx);
+        $this->executionRepository->save($execution);
+    }
+
+    /**
+     * Approval (schema v4): a human-decision gate parked on the wait spine.
+     * Parks like runWaitStep — step row waiting with resume_at, execution
+     * waiting — with two differences: waiting_event stays null (no event to
+     * match; only a decision or the timeout sweeper wakes it) and current_step
+     * stays ON the gate so the resume consumer routes on_approved /
+     * on_rejected / on_timeout from the decision the addon wrote.
+     *
+     * Task lifecycle delegates to the ApprovalTaskManagerInterface seam, bound
+     * only when the approvals addon is installed. With no binding this is a
+     * terminal failure — the runtime backstop (docs/discovery/approval-gate.md
+     * §7), reachable only via a data patch that bypassed save-time validation,
+     * never a silent skip.
+     */
+    private function runApprovalStep(
+        WorkflowExecutionInterface $execution,
+        ExecutionContext $ctx,
+        string $stepKey,
+        array $step
+    ): void {
+        if ($this->approvalTaskManager === null) {
+            $error = sprintf(
+                'Approval step "%s" reached with no approvals module bound; install MageOS_WorkflowsApprovals',
+                $stepKey
+            );
+            $this->failStep($execution, $stepKey, $error);
+            $this->failExecution($execution, $stepKey, $error, $ctx, false);
+            return;
+        }
+
+        $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+
+        // Park-time snapshot: title/instructions render in the task grid and
+        // emails, so interpolate them here (docs §3) — late interpolation would
+        // leak post-hoc entity changes into an already-issued request.
+        $resolved = $this->resolverFor($ctx)->resolveConfig([
+            'title' => (string) ($config['title'] ?? ''),
+            'instructions' => (string) ($config['instructions'] ?? ''),
+        ], $ctx);
+        $title = (string) ($resolved['title'] ?? '');
+        $instructions = (string) ($resolved['instructions'] ?? '');
+
+        $resumeAt = $this->computeResumeAt($execution, $stepKey, ['duration' => $config['timeout'] ?? 'PT0S']);
+        $assigneeRole = isset($config['assignee_role']) && $config['assignee_role'] !== ''
+            ? (string) $config['assignee_role']
+            : null;
+
+        // Create the task first — idempotent on (execution_id, step_key), so a
+        // crash before the execution persists re-parks cleanly on redelivery —
+        // then expose its uuid as this step's own output BEFORE persisting so
+        // downstream steps can interpolate {{ steps.<key>.task_uuid }} (§2 A3).
+        $taskUuid = $this->approvalTaskManager->createTask(
+            $execution,
+            $stepKey,
+            $title,
+            $instructions,
+            $resumeAt,
+            $assigneeRole
+        );
+        $ctx->setStepOutput($stepKey, ['task_uuid' => $taskUuid]);
+
+        $this->upsertStepRow($execution, $stepKey, [
+            'status' => WorkflowExecutionStepInterface::STATUS_WAITING,
+            'resume_at' => $resumeAt,
+        ]);
+
+        $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
+        $execution->setCurrentStep($stepKey);
+        $execution->setWaitingEvent(null);
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
     }
@@ -573,6 +652,21 @@ class Executor
             'error' => $error,
             'step_key' => $stepKey,
         ]);
+
+        // Orphan any approval tasks this execution left open (docs §4). Best
+        // effort: the orphan marking must never mask the original failure, so a
+        // seam error is logged and swallowed rather than rethrown.
+        if ($this->approvalTaskManager !== null) {
+            try {
+                $this->approvalTaskManager->orphanTasks((int) $execution->getExecutionId());
+            } catch (\Throwable $e) {
+                $this->logger->error(sprintf(
+                    'Orphaning approval tasks for failed execution %d itself failed: %s',
+                    (int) $execution->getExecutionId(),
+                    $e->getMessage()
+                ));
+            }
+        }
     }
 
     private function failStep(

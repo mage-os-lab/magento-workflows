@@ -99,6 +99,7 @@ class Walker
             Definition::STEP_ACTION => $this->evaluateAction($visit, $ctx, $step, $edges),
             Definition::STEP_DELAY => $this->evaluateDelay($visit, $ctx, $step, $edges),
             Definition::STEP_WAIT => $this->evaluateWait($visit, $ctx, $step, $edges),
+            Definition::STEP_APPROVAL => $this->evaluateApproval($visit, $ctx, $step, $edges),
             Definition::STEP_BRANCH => $this->evaluateBranch($visit, $ctx, $entityType, $step, $edges),
             Definition::STEP_SWITCH => $this->evaluateSwitch($visit, $ctx, $entityType, $step, $edges),
             default => $this->evaluateStop($visit, $step),
@@ -286,6 +287,66 @@ class Walker
             ),
             'edges' => [
                 ['label' => 'on_event', 'target' => $edges['on_event'] ?? null],
+                ['label' => 'on_timeout', 'target' => $edges['on_timeout'] ?? null],
+            ],
+            'production_stops' => false,
+        ];
+    }
+
+    /**
+     * Approval gate (schema v4): never parks in dry-run. Explores all THREE
+     * edges (on_approved / on_rejected / on_timeout) — no decision can arrive
+     * in-process, exactly as a wait explores both — with rejoin dedupe left to
+     * the walker. Annotates the resolved due time (the shared DelayCalculator,
+     * same clamp) and injects a placeholder output so downstream
+     * {{ steps.<key>.* }} interpolation renders in the preview (docs §Dry-run).
+     *
+     * @param array $step
+     * @param array<string, ?string> $edges
+     * @return array{step: TraceStep, edges: array<int, array{label: string, target: ?string}>, production_stops: bool}
+     */
+    private function evaluateApproval(Visit $visit, ExecutionContext $ctx, array $step, array $edges): array
+    {
+        $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+        $timing = $this->computeTiming($ctx, ['duration' => $config['timeout'] ?? 'PT0S']);
+        $role = trim((string) ($config['assignee_role'] ?? ''));
+
+        // Placeholder output: a simulated approval carrying a simulated value
+        // for each declared payload field, so a downstream action interpolating
+        // an approver-supplied value renders instead of collapsing to empty.
+        $payload = [];
+        foreach ((array) ($config['payload_fields'] ?? []) as $field) {
+            if (is_array($field) && isset($field['key']) && is_string($field['key'])) {
+                $payload[$field['key']] = 'SIMULATED';
+            }
+        }
+        $output = ['resolution' => 'approved', 'task_uuid' => 'SIMULATED'];
+        if ($payload !== []) {
+            $output['payload'] = $payload;
+        }
+        $ctx->setStepOutput($visit->getStepKey(), $output);
+
+        return [
+            'step' => new TraceStep(
+                $visit->getStepKey(),
+                Definition::STEP_APPROVAL,
+                TraceStepStatus::WOULD_RUN,
+                $role !== ''
+                    ? (string) __('Would wait for a decision (role: %1) — dry-run explores all three outcomes', $role)
+                    : (string) __('Would wait for a decision — dry-run explores all three outcomes'),
+                $config,
+                null,
+                $timing,
+                null,
+                [
+                    (string) __('If approved by %1 → on_approved path.', $timing['resume_at']),
+                    (string) __('If rejected → on_rejected path.'),
+                    (string) __('If no decision by %1 → on_timeout path.', $timing['resume_at']),
+                ]
+            ),
+            'edges' => [
+                ['label' => 'on_approved', 'target' => $edges['on_approved'] ?? null],
+                ['label' => 'on_rejected', 'target' => $edges['on_rejected'] ?? null],
                 ['label' => 'on_timeout', 'target' => $edges['on_timeout'] ?? null],
             ],
             'production_stops' => false,

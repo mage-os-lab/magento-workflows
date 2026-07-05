@@ -34,13 +34,15 @@ class DefinitionV2Test extends TestCase
         $this->assertSame(1, $definition->getSchemaVersion());
     }
 
-    public function testSchemaFourRejected(): void
+    public function testUnsupportedFutureSchemaRejected(): void
     {
+        // Schema 4 became valid with the approval step; the next unreleased
+        // version is still rejected as an unsupported schema.
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Unsupported definition schema');
 
         Definition::fromArray([
-            'schema' => 4,
+            'schema' => 5,
             'entry' => 's1',
             'steps' => [
                 's1' => ['type' => Definition::STEP_STOP],

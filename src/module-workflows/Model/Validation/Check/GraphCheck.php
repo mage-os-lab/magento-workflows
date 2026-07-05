@@ -17,7 +17,9 @@ use MageOS\Workflows\Model\Validation\ValidationSubject;
  *    (deliberately a warning, not an error: the shipped form assembler can
  *    emit exactly this as a last-row branch, and re-save compatibility wins)
  *  - branch/switch directly after a delay
- *    with revalidate_entity: false         => warning GRAPH_POST_DELAY_STALE
+ *    or approval gate (both park for an
+ *    unbounded stretch) with
+ *    revalidate_entity: false              => warning GRAPH_POST_DELAY_STALE
  *
  * Compatibility bar (docs/discovery/implementation/01-branching.md): this
  * check never turns a currently-savable definition into an unsavable one —
@@ -31,6 +33,13 @@ class GraphCheck implements CheckInterface
     public const CODE_POST_DELAY_STALE = 'GRAPH_POST_DELAY_STALE';
 
     private const BRANCHING_TYPES = [Definition::STEP_BRANCH, Definition::STEP_SWITCH];
+
+    /**
+     * Steps that park for an unbounded stretch, after which the frozen trigger
+     * snapshot is stale: a plain delay, and an approval gate that can sleep to
+     * its timeout (docs/discovery/approval-gate.md §4).
+     */
+    private const POST_PARK_STALE_SOURCES = [Definition::STEP_DELAY, Definition::STEP_APPROVAL];
 
     /**
      * @inheritDoc
@@ -70,18 +79,26 @@ class GraphCheck implements CheckInterface
                     $stepKey
                 );
             }
-            if ($type === Definition::STEP_DELAY) {
-                $next = $definition->getStepEdges($stepKey)['next'];
-                if ($next !== null && $definition->hasStep($next)) {
+            if (in_array($type, self::POST_PARK_STALE_SOURCES, true)) {
+                // Every edge leaving the parking step; an approval gate has
+                // three (on_approved/on_rejected/on_timeout), a delay one.
+                // Report each stale branch/switch target once.
+                $reported = [];
+                foreach ($definition->getStepEdges($stepKey) as $next) {
+                    if ($next === null || isset($reported[$next]) || !$definition->hasStep($next)) {
+                        continue;
+                    }
                     $target = $definition->getStep($next);
                     if (in_array($target['type'] ?? null, self::BRANCHING_TYPES, true)
                         && ($target['revalidate_entity'] ?? true) === false
                     ) {
+                        $reported[$next] = true;
                         $messages[] = ValidationMessage::warning(
                             self::CODE_POST_DELAY_STALE,
                             (string) __(
                                 'Step "%1" evaluates conditions against the stale trigger snapshot directly '
-                                . 'after a delay (revalidate_entity is false). This is usually a mistake.',
+                                . 'after a delay or approval gate (revalidate_entity is false). '
+                                . 'This is usually a mistake.',
                                 $next
                             ),
                             $next

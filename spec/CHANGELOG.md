@@ -27,6 +27,35 @@ spec move in lockstep.
   `{{ }}`); typed (`string`, `select`, `duration`, `secret`, `entity:*`), with the F6
   option-source union (`options` inline / `options_search` reference) for pick fields.
 
+## Definition schema 4
+
+- **`approval` step type** — a human-decision gate parked on the wait spine
+  (`docs/discovery/approval-gate.md`). The execution parks (`status=waiting`,
+  `resume_at` = now + `config.timeout`, ceiling-clamped by the max-delay guard),
+  an approval task is opened, and a decision (admin UI / REST) or the timeout
+  sweeper wakes it. Three edges: `on_approved`, `on_rejected`, `on_timeout`.
+  `config` requires `title` (interpolated at park time) and `timeout` (**required**
+  — no indefinite parks); optional `instructions`, `assignee_role`, `allow_bulk`
+  (default `false`), and `payload_fields[]` (each `{key, label, type: string|
+  number|boolean, required?}`, `key` unique). The step output exposes
+  `{task_uuid}` at park and `{resolution, note, payload, decided_by}` after a
+  decision (`{resolution: 'timeout'}` on timeout). Documents using `approval`
+  MUST declare `"schema": 4`; the parser rejects it below that.
+- **Packaging** — the step type is spec-level and lives in core, but the task
+  record, decision service, REST/ACL, and admin surface ship in the optional
+  `MageOS_WorkflowsApprovals` addon. Core's save-time validation rejects an
+  `approval` step with `APPROVAL_MODULE_MISSING` when the addon is absent, the
+  same way unknown action codes fail. The `GRAPH_POST_DELAY_STALE` warning now
+  also fires for a `revalidate_entity:false` branch/switch directly after an
+  approval gate.
+- New conformance fixture: `fixtures/goodwill-credit-approval.json` (approval
+  gate with a `payload_fields` value flowing into a downstream credit memo).
+
+**Migration note for third parties:** schema 1–3 documents remain valid unchanged.
+Consumers that walk step edges learn one new shape: `approval` has three named
+edges (`on_approved` / `on_rejected` / `on_timeout`), derivable from the step
+type alone.
+
 ## Definition schema 3
 
 - **`switch` step type** — first-match-wins multi-way branch. `cases[]` entries carry a
