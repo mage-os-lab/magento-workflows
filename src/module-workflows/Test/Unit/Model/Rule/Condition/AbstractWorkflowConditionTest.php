@@ -282,7 +282,6 @@ class AbstractWorkflowConditionTest extends TestCase
     {
         $reflection = new \ReflectionClass(AbstractWorkflowCondition::class);
         $method = $reflection->getMethod('isRelativeDateValue');
-        $method->setAccessible(true);
         return $method->invoke($this->condition, $value);
     }
 
@@ -293,7 +292,6 @@ class AbstractWorkflowConditionTest extends TestCase
     {
         $reflection = new \ReflectionClass(AbstractWorkflowCondition::class);
         $method = $reflection->getMethod('resolveRelativeDate');
-        $method->setAccessible(true);
         return $method->invoke($this->condition, $expression);
     }
 

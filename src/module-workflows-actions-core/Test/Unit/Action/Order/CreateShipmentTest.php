@@ -23,7 +23,6 @@ class CreateShipmentTest extends TestCase
 
         $reflection = new \ReflectionClass($action);
         $method = $reflection->getMethod('boolConfig');
-        $method->setAccessible(true);
 
         $result = $method->invoke($action, ['notify' => false], 'notify');
         $this->assertFalse($result);
@@ -39,7 +38,6 @@ class CreateShipmentTest extends TestCase
 
         $reflection = new \ReflectionClass($action);
         $method = $reflection->getMethod('boolConfig');
-        $method->setAccessible(true);
 
         $result = $method->invoke($action, ['notify' => true], 'notify');
         $this->assertTrue($result);
@@ -55,7 +53,6 @@ class CreateShipmentTest extends TestCase
 
         $reflection = new \ReflectionClass($action);
         $method = $reflection->getMethod('boolConfig');
-        $method->setAccessible(true);
 
         $result = $method->invoke($action, ['notify' => '1'], 'notify');
         $this->assertTrue($result);
@@ -71,7 +68,6 @@ class CreateShipmentTest extends TestCase
 
         $reflection = new \ReflectionClass($action);
         $method = $reflection->getMethod('boolConfig');
-        $method->setAccessible(true);
 
         $result = $method->invoke($action, ['notify' => 'yes'], 'notify');
         $this->assertTrue($result);

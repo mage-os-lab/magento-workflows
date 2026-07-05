@@ -254,7 +254,6 @@ class TriggerDataTest extends TestCase
     {
         $reflection = new \ReflectionClass(TriggerData::class);
         $method = $reflection->getMethod('resolvePath');
-        $method->setAccessible(true);
         return $method->invoke($this->condition, $model, $path);
     }
 

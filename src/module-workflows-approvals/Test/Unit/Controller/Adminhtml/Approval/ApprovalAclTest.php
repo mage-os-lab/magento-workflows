@@ -58,9 +58,7 @@ class ApprovalAclTest extends TestCase
         $reject = (new \ReflectionClass(MassReject::class))->newInstanceWithoutConstructor();
 
         $approveMethod = new \ReflectionMethod(MassApprove::class, 'getDecision');
-        $approveMethod->setAccessible(true);
         $rejectMethod = new \ReflectionMethod(MassReject::class, 'getDecision');
-        $rejectMethod->setAccessible(true);
 
         $this->assertSame('approved', $approveMethod->invoke($approve));
         $this->assertSame('rejected', $rejectMethod->invoke($reject));

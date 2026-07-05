@@ -50,7 +50,6 @@ class ValidateWorkflowOnSaveFiresTest extends TestCase
     private function setProp(object $obj, string $name, mixed $value): void
     {
         $prop = new \ReflectionProperty($obj, $name);
-        $prop->setAccessible(true);
         $prop->setValue($obj, $value);
     }
 

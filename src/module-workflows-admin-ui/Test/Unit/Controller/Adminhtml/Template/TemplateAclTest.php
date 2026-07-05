@@ -35,7 +35,6 @@ class TemplateAclTest extends TestCase
     {
         $install = (new \ReflectionClass(Install::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod(Install::class, 'collectSecrets');
-        $method->setAccessible(true);
 
         // The secret param's VALUE is the secret key name; a value pairs to it.
         $parameters = ['webhook_secret' => 'fraud_hmac', 'other' => 'x'];
@@ -50,7 +49,6 @@ class TemplateAclTest extends TestCase
     {
         $install = (new \ReflectionClass(Install::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod(Install::class, 'collectSecrets');
-        $method->setAccessible(true);
 
         $result = $method->invoke($install, ['s' => 'my_secret'], ['s' => '']);
 

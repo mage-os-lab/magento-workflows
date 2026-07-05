@@ -46,11 +46,9 @@ class ApprovalManagementTest extends TestCase
     {
         $management = (new \ReflectionClass(ApprovalManagement::class))->newInstanceWithoutConstructor();
         $property = new \ReflectionProperty(ApprovalManagement::class, 'userContext');
-        $property->setAccessible(true);
         $property->setValue($management, $userContext);
 
         $method = new \ReflectionMethod(ApprovalManagement::class, 'resolveActor');
-        $method->setAccessible(true);
         return $method->invoke($management);
     }
 

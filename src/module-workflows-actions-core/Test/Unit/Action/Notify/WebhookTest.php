@@ -24,63 +24,54 @@ class WebhookTest extends TestCase
     public function testIsForbiddenIpWithLoopback127(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '127.0.0.1'));
     }
 
     public function testIsForbiddenIpWithIpv6Loopback(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '::1'));
     }
 
     public function testIsForbiddenIpWithPrivateRange10(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '10.0.0.5'));
     }
 
     public function testIsForbiddenIpWithPrivateRange172(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '172.16.0.1'));
     }
 
     public function testIsForbiddenIpWithPrivateRange192(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '192.168.1.1'));
     }
 
     public function testIsForbiddenIpWithMetadataEndpoint(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '169.254.169.254'));
     }
 
     public function testIsForbiddenIpWithIpv6Metadata(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, 'fd00:ec2::254'));
     }
 
     public function testIsForbiddenIpWithIpv6LinkLocal(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, 'fe80::1'));
     }
 
     public function testIsForbiddenIpWithIpv6UniqueLocal(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, 'fc00::1'));
         $this->assertTrue($method->invoke($this->webhook, 'fd00::1'));
     }
@@ -88,28 +79,24 @@ class WebhookTest extends TestCase
     public function testIsForbiddenIpWithIpv6Brackets(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '[::1]'));
     }
 
     public function testIsForbiddenIpWithIpv4MappedPrivate(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertTrue($method->invoke($this->webhook, '::ffff:10.0.0.1'));
     }
 
     public function testIsForbiddenIpWithPublicAddress(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         $this->assertFalse($method->invoke($this->webhook, '93.184.216.34'));
     }
 
     public function testIsForbiddenIpWithPublicIpv6(): void
     {
         $method = $this->reflection->getMethod('isForbiddenIp');
-        $method->setAccessible(true);
         // 2606:4700:4700::1111 (Cloudflare) is genuine global-unicast; unlike the
         // 2001:db8::/32 documentation range, filter_var classifies it as public on
         // every PHP version (8.1's reserved-range list rejects 2001:db8::).
@@ -119,7 +106,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersWithEmptyConfig(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $headers = $method->invoke($this->webhook, [], '');
         $this->assertCount(0, $headers);
     }
@@ -127,7 +113,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersStripsHostHeader(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $config = ['headers' => '{"Host": "example.com", "X-Custom": "value"}'];
         $headers = $method->invoke($this->webhook, $config, '');
         $this->assertFalse(in_array('Host', array_keys($headers)));
@@ -137,7 +122,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersStripsContentLengthHeader(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $config = ['headers' => '{"Content-Length": "100"}'];
         $headers = $method->invoke($this->webhook, $config, '');
         $this->assertFalse(in_array('Content-Length', array_keys($headers)));
@@ -146,7 +130,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersStripsHopByHopHeaders(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $config = ['headers' => '{"Transfer-Encoding": "chunked", "Connection": "close"}'];
         $headers = $method->invoke($this->webhook, $config, '');
         $this->assertFalse(in_array('Transfer-Encoding', array_keys($headers)));
@@ -156,7 +139,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersStripsCarriageReturnAndNewline(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $config = ['headers' => '{"X-Custom": "value\\r\\ninjection"}'];
         $headers = $method->invoke($this->webhook, $config, '');
         $this->assertSame('valueinjection', $headers['X-Custom'] ?? null);
@@ -165,7 +147,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersRejectsInvalidHeaderNames(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $config = ['headers' => '{"X@Invalid": "value", "X-Valid": "ok"}'];
         $headers = $method->invoke($this->webhook, $config, '');
         $this->assertFalse(in_array('X@Invalid', array_keys($headers)));
@@ -175,7 +156,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersAddsContentTypeForJsonBody(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $headers = $method->invoke($this->webhook, [], '{"key": "value"}');
         $this->assertSame('application/json', $headers['Content-Type'] ?? null);
     }
@@ -183,7 +163,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersNoContentTypeForEmptyBody(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $headers = $method->invoke($this->webhook, [], '');
         $this->assertFalse(isset($headers['Content-Type']));
     }
@@ -191,7 +170,6 @@ class WebhookTest extends TestCase
     public function testBuildHeadersSignsBodyWithHmac(): void
     {
         $method = $this->reflection->getMethod('buildHeaders');
-        $method->setAccessible(true);
         $body = '{"test": "data"}';
         $config = ['sign_with' => 'my-secret-key'];
         $headers = $method->invoke($this->webhook, $config, $body);

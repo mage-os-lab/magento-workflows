@@ -30,7 +30,6 @@ class SaveAssemblerTest extends TestCase
     {
         $controller = (new \ReflectionClass(Save::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod(Save::class, 'buildDefinitionFromRows');
-        $method->setAccessible(true);
         return $method->invoke($controller, $rows);
     }
 

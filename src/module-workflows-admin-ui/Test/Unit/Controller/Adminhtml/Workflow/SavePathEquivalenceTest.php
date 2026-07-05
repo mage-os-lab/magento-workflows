@@ -32,7 +32,6 @@ class SavePathEquivalenceTest extends TestCase
     {
         $controller = (new \ReflectionClass(Save::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod(Save::class, 'resolveDefinitionJson');
-        $method->setAccessible(true);
         return $method->invoke($controller, $postData);
     }
 

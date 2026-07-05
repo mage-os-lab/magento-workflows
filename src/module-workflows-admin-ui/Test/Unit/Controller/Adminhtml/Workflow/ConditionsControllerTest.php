@@ -35,7 +35,6 @@ class ConditionsControllerTest extends TestCase
     {
         $controller = (new \ReflectionClass(Conditions::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod(Conditions::class, 'normalize');
-        $method->setAccessible(true);
         return $method->invoke($controller, $raw);
     }
 
