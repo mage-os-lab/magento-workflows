@@ -54,6 +54,7 @@ A new step type (schema 4), three edges, parked exactly like `wait`:
     "instructions": "Customer requested cancellation outside the 30-day window. Total: {{ trigger.grand_total|number:2 }}.",
     "timeout": "P3D",
     "assignee_role": "sales_managers",
+    "allow_bulk": false,
     "payload_fields": [
       {"key": "approved_amount", "label": "Approved amount", "type": "number", "required": false}
     ]
@@ -217,6 +218,16 @@ class as a captured webhook response, and handled the same way):
 - **Approvals grid** (`Controller/Adminhtml/Approval/Index`, menu under Workflows, gated
   `::approvals_view`): columns title, workflow, entity (deep link), due-in, status,
   assignee role. Default filter `status=open`. Row action opens the **decision view**.
+- **Mass decide, per-gate opt-in**: the grid carries approve/reject mass actions, but they
+  only apply to tasks whose gate declared `allow_bulk: true` (default `false`) — low-stakes
+  gate classes ("confirm sending the win-back batch") can be cleared in bulk; refund-style
+  gates never can. The mass action posts through the same `ApprovalService::decide()` per
+  row (same claims, same audit trail, one shared note, empty payload), with a confirmation
+  count and a selection cap borrowing the manual mass-run vocabulary
+  ([10 §Manual mass-run](../10-security.md#manual-mass-run)); rows whose gate is not
+  bulk-enabled are skipped and reported, never silently decided. Save-time validation
+  rejects `allow_bulk: true` on a gate with any *required* `payload_fields` entry — a bulk
+  approval cannot supply per-task values, so the combination is an authoring error.
 - **Decision view** (`Approval/View` + `Decide` POST controller, gated `::approvals_decide`):
   title, instructions, entity summary + link, the execution timeline so far, note field, and —
   when `payload_fields` is declared — a generated form for exactly those fields (no free-form
@@ -256,7 +267,9 @@ labeled handles) via the same palette/config-panel metadata path as `switch`.
 - **Security:** the decision endpoint is authenticated web API (never anonymous); UUID handles
   only; per-resource ACL split between viewing and deciding; role enforcement at decide time;
   payload allowlisted/coerced/capped; full actor audit on the task row; decided tasks are
-  immutable (no re-decide, no edit).
+  immutable (no re-decide, no edit). Bulk decisions honor the same gates: `allow_bulk` is
+  enforced server-side per row (not just filtered in the grid), so a crafted mass-action
+  request cannot bulk-decide a gate that didn't opt in.
 - **Maintainability:** one table, one service, one step handler, one routing extension, two
   controllers + grid, three REST routes. The service is the single decision path for UI and
   API — no parallel logic.
@@ -281,20 +294,24 @@ only on the shipped wait/resume spine. Estimates in the same currency as
 Total ≈ **5 wk**. Stages 1–2 are independently shippable as an API-only feature (external
 tools can decide before the grid exists); stage 3 is what makes it a merchant feature.
 
-## 9. Open questions
+## 9. Resolved decisions (July 2026 review)
 
-1. **Reminder pings before timeout** (`remind_after: P1D` re-sending the notification)?
-   Leaning no for v1 — escalation tiers are chained gates, and a reminder is a delay+notify
-   the author can already build; revisit if beta merchants ask.
-2. **Mass decide** (grid mass-action "approve selected")? Leaning no — bulk-approving refund
-   gates defeats the point of a gate; individual decisions keep the audit honest. Revisit for
-   low-stakes gate classes.
-3. **`assignee_role` granularity** — role code (proposed, matches Magento authorization roles)
-   vs specific admin user. Users churn; roles are the stable handle. A per-user "claim this
-   task" affordance can layer on later without schema change (`decided_by` already records the
-   individual).
-4. **Should `::approvals_view` be implied by `::view`?** Proposed: no — approval tasks carry
-   interpolated PII the execution grid doesn't surface as prominently; keep the grant explicit.
-5. **Schema-4 packaging** — ship `approval` alone or hold for a shared revision with the
-   sub-workflow invoke step ([exploration §1](exploration-composition-creation-long-span.md))?
-   Decide when either is committed; the compat machinery supports both.
+Originally open questions; resolved with the project owner. The body sections above reflect
+these outcomes.
+
+1. **Reminder pings before timeout — no for v1.** Escalation tiers are chained gates, and a
+   reminder is a delay+notify the author can already build; revisit if beta merchants ask.
+2. **Mass decide — yes, per-gate opt-in** (`allow_bulk: true`, default `false`; §6). Bulk
+   clearing is legitimate for low-stakes gate classes, but the gate author decides — never the
+   grid operator. Server-side enforcement per row; incompatible with required `payload_fields`
+   (save-time error).
+3. **`assignee_role` = role code**, matching Magento authorization roles. Users churn; roles
+   are the stable handle. A per-user "claim this task" affordance can layer on later without
+   schema change (`decided_by` already records the individual).
+4. **`::approvals_view` stays separate from `::view`.** Approval tasks carry interpolated PII
+   the execution grid doesn't surface as prominently; the grant is explicit.
+5. **Schema-4 packaging — ship `approval` alone when ready.** Don't couple a committed
+   feature's timeline to the still-pre-discovery sub-workflow invoke step
+   ([exploration §1](exploration-composition-creation-long-span.md)); if the invoke step
+   happens to be committed before the schema-4 spec release ships, merging into one revision
+   remains an option, not a dependency.
