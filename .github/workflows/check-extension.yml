@@ -106,6 +106,13 @@ jobs:
         env:
           COMPOSER_MIRROR_PATH_REPOS: 1
 
+      # The published spec/ schemas + conformance fixtures live at the monorepo
+      # root, not inside any module package, so they are absent from the vendor
+      # install. Several unit tests read them via dirname(__DIR__, 6) . '/spec/…'
+      # which resolves to <magento>/vendor/spec — stage them there.
+      - name: Stage monorepo spec/ fixtures
+        run: cp -r "${{ github.workspace }}/spec" "${{ steps.setup-magento.outputs.path }}/vendor/spec"
+
       - name: Configure phpunit.xml.dist
         working-directory: ${{ steps.setup-magento.outputs.path }}
         run: |
