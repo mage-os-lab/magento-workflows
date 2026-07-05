@@ -18,11 +18,17 @@ use Psr\Log\LoggerInterface;
  *    orphans inline; this catches anything it missed. An open task on a
  *    terminal execution is a bug marker, not a valid state — the count is
  *    logged as such.
- *  - The execution is still live but no longer waiting on this gate's step_key
- *    → mark 'expired'. This covers the best-effort expireTask failure in
- *    ResumeConsumer::routeApprovalStep (the parked step row is already closed
- *    there, so an expiry error is logged and swallowed to avoid a routing
- *    loop; the still-open task lands here).
+ *  - The execution is live and its current_step has moved OFF this gate's
+ *    step_key → mark 'expired'. This covers the best-effort expireTask failure
+ *    in ResumeConsumer::routeApprovalStep (the parked step row is already
+ *    closed there, so an expiry error is logged and swallowed to avoid a
+ *    routing loop; the still-open task lands here).
+ *  - An open task whose execution's current_step EQUALS its step_key is NEVER
+ *    touched, whatever the execution status: the gate is parked (waiting), is
+ *    being parked (Executor::walk persists current_step=<gate> with status
+ *    'running' BEFORE runApprovalStep parks — state-before-side-effect), or was
+ *    just claimed for resume (pending, the consumer routes and expires it).
+ *    Expiring in that window would kill a healthy gate mid-park.
  *
  * Each transition is guarded on status='open', so a decision that claimed the
  * task microseconds earlier is never overwritten.
@@ -98,9 +104,11 @@ class ReconcileApprovals
                 continue;
             }
 
-            $waitingOnGate = $status === WorkflowExecutionInterface::STATUS_WAITING
-                && (string) ($execution['current_step'] ?? '') === (string) $task['step_key'];
-            if (!$waitingOnGate) {
+            // current_step still on the gate = parked, being parked, or being
+            // resumed — always leave it alone. Expire only once the execution
+            // demonstrably walked past this gate.
+            $onGate = (string) ($execution['current_step'] ?? '') === (string) $task['step_key'];
+            if (!$onGate) {
                 $expired += $this->transition(
                     $connection,
                     $approvalTable,

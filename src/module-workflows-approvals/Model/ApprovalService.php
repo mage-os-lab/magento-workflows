@@ -125,15 +125,21 @@ class ApprovalService
         }
 
         // (e) execution claim — the decision-vs-timeout arbiter, the exact
-        // waiting -> pending posture the sweeper uses. If the sweeper claimed it
-        // microseconds earlier, roll the task claim back to open and report the
-        // conflict; the timeout path marks the task expired.
+        // waiting -> pending posture the sweeper uses, ADDITIONALLY scoped to
+        // this gate: approval parks keep current_step ON the gate, so the
+        // current_step predicate rejects a STALE open task whose execution
+        // moved on and parked again at a later step (possible when the
+        // consumer's best-effort expireTask failed). Without it, this decision
+        // would claim a wait it does not own. On 0 rows — the sweeper won, or
+        // the claim was stale — roll the task claim back to open and report the
+        // conflict; the timeout path / reconciliation sweep marks the task.
         $execClaimed = $connection->update(
             $executionTable,
             [WorkflowExecutionInterface::STATUS => WorkflowExecutionInterface::STATUS_PENDING],
             [
                 'execution_id = ?' => $executionId,
                 'status = ?' => WorkflowExecutionInterface::STATUS_WAITING,
+                'current_step = ?' => $stepKey,
             ]
         );
         if ($execClaimed !== 1) {
@@ -156,8 +162,12 @@ class ApprovalService
             $result['payload'] = $coerced;
         }
 
+        // step_key scoping mirrors the execution claim: only the gate's OWN
+        // parked row may carry this decision — never whatever step happens to
+        // be waiting. Covers the result write and the publish-failure clear.
         $stepWhere = [
             'execution_id = ?' => $executionId,
+            'step_key = ?' => $stepKey,
             'status = ?' => WorkflowExecutionStepInterface::STATUS_WAITING,
         ];
         $connection->update($stepTable, ['result' => $this->encode($result)], $stepWhere);
