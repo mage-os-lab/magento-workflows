@@ -1,0 +1,186 @@
+# Adapted from graycoreio/github-actions-magento2 `.github/workflows/check-extension.yaml`.
+#
+# The upstream reusable workflow tests a SINGLE extension: it registers one
+# Composer path repository (`inputs.path`) and requires one package. This repo
+# is a monorepo of ten interdependent, unpublished `mage-os/workflows*`
+# packages (every module requires the core `mage-os/workflows`; several require
+# sibling modules). A single path repo can't resolve those siblings, so instead
+# of calling the upstream reusable workflow we reuse its composite actions
+# (`setup-magento`, `cache-magento`, `setup-di-compile`, `coding-standard`,
+# `supported-version`) and register a wildcard path repo (`src/module-*`) so all
+# modules resolve together, requiring every module with an explicit `@dev`
+# stability flag so the transitive `"*"` sibling constraints select the local
+# dev versions.
+#
+# The matrix comes from `supported-version` with `kind: latest`, which resolves
+# to Magento `project-community-edition` on PHP 8.5 / Composer 2.9.8 — the
+# "Magento latest" target this workflow exists to validate. Standalone lint +
+# unit coverage for PHP 8.1–8.4 lives in `lint.yml`; this workflow is the real
+# Magento install: unit under real PHPUnit, `setup:di:compile`, and phpcs.
+
+name: Check Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'composer.json'
+      - '.github/workflows/check-extension.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'composer.json'
+      - '.github/workflows/check-extension.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: check-extension-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAGENTO_REPOSITORY: https://mirror.mage-os.org/
+
+jobs:
+  compute_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.supported-version.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graycoreio/github-actions-magento2/supported-version@main
+        id: supported-version
+        with:
+          kind: latest
+      - run: echo '${{ steps.supported-version.outputs.matrix }}'
+
+  unit-test-extension:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graycoreio/github-actions-magento2/setup-magento@main
+        id: setup-magento
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          mode: extension
+          magento_version: ${{ matrix.magento }}
+          magento_repository: ${{ env.MAGENTO_REPOSITORY }}
+
+      - name: Register monorepo package repositories
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer config repositories.mageos-workflows path '${{ github.workspace }}/src/module-*'
+
+      - name: Require all workflow modules
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          pkgs=$(for f in ${{ github.workspace }}/src/module-*/composer.json; do
+            printf '%s:@dev ' "$(jq -r .name "$f")"
+          done)
+          echo "Requiring: $pkgs"
+          composer require $pkgs --no-install
+
+      - run: composer update --no-install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - uses: graycoreio/github-actions-magento2/cache-magento@main
+        with:
+          working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - name: Composer install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer install
+        env:
+          COMPOSER_MIRROR_PATH_REPOS: 1
+
+      - name: Configure phpunit.xml.dist
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          ## Add a testsuite covering every module's Test/Unit tree (installed
+          ## under vendor/mage-os/workflows*). mageos-async-events lives under
+          ## vendor/mage-os/mageos-* and is excluded by the `workflows` prefix.
+          cat > /tmp/testsuite.xml << 'EOF'
+                  <testsuite name="MageOS_Workflows_Unit">
+                      <directory>../../../vendor/mage-os/workflows*/Test/Unit</directory>
+                  </testsuite>
+          EOF
+          sed -i '/<testsuites>/r /tmp/testsuite.xml' dev/tests/unit/phpunit.xml.dist
+
+          ## Disable allure (See https://github.com/magento/magento2/issues/36702 )
+          sed -i '/<extensions>/,/<\/extensions>/d' dev/tests/unit/phpunit.xml.dist
+
+      - name: Run extension unit tests
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist --testsuite MageOS_Workflows_Unit
+
+  compile-extension:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graycoreio/github-actions-magento2/setup-magento@main
+        id: setup-magento
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          mode: extension
+          magento_version: ${{ matrix.magento }}
+          magento_repository: ${{ env.MAGENTO_REPOSITORY }}
+
+      - name: Register monorepo package repositories
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer config repositories.mageos-workflows path '${{ github.workspace }}/src/module-*'
+
+      - name: Require all workflow modules
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          pkgs=$(for f in ${{ github.workspace }}/src/module-*/composer.json; do
+            printf '%s:@dev ' "$(jq -r .name "$f")"
+          done)
+          echo "Requiring: $pkgs"
+          composer require $pkgs --no-install
+
+      - run: composer update --no-install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - uses: graycoreio/github-actions-magento2/cache-magento@main
+        with:
+          working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - name: Composer install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer install
+        env:
+          COMPOSER_MIRROR_PATH_REPOS: 1
+
+      - uses: graycoreio/github-actions-magento2/setup-di-compile@main
+        with:
+          path: ${{ steps.setup-magento.outputs.path }}
+
+  coding-standard:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          coverage: none
+
+      - uses: graycoreio/github-actions-magento2/coding-standard@main
+        with:
+          path: src
