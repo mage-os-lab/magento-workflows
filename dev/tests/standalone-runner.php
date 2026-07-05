@@ -170,6 +170,17 @@ namespace PHPUnit\Framework {
             }
         }
 
+        protected function assertStringNotContainsString(string $needle, string $haystack, string $message = ''): void
+        {
+            if (str_contains($haystack, $needle)) {
+                throw new AssertionFailedError($message !== '' ? $message : sprintf(
+                    'Failed asserting that %s does not contain %s.',
+                    self::export($haystack),
+                    self::export($needle)
+                ));
+            }
+        }
+
         protected function assertInstanceOf(string $expectedClass, $actual, string $message = ''): void
         {
             if (!($actual instanceof $expectedClass)) {

@@ -32,7 +32,7 @@ class MassDecideProcessorTest extends TestCase
     private RecordingPublisher $publisher;
     private FakeWorkflowExecutionRepository $executionRepository;
 
-    protected function setUp(): void
+    public function setUp(): void
     {
         $this->connection = new InMemoryConnection();
         $this->publisher = new RecordingPublisher();
