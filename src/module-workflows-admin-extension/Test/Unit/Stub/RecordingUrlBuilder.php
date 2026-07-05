@@ -19,4 +19,69 @@ class RecordingUrlBuilder implements UrlInterface
         $this->calls[] = ['route' => $routePath, 'params' => $routeParams];
         return 'https://admin.example/' . (string) $routePath;
     }
+
+    public function getUseSession()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getBaseUrl($params = [])
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getCurrentUrl()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getRouteUrl($routePath = null, $routeParams = null)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function addSessionParam()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function addQueryParams(array $data)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function setQueryParam($key, $data)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function escape($value)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getDirectUrl($url, $params = [])
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function sessionUrlVar($html)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function isOwnOriginUrl()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getRedirectUrl($url)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function setScope($params)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
 }

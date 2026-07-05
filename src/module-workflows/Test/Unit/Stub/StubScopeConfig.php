@@ -21,12 +21,12 @@ class StubScopeConfig implements ScopeConfigInterface
 
     // $scopeCode is untyped like the real ScopeConfigInterface: callers pass an
     // int store id (Executor::computeResumeAt) as readily as a string code.
-    public function getValue(string $path, string $scope = 'default', $scopeCode = null)
+    public function getValue($path, $scopeType = 'default', $scopeCode = null)
     {
         return $this->values[$path] ?? null;
     }
 
-    public function isSetFlag(string $path, string $scope = 'default', $scopeCode = null): bool
+    public function isSetFlag($path, $scopeType = 'default', $scopeCode = null): bool
     {
         return (bool) ($this->values[$path] ?? false);
     }

@@ -26,4 +26,29 @@ class FakeSearchResults implements SearchResultsInterface
     {
         return $this->items;
     }
+
+    public function setItems(array $items)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getSearchCriteria()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function setSearchCriteria(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getTotalCount()
+    {
+        return count($this->items);
+    }
+
+    public function setTotalCount($totalCount)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
 }

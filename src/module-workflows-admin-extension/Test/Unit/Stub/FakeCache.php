@@ -21,25 +21,30 @@ class FakeCache implements CacheInterface
     /** @var array<int, string[]> every clean() invocation's tag list */
     public array $cleanCalls = [];
 
-    public function load(string $identifier)
+    public function getFrontend()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function load($identifier)
     {
         return $this->storage[$identifier] ?? false;
     }
 
-    public function save(string $data, string $identifier, array $tags = [], ?int $lifeTime = null)
+    public function save($data, $identifier, $tags = [], $lifeTime = null)
     {
         $this->storage[$identifier] = $data;
         $this->tagsByIdentifier[$identifier] = $tags;
         return true;
     }
 
-    public function remove(string $identifier)
+    public function remove($identifier)
     {
         unset($this->storage[$identifier], $this->tagsByIdentifier[$identifier]);
         return true;
     }
 
-    public function clean(array $tags = [])
+    public function clean($tags = [])
     {
         $this->cleanCalls[] = $tags;
         foreach ($this->tagsByIdentifier as $identifier => $identifierTags) {

@@ -21,4 +21,59 @@ class StubStoreManager implements StoreManagerInterface
     {
         return new DataObject(['website_id' => $this->websiteId]);
     }
+
+    public function setIsSingleStoreModeAllowed($value)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function hasSingleStore()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function isSingleStoreMode()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getStores($withDefault = false, $codeKey = false)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getWebsite($websiteId = null)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getWebsites($withDefault = false, $codeKey = false)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function reinitStores()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getDefaultStoreView()
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getGroup($groupId = null)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function getGroups($withDefault = false)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
+
+    public function setCurrentStore($store)
+    {
+        throw new \BadMethodCallException(__METHOD__);
+    }
 }
