@@ -12,10 +12,11 @@
 # stability flag so the transitive `"*"` sibling constraints select the local
 # dev versions.
 #
-# The matrix comes from `supported-version` with `kind: latest`, which resolves
-# to Magento `project-community-edition` on PHP 8.5 / Composer 2.9.8 — the
-# "Magento latest" target this workflow exists to validate. Standalone lint +
-# unit coverage for PHP 8.1–8.4 lives in `lint.yml`; this workflow is the real
+# The matrix comes from `supported-version` with `kind: currently-supported`,
+# which resolves to every actively-maintained Magento `project-community-edition`
+# line (2.4.6 → 2.4.9) across their respective PHP versions — so the extension is
+# validated against the whole supported range, not just the newest release.
+# Standalone lint + unit coverage lives in `lint.yml`; this workflow is the real
 # Magento install: unit under real PHPUnit, `setup:di:compile`, and phpcs.
 
 name: Check Extension
@@ -51,17 +52,18 @@ jobs:
       - uses: graycoreio/github-actions-magento2/supported-version@main
         id: supported-version
         with:
-          kind: latest
+          kind: currently-supported
       - run: echo '${{ steps.supported-version.outputs.matrix }}'
 
-  # BLOCKING. Runs the whole Test/Unit suite under the host Magento's real
-  # PHPUnit on PHP 8.5. The suites are authored against this repo's shim layer
-  # (dev/tests/shims/) AND run here under real Magento: their test doubles were
-  # reconciled to the real Magento class/interface signatures (every double
-  # implements the full interface; params widened to the untyped Magento
-  # contracts; Api builders extend the real concrete classes). The same doubles
-  # still pass the shim runner in lint.yml (php dev/tests/standalone-runner.php)
-  # on PHP 8.1–8.5, since every change was additive/widening.
+  # BLOCKING. Runs the whole Test/Unit suite under each supported Magento's real
+  # PHPUnit (one matrix entry per supported line, 2.4.6 → 2.4.9). The suites are
+  # authored against this repo's shim layer (dev/tests/shims/) AND run here under
+  # real Magento: their test doubles were reconciled to the real Magento
+  # class/interface signatures (every double implements the full interface;
+  # params widened to the untyped Magento contracts; Api builders extend the real
+  # concrete classes). The same doubles still pass the shim runner in lint.yml
+  # (php dev/tests/standalone-runner.php) on PHP 8.1–8.5, since every change was
+  # additive/widening.
   unit-test-extension:
     runs-on: ${{ matrix.os }}
     needs: compute_matrix
@@ -135,7 +137,7 @@ jobs:
         working-directory: ${{ steps.setup-magento.outputs.path }}
         run: vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist --testsuite MageOS_Workflows_Unit
 
-  # BLOCKING. setup:di:compile loads every class against real Magento on PHP 8.5.
+  # BLOCKING. setup:di:compile loads every class against each supported Magento.
   # All defects it surfaced are fixed: AbstractModel::setEntityId param widening,
   # the DecisionPanel readonly-$formKey collision, and WorkflowNotifier — now
   # implementing the real mageos-async-events contract
