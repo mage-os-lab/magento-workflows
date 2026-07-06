@@ -149,6 +149,36 @@ jobs:
           ## Disable allure (See https://github.com/magento/magento2/issues/36702 )
           sed -i '/<extensions>/,/<\/extensions>/d' dev/tests/unit/phpunit.xml.dist
 
+      - name: DEBUG template fixture visibility
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          set +e
+          echo "== workflows install kind =="
+          ls -ld vendor/mage-os/workflows vendor/mage-os/workflows-templates
+          readlink -f vendor/mage-os/workflows
+          echo "== test-file dir contents =="
+          ls -la vendor/mage-os/workflows/Test/Unit/Model/Template/
+          echo "== pack-a templates =="
+          ls -la vendor/mage-os/workflows/Test/Unit/Model/Template/_files/pack-a/templates/
+          echo "== templates module dir =="
+          ls -la vendor/mage-os/workflows-templates/templates/ | head
+          echo "== replicate test logic via php =="
+          php -r '
+            require "vendor/autoload.php";
+            $dirs = [
+              "vendor/mage-os/workflows/Test/Unit/Model/Template/_files/pack-a/templates",
+              "vendor/mage-os/workflows-templates/templates",
+            ];
+            foreach ($dirs as $d) {
+              $abs = getcwd()."/".$d;
+              printf("dir=%s is_dir=%d glob=%d\n", $d, (int) is_dir($abs), count(glob($abs."/*.json")));
+            }
+            $c = "Magento\\Framework\\Module\\Dir";
+            printf("Dir const defined=%d value=%s\n", (int) defined("$c::MODULE_BASE_DIR"),
+              defined("$c::MODULE_BASE_DIR") ? var_export(constant("$c::MODULE_BASE_DIR"), true) : "N/A");
+          '
+          true
+
       - name: Run extension unit tests
         working-directory: ${{ steps.setup-magento.outputs.path }}
         run: vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist --testsuite MageOS_Workflows_Unit
