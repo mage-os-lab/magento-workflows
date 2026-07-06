@@ -13,9 +13,13 @@ interface WorkflowExecutionInterface
     public const ENTITY_ID = 'entity_id';
     public const STORE_ID = 'store_id';
     public const STATUS = 'status';
+    public const TRIGGER_TYPE = 'trigger_type';
+    public const MODE = 'mode';
     public const CONTEXT = 'context';
     public const CHAIN_DEPTH = 'chain_depth';
     public const CURRENT_STEP = 'current_step';
+    public const WAITING_EVENT = 'waiting_event';
+    public const ORIGIN_UUID = 'origin_uuid';
     public const TRIGGERED_AT = 'triggered_at';
     public const COMPLETED_AT = 'completed_at';
 
@@ -26,6 +30,14 @@ interface WorkflowExecutionInterface
     public const STATUS_SKIPPED = 'skipped';
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
+
+    /**
+     * Execution mode: a normal live/shadow execution vs a persisted dry-run
+     * preview. NOT a side-effect predicate — a mode=live row under a
+     * shadow-status workflow still ran simulated (docs/discovery/dry-run.md §6).
+     */
+    public const MODE_LIVE = 'live';
+    public const MODE_DRY_RUN = 'dry_run';
 
     public function getExecutionId(): ?int;
 
@@ -63,6 +75,21 @@ interface WorkflowExecutionInterface
     public function setStatus(string $status): self;
 
     /**
+     * Trigger type that dispatched this execution (one of
+     * WorkflowInterface::TRIGGER_TYPE_*); null on legacy rows predating this column
+     */
+    public function getTriggerType(): ?string;
+
+    public function setTriggerType(?string $triggerType): self;
+
+    /**
+     * Execution mode (live|dry_run); defaults to live
+     */
+    public function getMode(): string;
+
+    public function setMode(string $mode): self;
+
+    /**
      * Context bag JSON: {trigger: {...}, steps: {...}, workflow: {...}}
      */
     public function getContext(): ?string;
@@ -76,4 +103,21 @@ interface WorkflowExecutionInterface
     public function getCurrentStep(): ?string;
 
     public function setCurrentStep(?string $stepKey): self;
+
+    /**
+     * Event name a wait step parked this execution on (null outside waits)
+     */
+    public function getWaitingEvent(): ?string;
+
+    public function setWaitingEvent(?string $event): self;
+
+    /**
+     * Async-events trace UUID of the event that caused this execution, stamped
+     * on fan-out children from the trigger payload's origin.trace_uuid; null for
+     * ordinary executions (F1). Correlates every child of one source event in
+     * the grid's "caused by" filter.
+     */
+    public function getOriginUuid(): ?string;
+
+    public function setOriginUuid(?string $originUuid): self;
 }

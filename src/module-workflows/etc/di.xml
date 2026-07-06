@@ -17,19 +17,269 @@
     <preference for="MageOS\Workflows\Api\DispatcherInterface"
                 type="MageOS\Workflows\Model\Engine\Dispatcher"/>
 
+    <!-- Batch aggregation (05): snapshot-only membership evaluator shared by
+         B1 (collected mode) and B2 (accumulator). -->
+    <preference for="MageOS\Workflows\Model\Aggregation\MembershipEvaluatorInterface"
+                type="MageOS\Workflows\Model\Aggregation\MembershipEvaluator"/>
+    <!-- B2 accumulator/flush persistence port. -->
+    <preference for="MageOS\Workflows\Model\Aggregation\BatchStoreInterface"
+                type="MageOS\Workflows\Model\Aggregation\BatchStore"/>
+    <!-- B2 flush execution creation (write-before-publish). -->
+    <preference for="MageOS\Workflows\Model\Aggregation\BatchExecutionFactoryInterface"
+                type="MageOS\Workflows\Model\Aggregation\BatchExecutionFactory"/>
+
+    <!-- Template gallery (06): the bundled source ships now; a future signed
+         remote source registers as a second implementor behind a config toggle,
+         with no gallery/installer changes. Pack modules add their name to
+         BundledTemplateSource::packDirectories (see the templates module). -->
+    <preference for="MageOS\Workflows\Model\Template\TemplateSourceInterface"
+                type="MageOS\Workflows\Model\Template\BundledTemplateSource"/>
+
+    <!-- Validate endpoint (F6) -->
+    <preference for="MageOS\Workflows\Api\DefinitionValidationInterface"
+                type="MageOS\Workflows\Model\Webapi\DefinitionValidation"/>
+    <preference for="MageOS\Workflows\Api\Data\DefinitionValidationResultInterface"
+                type="MageOS\Workflows\Model\Webapi\DefinitionValidationResult"/>
+    <preference for="MageOS\Workflows\Api\Data\ValidationMessageInterface"
+                type="MageOS\Workflows\Model\Validation\ValidationMessage"/>
+
+    <!-- Relation metadata endpoint (F6 / entity cross-referencing stage 4) -->
+    <preference for="MageOS\Workflows\Api\RelationMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\RelationMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\RelationMetadataInterface"
+                type="MageOS\Workflows\Model\Webapi\RelationMetadata"/>
+
+    <!-- Remaining F6 metadata endpoints (canvas stage 1): actions, triggers,
+         entity-types, secrets (names), and the option-source union. -->
+    <preference for="MageOS\Workflows\Api\ActionMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\ActionMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\ActionMetadataItemInterface"
+                type="MageOS\Workflows\Model\Webapi\ActionMetadataItem"/>
+    <preference for="MageOS\Workflows\Api\TriggerMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\TriggerMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\TriggerMetadataInterface"
+                type="MageOS\Workflows\Model\Webapi\TriggerMetadata"/>
+    <preference for="MageOS\Workflows\Api\EntityTypeMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\EntityTypeMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\EntityTypeMetadataInterface"
+                type="MageOS\Workflows\Model\Webapi\EntityTypeMetadata"/>
+    <preference for="MageOS\Workflows\Api\SecretMetadataProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\SecretMetadataProvider"/>
+    <preference for="MageOS\Workflows\Api\OptionSourceProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\OptionSourceProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\OptionItemInterface"
+                type="MageOS\Workflows\Model\Webapi\OptionItem"/>
+
+    <!-- Execution step timeline endpoint (07 / canvas execution overlay). -->
+    <preference for="MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface"
+                type="MageOS\Workflows\Model\Webapi\WorkflowExecutionStepsProvider"/>
+    <preference for="MageOS\Workflows\Api\Data\ExecutionStepStateInterface"
+                type="MageOS\Workflows\Model\Webapi\ExecutionStepState"/>
+
+    <!-- Curated workflow entity-type catalogue (meta/entity-types). Authoritative
+         in core; a module adding an entity type appends to this array. -->
+    <type name="MageOS\Workflows\Model\Webapi\EntityTypeMetadataProvider">
+        <arguments>
+            <argument name="entityTypes" xsi:type="array">
+                <item name="sales_order" xsi:type="string">Order</item>
+                <item name="customer" xsi:type="string">Customer</item>
+                <item name="catalog_product" xsi:type="string">Product</item>
+                <item name="quote" xsi:type="string">Cart</item>
+                <item name="invoice" xsi:type="string">Invoice</item>
+                <item name="creditmemo" xsi:type="string">Credit Memo</item>
+                <item name="shipment" xsi:type="string">Shipment</item>
+                <item name="review" xsi:type="string">Review</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Option-source pool (F6): DI array is the extension surface, mirroring
+         ActionPool / RelationPool. Seed sources: bounded (order statuses,
+         customer groups) + search-typed (cart price rules, email templates). -->
+    <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="order_statuses" xsi:type="object">MageOS\Workflows\Model\Option\OrderStatusOptionSource</item>
+                <item name="customer_groups" xsi:type="object">MageOS\Workflows\Model\Option\CustomerGroupOptionSource</item>
+                <item name="cart_price_rules" xsi:type="object">MageOS\Workflows\Model\Option\CartPriceRuleOptionSource</item>
+                <item name="email_templates" xsi:type="object">MageOS\Workflows\Model\Option\EmailTemplateOptionSource</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Dry-run endpoints (03) -->
+    <preference for="MageOS\Workflows\Api\WorkflowDryRunInterface"
+                type="MageOS\Workflows\Model\Webapi\WorkflowDryRun"/>
+    <preference for="MageOS\Workflows\Api\Data\DryRunResultInterface"
+                type="MageOS\Workflows\Model\Webapi\DryRunResult"/>
+    <preference for="MageOS\Workflows\Api\Data\DryRunTraceStepInterface"
+                type="MageOS\Workflows\Model\Webapi\DryRunTraceStep"/>
+
     <!-- Secrets -->
     <preference for="MageOS\Workflows\Model\Variable\SecretsProviderInterface"
                 type="MageOS\Workflows\Model\Secrets\ConfigSecretsProvider"/>
 
+    <!-- Simulation substrate (F7): a variable resolver whose secrets resolve
+         to ***name***. Bound as a named virtualType — never a preference
+         swap of the shared production resolver. Consumers: dry-run (03),
+         shadow mode behind mageos_workflows/simulation/redact_shadow_secrets. -->
+    <virtualType name="MageOS\Workflows\Model\Variable\VariableResolverForDryRun"
+                 type="MageOS\Workflows\Model\Variable\VariableResolver">
+        <arguments>
+            <argument name="secretsProvider" xsi:type="object">MageOS\Workflows\Model\Secrets\RedactingSecretsProvider</argument>
+        </arguments>
+    </virtualType>
+    <type name="MageOS\Workflows\Model\Engine\Executor">
+        <arguments>
+            <argument name="redactingVariableResolver" xsi:type="object">MageOS\Workflows\Model\Variable\VariableResolverForDryRun</argument>
+        </arguments>
+    </type>
+
+    <!-- Dry-run (03): the synchronous, side-effect-free walker. The Walker's
+         resolver is the redacting virtualType — config interpolation runs
+         ahead of the simulation branch, so a shared production resolver would
+         materialize real secret values into trace content (guardrail). -->
+    <type name="MageOS\Workflows\Model\DryRun\Walker">
+        <arguments>
+            <argument name="variableResolver" xsi:type="object">MageOS\Workflows\Model\Variable\VariableResolverForDryRun</argument>
+        </arguments>
+    </type>
+    <!-- The dry-run validation subset: Structural + Graph + ActionCodes +
+         ConditionsShape + RelationConditions. ActionAuthorizationCheck is
+         deliberately absent (dry-run is not an authoring path); ProfileCheck
+         is out of scope for the preview. RelationConditions must stay in:
+         a NOT-EXISTS relation node with children evaluates silently wrong
+         rather than throwing, so without the check a dry-run would render a
+         confident trace for a definition Save would reject. -->
+    <virtualType name="MageOS\Workflows\Model\Validation\WorkflowValidatorForDryRun"
+                 type="MageOS\Workflows\Model\Validation\WorkflowValidator">
+        <arguments>
+            <argument name="checks" xsi:type="array">
+                <item name="structural" xsi:type="object">MageOS\Workflows\Model\Validation\Check\StructuralCheck</item>
+                <item name="graph" xsi:type="object">MageOS\Workflows\Model\Validation\Check\GraphCheck</item>
+                <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>
+                <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
+                <item name="relation_conditions" xsi:type="object">MageOS\Workflows\Model\Validation\Check\RelationConditionsCheck</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="MageOS\Workflows\Model\DryRun\DryRunService">
+        <arguments>
+            <argument name="validator" xsi:type="object">MageOS\Workflows\Model\Validation\WorkflowValidatorForDryRun</argument>
+        </arguments>
+    </type>
+
+    <!-- Save-time validation pipeline (F2): the ordered check pool. The
+         before-plugin on the repository is the single chokepoint every
+         authoring path funnels through (admin Save, REST, CLI import,
+         gallery); the executor parses definition_snapshot directly and
+         never re-enters it. -->
+    <type name="MageOS\Workflows\Model\Validation\WorkflowValidator">
+        <arguments>
+            <argument name="checks" xsi:type="array">
+                <item name="structural" xsi:type="object">MageOS\Workflows\Model\Validation\Check\StructuralCheck</item>
+                <item name="graph" xsi:type="object">MageOS\Workflows\Model\Validation\Check\GraphCheck</item>
+                <item name="profile" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ProfileCheck</item>
+                <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>
+                <item name="action_authorization" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionAuthorizationCheck</item>
+                <item name="conditions_shape" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ConditionsShapeCheck</item>
+                <item name="relation_conditions" xsi:type="object">MageOS\Workflows\Model\Validation\Check\RelationConditionsCheck</item>
+                <item name="fan_out_alignment" xsi:type="object">MageOS\Workflows\Model\Validation\Check\FanOutAlignmentCheck</item>
+                <item name="approval" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ApprovalCheck</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Api\WorkflowRepositoryInterface">
+        <plugin name="mageos_workflows_validate_on_save"
+                type="MageOS\Workflows\Plugin\ValidateWorkflowOnSave"/>
+    </type>
+
+    <!-- Batch aggregation (05): the restricted 'aggregated' definition profile.
+         Non-null mageos_workflow.aggregation makes a workflow this kind (see
+         ValidateWorkflowOnSave). No wait steps; batch-capable actions only
+         (BatchCapableActionInterface marker); no revalidate_entity; root and
+         branch/switch conditions must classify fully in-snapshot (F4). -->
+    <type name="MageOS\Workflows\Model\Validation\Check\ProfileCheck">
+        <arguments>
+            <argument name="profiles" xsi:type="array">
+                <item name="aggregated" xsi:type="array">
+                    <item name="step_types" xsi:type="array">
+                        <item name="action" xsi:type="string">action</item>
+                        <item name="delay" xsi:type="string">delay</item>
+                        <item name="branch" xsi:type="string">branch</item>
+                        <item name="switch" xsi:type="string">switch</item>
+                        <item name="stop" xsi:type="string">stop</item>
+                    </item>
+                    <item name="require_batch_capable_actions" xsi:type="boolean">true</item>
+                    <item name="forbid_revalidate" xsi:type="boolean">true</item>
+                    <item name="require_in_snapshot_conditions" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+            <argument name="actionPool" xsi:type="object">MageOS\Workflows\Model\Action\ActionPool</argument>
+            <argument name="attributeClassifier" xsi:type="object">MageOS\Workflows\Model\Rule\AttributeClassifier</argument>
+            <argument name="snapshotShapeProvider" xsi:type="object">MageOS\Workflows\Model\Trigger\SnapshotShapeProvider</argument>
+        </arguments>
+    </type>
+    <!-- Per-entity-type trigger snapshot attribute lists (F4 input to the
+         classifier). Empty by default: an unlisted entity type reports its
+         shape as unknown, so the batch ProfileCheck enforces only the
+         hydration-forcing node-type constraint (cross-entity/relation) and
+         does not second-guess plain attributes it cannot verify. Populate per
+         entity type to also reject out-of-snapshot attribute filters. -->
+    <type name="MageOS\Workflows\Model\Trigger\SnapshotShapeProvider">
+        <arguments>
+            <argument name="attributesByEntityType" xsi:type="array"/>
+        </arguments>
+    </type>
+
     <!-- Condition engine -->
     <preference for="MageOS\Workflows\Model\Rule\HydrationProviderInterface"
                 type="MageOS\Workflows\Model\Rule\HydrationProvider"/>
+    <!-- Condition-node types that force hydration regardless of referenced
+         attributes (F4). First entry arrives with the RelatedEntity combine
+         (entity cross-referencing); extensions append their own. -->
+    <type name="MageOS\Workflows\Model\Rule\AttributeClassifier">
+        <arguments>
+            <argument name="hydrationForcingNodeTypes" xsi:type="array">
+                <item name="related_entity" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Relation registry (F5) — the extension surface for entity
+         cross-referencing. Seed relations (docs/discovery/entity-cross-
+         referencing.md §4); third-party packs append one resolver + one line
+         here (docs/07 SDK note). -->
+    <type name="MageOS\Workflows\Model\Relation\RelationPool">
+        <arguments>
+            <argument name="relations" xsi:type="array">
+                <item name="order.customer" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderCustomer</item>
+                <item name="order.customer_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderCustomerByEmail</item>
+                <item name="quote.customer_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\QuoteCustomerByEmail</item>
+                <item name="order.orders_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderOrdersByEmail</item>
+                <item name="customer.open_orders" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\CustomerOpenOrders</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Child-condition options offered by the RelatedEntity combine, keyed by
+         the relation's target entity type (the leaf classes reused from the
+         target's own condition subtree). Third-party targets append here. -->
+    <type name="MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine">
+        <arguments>
+            <argument name="targetChildConditions" xsi:type="array">
+                <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Customer\Attribute</item>
+                <item name="sales_order" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Order\Attribute</item>
+            </argument>
+        </arguments>
+    </type>
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
         <arguments>
             <argument name="combines" xsi:type="array">
                 <item name="sales_order" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Order\Combine</item>
                 <item name="customer" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Customer\Combine</item>
                 <item name="catalog_product" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Product\Combine</item>
+                <item name="quote" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Quote\Combine</item>
             </argument>
         </arguments>
     </type>
@@ -43,6 +293,11 @@
                 <item name="workflowRun" xsi:type="object">MageOS\Workflows\Console\Command\RunCommand</item>
                 <item name="workflowStats" xsi:type="object">MageOS\Workflows\Console\Command\StatsCommand</item>
                 <item name="workflowHealth" xsi:type="object">MageOS\Workflows\Console\Command\HealthCommand</item>
+                <item name="workflowTemplateList" xsi:type="object">MageOS\Workflows\Console\Command\TemplateListCommand</item>
+                <item name="workflowTemplateInstall" xsi:type="object">MageOS\Workflows\Console\Command\TemplateInstallCommand</item>
+                <item name="workflowSecretSet" xsi:type="object">MageOS\Workflows\Console\Command\SecretSetCommand</item>
+                <item name="workflowSecretList" xsi:type="object">MageOS\Workflows\Console\Command\SecretListCommand</item>
+                <item name="workflowSecretDelete" xsi:type="object">MageOS\Workflows\Console\Command\SecretDeleteCommand</item>
             </argument>
         </arguments>
     </type>

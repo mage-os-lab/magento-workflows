@@ -3,12 +3,15 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Model\Engine;
 
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Event\ManagerInterface as EventManagerInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Store\Model\ScopeInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionStepInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
+use MageOS\Workflows\Api\ApprovalTaskManagerInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
@@ -38,6 +41,11 @@ class Executor
      */
     private const MAX_STEPS_PER_RUN = 1000;
 
+    public const CONFIG_MAX_DELAY_DAYS = 'mageos_workflows/guards/max_delay_days';
+    public const DEFAULT_MAX_DELAY_DAYS = 365;
+
+    public const CONFIG_REDACT_SHADOW_SECRETS = 'mageos_workflows/simulation/redact_shadow_secrets';
+
     public function __construct(
         private readonly WorkflowExecutionRepositoryInterface $executionRepository,
         private readonly WorkflowRepositoryInterface $workflowRepository,
@@ -47,7 +55,11 @@ class Executor
         private readonly CircuitBreaker $circuitBreaker,
         private readonly ResourceConnection $resourceConnection,
         private readonly EventManagerInterface $eventManager,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly DelayCalculator $delayCalculator,
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly ?VariableResolver $redactingVariableResolver = null,
+        private readonly ?ApprovalTaskManagerInterface $approvalTaskManager = null
     ) {
     }
 
@@ -95,7 +107,12 @@ class Executor
 
         $isFirstRun = $status === WorkflowExecutionInterface::STATUS_PENDING;
 
-        if ($isFirstRun && $workflow !== null) {
+        // Aggregated (batch) executions carry entity_id = 0: they have no single
+        // entity to re-evaluate root conditions against, and membership was
+        // already enforced per item at accumulation time (05). This entity_id=0
+        // tolerance is the executor's ONLY batch-awareness — everything else
+        // concentrates in save-time validation and the dispatch layer.
+        if ($isFirstRun && $workflow !== null && $execution->getEntityId() > 0) {
             if (!$this->conditionEvaluator->evaluate($workflow, $ctx)) {
                 $execution->setStatus(WorkflowExecutionInterface::STATUS_SKIPPED);
                 $this->persistContext($execution, $ctx);
@@ -174,18 +191,30 @@ class Executor
 
             switch ($step['type']) {
                 case Definition::STEP_ACTION:
-                    $currentKey = $this->runActionStep($execution, $ctx, $currentKey, $step);
+                    $currentKey = $this->runActionStep($execution, $ctx, $definition, $currentKey, $step);
                     if ($currentKey === false) {
                         return; // execution failed terminally
                     }
                     break;
 
                 case Definition::STEP_DELAY:
-                    $this->runDelayStep($execution, $ctx, $currentKey, $step);
+                    $this->runDelayStep($execution, $ctx, $definition, $currentKey, $step);
                     return; // message done; resumption is a separate delivery
 
+                case Definition::STEP_WAIT:
+                    $this->runWaitStep($execution, $ctx, $currentKey, $step);
+                    return; // parked until the event fires or the timeout sweeps
+
+                case Definition::STEP_APPROVAL:
+                    $this->runApprovalStep($execution, $ctx, $currentKey, $step);
+                    return; // parked until a decision arrives or the timeout sweeps
+
                 case Definition::STEP_BRANCH:
-                    $currentKey = $this->runBranchStep($execution, $ctx, $workflow, $currentKey, $step);
+                    $currentKey = $this->runBranchStep($execution, $ctx, $workflow, $definition, $currentKey, $step);
+                    break;
+
+                case Definition::STEP_SWITCH:
+                    $currentKey = $this->runSwitchStep($execution, $ctx, $workflow, $definition, $currentKey, $step);
                     break;
 
                 case Definition::STEP_STOP:
@@ -209,6 +238,7 @@ class Executor
     private function runActionStep(
         WorkflowExecutionInterface $execution,
         ExecutionContext $ctx,
+        Definition $definition,
         string $stepKey,
         array $step
     ): string|false|null {
@@ -223,7 +253,7 @@ class Executor
         }
 
         $config = is_array($step['config'] ?? null) ? $step['config'] : [];
-        $config = $this->variableResolver->resolveConfig($config, $ctx);
+        $config = $this->resolverFor($ctx)->resolveConfig($config, $ctx);
         $action = $this->actionPool->get($code);
 
         try {
@@ -289,35 +319,28 @@ class Executor
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
 
-        return isset($step['next']) ? (string) $step['next'] : null;
+        return $definition->getStepEdges($stepKey)['next'];
     }
 
     /**
-     * Delay: absolute UTC arithmetic (docs/04, docs/14). Step goes waiting with
-     * resume_at; execution goes waiting with current_step = the step AFTER the
-     * delay so resumption walks straight into it.
+     * Delay: plain durations use absolute UTC arithmetic (docs/04, docs/14);
+     * the v2 extras (business_days, at) compute in the store timezone via
+     * DelayCalculator. Step goes waiting with resume_at; execution goes
+     * waiting with current_step = the step AFTER the delay so resumption
+     * walks straight into it.
      */
     private function runDelayStep(
         WorkflowExecutionInterface $execution,
         ExecutionContext $ctx,
+        Definition $definition,
         string $stepKey,
         array $step
     ): void {
-        $duration = (string) ($step['config']['duration'] ?? 'PT0S');
-        try {
-            $interval = new \DateInterval($duration);
-        } catch (\Exception $e) {
-            $interval = new \DateInterval('PT0S');
-            $this->logger->error(sprintf(
-                'Delay step "%s" of execution %d has invalid duration "%s"; resuming immediately',
-                $stepKey,
-                (int) $execution->getExecutionId(),
-                $duration
-            ));
-        }
-        $resumeAt = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
-            ->add($interval)
-            ->format('Y-m-d H:i:s');
+        $resumeAt = $this->computeResumeAt(
+            $execution,
+            $stepKey,
+            is_array($step['config'] ?? null) ? $step['config'] : []
+        );
 
         $this->upsertStepRow($execution, $stepKey, [
             'status' => WorkflowExecutionStepInterface::STATUS_WAITING,
@@ -325,9 +348,150 @@ class Executor
         ]);
 
         $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
-        $execution->setCurrentStep(isset($step['next']) ? (string) $step['next'] : null);
+        $execution->setCurrentStep($definition->getStepEdges($stepKey)['next']);
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
+    }
+
+    /**
+     * Wait (schema v2): park until the configured event fires for this
+     * execution's entity, or until the timeout sweeps. Unlike a delay,
+     * current_step stays ON the wait step — the resume consumer routes to
+     * on_event / on_timeout based on how the park ended (step row result
+     * written by Dispatcher::resumeWaiting or the ResumeSweeper).
+     */
+    private function runWaitStep(
+        WorkflowExecutionInterface $execution,
+        ExecutionContext $ctx,
+        string $stepKey,
+        array $step
+    ): void {
+        $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+        $timeoutAt = $this->computeResumeAt($execution, $stepKey, ['duration' => $config['timeout'] ?? 'PT0S']);
+
+        $this->upsertStepRow($execution, $stepKey, [
+            'status' => WorkflowExecutionStepInterface::STATUS_WAITING,
+            'resume_at' => $timeoutAt,
+        ]);
+
+        $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
+        $execution->setCurrentStep($stepKey);
+        $execution->setWaitingEvent((string) ($config['event'] ?? ''));
+        $this->persistContext($execution, $ctx);
+        $this->executionRepository->save($execution);
+    }
+
+    /**
+     * Approval (schema v4): a human-decision gate parked on the wait spine.
+     * Parks like runWaitStep — step row waiting with resume_at, execution
+     * waiting — with two differences: waiting_event stays null (no event to
+     * match; only a decision or the timeout sweeper wakes it) and current_step
+     * stays ON the gate so the resume consumer routes on_approved /
+     * on_rejected / on_timeout from the decision the addon wrote.
+     *
+     * Task lifecycle delegates to the ApprovalTaskManagerInterface seam, bound
+     * only when the approvals addon is installed. With no binding this is a
+     * terminal failure — the runtime backstop (docs/discovery/approval-gate.md
+     * §7), reachable only via a data patch that bypassed save-time validation,
+     * never a silent skip.
+     */
+    private function runApprovalStep(
+        WorkflowExecutionInterface $execution,
+        ExecutionContext $ctx,
+        string $stepKey,
+        array $step
+    ): void {
+        if ($this->approvalTaskManager === null) {
+            $error = sprintf(
+                'Approval step "%s" reached with no approvals module bound; install MageOS_WorkflowsApprovals',
+                $stepKey
+            );
+            $this->failStep($execution, $stepKey, $error);
+            $this->failExecution($execution, $stepKey, $error, $ctx, false);
+            return;
+        }
+
+        $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+
+        // Park-time snapshot: title/instructions render in the task grid and
+        // emails, so interpolate them here (docs §3) — late interpolation would
+        // leak post-hoc entity changes into an already-issued request.
+        $resolved = $this->resolverFor($ctx)->resolveConfig([
+            'title' => (string) ($config['title'] ?? ''),
+            'instructions' => (string) ($config['instructions'] ?? ''),
+        ], $ctx);
+        $title = (string) ($resolved['title'] ?? '');
+        $instructions = (string) ($resolved['instructions'] ?? '');
+
+        $resumeAt = $this->computeResumeAt($execution, $stepKey, ['duration' => $config['timeout'] ?? 'PT0S']);
+        $assigneeRole = isset($config['assignee_role']) && $config['assignee_role'] !== ''
+            ? (string) $config['assignee_role']
+            : null;
+
+        // Create the task first — idempotent on (execution_id, step_key), so a
+        // crash before the execution persists re-parks cleanly on redelivery —
+        // then expose its uuid as this step's own output BEFORE persisting so
+        // downstream steps can interpolate {{ steps.<key>.task_uuid }} (§2 A3).
+        $taskUuid = $this->approvalTaskManager->createTask(
+            $execution,
+            $stepKey,
+            $title,
+            $instructions,
+            $resumeAt,
+            $assigneeRole
+        );
+        $ctx->setStepOutput($stepKey, ['task_uuid' => $taskUuid]);
+
+        $this->upsertStepRow($execution, $stepKey, [
+            'status' => WorkflowExecutionStepInterface::STATUS_WAITING,
+            'resume_at' => $resumeAt,
+        ]);
+
+        $execution->setStatus(WorkflowExecutionInterface::STATUS_WAITING);
+        $execution->setCurrentStep($stepKey);
+        $execution->setWaitingEvent(null);
+        $this->persistContext($execution, $ctx);
+        $this->executionRepository->save($execution);
+    }
+
+    /**
+     * @return string UTC 'Y-m-d H:i:s' resume time, ceiling-clamped
+     */
+    private function computeResumeAt(WorkflowExecutionInterface $execution, string $stepKey, array $config): string
+    {
+        $maxDays = (int) $this->scopeConfig->getValue(self::CONFIG_MAX_DELAY_DAYS);
+        if ($maxDays <= 0) {
+            $maxDays = self::DEFAULT_MAX_DELAY_DAYS;
+        }
+        $timezone = (string) $this->scopeConfig->getValue(
+            'general/locale/timezone',
+            ScopeInterface::SCOPE_STORE,
+            (int) $execution->getStoreId()
+        );
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        try {
+            [$resume, $clamped] = $this->delayCalculator->computeResumeAt($now, $config, $timezone, $maxDays);
+        } catch (\InvalidArgumentException $e) {
+            $resume = $now;
+            $clamped = false;
+            $this->logger->error(sprintf(
+                'Step "%s" of execution %d has an invalid duration (%s); resuming immediately',
+                $stepKey,
+                (int) $execution->getExecutionId(),
+                $e->getMessage()
+            ));
+        }
+        if ($clamped) {
+            $this->logger->warning(sprintf(
+                'Step "%s" of execution %d exceeded the max delay ceiling (%d days); clamped',
+                $stepKey,
+                (int) $execution->getExecutionId(),
+                $maxDays
+            ));
+        }
+
+        return $resume->format('Y-m-d H:i:s');
     }
 
     /**
@@ -337,14 +501,13 @@ class Executor
         WorkflowExecutionInterface $execution,
         ExecutionContext $ctx,
         ?WorkflowInterface $workflow,
+        Definition $definition,
         string $stepKey,
         array $step
     ): ?string {
         $conditionsSerialized = $step['conditions_serialized'] ?? null;
         $revalidate = (bool) ($step['revalidate_entity'] ?? true);
-        $entityType = $workflow !== null
-            ? $workflow->getEntityType()
-            : (string) ($ctx->getWorkflow()['entity_type'] ?? '');
+        $entityType = $this->resolveEntityType($workflow, $ctx);
 
         if (is_string($conditionsSerialized) && $conditionsSerialized !== '') {
             $result = $this->conditionEvaluator->evaluateSerialized(
@@ -365,8 +528,90 @@ class Executor
         $this->persistContext($execution, $ctx);
         $this->executionRepository->save($execution);
 
-        $edge = $result ? ($step['on_true'] ?? null) : ($step['on_false'] ?? null);
-        return $edge !== null ? (string) $edge : null;
+        $edges = $definition->getStepEdges($stepKey);
+        return $result ? $edges['on_true'] : $edges['on_false'];
+    }
+
+    /**
+     * Switch (schema v3): first-match-wins over the case list, `default`
+     * fallback, one shared revalidate_entity flag for the whole step. An
+     * empty/absent case condition tree always matches (mirrors branch).
+     * Identical persistence discipline to runBranchStep: the step row is
+     * written before the edge is followed. Repeat per-case hydrations under
+     * revalidate_entity=true are cheap — repositories keep per-request
+     * identity registries under the HydrationProvider.
+     *
+     * @return string|null next step key (null edge = graph end)
+     */
+    private function runSwitchStep(
+        WorkflowExecutionInterface $execution,
+        ExecutionContext $ctx,
+        ?WorkflowInterface $workflow,
+        Definition $definition,
+        string $stepKey,
+        array $step
+    ): ?string {
+        $revalidate = (bool) ($step['revalidate_entity'] ?? true);
+        $entityType = $this->resolveEntityType($workflow, $ctx);
+
+        $matched = null;
+        $target = null;
+        foreach ((array) ($step['cases'] ?? []) as $case) {
+            if (!is_array($case)) {
+                continue;
+            }
+            $conditionsSerialized = $case['conditions_serialized'] ?? null;
+            $result = !is_string($conditionsSerialized) || $conditionsSerialized === ''
+                || $this->conditionEvaluator->evaluateSerialized(
+                    $conditionsSerialized,
+                    $entityType,
+                    $ctx,
+                    $revalidate
+                );
+            if ($result) {
+                $matched = (string) $case['key'];
+                $target = isset($case['next']) ? (string) $case['next'] : null;
+                break;
+            }
+        }
+        if ($matched === null) {
+            $target = $definition->getStepEdges($stepKey)['default'];
+        }
+
+        $this->upsertStepRow($execution, $stepKey, [
+            'status' => WorkflowExecutionStepInterface::STATUS_COMPLETE,
+            'result' => $this->encodeJson(['matched' => $matched]),
+            'finished_at' => $this->now(),
+        ]);
+        $this->persistContext($execution, $ctx);
+        $this->executionRepository->save($execution);
+
+        return $target;
+    }
+
+    private function resolveEntityType(?WorkflowInterface $workflow, ExecutionContext $ctx): string
+    {
+        return $workflow !== null
+            ? $workflow->getEntityType()
+            : (string) ($ctx->getWorkflow()['entity_type'] ?? '');
+    }
+
+    /**
+     * Simulation substrate (F7): shadow-mode executions optionally resolve
+     * {{ secrets.* }} to ***name*** via the redacting resolver, behind
+     * mageos_workflows/simulation/redact_shadow_secrets (default off — a
+     * behavior change for existing shadow users; flip at the next minor).
+     * The production resolver is never swapped, only bypassed per call.
+     */
+    private function resolverFor(ExecutionContext $ctx): VariableResolver
+    {
+        if ($ctx->isSimulation()
+            && $this->redactingVariableResolver !== null
+            && $this->scopeConfig->isSetFlag(self::CONFIG_REDACT_SHADOW_SECRETS)
+        ) {
+            return $this->redactingVariableResolver;
+        }
+        return $this->variableResolver;
     }
 
     private function completeExecution(WorkflowExecutionInterface $execution, ?ExecutionContext $ctx = null): void
@@ -407,6 +652,21 @@ class Executor
             'error' => $error,
             'step_key' => $stepKey,
         ]);
+
+        // Orphan any approval tasks this execution left open (docs §4). Best
+        // effort: the orphan marking must never mask the original failure, so a
+        // seam error is logged and swallowed rather than rethrown.
+        if ($this->approvalTaskManager !== null) {
+            try {
+                $this->approvalTaskManager->orphanTasks((int) $execution->getExecutionId());
+            } catch (\Throwable $e) {
+                $this->logger->error(sprintf(
+                    'Orphaning approval tasks for failed execution %d itself failed: %s',
+                    (int) $execution->getExecutionId(),
+                    $e->getMessage()
+                ));
+            }
+        }
     }
 
     private function failStep(

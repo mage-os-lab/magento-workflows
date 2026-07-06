@@ -111,6 +111,17 @@ class Workflow extends AbstractModel implements WorkflowInterface
         return $this->setData(self::DEFINITION, $definition);
     }
 
+    public function getAggregation(): ?string
+    {
+        $aggregation = $this->getData(self::AGGREGATION);
+        return $aggregation === null || $aggregation === '' ? null : (string)$aggregation;
+    }
+
+    public function setAggregation(?string $aggregation): WorkflowInterface
+    {
+        return $this->setData(self::AGGREGATION, $aggregation);
+    }
+
     public function getVersion(): int
     {
         $version = $this->getData(self::VERSION);
@@ -131,6 +142,20 @@ class Workflow extends AbstractModel implements WorkflowInterface
     public function setLoopGuardDepth(int $depth): WorkflowInterface
     {
         return $this->setData(self::LOOP_GUARD_DEPTH, $depth);
+    }
+
+    public function getFanOut(): ?string
+    {
+        $fanOut = $this->getData(self::FAN_OUT);
+        if ($fanOut === null || $fanOut === '') {
+            return null;
+        }
+        return is_array($fanOut) ? (string) json_encode($fanOut) : (string) $fanOut;
+    }
+
+    public function setFanOut(?string $fanOut): WorkflowInterface
+    {
+        return $this->setData(self::FAN_OUT, $fanOut === '' ? null : $fanOut);
     }
 
     /**

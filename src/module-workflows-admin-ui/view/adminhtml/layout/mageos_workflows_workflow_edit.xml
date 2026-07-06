@@ -5,6 +5,8 @@
         <referenceContainer name="content">
             <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit" name="mageos_workflows_workflow_edit"/>
             <uiComponent name="mageos_workflows_form"/>
+            <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\History" name="mageos_workflows_workflow_history"
+                   template="MageOS_WorkflowsAdminUi::workflow/history.phtml" after="mageos_workflows_form"/>
         </referenceContainer>
     </body>
 </page>

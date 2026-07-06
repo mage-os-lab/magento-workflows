@@ -29,6 +29,59 @@ class Edit extends Container
                 ]
             );
         }
+
+        if ($this->_authorization->isAllowed('MageOS_Workflows::dry_run')) {
+            $this->buttonList->add(
+                'dry_run',
+                [
+                    'label' => __('Dry run'),
+                    'class' => 'action-secondary',
+                    'onclick' => $this->getDryRunOnclick(),
+                    'sort_order' => 35,
+                ]
+            );
+        }
+
+        // Optional canvas module: "Open in visual editor" entry from the form.
+        // Hidden when the module is absent — admin-ui never depends on it.
+        // Managers reach the ::manage editor controller; ::view-only admins get
+        // the read-only viewer (both render the same mount, the React app and
+        // the write controllers gate editing on ::manage independently).
+        if ($this->getWorkflowId() && $this->_moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
+            $canvasRoute = $this->_authorization->isAllowed('MageOS_Workflows::manage')
+                ? 'mageos_workflows_canvas/canvas/edit'
+                : 'mageos_workflows_canvas/canvas/view';
+            $canvasUrl = $this->getUrl($canvasRoute, ['workflow_id' => $this->getWorkflowId()]);
+            $this->buttonList->add(
+                'visual_editor',
+                [
+                    'label' => __('Open in visual editor'),
+                    'class' => 'action-secondary',
+                    'onclick' => "setLocation('{$canvasUrl}')",
+                    'sort_order' => 40,
+                ]
+            );
+        }
+    }
+
+    /**
+     * Stash the currently edited (unsaved) definition/conditions/entity type so
+     * the dry-run page can preview them without a save, then navigate there.
+     */
+    private function getDryRunOnclick(): string
+    {
+        $params = $this->getWorkflowId() ? ['workflow_id' => $this->getWorkflowId()] : [];
+        $dryRunUrl = $this->getUrl('mageos_workflows/workflow/dryRun', $params);
+
+        return "try { "
+            . "var def = document.querySelector('[name=\"definition\"]'); "
+            . "var cond = document.querySelector('[name=\"conditions_serialized\"]'); "
+            . "var et = document.querySelector('[name=\"entity_type\"]'); "
+            . "if (def) { window.sessionStorage.setItem('mageos_dryrun_definition', def.value); } "
+            . "if (cond) { window.sessionStorage.setItem('mageos_dryrun_conditions', cond.value); } "
+            . "if (et) { window.sessionStorage.setItem('mageos_dryrun_entity_type', et.value); } "
+            . "} catch (e) {} "
+            . "setLocation('{$dryRunUrl}');";
     }
 
     /**

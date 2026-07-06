@@ -26,4 +26,17 @@ interface DispatcherInterface
         string $triggerType = 'event',
         int $chainDepth = 0
     ): ?WorkflowExecutionInterface;
+
+    /**
+     * Wake executions of this workflow parked by a wait step on this event
+     * for the event's entity. The matched executions resume through their
+     * wait step's on_event edge; unmatched waits keep sleeping until the
+     * timeout sweeper fires on_timeout.
+     *
+     * @param int $workflowId
+     * @param string $event Trigger event name that just fired
+     * @param array $eventPayload Pre-hydrated event payload (entity id source, exposed to the wait step's output)
+     * @return int Number of executions resumed
+     */
+    public function resumeWaiting(int $workflowId, string $event, array $eventPayload): int;
 }

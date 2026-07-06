@@ -7,6 +7,14 @@ $execution = $block->getExecution();
 <?php if (!$execution): ?>
     <div class="message message-error"><?= $block->escapeHtml(__('Execution not found.')) ?></div>
 <?php else: ?>
+    <?php $canvasUrl = $block->getCanvasUrl(); ?>
+    <?php if ($canvasUrl): ?>
+        <div class="admin__page-section-title">
+            <a class="action-secondary" href="<?= $block->escapeUrl($canvasUrl) ?>">
+                <span><?= $block->escapeHtml(__('Open in visual canvas')) ?></span>
+            </a>
+        </div>
+    <?php endif; ?>
     <div class="admin__page-section">
         <div class="admin__page-section-title">
             <span class="title"><?= $block->escapeHtml(__('Execution Summary')) ?></span>
@@ -37,6 +45,20 @@ $execution = $block->getExecution();
                 <tr>
                     <th><?= $block->escapeHtml(__('Status')) ?></th>
                     <td><?= $block->escapeHtml($execution->getStatus()) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Trigger Type')) ?></th>
+                    <td><?= $block->escapeHtml($execution->getTriggerType() ?? '—') ?></td>
+                </tr>
+                <tr>
+                    <th><?= $block->escapeHtml(__('Run Mode')) ?></th>
+                    <td>
+                        <?php if ($block->isDryRun()): ?>
+                            <span class="grid-severity-notice"><span><?= $block->escapeHtml(__('Dry-run (preview — no side effects)')) ?></span></span>
+                        <?php else: ?>
+                            <?= $block->escapeHtml(__('Live')) ?>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Chain Depth')) ?></th>

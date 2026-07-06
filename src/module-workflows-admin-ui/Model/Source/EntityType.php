@@ -4,25 +4,28 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsAdminUi\Model\Source;
 
 use Magento\Framework\Data\OptionSourceInterface;
+use MageOS\Workflows\Api\EntityTypeMetadataProviderInterface;
 
 /**
- * Curated v1 entity type list (docs/05-triggers.md coverage: order/customer/catalog/quote/
- * invoice/creditmemo/shipment/review). Not sourced from a registry because none is exposed
- * as peer context; a trigger/entity metadata-driven list is a natural v2 follow-up.
+ * Entity type options for the workflow form's entity_type select. Sourced from
+ * the core catalogue (EntityTypeMetadataProviderInterface -- the same
+ * DI-registered code => label list behind GET /V1/workflows/meta/entity-types)
+ * so the form select, the REST catalogue, and downstream addons can never
+ * disagree.
  */
 class EntityType implements OptionSourceInterface
 {
+    public function __construct(
+        private readonly EntityTypeMetadataProviderInterface $metadataProvider
+    ) {
+    }
+
     public function toOptionArray(): array
     {
-        return [
-            ['value' => 'sales_order', 'label' => __('Order')],
-            ['value' => 'customer', 'label' => __('Customer')],
-            ['value' => 'catalog_product', 'label' => __('Product')],
-            ['value' => 'quote', 'label' => __('Cart')],
-            ['value' => 'invoice', 'label' => __('Invoice')],
-            ['value' => 'creditmemo', 'label' => __('Credit Memo')],
-            ['value' => 'shipment', 'label' => __('Shipment')],
-            ['value' => 'review', 'label' => __('Review')],
-        ];
+        $options = [];
+        foreach ($this->metadataProvider->getEntityTypes() as $entityType) {
+            $options[] = ['value' => $entityType->getCode(), 'label' => __($entityType->getLabel())];
+        }
+        return $options;
     }
 }

@@ -46,16 +46,4 @@ class TriggerRegistry
         return is_array($trigger) ? $trigger : null;
     }
 
-    /**
-     * All triggers whose payload represents the given entity type.
-     *
-     * @return array<string, array<string, string|null>> keyed by event name
-     */
-    public function getByEntity(string $entityType): array
-    {
-        return array_filter(
-            $this->getAll(),
-            static fn (array $trigger): bool => ($trigger['entity'] ?? null) === $entityType
-        );
-    }
 }

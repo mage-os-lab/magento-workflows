@@ -1,0 +1,50 @@
+{
+    "format": "mageos-workflow-export/1",
+    "name": "Multi-region order routing",
+    "entity_type": "sales_order",
+    "trigger_type": "event",
+    "trigger_ref": "sales.order.created",
+    "conditions_serialized": null,
+    "definition": {
+        "schema": 3,
+        "entry": "route",
+        "steps": {
+            "route": {
+                "type": "switch",
+                "cases": [
+                    {
+                        "key": "us",
+                        "conditions_serialized": "{\"type\":\"combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"order_attribute\",\"attribute\":\"shipping_country_id\",\"operator\":\"==\",\"value\":\"US\"}]}",
+                        "next": "us_note"
+                    },
+                    {
+                        "key": "eu",
+                        "conditions_serialized": "{\"type\":\"combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"order_attribute\",\"attribute\":\"shipping_country_id\",\"operator\":\"()\",\"value\":\"DE,FR,NL,BE,AT\"}]}",
+                        "next": "eu_note"
+                    }
+                ],
+                "revalidate_entity": false,
+                "default": "row_note"
+            },
+            "us_note": {
+                "type": "action",
+                "action": "order.add_comment",
+                "config": {"comment": "Routed to US fulfillment ({{ trigger.increment_id }})"},
+                "next": null
+            },
+            "eu_note": {
+                "type": "action",
+                "action": "order.add_comment",
+                "config": {"comment": "Routed to EU fulfillment ({{ trigger.increment_id }})"},
+                "next": null
+            },
+            "row_note": {
+                "type": "action",
+                "action": "order.add_comment",
+                "config": {"comment": "Routed to rest-of-world fulfillment ({{ trigger.increment_id }})"},
+                "next": null
+            }
+        }
+    },
+    "loop_guard_depth": 1
+}

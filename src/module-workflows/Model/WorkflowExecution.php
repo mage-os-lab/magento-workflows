@@ -80,9 +80,13 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
         return (int)$this->getData(self::ENTITY_ID);
     }
 
-    public function setEntityId(int $entityId): WorkflowExecutionInterface
+    /**
+     * @param int $entityId
+     * @return WorkflowExecutionInterface
+     */
+    public function setEntityId($entityId): WorkflowExecutionInterface
     {
-        return $this->setData(self::ENTITY_ID, $entityId);
+        return $this->setData(self::ENTITY_ID, (int)$entityId);
     }
 
     public function getStoreId(): int
@@ -103,6 +107,28 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
     public function setStatus(string $status): WorkflowExecutionInterface
     {
         return $this->setData(self::STATUS, $status);
+    }
+
+    public function getTriggerType(): ?string
+    {
+        $triggerType = $this->getData(self::TRIGGER_TYPE);
+        return $triggerType === null || $triggerType === '' ? null : (string)$triggerType;
+    }
+
+    public function setTriggerType(?string $triggerType): WorkflowExecutionInterface
+    {
+        return $this->setData(self::TRIGGER_TYPE, $triggerType === '' ? null : $triggerType);
+    }
+
+    public function getMode(): string
+    {
+        $mode = $this->getData(self::MODE);
+        return $mode !== null && $mode !== '' ? (string)$mode : self::MODE_LIVE;
+    }
+
+    public function setMode(string $mode): WorkflowExecutionInterface
+    {
+        return $this->setData(self::MODE, $mode);
     }
 
     public function getContext(): ?string
@@ -135,6 +161,28 @@ class WorkflowExecution extends AbstractModel implements WorkflowExecutionInterf
     public function setCurrentStep(?string $stepKey): WorkflowExecutionInterface
     {
         return $this->setData(self::CURRENT_STEP, $stepKey);
+    }
+
+    public function getWaitingEvent(): ?string
+    {
+        $event = $this->getData(self::WAITING_EVENT);
+        return $event === null || $event === '' ? null : (string)$event;
+    }
+
+    public function setWaitingEvent(?string $event): WorkflowExecutionInterface
+    {
+        return $this->setData(self::WAITING_EVENT, $event === '' ? null : $event);
+    }
+
+    public function getOriginUuid(): ?string
+    {
+        $originUuid = $this->getData(self::ORIGIN_UUID);
+        return $originUuid === null || $originUuid === '' ? null : (string)$originUuid;
+    }
+
+    public function setOriginUuid(?string $originUuid): WorkflowExecutionInterface
+    {
+        return $this->setData(self::ORIGIN_UUID, $originUuid === '' ? null : $originUuid);
     }
 
     public function getTriggeredAt(): ?string

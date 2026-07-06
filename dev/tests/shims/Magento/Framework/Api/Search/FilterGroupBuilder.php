@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+
+namespace Magento\Framework\Api\Search;
+
+/**
+ * Minimal shim for Magento\Framework\Api\Search\FilterGroupBuilder.
+ *
+ * Real Magento declares this as a concrete CLASS (extends
+ * AbstractSimpleObjectBuilder), so the shim is a class too — doubles `extends`
+ * it. Inert methods; the no-argument constructor lets anonymous-class doubles
+ * instantiate without the real builder's DI dependencies.
+ */
+class FilterGroupBuilder
+{
+    public function create()
+    {
+        return null;
+    }
+
+    public function setFilters($filters)
+    {
+        return $this;
+    }
+}

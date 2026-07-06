@@ -13,8 +13,10 @@ interface WorkflowInterface
     public const ENTITY_TYPE = 'entity_type';
     public const CONDITIONS_SERIALIZED = 'conditions_serialized';
     public const DEFINITION = 'definition';
+    public const AGGREGATION = 'aggregation';
     public const VERSION = 'version';
     public const LOOP_GUARD_DEPTH = 'loop_guard_depth';
+    public const FAN_OUT = 'fan_out';
     public const CREATED_AT = 'created_at';
     public const UPDATED_AT = 'updated_at';
 
@@ -62,6 +64,14 @@ interface WorkflowInterface
 
     public function setDefinition(string $definition): self;
 
+    /**
+     * Aggregation config JSON (batch aggregation, 05). Null = a per-entity
+     * workflow; non-null = an aggregated workflow (the "kind" derivation).
+     */
+    public function getAggregation(): ?string;
+
+    public function setAggregation(?string $aggregation): self;
+
     public function getVersion(): int;
 
     public function setVersion(int $version): self;
@@ -69,6 +79,15 @@ interface WorkflowInterface
     public function getLoopGuardDepth(): int;
 
     public function setLoopGuardDepth(int $depth): self;
+
+    /**
+     * Trigger-level fan-out config as raw JSON ({relation, cap}), or null when
+     * the workflow dispatches one execution per triggering entity as usual (F1,
+     * docs/discovery/implementation/04-fan-out.md).
+     */
+    public function getFanOut(): ?string;
+
+    public function setFanOut(?string $fanOut): self;
 
     /**
      * @return int[]

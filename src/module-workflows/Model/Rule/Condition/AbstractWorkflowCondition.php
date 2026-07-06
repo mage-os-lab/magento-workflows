@@ -23,6 +23,19 @@ use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
  * Comparator coercion: numeric strings compare numerically and date
  * attributes are normalized via strtotime() before delegating to the core
  * operator implementation in AbstractCondition::validateAttribute().
+ *
+ * Relative date values: a date-input VALUE matching e.g. '-30 days' or
+ * '+2 weeks' is resolved against "now" UTC at EVALUATION time — never
+ * pre-frozen to a concrete date at save time — then both sides are
+ * normalized to Y-m-d as usual:
+ *
+ *  attribute  | operator | value      | matches when the order was
+ *  -----------|----------|------------|---------------------------------
+ *  created_at | <=       | '-30 days' | created at least 30 days ago
+ *  created_at | >=       | '-30 days' | created within the last 30 days
+ *
+ * Absolute date values keep the exact core behavior (parsed once via
+ * AbstractCondition::getValue()).
  */
 abstract class AbstractWorkflowCondition extends AbstractCondition
 {
@@ -30,6 +43,11 @@ abstract class AbstractWorkflowCondition extends AbstractCondition
      * Model-local memoization key for the hydrated entity (false = miss)
      */
     private const KEY_HYDRATED = '__hydrated_entity';
+
+    /**
+     * Relative date VALUE expressions resolved at evaluation time
+     */
+    private const RELATIVE_DATE_PATTERN = '/^[+-]\s*\d+\s+(minute|hour|day|week|month|year)s?$/i';
 
     /**
      * Two-phase validation: snapshot first, hydrate on miss.
@@ -69,13 +87,64 @@ abstract class AbstractWorkflowCondition extends AbstractCondition
         if ($validatedValue === null) {
             return in_array($this->getOperator(), ['!=', '!{}', '!()'], true);
         }
-        if ($this->getInputType() === 'date' && is_scalar($validatedValue) && !is_bool($validatedValue)) {
-            $timestamp = strtotime((string)$validatedValue);
-            if ($timestamp !== false) {
-                $validatedValue = date('Y-m-d', $timestamp);
+        if ($this->getInputType() === 'date') {
+            $ruleValue = $this->getData('value');
+            if ($this->isRelativeDateValue($ruleValue)) {
+                // Resolve the relative expression against "now" UTC at
+                // evaluation time; setValueParsed() short-circuits the core
+                // getValueParsed()/getValue() date parsing for this compare
+                $this->setValueParsed($this->resolveRelativeDate((string)$ruleValue));
+            }
+            if (is_scalar($validatedValue) && !is_bool($validatedValue)) {
+                $timestamp = strtotime((string)$validatedValue);
+                if ($timestamp !== false) {
+                    $validatedValue = date('Y-m-d', $timestamp);
+                }
             }
         }
         return (bool)parent::validateAttribute($validatedValue);
+    }
+
+    /**
+     * Relative date VALUES must survive save-time serialization verbatim:
+     * core asArray()/getValueParsed() flow through getValue(), whose date
+     * branch would freeze '-30 days' to a concrete Y-m-d via setValue() +
+     * setIsValueParsed(true). Return the raw expression instead — resolution
+     * happens in validateAttribute() at evaluation time. Absolute values
+     * fall through to the untouched core behavior.
+     *
+     * @return mixed
+     */
+    public function getValue()
+    {
+        if ($this->getInputType() === 'date'
+            && !$this->getIsValueParsed()
+            && $this->isRelativeDateValue($this->getData('value'))
+        ) {
+            return $this->getData('value');
+        }
+        return parent::getValue();
+    }
+
+    private function isRelativeDateValue(mixed $value): bool
+    {
+        return is_string($value) && preg_match(self::RELATIVE_DATE_PATTERN, trim($value)) === 1;
+    }
+
+    /**
+     * '-30 days' => Y-m-d of now UTC minus 30 days (falls back to the raw
+     * expression if PHP's relative date parser rejects it — comparison then
+     * fails toward false)
+     */
+    private function resolveRelativeDate(string $expression): string
+    {
+        $expression = trim($expression);
+        $normalized = preg_replace('/^([+-])\s+/', '$1', $expression) ?? $expression;
+        try {
+            return (new \DateTime($normalized, new \DateTimeZone('UTC')))->format('Y-m-d');
+        } catch (\Exception) {
+            return $expression;
+        }
     }
 
     /**

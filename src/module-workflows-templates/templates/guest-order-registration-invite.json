@@ -1,0 +1,59 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "guest-order-registration-invite",
+        "title": "Guest order registration invite",
+        "description": "Invites a still-guest customer to register a few days after checkout, revalidated so a meanwhile-registered customer is skipped.",
+        "category": "Customer lifecycle",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["sales.order.created"],
+            "actions": ["notify.email"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "grace_period", "label": "Wait before inviting", "type": "duration", "default": "P3D"}
+        ]
+    },
+    "workflow": {
+        "name": "Guest order registration invite",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.order.created",
+        "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"customer_is_guest\",\"operator\":\"==\",\"value\":\"1\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\RelatedEntity\\\\Combine\",\"relation\":\"order.customer_by_email\",\"value\":\"0\",\"match_mode\":\"any\",\"conditions\":[]}]}",
+        "definition": {
+            "schema": 1,
+            "entry": "wait_grace",
+            "steps": {
+                "wait_grace": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "%param.grace_period%"
+                    },
+                    "next": "still_guest"
+                },
+                "still_guest": {
+                    "type": "branch",
+                    "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\RelatedEntity\\\\Combine\",\"relation\":\"order.customer_by_email\",\"value\":\"0\",\"match_mode\":\"any\",\"conditions\":[]}]}",
+                    "revalidate_entity": true,
+                    "on_true": "invite",
+                    "on_false": "already_registered"
+                },
+                "already_registered": {"type": "stop"},
+                "invite": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "Save your order history -- create an account",
+                        "body": "Create a free account to track order {{ trigger.increment_id }} and get faster checkout next time."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

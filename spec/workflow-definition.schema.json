@@ -1,14 +1,14 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://mage-os.org/schemas/workflow-definition/1.json",
+    "$id": "https://mage-os.org/schemas/workflow-definition/4.json",
     "title": "Mage-OS Workflow Definition",
-    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 1.",
+    "description": "Step-graph definition consumed by the executor, form UI, canvas, and import/export. Version 4 adds the approval step (a human-decision gate parked on the wait spine, with on_approved / on_rejected / on_timeout edges and a required timeout); documents using it MUST declare schema 4. Version 3 adds the switch step (first-match-wins multi-way branch); documents using it MUST declare schema 3. Version 2 adds the wait step and the optional delay fields business_days / at; documents using them MUST declare schema 2 or later. Version 1, 2, and 3 documents remain valid. The optional top-level ui block is non-semantic (canvas layout persistence), legal at any schema version, never read by the engine, and preserved verbatim.",
     "type": "object",
     "required": ["schema", "steps", "entry"],
     "additionalProperties": false,
     "properties": {
         "schema": {
-            "const": 1
+            "enum": [1, 2, 3, 4]
         },
         "entry": {
             "$ref": "#/$defs/stepKeyOrNull",
@@ -24,9 +24,16 @@
                     {"$ref": "#/$defs/actionStep"},
                     {"$ref": "#/$defs/delayStep"},
                     {"$ref": "#/$defs/branchStep"},
-                    {"$ref": "#/$defs/stopStep"}
+                    {"$ref": "#/$defs/stopStep"},
+                    {"$ref": "#/$defs/waitStep"},
+                    {"$ref": "#/$defs/switchStep"},
+                    {"$ref": "#/$defs/approvalStep"}
                 ]
             }
+        },
+        "ui": {
+            "type": "object",
+            "description": "Non-semantic UI/canvas layout block, preserved verbatim by the engine and never evaluated. The only whitelisted non-semantic key; there is no general unknown-key passthrough."
         }
     },
     "$defs": {
@@ -35,6 +42,10 @@
                 {"type": "string", "pattern": "^[a-zA-Z0-9_\\-]{1,64}$"},
                 {"type": "null"}
             ]
+        },
+        "iso8601Duration": {
+            "type": "string",
+            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$"
         },
         "actionStep": {
             "type": "object",
@@ -49,7 +60,7 @@
                 },
                 "config": {
                     "type": "object",
-                    "description": "Action config. String values may contain {{ trigger.* }}, {{ steps.* }}, {{ workflow.* }}, {{ secrets.* }} placeholders (values only, never keys)."
+                    "description": "Action config. String values may contain {{ trigger.* }}, {{ steps.* }}, {{ workflow.* }}, {{ secrets.* }} placeholders (values only, never keys), optionally with whitelisted formatters, e.g. {{ trigger.grand_total|number:2 }}."
                 },
                 "next": {"$ref": "#/$defs/stepKeyOrNull"}
             }
@@ -66,9 +77,18 @@
                     "additionalProperties": false,
                     "properties": {
                         "duration": {
+                            "$ref": "#/$defs/iso8601Duration",
+                            "description": "ISO-8601 duration; absolute UTC arithmetic unless business_days/at are set"
+                        },
+                        "business_days": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Schema 2 only. Day components count Mon-Fri in the store's timezone."
+                        },
+                        "at": {
                             "type": "string",
-                            "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+S)?)?$",
-                            "description": "ISO-8601 duration; absolute UTC arithmetic"
+                            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                            "description": "Schema 2 only. After the duration, roll forward to the next occurrence of this store-local time (24h HH:MM)."
                         }
                     }
                 },
@@ -100,6 +120,151 @@
             "additionalProperties": false,
             "properties": {
                 "type": {"const": "stop"}
+            }
+        },
+        "waitStep": {
+            "type": "object",
+            "required": ["type", "config"],
+            "additionalProperties": false,
+            "description": "Schema 2 only. Parks the execution until the named trigger event fires for the same entity, or until the timeout elapses. The resume routes through on_event / on_timeout; the step's output exposes {resolution: 'event'|'timeout', event: <payload>} for downstream interpolation.",
+            "properties": {
+                "type": {"const": "wait"},
+                "config": {
+                    "type": "object",
+                    "required": ["event", "timeout"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "event": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9_.\\-]{1,128}$",
+                            "description": "Trigger event name to wait for (matched against this execution's entity id)"
+                        },
+                        "timeout": {
+                            "$ref": "#/$defs/iso8601Duration",
+                            "description": "Timeout after which on_timeout fires; ceiling-clamped by the max-delay guard"
+                        }
+                    }
+                },
+                "on_event": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_timeout": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "switchStep": {
+            "type": "object",
+            "required": ["type", "cases"],
+            "additionalProperties": false,
+            "description": "Schema 3 only. First-match-wins multi-way branch: cases are evaluated top to bottom, the first whose condition tree matches is followed; the nullable default edge fires when no case matches. One shared revalidate_entity for the whole step (one hydration, evaluated N times). The step result records {matched: <case key>|null}.",
+            "properties": {
+                "type": {"const": "switch"},
+                "cases": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "required": ["key"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_\\-]{1,64}$",
+                                "description": "Case label, unique within the step; recorded as {matched} in the step result"
+                            },
+                            "conditions_serialized": {
+                                "type": ["string", "null"],
+                                "description": "Rule condition tree, salesrule-compatible serialized format; empty/absent = always matches"
+                            },
+                            "next": {"$ref": "#/$defs/stepKeyOrNull"}
+                        }
+                    }
+                },
+                "revalidate_entity": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "true: re-hydrate the entity fresh before evaluating the cases (correct default after delays); false: evaluate against the frozen trigger snapshot"
+                },
+                "default": {"$ref": "#/$defs/stepKeyOrNull"}
+            }
+        },
+        "approvalStep": {
+            "type": "object",
+            "required": ["type", "config"],
+            "additionalProperties": false,
+            "description": "Schema 4 only. A human-decision gate parked on the wait spine: the execution parks (status waiting) with resume_at = now + timeout and an approval task is opened; a decision (admin UI or REST) or the timeout sweeper wakes it. Routes approved -> on_approved, rejected -> on_rejected, no decision -> on_timeout. The step output exposes {task_uuid} at park time and {resolution, note, payload, decided_by} after a decision (or {resolution:'timeout'}). Requires the MageOS_WorkflowsApprovals addon to save.",
+            "properties": {
+                "type": {"const": "approval"},
+                "config": {
+                    "type": "object",
+                    "required": ["title", "timeout"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Request label, interpolated at park time; renders in the approvals grid and emails. May not contain {{ secrets.* }}."
+                        },
+                        "instructions": {
+                            "type": "string",
+                            "description": "Longer decision context, interpolated at park time. May not contain {{ secrets.* }}."
+                        },
+                        "timeout": {
+                            "$ref": "#/$defs/iso8601Duration",
+                            "description": "REQUIRED. Timeout after which on_timeout fires; ceiling-clamped by the max-delay guard. No indefinite parks."
+                        },
+                        "assignee_role": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Nullable role code the decision requires (matches a Magento authorization role); targeting + decide-time enforcement."
+                        },
+                        "allow_bulk": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Opt-in per gate: whether the approvals grid may bulk-decide this task. Incompatible with any required payload_fields entry."
+                        },
+                        "payload_fields": {
+                            "type": "array",
+                            "minItems": 1,
+                            "description": "Value form the decider fills in; keys are allowlisted into execution context. Absent = note-only.",
+                            "items": {
+                                "type": "object",
+                                "required": ["key", "label", "type"],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "key": {
+                                        "type": "string",
+                                        "pattern": "^[a-zA-Z0-9_]{1,64}$",
+                                        "description": "Context output key, unique within the step"
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "description": "Form field label shown to the decider"
+                                    },
+                                    "type": {
+                                        "enum": ["string", "number", "boolean"],
+                                        "description": "Scalar type the decided value is coerced to"
+                                    },
+                                    "required": {
+                                        "type": "boolean",
+                                        "default": false,
+                                        "description": "Enforced on approval only (never on reject/timeout)"
+                                    }
+                                }
+                            }
+                        },
+                        "notify_emails": {
+                            "type": "array",
+                            "minItems": 1,
+                            "description": "Optional direct-email recipients notified at park time, in addition to the admin-inbox notice; entries should be email addresses. The gate owns this because only the gate knows the task UUID.",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        }
+                    }
+                },
+                "on_approved": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_rejected": {"$ref": "#/$defs/stepKeyOrNull"},
+                "on_timeout": {"$ref": "#/$defs/stepKeyOrNull"}
             }
         }
     }

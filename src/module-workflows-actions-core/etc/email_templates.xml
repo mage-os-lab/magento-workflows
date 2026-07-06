@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Bundled template backing notify.email's ad-hoc (subject + body) mode.
+     The action pre-escapes the body in PHP before passing it as a var; the
+     template's |raw output is therefore already-safe HTML. -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Email:etc/email_templates.xsd">
+    <template id="mageos_workflows_adhoc" label="Workflow Ad-hoc Email" file="workflow_adhoc.html"
+              type="html" module="MageOS_WorkflowsActionsCore" area="frontend"/>
+</config>

@@ -1,0 +1,52 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "vip-order-notification",
+        "title": "VIP order notification",
+        "description": "Tags an internal comment and alerts admin the moment a known VIP customer group places an order.",
+        "category": "Notifications & internal alerts",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": ["sales.order.created"],
+            "actions": ["order.add_comment", "notify.admin"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "vip_group_id", "label": "VIP customer group ID", "type": "string", "required": true}
+        ]
+    },
+    "workflow": {
+        "name": "VIP order notification",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.order.created",
+        "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"customer_group_id\",\"operator\":\"==\",\"value\":\"%param.vip_group_id%\"}",
+        "definition": {
+            "schema": 1,
+            "entry": "tag_comment",
+            "steps": {
+                "tag_comment": {
+                    "type": "action",
+                    "action": "order.add_comment",
+                    "config": {
+                        "comment": "VIP customer order -- priority handling requested.",
+                        "is_visible_on_front": false
+                    },
+                    "next": "notify_manager"
+                },
+                "notify_manager": {
+                    "type": "action",
+                    "action": "notify.admin",
+                    "config": {
+                        "title": "VIP order placed",
+                        "description": "Order {{ trigger.increment_id }} (total {{ trigger.grand_total }}) placed by a VIP customer."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

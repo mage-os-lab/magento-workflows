@@ -1,6 +1,8 @@
 # Mage-OS Workflow Engine — Architecture & Implementation Plan
 
-**Working name:** `MageOS_Workflows` · **Status:** Proposed · **Target:** Magento Open Source / Mage-OS / Adobe Commerce ≥ 2.4.4, PHP 8.1+
+**Working name:** `MageOS_Workflows` · **Status:** Proposed (original design doc; much of it since implemented — pending live-install verification) · **Target:** Magento Open Source / Mage-OS / Adobe Commerce ≥ 2.4.4, PHP 8.1+
+
+> **Note.** This is the original consolidated architecture proposal, preserved as written. The as-built status lives in the numbered docs: [13 — Delivery Plan](13-delivery-plan.md) and [16 — Capability Roadmap](16-capability-roadmap.md) for what's coded, and [docs/discovery/](discovery/README.md) for the follow-on build (canvas, template gallery, dry-run, branching, cross-referencing, fan-out, batch aggregation). Passages below that describe those as "v2 / Phase 2" future work are flagged inline where they'd otherwise mislead.
 
 ---
 
@@ -14,7 +16,7 @@ A merchant-facing, admin-native trigger → condition → action workflow engine
 | `mageos-async-events` is the event bus | Inherits queue transport, quadratic-backoff retry, UUID trace logging, ES/Lucene search, subscription model |
 | Conditions extend `Magento\Rule\Model` | Free EAV introspection, merchant-familiar UI widget, battle-tested evaluation |
 | Actions = DI-registered pool | Standard Magento pattern (payment methods, totals collectors); third-party extensible by `di.xml` |
-| v1 UI is adminhtml forms, not a canvas | ~20% of the cost of React Flow; AutomateWoo proves the model. Canvas is v2 |
+| v1 UI is adminhtml forms, not a canvas | ~20% of the cost of React Flow; AutomateWoo proves the model. Canvas is v2 (since implemented as the optional `workflows-canvas` module — pending live-install verification) |
 | External connectors via webhook action → iPaaS | Don't compete with 400-connector ecosystems; own the data model instead |
 
 Non-goals for v1: storefront-facing anything, Adobe I/O Events interop, loops/iterators over collections, approval-chain UI (B2B native approvals remain in Commerce core).
@@ -269,7 +271,7 @@ Actions mutate entities; mutations fire events; events trigger workflows. Guards
 - **Chain depth:** executions carry `chain_depth`, propagated when an action's mutation causes a dispatch within the same request via a registry flag on the publisher — exceeding `loop_guard_depth` (default 1) skips dispatch and logs `loop_suppressed`.
 - **Debounce, done atomically:** same `(workflow_id, entity_id)` within N seconds collapses to one execution. A SELECT-then-INSERT check is racy under concurrent consumers — enforce with a unique key on `(workflow_id, entity_id, time_bucket)` and treat duplicate-key as debounced. No lock service dependency.
 - **Circuit breaker:** N consecutive step failures (default 10) or failure rate > X% over a window auto-pauses the workflow (`status = suspended`), fires an admin notification + email digest, and requires explicit re-enable. A misconfigured webhook must not silently burn the retry queue for days.
-- **Bulk-operation suppression:** imports and mass-actions firing 100k `product.saved` events will detonate any per-entity engine. Ship a suppression API (`WorkflowSuppression::scope(callable)` + honored `bin/magento` flag + config toggle for known bulk paths like `catalog_product_import`). Phase 2: *aggregate triggers* — "fire once per batch with the matched collection" — turning the storm problem into a feature (e.g., "email me a summary of all products that went out of stock today").
+- **Bulk-operation suppression:** imports and mass-actions firing 100k `product.saved` events will detonate any per-entity engine. Ship a suppression API (`WorkflowSuppression::scope(callable)` + honored `bin/magento` flag + config toggle for known bulk paths like `catalog_product_import`). *Aggregate triggers* — "fire once per batch with the matched collection" — turning the storm problem into a feature (e.g., "email me a summary of all products that went out of stock today"); **since implemented** (`Model/Aggregation/*`, both collected and window modes — pending live-install verification).
 
 ---
 
@@ -321,7 +323,7 @@ Sizing reality: a single `workflow.execute` consumer comfortably handles hundred
 
 **v1 (adminhtml, ships with MVP):** grid + tabbed form. General (name, status, scope, loop guard) · Trigger (grouped select from trigger metadata; schedule builder for cron type) · Conditions (the stock rule widget — ugly, familiar, free) · Actions (`dynamicRows`; each row's fieldset rendered from `getConfigForm()` metadata; delay and stop are just row types; v1 exposes linear + delays + a single optional post-delay branch) · Logs (embedded execution grid). Plus grid mass-actions and manual-run modal.
 
-**v2 (`workflows-canvas`):** React Flow reading/writing the same definition JSON. Node palette from trigger/action metadata endpoints. The definition format is the API boundary — canvas is purely presentational, no engine changes. Also v2: template library (curated JSON definitions installable from a gallery — the import pipeline is already the mechanism) and dry-run mode (execute with a `simulate` flag; actions render their would-be effect into step results without side effects — requires `ActionInterface::simulate()`, add to the contract in v1 as optional interface so the core library is ready).
+**v2 (`workflows-canvas`) — since implemented (pending live-install verification):** React Flow reading/writing the same definition JSON, shipped as a read-only viewer (execution + dry-run overlays) plus a full drag-and-drop editor. Node palette from trigger/action metadata endpoints. The definition format is the API boundary — canvas is purely presentational, no engine changes. Also shipped: the template library (the `workflows-templates` content pack + gallery UI, installed via the existing import pipeline) and dry-run mode (`DryRunService` — actions render their would-be effect into step results without side effects via the realized optional `SimulateableActionInterface`).
 
 **Shadow mode (v1, nearly free):** enable a workflow in `shadow` status — conditions evaluate on live traffic, actions log their would-be effect via `simulate()`, nothing mutates. This is the single highest-leverage confidence feature for merchants ("run it for a week, look at what it *would have* done") and it costs one enum value plus the simulate path dry-run already needs. Ship it before dry-run; it's the same machinery with a status flag.
 
@@ -366,13 +368,13 @@ Phase 1 is a shippable, sellable product. Test strategy: engine is highly unit-t
 | Order-status action vs. custom order-state extensions | Validate transitions via core guards; document that exotic state machines need custom actions |
 | SSRF via webhook action | Hardened by default (§6.3): private-range denial, DNS-pin, redirect re-validation, response caps |
 | Deferred privilege escalation (workflows run as system) | Authoring ACL + attribute denylists + execution-time scope re-check + import re-authorization (§8) |
-| Event storm from imports/mass-actions | Suppression API + config-flagged bulk paths; aggregate triggers in Phase 2 (§6.5) |
+| Event storm from imports/mass-actions | Suppression API + config-flagged bulk paths; aggregate triggers since implemented (pending live-install verification) (§6.5) |
 | Runaway/misconfigured workflow | Circuit breaker auto-suspend + digest notification (§6.5) |
 | Duplicate side effects on at-least-once redelivery | Step claim timestamps + per-step dedupe key (execution UUID + step key) checked by non-idempotent actions (email send logs the key before SMTP) |
 | Entity deleted during a delay | Resume path treats missing-entity as `skipped` with explicit log status, never as error retry |
 | Timezone ambiguity (delays, schedules) | Delays are absolute durations (UTC arithmetic); schedules evaluate in *store* timezone with the store recorded on the execution — document loudly, it's the #1 support ticket generator in every scheduler ever shipped |
 | PII sprawl into ES / retained contexts | Redaction-by-default indexing, TTL pruning, GDPR erasure hook (§8) — GA blockers, not fast-follows |
-| Open: multi-source inventory semantics for stock actions | v1 restricts to default source + salability check; MSI-aware config in Phase 2 |
+| Open: multi-source inventory semantics for stock actions | `product.set_stock` now takes an optional `source_code` (MSI-aware via `SourceItemsSave` when MSI is present — pending live-install verification); full MSI-aware config (per-stock salability, multi-source strategies) remains open |
 
 ---
 

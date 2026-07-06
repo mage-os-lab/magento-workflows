@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Bulk-operation suppression (docs/07-actions.md, loop prevention): the
+         known-bulk-path wiring for the suppression API. CSV imports funnel
+         through Magento\ImportExport\Model\Import::importSource(), so an
+         around-plugin wraps it in WorkflowSuppression::scope() while
+         mageos_workflows/general/suppress_bulk_imports is enabled (default).
+         This lives in its own module so the core engine carries no hard
+         dependency on Magento_ImportExport — a plugin target must exist at
+         di:compile time, which is exactly what this package's composer
+         require guarantees for installs that opt in. -->
+    <type name="Magento\ImportExport\Model\Import">
+        <plugin name="mageos_workflows_suppress_bulk_imports"
+                type="MageOS\WorkflowsImportSuppression\Plugin\SuppressWorkflowsDuringImport"/>
+    </type>
+</config>

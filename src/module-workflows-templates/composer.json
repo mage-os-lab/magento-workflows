@@ -1,0 +1,17 @@
+{
+    "name": "mage-os/workflows-templates",
+    "description": "Mage-OS Workflow Engine bundled template pack: curated gallery templates (data-only content pack)",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "magento/framework": ">=103.0.4",
+        "mage-os/workflows": "*"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "MageOS\\WorkflowsTemplates\\": ""
+        }
+    }
+}

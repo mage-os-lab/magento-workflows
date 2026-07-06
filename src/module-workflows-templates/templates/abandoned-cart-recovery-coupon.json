@@ -1,0 +1,81 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "abandoned-cart-recovery-coupon",
+        "title": {"en_US": "Abandoned cart recovery with coupon", "de_DE": "Wiederherstellung abgebrochener Warenkorbe mit Gutschein"},
+        "description": "Skips low-value carts, reminds the rest, then follows up with a generated coupon.",
+        "category": "Cart recovery",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 2,
+            "triggers": ["quote.abandoned"],
+            "actions": ["notify.email", "marketing.generate_coupon"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "coupon_rule_id", "label": "Cart price rule for the follow-up coupon", "type": "entity:salesrule", "required": true},
+            {"key": "min_cart_total", "label": "Minimum cart total to bother reminding", "type": "string", "default": "50"},
+            {"key": "reminder_delay", "label": "Wait before the coupon follow-up", "type": "duration", "default": "P1D"}
+        ]
+    },
+    "workflow": {
+        "name": "Abandoned cart recovery with coupon",
+        "entity_type": "quote",
+        "trigger_type": "event",
+        "trigger_ref": "quote.abandoned",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 2,
+            "entry": "check_value",
+            "steps": {
+                "check_value": {
+                    "type": "branch",
+                    "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Quote\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Quote\\\\Attribute\",\"attribute\":\"grand_total\",\"operator\":\">=\",\"value\":\"%param.min_cart_total%\"}]}",
+                    "revalidate_entity": true,
+                    "on_true": "send_reminder",
+                    "on_false": "skip_low_value"
+                },
+                "skip_low_value": {"type": "stop"},
+                "send_reminder": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "You left something behind",
+                        "body": "Your cart is still waiting for you. Come back and finish checking out."
+                    },
+                    "next": "coupon_delay"
+                },
+                "coupon_delay": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "%param.reminder_delay%",
+                        "business_days": true,
+                        "at": "09:00"
+                    },
+                    "next": "generate_coupon"
+                },
+                "generate_coupon": {
+                    "type": "action",
+                    "action": "marketing.generate_coupon",
+                    "config": {
+                        "rule_id": "%param.coupon_rule_id%"
+                    },
+                    "next": "send_coupon_email"
+                },
+                "send_coupon_email": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "Here's a little something to finish your order",
+                        "body": "Use code {{ steps.generate_coupon.coupon_code }} at checkout — it's on us."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

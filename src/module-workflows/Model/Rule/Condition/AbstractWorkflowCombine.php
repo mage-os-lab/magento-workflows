@@ -5,6 +5,8 @@ namespace MageOS\Workflows\Model\Rule\Condition;
 
 use Magento\Framework\DataObject;
 use Magento\Rule\Model\Condition\Combine;
+use MageOS\Workflows\Model\Relation\RelationPool;
+use MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine as RelatedEntityCombine;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 
 /**
@@ -68,6 +70,25 @@ abstract class AbstractWorkflowCombine extends Combine
             }
         }
         return array_merge($inSnapshot, $deferred);
+    }
+
+    /**
+     * The "Related Entity" child option, offered by a root combine ONLY when
+     * the RelationPool actually holds a relation sourced from that entity type
+     * (docs/discovery/implementation/02: "wire only where relations exist —
+     * Order/Quote/Customer, not Product"). Data-driven so a third-party
+     * relation pack lights up its source entity's picker automatically.
+     *
+     * @return array<int, array{value: string, label: \Magento\Framework\Phrase}>
+     */
+    protected function relatedEntityChildOptions(RelationPool $relationPool, string $sourceEntityType): array
+    {
+        if ($relationPool->getBySourceEntityType($sourceEntityType) === []) {
+            return [];
+        }
+        return [
+            ['value' => RelatedEntityCombine::class, 'label' => __('Related Entity (exists / not exists)')],
+        ];
     }
 
     protected function getHydrationProvider(DataObject $model): ?HydrationProviderInterface

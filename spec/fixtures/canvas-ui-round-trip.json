@@ -1,0 +1,29 @@
+{
+    "format": "mageos-workflow-export/1",
+    "name": "Canvas ui block round-trip",
+    "entity_type": "sales_order",
+    "trigger_type": "event",
+    "trigger_ref": "sales.order.created",
+    "conditions_serialized": null,
+    "definition": {
+        "schema": 1,
+        "entry": "s1",
+        "steps": {
+            "s1": {
+                "type": "action",
+                "action": "order.add_comment",
+                "config": {"comment": "Layout-bearing definition"},
+                "next": "s2"
+            },
+            "s2": {"type": "stop"}
+        },
+        "ui": {
+            "canvas": {"zoom": 0.85, "pan": {"x": 120, "y": -64}},
+            "nodes": {
+                "s1": {"x": 80, "y": 40, "collapsed": false},
+                "s2": {"x": 80, "y": 220, "collapsed": false}
+            }
+        }
+    },
+    "loop_guard_depth": 1
+}

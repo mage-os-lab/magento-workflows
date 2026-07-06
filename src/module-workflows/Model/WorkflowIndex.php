@@ -9,13 +9,19 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Model\ResourceModel\Workflow\CollectionFactory;
 
 /**
- * Cache-backed index of active (enabled or shadow) workflows keyed by trigger,
- * so the event dispatcher answers "any workflows for this event?" without a DB
- * round-trip on every async event. Repository save/delete calls clean().
+ * Cache-backed index of enabled/shadow schedule-type workflow IDs, so
+ * RunScheduledWorkflows (which runs every minute) can skip its repository
+ * query entirely on ticks where a store has no schedule workflows at all.
+ * Repository save/delete calls clean() to invalidate.
+ *
+ * This index does NOT cover event-type workflows: event dispatch is resolved
+ * per-subscription by the async-events recipients (WorkflowNotifier), not by
+ * an "any workflows for this event?" lookup, so an event half of this index
+ * would have no caller.
  */
 class WorkflowIndex
 {
-    private const CACHE_KEY = 'mageos_workflows_trigger_index';
+    private const CACHE_KEY = 'mageos_workflows_schedule_index';
     private const CACHE_TAG = 'MAGEOS_WORKFLOWS';
     private const CACHE_LIFETIME = 86400;
 
@@ -25,7 +31,7 @@ class WorkflowIndex
     ];
 
     /**
-     * @var array{event: array<string, int[]>, schedule: int[]}|null
+     * @var int[]|null
      */
     private ?array $index = null;
 
@@ -37,23 +43,13 @@ class WorkflowIndex
     }
 
     /**
-     * IDs of enabled/shadow workflows with trigger_type=event bound to the given event name
-     *
-     * @return int[]
-     */
-    public function getWorkflowIdsForEvent(string $eventName): array
-    {
-        return $this->getIndex()['event'][$eventName] ?? [];
-    }
-
-    /**
      * IDs of enabled/shadow workflows with trigger_type=schedule
      *
      * @return int[]
      */
     public function getScheduledWorkflowIds(): array
     {
-        return $this->getIndex()['schedule'] ?? [];
+        return $this->getIndex();
     }
 
     /**
@@ -66,7 +62,7 @@ class WorkflowIndex
     }
 
     /**
-     * @return array{event: array<string, int[]>, schedule: int[]}
+     * @return int[]
      */
     private function getIndex(): array
     {
@@ -78,7 +74,7 @@ class WorkflowIndex
         if ($cached) {
             try {
                 $index = $this->serializer->unserialize($cached);
-                if (is_array($index) && isset($index['event'], $index['schedule'])) {
+                if (is_array($index)) {
                     $this->index = $index;
                     return $this->index;
                 }
@@ -99,32 +95,20 @@ class WorkflowIndex
     }
 
     /**
-     * @return array{event: array<string, int[]>, schedule: int[]}
+     * @return int[]
      */
     private function build(): array
     {
         $collection = $this->collectionFactory->create();
-        $collection->addFieldToSelect([
-            WorkflowInterface::WORKFLOW_ID,
-            WorkflowInterface::TRIGGER_TYPE,
-            WorkflowInterface::TRIGGER_REF,
-        ]);
+        $collection->addFieldToSelect(WorkflowInterface::WORKFLOW_ID);
         $collection->addFieldToFilter(WorkflowInterface::STATUS, ['in' => self::ACTIVE_STATUSES]);
-        $collection->addFieldToFilter(
-            WorkflowInterface::TRIGGER_TYPE,
-            ['in' => [WorkflowInterface::TRIGGER_TYPE_EVENT, WorkflowInterface::TRIGGER_TYPE_SCHEDULE]]
-        );
+        $collection->addFieldToFilter(WorkflowInterface::TRIGGER_TYPE, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
 
-        $index = ['event' => [], 'schedule' => []];
+        $ids = [];
         foreach ($collection->getData() as $row) {
-            $workflowId = (int)$row[WorkflowInterface::WORKFLOW_ID];
-            if ($row[WorkflowInterface::TRIGGER_TYPE] === WorkflowInterface::TRIGGER_TYPE_EVENT) {
-                $index['event'][(string)$row[WorkflowInterface::TRIGGER_REF]][] = $workflowId;
-            } else {
-                $index['schedule'][] = $workflowId;
-            }
+            $ids[] = (int)$row[WorkflowInterface::WORKFLOW_ID];
         }
 
-        return $index;
+        return $ids;
     }
 }

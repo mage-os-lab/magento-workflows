@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsActionsCore\Action\Flow;
 
 use MageOS\Workflows\Api\ActionResultInterface;
+use MageOS\Workflows\Api\BatchCapableActionInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
@@ -14,13 +15,18 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * reference {{ steps.<key>.<name> }}. Pure context write, no side effects.
  * (delay and stop are step TYPES handled by the executor, not actions.)
  */
-class SetVariable extends AbstractAction implements SimulateableActionInterface
+class SetVariable extends AbstractAction implements SimulateableActionInterface, BatchCapableActionInterface
 {
     private const NAME_PATTERN = '/^[a-zA-Z0-9_]+$/';
 
     public function getCode(): string
     {
         return 'flow.set_variable';
+    }
+
+    public function supportsBatch(): bool
+    {
+        return true;
     }
 
     public function getLabel(): string

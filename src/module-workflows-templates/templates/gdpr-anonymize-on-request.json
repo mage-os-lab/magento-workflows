@@ -1,0 +1,46 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "gdpr-anonymize-on-request",
+        "title": "GDPR anonymize on request",
+        "description": "Manual-trigger erasure flow: unsubscribes the customer, then anonymizes with the hard-required confirm step as a deliberate speed bump.",
+        "category": "Compliance & data",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "actions": ["customer.newsletter", "customer.anonymize"],
+            "modules": [],
+            "edition": "any"
+        }
+    },
+    "workflow": {
+        "name": "GDPR anonymize on request",
+        "entity_type": "customer",
+        "trigger_type": "manual",
+        "trigger_ref": "manual",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 1,
+            "entry": "unsubscribe_first",
+            "steps": {
+                "unsubscribe_first": {
+                    "type": "action",
+                    "action": "customer.newsletter",
+                    "config": {
+                        "action": "unsubscribe"
+                    },
+                    "next": "confirm_anonymize"
+                },
+                "confirm_anonymize": {
+                    "type": "action",
+                    "action": "customer.anonymize",
+                    "config": {
+                        "confirm": true
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

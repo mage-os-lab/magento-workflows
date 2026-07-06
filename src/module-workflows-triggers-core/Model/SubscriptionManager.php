@@ -126,11 +126,93 @@ class SubscriptionManager
     }
 
     /**
+     * Ensures one hidden subscription per event a wait step listens on
+     * (recipient "workflow:<id>:wait:<event>"), and deactivates stale wait
+     * subscriptions whose event is no longer referenced. Wait subscriptions
+     * are trigger-type independent: a schedule- or manual-triggered workflow
+     * with wait steps still needs its wait events delivered.
+     *
+     * @param string[] $events wait events referenced by the current definition
+     * @throws LocalizedException
+     */
+    public function ensureWaitSubscriptions(WorkflowInterface $workflow, array $events): void
+    {
+        $workflowId = (int) $workflow->getWorkflowId();
+        if ($workflowId <= 0) {
+            return;
+        }
+
+        foreach ($events as $event) {
+            $recipient = $this->waitRecipientFor($workflowId, $event);
+            $subscription = $this->findByRecipient($recipient);
+
+            if ($subscription === null) {
+                /** @var AsyncEventInterface $subscription */
+                $subscription = $this->asyncEventFactory->create();
+                $subscription->setRecipientUrl($recipient);
+                $subscription->setVerificationToken($this->random->getRandomString(32));
+            } elseif ($this->isActive($subscription)
+                && (string) $subscription->getEventName() === $event
+                && (string) $subscription->getMetadata() === WorkflowNotifier::NOTIFIER_NAME
+            ) {
+                continue; // already in sync
+            }
+
+            $subscription->setEventName($event);
+            $subscription->setMetadata(WorkflowNotifier::NOTIFIER_NAME);
+            $subscription->setStatus(true);
+            $this->save($subscription, $recipient);
+        }
+
+        $this->disableStaleWaitSubscriptions($workflowId, $events);
+    }
+
+    /**
+     * Deactivates wait subscriptions not in the wanted set (pass [] to
+     * release all — workflow disabled, suspended, or deleted).
+     *
+     * @param string[] $keepEvents
+     * @throws LocalizedException
+     */
+    public function disableStaleWaitSubscriptions(int $workflowId, array $keepEvents = []): void
+    {
+        if ($workflowId <= 0) {
+            return;
+        }
+        $prefix = $this->waitRecipientPrefix($workflowId);
+        $searchCriteria = $this->searchCriteriaBuilder
+            ->addFilter(self::FIELD_RECIPIENT_URL, $prefix . '%', 'like')
+            ->create();
+        foreach ($this->asyncEventRepository->getList($searchCriteria)->getItems() as $subscription) {
+            $recipient = (string) $subscription->getRecipientUrl();
+            $event = substr($recipient, strlen($prefix));
+            if (in_array($event, $keepEvents, true) || !$this->isActive($subscription)) {
+                continue;
+            }
+            $subscription->setStatus(false);
+            $this->save($subscription, $recipient);
+        }
+    }
+
+    /**
      * Recipient URL / ownership marker for a workflow id.
      */
     public function recipientFor(int $workflowId): string
     {
         return WorkflowNotifier::RECIPIENT_PREFIX . $workflowId;
+    }
+
+    /**
+     * Recipient URL for a wait-step subscription.
+     */
+    public function waitRecipientFor(int $workflowId, string $event): string
+    {
+        return $this->waitRecipientPrefix($workflowId) . $event;
+    }
+
+    private function waitRecipientPrefix(int $workflowId): string
+    {
+        return WorkflowNotifier::RECIPIENT_PREFIX . $workflowId . WorkflowNotifier::WAIT_INFIX;
     }
 
     private function findByRecipient(string $recipient): ?AsyncEventInterface

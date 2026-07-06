@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <!-- Workflows -->
+    <route url="/V1/workflows" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="getList"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="getById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Validate-only (F6): runs the save-time pipeline on a posted
+         definition without persisting. Owned by branching stage 2
+         (docs/discovery/implementation/01-branching.md). -->
+    <route url="/V1/workflows/validate" method="POST">
+        <service class="MageOS\Workflows\Api\DefinitionValidationInterface" method="validate"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+    <!-- Dry-run (03): synchronous, side-effect-free preview. Route shapes are
+         deliberately non-colliding with GET /V1/workflows/:workflowId (distinct
+         method + segment depth); a GET on …/dry-run falls through to
+         getById('dry-run') → 404 (pinned by a contract test) — do not "fix" it
+         into a collision. Gated by the dedicated ::dry_run resource, which does
+         NOT imply ::manual_run. -->
+    <route url="/V1/workflows/dry-run" method="POST">
+        <service class="MageOS\Workflows\Api\WorkflowDryRunInterface" method="runOnDefinition"/>
+        <resources>
+            <resource ref="MageOS_Workflows::dry_run"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId/dry-run" method="POST">
+        <service class="MageOS\Workflows\Api\WorkflowDryRunInterface" method="runOnSaved"/>
+        <resources>
+            <resource ref="MageOS_Workflows::dry_run"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows" method="POST">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="save"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId" method="PUT">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="save"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/:workflowId" method="DELETE">
+        <service class="MageOS\Workflows\Api\WorkflowRepositoryInterface" method="deleteById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::manage"/>
+        </resources>
+    </route>
+
+    <!-- Relation metadata (F6 / entity cross-referencing stage 4): lists the
+         registered relation pool for the canvas picker, gallery, and CI. -->
+    <route url="/V1/workflows/meta/relations" method="GET">
+        <service class="MageOS\Workflows\Api\RelationMetadataProviderInterface" method="getRelations"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+
+    <!-- Remaining F6 metadata endpoints (canvas stage 1): palette + config-panel
+         generation. All read-only under ::view; the palette display is
+         ACL-filtered for convenience, the save path is the real gate. -->
+    <route url="/V1/workflows/meta/actions" method="GET">
+        <service class="MageOS\Workflows\Api\ActionMetadataProviderInterface" method="getActions"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/meta/triggers" method="GET">
+        <service class="MageOS\Workflows\Api\TriggerMetadataProviderInterface" method="getTriggers"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflows/meta/entity-types" method="GET">
+        <service class="MageOS\Workflows\Api\EntityTypeMetadataProviderInterface" method="getEntityTypes"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Secret NAMES only; values are write-only and never leave the server. -->
+    <route url="/V1/workflows/meta/secrets" method="GET">
+        <service class="MageOS\Workflows\Api\SecretMetadataProviderInterface" method="getSecretNames"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Option-source union (F6): ?source=<code>&q=… bind to the method args by
+         name. Bounded sources return their whole list on an empty query;
+         search-typed sources filter + cap. -->
+    <route url="/V1/workflows/meta/options" method="GET">
+        <service class="MageOS\Workflows\Api\OptionSourceProviderInterface" method="getOptions"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+
+    <!-- Workflow executions (read-only) -->
+    <route url="/V1/workflow-executions" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getList"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <route url="/V1/workflow-executions/:executionId" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getById"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+    <!-- Per-step timeline (07): powers the canvas execution overlay. Step rows
+         are not otherwise REST-exposed. -->
+    <route url="/V1/workflow-executions/:executionId/steps" method="GET">
+        <service class="MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface" method="getSteps"/>
+        <resources>
+            <resource ref="MageOS_Workflows::view"/>
+        </resources>
+    </route>
+</routes>

@@ -34,6 +34,21 @@
                     <label>Manual Mass-Run Cap</label>
                     <validate>validate-digits</validate>
                 </field>
+                <field id="max_delay_days" translate="label comment" type="text" sortOrder="40" showInDefault="1">
+                    <label>Maximum Delay / Wait (days)</label>
+                    <comment>Delay and wait steps are clamped to this ceiling so a mistyped duration cannot park an execution silently.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+                <field id="relation_cap" translate="label comment" type="text" sortOrder="50" showInDefault="1">
+                    <label>Related-Entity Resolution Cap</label>
+                    <comment>Maximum related-entity ids a single relation lookup may return; excess is dropped with a logged warning.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+                <field id="fan_out_cap" translate="label comment" type="text" sortOrder="60" showInDefault="1">
+                    <label>Fan-Out Cap</label>
+                    <comment>Global ceiling on how many executions one triggering event may fan out to. Per-workflow fan-out caps clamp to this value; excess targets are dropped with a logged, admin-visible marker.</comment>
+                    <validate>validate-digits</validate>
+                </field>
             </group>
             <group id="retention" translate="label" type="text" sortOrder="30" showInDefault="1">
                 <label>Execution Retention</label>
@@ -63,6 +78,27 @@
                     <validate>validate-digits</validate>
                 </field>
             </group>
+            <group id="simulation" translate="label" type="text" sortOrder="45" showInDefault="1">
+                <label>Simulation</label>
+                <field id="redact_shadow_secrets" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Redact Secrets in Shadow Mode</label>
+                    <comment>When enabled, shadow-mode executions resolve {{ secrets.* }} placeholders to ***name*** instead of real values — the same redaction dry-runs always use. Default off preserves existing shadow behavior.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+            <group id="dry_run" translate="label" type="text" sortOrder="46" showInDefault="1">
+                <label>Dry-Run</label>
+                <field id="persist" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Persist Admin Dry-Runs of Saved Workflows</label>
+                    <comment>When enabled, an admin dry-run of a SAVED workflow is recorded as a dry_run-mode execution row for audit and reuse of the execution view. Unsaved-definition dry-runs are always transient.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="retention_days" translate="label comment" type="text" sortOrder="20" showInDefault="1">
+                    <label>Prune Dry-Run Executions After (days)</label>
+                    <comment>Dry-run audit rows are pruned aggressively, separate from the live-execution retention. Default 7.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+            </group>
             <group id="scheduler" translate="label" type="text" sortOrder="50" showInDefault="1">
                 <label>Scheduler</label>
                 <field id="match_cap" translate="label comment" type="text" sortOrder="10" showInDefault="1">
@@ -72,6 +108,11 @@
                 </field>
                 <field id="abandoned_hours" translate="label" type="text" sortOrder="20" showInDefault="1">
                     <label>Cart Abandonment Threshold (hours)</label>
+                    <validate>validate-digits</validate>
+                </field>
+                <field id="stock_threshold" translate="label comment" type="text" sortOrder="30" showInDefault="1">
+                    <label>Stock Threshold Quantity</label>
+                    <comment>Publishes the Stock Threshold Crossed trigger when a managed product's quantity drops to or below this value. 0 disables the detector.</comment>
                     <validate>validate-digits</validate>
                 </field>
             </group>

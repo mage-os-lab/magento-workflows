@@ -6,7 +6,7 @@ namespace MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column;
 use Magento\Framework\View\Element\UiComponent\ContextInterface;
 use Magento\Framework\View\Element\UiComponentFactory;
 use Magento\Ui\Component\Listing\Columns\Column;
-use MageOS\WorkflowsAdminUi\Model\PlainLanguageRenderer;
+use MageOS\Workflows\Model\PlainLanguageRenderer;
 
 /**
  * Adds the plain-language summary sentence (docs/11-admin-ui.md) as its own grid column.
@@ -38,7 +38,9 @@ class PlainLanguage extends Column
                 (string) ($item['trigger_ref'] ?? ''),
                 (string) ($item['entity_type'] ?? ''),
                 isset($item['conditions_serialized']) ? (string) $item['conditions_serialized'] : null,
-                (string) ($item['definition'] ?? '')
+                (string) ($item['definition'] ?? ''),
+                isset($item['fan_out']) && $item['fan_out'] !== '' ? (string) $item['fan_out'] : null,
+                isset($item['aggregation']) && $item['aggregation'] !== '' ? (string) $item['aggregation'] : null
             );
         }
 

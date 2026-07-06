@@ -1,0 +1,53 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "post-purchase-review-request",
+        "title": "Post-purchase review request",
+        "description": "Asks for a review a business-day-aware number of days after shipment.",
+        "category": "Marketing & post-purchase",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 2,
+            "triggers": ["sales.shipment.created"],
+            "actions": ["notify.email"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "request_wait", "label": "Wait after shipment before asking", "type": "duration", "default": "P7D"},
+            {"key": "reminder_subject", "label": "Email subject", "type": "string", "default": "How did we do?"}
+        ]
+    },
+    "workflow": {
+        "name": "Post-purchase review request",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.shipment.created",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 2,
+            "entry": "wait_before_request",
+            "steps": {
+                "wait_before_request": {
+                    "type": "delay",
+                    "config": {
+                        "duration": "%param.request_wait%",
+                        "business_days": true
+                    },
+                    "next": "send_request"
+                },
+                "send_request": {
+                    "type": "action",
+                    "action": "notify.email",
+                    "config": {
+                        "to": "{{ trigger.customer_email|lower }}",
+                        "subject": "%param.reminder_subject%",
+                        "body": "Please share your thoughts on your recent order {{ trigger.increment_id }}."
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

@@ -9,6 +9,7 @@ use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
+use MageOS\Workflows\Model\Option\OrderStatusOptionSource;
 
 /**
  * order.change_status — sets a new order status WITHIN the order's current
@@ -23,7 +24,8 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
 {
     public function __construct(
         OrderRepositoryInterface $orderRepository,
-        private readonly OrderConfig $orderConfig
+        private readonly OrderConfig $orderConfig,
+        private readonly OrderStatusOptionSource $statusOptionSource
     ) {
         parent::__construct($orderRepository);
     }
@@ -40,15 +42,25 @@ class ChangeStatus extends AbstractOrderAction implements SimulateableActionInte
 
     public function getConfigForm(): array
     {
-        return [
-            [
-                'name' => 'status',
-                'label' => 'Target Status',
-                'type' => 'text',
-                'required' => true,
-                'notice' => 'Must be a status assigned to the order\'s current state; state changes are rejected.',
-            ],
+        // Bounded option source (F6): inline the full order-status list. The
+        // per-state transition validity is still enforced at execute()/simulate()
+        // — the picker offers all statuses, the state machine rejects illegal ones.
+        $field = [
+            'name' => 'status',
+            'label' => 'Target Status',
+            'type' => 'select',
+            'required' => true,
+            'notice' => 'Must be a status assigned to the order\'s current state; state changes are rejected.',
         ];
+        try {
+            $options = $this->statusOptionSource->fetch();
+            if ($options !== []) {
+                $field['options'] = $options;
+            }
+        } catch (\Throwable $e) {
+            $field['type'] = 'text';
+        }
+        return [$field];
     }
 
     public function execute(ExecutionContextInterface $ctx, array $config): ActionResultInterface

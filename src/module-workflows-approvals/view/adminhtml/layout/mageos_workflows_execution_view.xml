@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- Execution-view decision panel (docs/discovery/approval-gate.md §6), the
+     admin-extension layout-handle injection pattern
+     (MageOS\WorkflowsAdminExtension\view\adminhtml\layout\sales_order_index.xml):
+     this handle name matches admin-ui's own execution-view page
+     (mageos_workflows_execution_view.xml), so Magento merges this block into
+     that page's "content" container without any admin-ui PHP edit. The panel
+     itself (DecisionPanel::shouldRender) renders nothing unless the execution
+     currently registered by admin-ui's controller ('mageos_current_execution')
+     is parked on an open approval gate. -->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <block class="MageOS\WorkflowsApprovals\Block\Adminhtml\Approval\DecisionPanel"
+                   name="mageos_workflows_approvals_execution_decision_panel"
+                   template="MageOS_WorkflowsApprovals::approval/decision_panel.phtml"
+                   after="mageos_workflows_execution_view"/>
+        </referenceContainer>
+    </body>
+</page>

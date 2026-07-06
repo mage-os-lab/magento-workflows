@@ -21,9 +21,13 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
     private int $entityId = 0;
     private int $storeId = 0;
     private string $status = self::STATUS_PENDING;
+    private ?string $triggerType = null;
+    private string $mode = self::MODE_LIVE;
     private ?string $context = null;
     private int $chainDepth = 0;
     private ?string $currentStep = null;
+    private ?string $waitingEvent = null;
+    private ?string $originUuid = null;
 
     public function __construct(
         string $uuid = 'test-uuid-0000',
@@ -123,6 +127,28 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
         return $this;
     }
 
+    public function getTriggerType(): ?string
+    {
+        return $this->triggerType;
+    }
+
+    public function setTriggerType(?string $triggerType): self
+    {
+        $this->triggerType = $triggerType === '' ? null : $triggerType;
+        return $this;
+    }
+
+    public function getMode(): string
+    {
+        return $this->mode;
+    }
+
+    public function setMode(string $mode): self
+    {
+        $this->mode = $mode;
+        return $this;
+    }
+
     public function getContext(): ?string
     {
         return $this->context;
@@ -153,6 +179,28 @@ class WorkflowExecutionStub implements WorkflowExecutionInterface
     public function setCurrentStep(?string $stepKey): self
     {
         $this->currentStep = $stepKey;
+        return $this;
+    }
+
+    public function getWaitingEvent(): ?string
+    {
+        return $this->waitingEvent;
+    }
+
+    public function setWaitingEvent(?string $event): self
+    {
+        $this->waitingEvent = $event === '' ? null : $event;
+        return $this;
+    }
+
+    public function getOriginUuid(): ?string
+    {
+        return $this->originUuid;
+    }
+
+    public function setOriginUuid(?string $originUuid): self
+    {
+        $this->originUuid = $originUuid === '' ? null : $originUuid;
         return $this;
     }
 }

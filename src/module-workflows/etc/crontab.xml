@@ -8,6 +8,14 @@
              method="execute">
             <schedule>* * * * *</schedule>
         </job>
+        <!-- Batch flush sweep (05 B2): release due event-window batches as one
+             execution each. Rides the same 1-minute cadence as the resume
+             sweeper; write-before-publish idempotency on the batch row. -->
+        <job name="mageos_workflows_flush_batches"
+             instance="MageOS\Workflows\Cron\FlushBatches"
+             method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
         <!-- Retention pruning of completed executions + their step rows -->
         <job name="mageos_workflows_prune_executions"
              instance="MageOS\Workflows\Cron\PruneExecutions"

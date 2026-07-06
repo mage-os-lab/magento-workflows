@@ -18,6 +18,7 @@ class ConditionCombinePool
         HydrationProviderInterface::TYPE_ORDER => Condition\Order\Combine::class,
         HydrationProviderInterface::TYPE_CUSTOMER => Condition\Customer\Combine::class,
         HydrationProviderInterface::TYPE_PRODUCT => Condition\Product\Combine::class,
+        HydrationProviderInterface::TYPE_QUOTE => Condition\Quote\Combine::class,
     ];
 
     /**
@@ -38,11 +39,6 @@ class ConditionCombinePool
         array $combines = []
     ) {
         $this->combines = array_merge(self::DEFAULT_COMBINES, $combines);
-    }
-
-    public function hasCombine(string $entityType): bool
-    {
-        return isset($this->combines[$entityType]);
     }
 
     /**
@@ -66,13 +62,5 @@ class ConditionCombinePool
             );
         }
         return $combine;
-    }
-
-    /**
-     * @return array<string, string> entity_type => combine class name
-     */
-    public function getCombineMap(): array
-    {
-        return $this->combines;
     }
 }

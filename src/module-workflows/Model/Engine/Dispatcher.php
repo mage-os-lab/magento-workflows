@@ -15,6 +15,8 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\DispatcherInterface;
 use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
+use MageOS\Workflows\Model\Aggregation\AggregationConfig;
+use MageOS\Workflows\Model\Aggregation\BatchAccumulator;
 use MageOS\Workflows\Model\Suppression\WorkflowSuppression;
 use Psr\Log\LoggerInterface;
 
@@ -23,16 +25,25 @@ use Psr\Log\LoggerInterface;
  *
  * Guards, in order: workflow status, loop depth, bulk suppression, website
  * scope, atomic debounce. Survivors get an execution row (pending, definition
- * snapshot pinned) published to the mageos.workflow.execute queue.
+ * snapshot pinned, trigger type recorded) published to the mageos.workflow.execute queue.
  */
 class Dispatcher implements DispatcherInterface
 {
     public const TOPIC_EXECUTE = 'mageos.workflow.execute';
+    public const TOPIC_RESUME = 'mageos.workflow.resume';
 
     public const CONFIG_DEBOUNCE_WINDOW = 'mageos_workflows/guards/debounce_window_seconds';
     public const DEFAULT_DEBOUNCE_WINDOW = 60;
 
     private const DEBOUNCE_TABLE = 'mageos_workflow_debounce';
+    private const EXECUTION_TABLE = 'mageos_workflow_execution';
+    private const STEP_TABLE = 'mageos_workflow_execution_step';
+
+    /**
+     * Wait-resume fan-out cap per event delivery; the remainder is picked up
+     * by subsequent deliveries or times out via the sweeper.
+     */
+    private const WAIT_RESUME_BATCH = 200;
 
     public function __construct(
         private readonly WorkflowRepositoryInterface $workflowRepository,
@@ -43,7 +54,8 @@ class Dispatcher implements DispatcherInterface
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly ResourceConnection $resourceConnection,
         private readonly PublisherInterface $publisher,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ?BatchAccumulator $batchAccumulator = null
     ) {
     }
 
@@ -74,6 +86,28 @@ class Dispatcher implements DispatcherInterface
             return null;
         }
 
+        // Batch accumulation branch (05 B2), guarded on the aggregation column
+        // being non-null so per-entity workflows are entirely unaffected. It
+        // sits AT the suppression guard: an aggregated workflow with
+        // aggregate_suppressed_events set keeps accumulating while suppression
+        // drops per-entity workflows (the storm becomes one digest). The event
+        // is appended to a batch instead of creating an execution — the flush
+        // sweep releases one execution per window.
+        $aggregation = $this->aggregationConfig($workflow);
+        if ($aggregation !== null && $aggregation->isWindow() && $this->batchAccumulator !== null) {
+            if (!$aggregation->shouldAccumulateUnderSuppression($this->suppression->isSuppressed())) {
+                $this->logger->debug('Workflow batch accumulation suppressed (not opted in)', [
+                    'workflow_id' => $workflowId,
+                ]);
+                return null;
+            }
+            if (!$this->matchesScope($workflow, $triggerPayload)) {
+                return null;
+            }
+            $this->batchAccumulator->accumulate($workflow, $aggregation, $triggerPayload);
+            return null;
+        }
+
         if ($this->suppression->isSuppressed()) {
             $this->logger->debug('Workflow dispatch suppressed (bulk suppression active)', [
                 'workflow_id' => $workflowId,
@@ -95,12 +129,102 @@ class Dispatcher implements DispatcherInterface
             return null;
         }
 
-        $execution = $this->createExecution($workflow, $triggerPayload, $entityId, $chainDepth);
+        $execution = $this->createExecution($workflow, $triggerPayload, $triggerType, $entityId, $chainDepth);
         $execution = $this->executionRepository->save($execution);
 
         $this->publisher->publish(self::TOPIC_EXECUTE, (string) $execution->getExecutionId());
 
         return $execution;
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * Race-safe: each candidate is claimed with an atomic waiting -> pending
+     * UPDATE conditioned on the current status, so a concurrent timeout sweep
+     * (or duplicate event delivery) claims each execution exactly once. The
+     * event payload is written into the wait step row's result before the
+     * resume publish so the consumer can route on_event and expose the
+     * payload as the step's output.
+     */
+    public function resumeWaiting(int $workflowId, string $event, array $eventPayload): int
+    {
+        $entityId = $this->extractEntityId($eventPayload);
+        if ($entityId <= 0 || $event === '') {
+            return 0;
+        }
+
+        $connection = $this->resourceConnection->getConnection();
+        $executionTable = $this->resourceConnection->getTableName(self::EXECUTION_TABLE);
+        $stepTable = $this->resourceConnection->getTableName(self::STEP_TABLE);
+
+        $select = $connection->select()
+            ->from($executionTable, ['execution_id'])
+            ->where('workflow_id = ?', $workflowId)
+            ->where('status = ?', WorkflowExecutionInterface::STATUS_WAITING)
+            ->where('waiting_event = ?', $event)
+            ->where('entity_id = ?', $entityId)
+            ->limit(self::WAIT_RESUME_BATCH);
+
+        $resumed = 0;
+        foreach (array_map('intval', $connection->fetchCol($select)) as $executionId) {
+            $claimed = $connection->update(
+                $executionTable,
+                ['status' => WorkflowExecutionInterface::STATUS_PENDING],
+                [
+                    'execution_id = ?' => $executionId,
+                    'status = ?' => WorkflowExecutionInterface::STATUS_WAITING,
+                ]
+            );
+            if ($claimed !== 1) {
+                continue;
+            }
+
+            $connection->update(
+                $stepTable,
+                [
+                    'result' => json_encode(
+                        ['resolution' => 'event', 'event' => $eventPayload],
+                        JSON_UNESCAPED_SLASHES
+                    ),
+                ],
+                [
+                    'execution_id = ?' => $executionId,
+                    'status = ?' => 'waiting',
+                ]
+            );
+
+            try {
+                $this->publisher->publish(self::TOPIC_RESUME, (string) $executionId);
+                $resumed++;
+            } catch (\Throwable $e) {
+                // Roll the claim back so the timeout sweeper still owns it
+                $connection->update(
+                    $executionTable,
+                    ['status' => WorkflowExecutionInterface::STATUS_WAITING],
+                    [
+                        'execution_id = ?' => $executionId,
+                        'status = ?' => WorkflowExecutionInterface::STATUS_PENDING,
+                    ]
+                );
+                $this->logger->error(sprintf(
+                    'Wait resume of execution %d could not publish: %s',
+                    $executionId,
+                    $e->getMessage()
+                ), ['exception' => $e]);
+            }
+        }
+
+        if ($resumed > 0) {
+            $this->logger->info('wait_resumed', [
+                'workflow_id' => $workflowId,
+                'event' => $event,
+                'entity_id' => $entityId,
+                'count' => $resumed,
+            ]);
+        }
+
+        return $resumed;
     }
 
     /**
@@ -178,6 +302,7 @@ class Dispatcher implements DispatcherInterface
     private function createExecution(
         WorkflowInterface $workflow,
         array $triggerPayload,
+        string $triggerType,
         int $entityId,
         int $chainDepth
     ): WorkflowExecutionInterface {
@@ -201,9 +326,20 @@ class Dispatcher implements DispatcherInterface
         $execution->setEntityId($entityId);
         $execution->setStoreId((int) ($triggerPayload['store_id'] ?? 0));
         $execution->setStatus(WorkflowExecutionInterface::STATUS_PENDING);
+        $execution->setTriggerType($triggerType);
         $execution->setContext(json_encode($context, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
         $execution->setChainDepth($chainDepth);
         $execution->setCurrentStep(null);
+
+        // Fan-out origin stamp (F1): a fanned-out child carries the causing
+        // event's async-events trace UUID in its trigger payload's `origin`
+        // (the origin context key itself needs no handling here — it already
+        // rides into context.trigger verbatim above). Indexed for the grid's
+        // "caused by" filter; null for ordinary executions.
+        $originUuid = $triggerPayload['origin']['trace_uuid'] ?? null;
+        if (is_string($originUuid) && $originUuid !== '') {
+            $execution->setOriginUuid($originUuid);
+        }
 
         return $execution;
     }
@@ -211,6 +347,25 @@ class Dispatcher implements DispatcherInterface
     private function extractEntityId(array $payload): int
     {
         return (int) ($payload['entity_id'] ?? $payload['id'] ?? 0);
+    }
+
+    /**
+     * The workflow's aggregation config, or null for a per-entity workflow (or
+     * an unparseable config, which is logged and treated as per-entity so a
+     * bad column never silently swallows every event).
+     */
+    private function aggregationConfig(WorkflowInterface $workflow): ?AggregationConfig
+    {
+        try {
+            return AggregationConfig::fromJson($workflow->getAggregation());
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->error(sprintf(
+                'Workflow %d has an invalid aggregation config; dispatching per-entity. %s',
+                (int) $workflow->getWorkflowId(),
+                $e->getMessage()
+            ));
+            return null;
+        }
     }
 
     /**

@@ -16,10 +16,14 @@
         <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
                 comment="Serialized Rule Condition Tree"/>
         <column xsi:type="json" name="definition" nullable="false" comment="Step Graph Definition JSON"/>
+        <column xsi:type="json" name="aggregation" nullable="true"
+                comment="Batch Aggregation Config JSON (05); null = per-entity workflow, non-null = aggregated"/>
         <column xsi:type="int" name="version" unsigned="true" nullable="false" default="1"
                 comment="Definition Version"/>
         <column xsi:type="smallint" name="loop_guard_depth" unsigned="true" nullable="false" default="1"
                 comment="Loop Guard Depth"/>
+        <column xsi:type="json" name="fan_out" nullable="true"
+                comment="Trigger-Level Fan-Out Config JSON {relation, cap}; null = no fan-out (F1)"/>
         <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
                 comment="Created At"/>
         <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"
@@ -90,11 +94,19 @@
         <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" comment="Store ID"/>
         <column xsi:type="varchar" name="status" length="16" nullable="false"
                 comment="Status (pending|running|waiting|complete|skipped|failed|cancelled)"/>
+        <column xsi:type="varchar" name="trigger_type" length="16" nullable="true"
+                comment="Trigger Type That Dispatched This Execution (event|schedule|manual); null on legacy rows"/>
+        <column xsi:type="varchar" name="mode" length="16" nullable="false" default="live"
+                comment="Execution Mode (live|dry_run) — dry-run feature marker only, NOT a side-effect predicate"/>
         <column xsi:type="json" name="context" nullable="true"
                 comment="Context Variable Bag JSON (trigger snapshot + step outputs)"/>
         <column xsi:type="smallint" name="chain_depth" unsigned="true" nullable="false" default="0"
                 comment="Chain Depth (loop guard)"/>
         <column xsi:type="varchar" name="current_step" length="64" nullable="true" comment="Current Step Key"/>
+        <column xsi:type="varchar" name="waiting_event" length="128" nullable="true"
+                comment="Event Name A Wait Step Parked This Execution On"/>
+        <column xsi:type="varchar" name="origin_uuid" length="36" nullable="true"
+                comment="Async-Events Trace UUID Of The Causing Event (fan-out children); null otherwise (F1)"/>
         <column xsi:type="timestamp" name="triggered_at" on_update="false" nullable="false"
                 default="CURRENT_TIMESTAMP" comment="Triggered At"/>
         <column xsi:type="timestamp" name="completed_at" on_update="false" nullable="true" comment="Completed At"/>
@@ -114,6 +126,14 @@
         <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT" indexType="btree">
             <column name="status"/>
             <column name="triggered_at"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH" indexType="btree">
+            <column name="status"/>
+            <column name="waiting_event"/>
+            <column name="entity_id"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID" indexType="btree">
+            <column name="origin_uuid"/>
         </index>
     </table>
 
@@ -171,6 +191,79 @@
                     referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
     </table>
 
+    <table name="mageos_workflow_stock_flag" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Stock Threshold Flags (hysteresis for the crossing detector)">
+        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="Product ID"/>
+        <column xsi:type="decimal" name="qty_at_flag" scale="4" precision="12" nullable="false" default="0"
+                comment="Quantity When Flagged"/>
+        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Flagged At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="product_id"/>
+        </constraint>
+    </table>
+
+    <table name="mageos_workflow_batch" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Batches (event-window accumulation, 05 B2)">
+        <column xsi:type="bigint" name="batch_id" unsigned="true" nullable="false" identity="true"
+                comment="Batch ID"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
+        <column xsi:type="varchar" name="window_key" length="64" nullable="false"
+                comment="Flush-Idempotency Key (schedule: window-start ISO-8601; interval: opening event UTC to seconds)"/>
+        <column xsi:type="varchar" name="status" length="16" nullable="false" default="open"
+                comment="Status (open|flushing|flushed)"/>
+        <column xsi:type="int" name="item_count" unsigned="true" nullable="false" default="0"
+                comment="Accumulated Item Count (may exceed the item cap; overflow elides from items[])"/>
+        <column xsi:type="int" name="store_id" unsigned="true" nullable="false" default="0"
+                comment="Store ID Of The Opening Event"/>
+        <column xsi:type="bigint" name="execution_id" unsigned="true" nullable="true"
+                comment="Flush Execution ID (recorded BEFORE publish for write-before-publish idempotency)"/>
+        <column xsi:type="timestamp" name="opened_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Opened At"/>
+        <column xsi:type="timestamp" name="flush_due_at" on_update="false" nullable="false"
+                comment="Flush Due At (window close instant)"/>
+        <column xsi:type="timestamp" name="flushing_at" on_update="false" nullable="true"
+                comment="Claimed-For-Flush At (open->flushing; grace-period retry clock)"/>
+        <column xsi:type="timestamp" name="flushed_at" on_update="false" nullable="true"
+                comment="Flushed At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="batch_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_BATCH_WORKFLOW_ID_WINDOW_KEY">
+            <column name="workflow_id"/>
+            <column name="window_key"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_BATCH_WORKFLOW_ID"
+                    table="mageos_workflow_batch" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_BATCH_STATUS_FLUSH_DUE_AT" indexType="btree">
+            <column name="status"/>
+            <column name="flush_due_at"/>
+        </index>
+    </table>
+
+    <table name="mageos_workflow_batch_item" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Batch Items (projected, capped entity snapshots, 05 B2)">
+        <column xsi:type="bigint" name="batch_item_id" unsigned="true" nullable="false" identity="true"
+                comment="Batch Item ID"/>
+        <column xsi:type="bigint" name="batch_id" unsigned="true" nullable="false" comment="Batch ID"/>
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" comment="Subject Entity ID"/>
+        <column xsi:type="json" name="snapshot" nullable="true"
+                comment="Projected, Capped Entity Snapshot JSON"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="batch_item_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_BATCH_ITEM_BATCH_ID_ENTITY_ID">
+            <column name="batch_id"/>
+            <column name="entity_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_BATCH_ITEM_BATCH_ID"
+                    table="mageos_workflow_batch_item" column="batch_id"
+                    referenceTable="mageos_workflow_batch" referenceColumn="batch_id" onDelete="CASCADE"/>
+    </table>
+
     <table name="mageos_workflow_secret" resource="default" engine="innodb"
            comment="Mage-OS Workflow Secrets (values encrypted at rest)">
         <column xsi:type="int" name="secret_id" unsigned="true" nullable="false" identity="true"
@@ -187,5 +280,32 @@
         <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_SECRET_KEY">
             <column name="key"/>
         </constraint>
+    </table>
+
+    <table name="mageos_workflow_template_install" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Template Install Provenance (06, F8): installed from template X vN">
+        <column xsi:type="int" name="install_id" unsigned="true" nullable="false" identity="true"
+                comment="Install ID"/>
+        <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false"
+                comment="Workflow ID created by the install"/>
+        <column xsi:type="varchar" name="template_code" length="128" nullable="false"
+                comment="Installed Template Code"/>
+        <column xsi:type="varchar" name="template_version" length="64" nullable="false"
+                comment="Installed Template Version (fork-on-install; no upgrade path in v1)"/>
+        <column xsi:type="json" name="parameters" nullable="true"
+                comment="Parameter Values Snapshot JSON (never secret values; secret params record key names only)"/>
+        <column xsi:type="varchar" name="installed_by" length="128" nullable="false" default="system"
+                comment="Installer (admin username, or 'system' for CLI/patch)"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Installed At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="install_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_TPL_INSTALL_WORKFLOW_ID"
+                    table="mageos_workflow_template_install" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <index referenceId="MAGEOS_WORKFLOW_TEMPLATE_INSTALL_WORKFLOW_ID" indexType="btree">
+            <column name="workflow_id"/>
+        </index>
     </table>
 </schema>

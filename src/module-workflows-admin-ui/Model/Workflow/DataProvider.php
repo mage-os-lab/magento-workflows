@@ -6,6 +6,7 @@ namespace MageOS\WorkflowsAdminUi\Model\Workflow;
 use Magento\Framework\App\Request\DataPersistorInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Ui\DataProvider\AbstractDataProvider;
+use MageOS\Workflows\Api\EntityTypeMetadataProviderInterface;
 use MageOS\Workflows\Model\ResourceModel\Workflow\CollectionFactory;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Save;
 
@@ -31,6 +32,7 @@ class DataProvider extends AbstractDataProvider
         CollectionFactory $collectionFactory,
         private readonly DataPersistorInterface $dataPersistor,
         private readonly RequestInterface $request,
+        private readonly EntityTypeMetadataProviderInterface $metadataProvider,
         array $meta = [],
         array $data = []
     ) {
@@ -50,17 +52,73 @@ class DataProvider extends AbstractDataProvider
             if (method_exists($model, 'getWebsiteIds')) {
                 $row['website_ids'] = $model->getWebsiteIds();
             }
+            $this->applyFanOut($row);
             $this->loadedData[$model->getId()] = $row;
         }
 
+        $this->seedNewWorkflow();
+
         $persisted = $this->dataPersistor->get(Save::PERSISTOR_KEY);
         if (is_array($persisted) && $persisted !== []) {
-            $id = !empty($persisted['workflow_id']) ? (int) $persisted['workflow_id'] : null;
+            $id = !empty($persisted['workflow_id']) ? (int) $persisted['workflow_id'] : '';
             $this->loadedData[$id] = array_merge($this->loadedData[$id] ?? [], $persisted);
             $this->dataPersistor->clear(Save::PERSISTOR_KEY);
         }
 
         return $this->loadedData;
+    }
+
+    /**
+     * On the new-workflow form (no workflow_id in the request), default the
+     * entity_type select from an `entity_type` request param -- the "create a
+     * workflow from the <entity> grid" deep link. The param is honoured only
+     * when it matches a known entity-type code (the authoritative core
+     * catalogue, EntityTypeMetadataProviderInterface); unknown values are
+     * silently ignored. Seeded under the empty-string id key (the reserved
+     * new-record slot) so persisted merchant input (merged next in getData)
+     * still wins.
+     */
+    private function seedNewWorkflow(): void
+    {
+        if ($this->request->getParam($this->getRequestFieldName())) {
+            return;
+        }
+        $entityType = (string) $this->request->getParam('entity_type');
+        if ($entityType === '' || !$this->isKnownEntityType($entityType)) {
+            return;
+        }
+        $this->loadedData[''] = ['entity_type' => $entityType];
+    }
+
+    private function isKnownEntityType(string $code): bool
+    {
+        foreach ($this->metadataProvider->getEntityTypes() as $entityType) {
+            if ($entityType->getCode() === $code) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Decode the fan_out column JSON ({relation, cap}) into the two flat form
+     * fields the fan-out fieldset binds to. The Save controller reassembles
+     * them; leaving them absent renders an empty (no fan-out) fieldset.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function applyFanOut(array &$row): void
+    {
+        $fanOut = $row['fan_out'] ?? null;
+        if (is_string($fanOut) && trim($fanOut) !== '') {
+            $fanOut = json_decode($fanOut, true);
+        }
+        if (is_array($fanOut)) {
+            $row['fan_out_relation'] = (string) ($fanOut['relation'] ?? '');
+            if (isset($fanOut['cap']) && (int) $fanOut['cap'] > 0) {
+                $row['fan_out_cap'] = (int) $fanOut['cap'];
+            }
+        }
     }
 
     /**

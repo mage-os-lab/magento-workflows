@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
+    <module name="MageOS_WorkflowsApprovals">
+        <sequence>
+            <module name="MageOS_Workflows"/>
+            <!-- Stage 3 admin surface (docs/discovery/approval-gate.md §6): reuses
+                 admin-ui's GridBatchLoader and injects into its execution-view page
+                 via the admin-extension layout-handle pattern; Backend/Ui/User own
+                 the admin action base class, UI components, and role tables the
+                 admin surface and the real authorization check depend on. All
+                 soft in the sense that the addon's own routes/menu/grid still
+                 register without them present at compile time, but are required
+                 for this stage's admin surface to actually function. -->
+            <module name="MageOS_WorkflowsAdminUi"/>
+            <module name="Magento_Backend"/>
+            <module name="Magento_Ui"/>
+            <module name="Magento_User"/>
+        </sequence>
+    </module>
+</config>

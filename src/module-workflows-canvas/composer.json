@@ -1,0 +1,19 @@
+{
+    "name": "mage-os/workflows-canvas",
+    "description": "Mage-OS Workflow Engine: optional React Flow visual canvas (viewer + editor). Purely presentational; nothing else depends on it.",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "mage-os/workflows": "*",
+        "mage-os/workflows-admin-ui": "*",
+        "magento/module-backend": "*",
+        "magento/framework": ">=103.0.4"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "MageOS\\WorkflowsCanvas\\": ""
+        }
+    }
+}

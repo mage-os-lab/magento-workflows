@@ -9,8 +9,10 @@
             "entity_type": true,
             "conditions_serialized": true,
             "definition": true,
+            "aggregation": true,
             "version": true,
             "loop_guard_depth": true,
+            "fan_out": true,
             "created_at": true,
             "updated_at": true
         },
@@ -60,16 +62,22 @@
             "entity_id": true,
             "store_id": true,
             "status": true,
+            "trigger_type": true,
+            "mode": true,
             "context": true,
             "chain_depth": true,
             "current_step": true,
             "triggered_at": true,
-            "completed_at": true
+            "completed_at": true,
+            "waiting_event": true,
+            "origin_uuid": true
         },
         "index": {
             "MAGEOS_WORKFLOW_EXECUTION_WORKFLOW_ID_STATUS": true,
             "MAGEOS_WORKFLOW_EXECUTION_UUID": true,
-            "MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT": true
+            "MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT": true,
+            "MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH": true,
+            "MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID": true
         },
         "constraint": {
             "PRIMARY": true,
@@ -112,6 +120,43 @@
             "MAGEOS_WF_DEBOUNCE_WORKFLOW_ID": true
         }
     },
+    "mageos_workflow_batch": {
+        "column": {
+            "batch_id": true,
+            "workflow_id": true,
+            "window_key": true,
+            "status": true,
+            "item_count": true,
+            "store_id": true,
+            "execution_id": true,
+            "opened_at": true,
+            "flush_due_at": true,
+            "flushing_at": true,
+            "flushed_at": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_BATCH_STATUS_FLUSH_DUE_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WORKFLOW_BATCH_WORKFLOW_ID_WINDOW_KEY": true,
+            "MAGEOS_WF_BATCH_WORKFLOW_ID": true
+        }
+    },
+    "mageos_workflow_batch_item": {
+        "column": {
+            "batch_item_id": true,
+            "batch_id": true,
+            "entity_id": true,
+            "snapshot": true,
+            "created_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WORKFLOW_BATCH_ITEM_BATCH_ID_ENTITY_ID": true,
+            "MAGEOS_WF_BATCH_ITEM_BATCH_ID": true
+        }
+    },
     "mageos_workflow_secret": {
         "column": {
             "secret_id": true,
@@ -123,6 +168,34 @@
         "constraint": {
             "PRIMARY": true,
             "MAGEOS_WORKFLOW_SECRET_KEY": true
+        }
+    },
+    "mageos_workflow_stock_flag": {
+        "column": {
+            "product_id": true,
+            "qty_at_flag": true,
+            "flagged_at": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
+    },
+    "mageos_workflow_template_install": {
+        "column": {
+            "install_id": true,
+            "workflow_id": true,
+            "template_code": true,
+            "template_version": true,
+            "parameters": true,
+            "installed_by": true,
+            "created_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WF_TPL_INSTALL_WORKFLOW_ID": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_TEMPLATE_INSTALL_WORKFLOW_ID": true
         }
     }
 }

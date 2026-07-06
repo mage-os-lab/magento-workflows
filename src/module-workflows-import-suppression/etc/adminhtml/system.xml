@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- Extends the mageos_workflows section defined by MageOS_Workflows
+     (module sequence guarantees load order); only the field this module
+     owns is declared here. -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="mageos_workflows">
+            <group id="general">
+                <field id="suppress_bulk_imports" translate="label comment" type="select" sortOrder="20" showInDefault="1">
+                    <label>Suppress Workflow Dispatch During Import</label>
+                    <comment>Wraps Data/System > Import runs in the suppression scope so a large CSV import (e.g. catalog_product_import) does not fire one dispatch evaluation per row. Disable only if a store deliberately wants per-row workflow reactions during import.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

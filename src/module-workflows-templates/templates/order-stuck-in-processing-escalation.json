@@ -1,0 +1,63 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "order-stuck-in-processing-escalation",
+        "title": "Order stuck in processing escalation",
+        "description": "Waits for an order's status to change; escalates to admin and tags an internal comment if it's still stuck after the SLA window.",
+        "category": "Operations",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 2,
+            "triggers": ["sales.order.status_changed"],
+            "actions": ["notify.admin", "order.add_comment"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "escalation_wait", "label": "How long an order may sit before escalating", "type": "duration", "default": "P5D"},
+            {"key": "escalation_note", "label": "Internal comment left on escalation", "type": "string", "default": "Escalated: order stuck in processing beyond SLA."}
+        ]
+    },
+    "workflow": {
+        "name": "Order stuck in processing escalation",
+        "entity_type": "sales_order",
+        "trigger_type": "event",
+        "trigger_ref": "sales.order.status_changed",
+        "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\TriggerData\",\"attribute\":\"to_status\",\"operator\":\"==\",\"value\":\"processing\"}",
+        "definition": {
+            "schema": 2,
+            "entry": "watch_for_change",
+            "steps": {
+                "watch_for_change": {
+                    "type": "wait",
+                    "config": {
+                        "event": "sales.order.status_changed",
+                        "timeout": "%param.escalation_wait%"
+                    },
+                    "on_event": "resolved",
+                    "on_timeout": "escalate"
+                },
+                "resolved": {"type": "stop"},
+                "escalate": {
+                    "type": "action",
+                    "action": "notify.admin",
+                    "config": {
+                        "title": "Order stuck in processing",
+                        "description": "Order {{ trigger.increment_id }} has not changed status within the SLA window."
+                    },
+                    "next": "tag_comment"
+                },
+                "tag_comment": {
+                    "type": "action",
+                    "action": "order.add_comment",
+                    "config": {
+                        "comment": "%param.escalation_note%",
+                        "is_visible_on_front": false
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

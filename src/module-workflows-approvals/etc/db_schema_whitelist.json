@@ -1,0 +1,36 @@
+{
+    "mageos_workflow_approval": {
+        "column": {
+            "approval_id": true,
+            "uuid": true,
+            "execution_id": true,
+            "step_key": true,
+            "workflow_id": true,
+            "entity_type": true,
+            "entity_id": true,
+            "title": true,
+            "instructions": true,
+            "assignee_role": true,
+            "status": true,
+            "due_at": true,
+            "decided_by_type": true,
+            "decided_by_id": true,
+            "decision_note": true,
+            "decision_payload": true,
+            "created_at": true,
+            "decided_at": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_APPROVAL_WORKFLOW_ID": true,
+            "MAGEOS_WORKFLOW_APPROVAL_ENTITY_TYPE_ENTITY_ID": true,
+            "MAGEOS_WORKFLOW_APPROVAL_STATUS_DUE_AT": true,
+            "MAGEOS_WORKFLOW_APPROVAL_ASSIGNEE_ROLE": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WORKFLOW_APPROVAL_UUID": true,
+            "MAGEOS_WORKFLOW_APPROVAL_EXECUTION_ID_STEP_KEY": true,
+            "MAGEOS_WF_APPROVAL_EXECUTION_ID": true
+        }
+    }
+}

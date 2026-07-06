@@ -1,0 +1,226 @@
+# Adapted from graycoreio/github-actions-magento2 `.github/workflows/check-extension.yaml`.
+#
+# The upstream reusable workflow tests a SINGLE extension: it registers one
+# Composer path repository (`inputs.path`) and requires one package. This repo
+# is a monorepo of ten interdependent, unpublished `mage-os/workflows*`
+# packages (every module requires the core `mage-os/workflows`; several require
+# sibling modules). A single path repo can't resolve those siblings, so instead
+# of calling the upstream reusable workflow we reuse its composite actions
+# (`setup-magento`, `cache-magento`, `setup-di-compile`, `coding-standard`,
+# `supported-version`) and register a wildcard path repo (`src/module-*`) so all
+# modules resolve together, requiring every module with an explicit `@dev`
+# stability flag so the transitive `"*"` sibling constraints select the local
+# dev versions.
+#
+# The matrix comes from `supported-version` with `kind: currently-supported`,
+# which resolves to every actively-maintained Magento `project-community-edition`
+# line (2.4.6 → 2.4.9) across their respective PHP versions — so the extension is
+# validated against the whole supported range, not just the newest release.
+# Standalone lint + unit coverage lives in `lint.yml`; this workflow is the real
+# Magento install: unit under real PHPUnit, `setup:di:compile`, and phpcs.
+
+name: Check Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'composer.json'
+      - '.github/workflows/check-extension.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'composer.json'
+      - '.github/workflows/check-extension.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: check-extension-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAGENTO_REPOSITORY: https://mirror.mage-os.org/
+
+jobs:
+  compute_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.supported-version.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graycoreio/github-actions-magento2/supported-version@main
+        id: supported-version
+        with:
+          kind: currently-supported
+      - run: echo '${{ steps.supported-version.outputs.matrix }}'
+
+  # BLOCKING. Runs the whole Test/Unit suite under each supported Magento's real
+  # PHPUnit (one matrix entry per supported line, 2.4.6 → 2.4.9). The suites are
+  # authored against this repo's shim layer (dev/tests/shims/) AND run here under
+  # real Magento: their test doubles were reconciled to the real Magento
+  # class/interface signatures (every double implements the full interface;
+  # params widened to the untyped Magento contracts; Api builders extend the real
+  # concrete classes). The same doubles still pass the shim runner in lint.yml
+  # (php dev/tests/standalone-runner.php) on PHP 8.1–8.5, since every change was
+  # additive/widening.
+  unit-test-extension:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graycoreio/github-actions-magento2/setup-magento@main
+        id: setup-magento
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          mode: extension
+          magento_version: ${{ matrix.magento }}
+          magento_repository: ${{ env.MAGENTO_REPOSITORY }}
+
+      - name: Register monorepo package repositories
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer config repositories.mageos-workflows path '${{ github.workspace }}/src/module-*'
+
+      - name: Require all workflow modules
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          pkgs=$(for f in ${{ github.workspace }}/src/module-*/composer.json; do
+            printf '%s:@dev ' "$(jq -r .name "$f")"
+          done)
+          echo "Requiring: $pkgs"
+          composer require $pkgs --no-install
+
+      - run: composer update --no-install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - uses: graycoreio/github-actions-magento2/cache-magento@main
+        with:
+          working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - name: Composer install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer install
+        env:
+          COMPOSER_MIRROR_PATH_REPOS: 1
+
+      # The published spec/ schemas + conformance fixtures live at the monorepo
+      # root, not inside any module package, so they are absent from the vendor
+      # install. Several unit tests read them via dirname(__DIR__, 6) . '/spec/…'
+      # which resolves to <magento>/vendor/spec — stage them there. (The bundled
+      # template data dirs, by contrast, DO ship inside their packages and are
+      # copied by composer's path-repo mirror, so they need no staging.)
+      - name: Stage monorepo spec/ fixtures
+        run: cp -r "${{ github.workspace }}/spec" "${{ steps.setup-magento.outputs.path }}/vendor/spec"
+
+      - name: Configure phpunit.xml.dist
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          ## Add a testsuite covering every module's Test/Unit tree (installed
+          ## under vendor/mage-os/workflows*). mageos-async-events lives under
+          ## vendor/mage-os/mageos-* and is excluded by the `workflows` prefix.
+          cat > /tmp/testsuite.xml << 'EOF'
+                  <testsuite name="MageOS_Workflows_Unit">
+                      <directory>../../../vendor/mage-os/workflows*/Test/Unit</directory>
+                  </testsuite>
+          EOF
+          sed -i '/<testsuites>/r /tmp/testsuite.xml' dev/tests/unit/phpunit.xml.dist
+
+          ## Disable allure (See https://github.com/magento/magento2/issues/36702 )
+          sed -i '/<extensions>/,/<\/extensions>/d' dev/tests/unit/phpunit.xml.dist
+
+      - name: Run extension unit tests
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist --testsuite MageOS_Workflows_Unit
+
+  # BLOCKING. setup:di:compile loads every class against each supported Magento.
+  # All defects it surfaced are fixed: AbstractModel::setEntityId param widening,
+  # the DecisionPanel readonly-$formKey collision, and WorkflowNotifier — now
+  # implementing the real mageos-async-events contract
+  # notify(AsyncEventInterface, CloudEventImmutable): NotifierResult (with the
+  # notifierClasses DI pool wiring corrected).
+  compile-extension:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graycoreio/github-actions-magento2/setup-magento@main
+        id: setup-magento
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          mode: extension
+          magento_version: ${{ matrix.magento }}
+          magento_repository: ${{ env.MAGENTO_REPOSITORY }}
+
+      - name: Register monorepo package repositories
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer config repositories.mageos-workflows path '${{ github.workspace }}/src/module-*'
+
+      - name: Require all workflow modules
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          pkgs=$(for f in ${{ github.workspace }}/src/module-*/composer.json; do
+            printf '%s:@dev ' "$(jq -r .name "$f")"
+          done)
+          echo "Requiring: $pkgs"
+          composer require $pkgs --no-install
+
+      - run: composer update --no-install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - uses: graycoreio/github-actions-magento2/cache-magento@main
+        with:
+          working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - name: Composer install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer install
+        env:
+          COMPOSER_MIRROR_PATH_REPOS: 1
+
+      - uses: graycoreio/github-actions-magento2/setup-di-compile@main
+        with:
+          path: ${{ steps.setup-magento.outputs.path }}
+
+  coding-standard:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          coverage: none
+
+      # Install the Magento coding standard + PHP-compatibility sniffs. The
+      # dealerdirect installer plugin registers the standards' installed_paths
+      # so `--standard=Magento2` resolves.
+      - name: Install Magento coding standard
+        run: |
+          composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer global require magento/magento-coding-standard magento/php-compatibility-fork
+          echo "$(composer global config home)/vendor/bin" >> "$GITHUB_PATH"
+
+      # Gate on phpcs ERRORS (including PHP 8.5 compatibility errors) via the
+      # committed phpcs.xml.dist (Magento2 standard, warning-severity 0). The
+      # graycoreio coding-standard action's own inputs (ignore_warnings) and a
+      # repo phpcs.xml.dist were both ignored by its phpcs invocation, so run
+      # phpcs directly from the repo root where it auto-discovers the ruleset.
+      # This pre-alpha tree's advisory docblock/style WARNINGS stay non-blocking
+      # so the job tracks real breakage rather than a docblock backlog.
+      - name: Run phpcs (Magento2, error-gated)
+        run: phpcs -p

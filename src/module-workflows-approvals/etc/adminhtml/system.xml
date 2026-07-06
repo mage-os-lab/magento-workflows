@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- Extends the mageos_workflows section's existing "guards" group (declared by
+     MageOS_Workflows; module sequence guarantees load order) — borrows the
+     manual mass-run cap vocabulary (docs/10-security.md#manual-mass-run,
+     manual_run_cap in the same group) for the mass-decide selection cap
+     (docs/discovery/approval-gate.md §6). -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="mageos_workflows">
+            <group id="guards">
+                <field id="approval_mass_decide_cap" translate="label comment" type="text" sortOrder="70" showInDefault="1">
+                    <label>Approval Mass-Decide Cap</label>
+                    <comment>Maximum approval tasks a single grid mass-decide (Approve/Reject) request may process at once.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

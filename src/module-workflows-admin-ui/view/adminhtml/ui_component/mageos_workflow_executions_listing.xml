@@ -58,6 +58,16 @@
                 <label translate="true">UUID</label>
             </settings>
         </column>
+        <!-- Fan-out origin correlation (F1): the async-events trace UUID of the
+             event that caused this execution. Hidden by default; filtering by
+             one source event's UUID returns every child its fan-out produced. -->
+        <column name="origin_uuid">
+            <settings>
+                <filter>text</filter>
+                <visible>false</visible>
+                <label translate="true">Caused By</label>
+            </settings>
+        </column>
         <column name="workflow_id">
             <settings>
                 <filter>textRange</filter>
@@ -76,10 +86,10 @@
                 <sortable>false</sortable>
             </settings>
         </column>
-        <column name="entity_id">
+        <column name="entity_id" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\ExecutionEntity">
             <settings>
                 <filter>textRange</filter>
-                <label translate="true">Entity ID</label>
+                <label translate="true">Entity</label>
             </settings>
         </column>
         <column name="store_id" component="Magento_Ui/js/grid/columns/select">
@@ -96,6 +106,22 @@
                 <filter>select</filter>
                 <dataType>select</dataType>
                 <label translate="true">Status</label>
+            </settings>
+        </column>
+        <column name="trigger_type" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\TriggerType"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Trigger Type</label>
+            </settings>
+        </column>
+        <column name="mode" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\ExecutionMode"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
+                <label translate="true">Run Mode</label>
             </settings>
         </column>
         <column name="triggered_at" class="Magento\Ui\Component\Listing\Columns\Date">

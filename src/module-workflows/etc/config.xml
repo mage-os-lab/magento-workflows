@@ -10,7 +10,17 @@
                 <debounce_window_seconds>60</debounce_window_seconds>
                 <circuit_breaker_threshold>10</circuit_breaker_threshold>
                 <manual_run_cap>1000</manual_run_cap>
+                <max_delay_days>365</max_delay_days>
+                <relation_cap>100</relation_cap>
+                <fan_out_cap>100</fan_out_cap>
             </guards>
+            <simulation>
+                <redact_shadow_secrets>0</redact_shadow_secrets>
+            </simulation>
+            <dry_run>
+                <persist>1</persist>
+                <retention_days>7</retention_days>
+            </dry_run>
             <retention>
                 <days>90</days>
             </retention>
@@ -23,6 +33,7 @@
             <scheduler>
                 <match_cap>5000</match_cap>
                 <abandoned_hours>4</abandoned_hours>
+                <stock_threshold>5</stock_threshold>
             </scheduler>
         </mageos_workflows>
     </default>

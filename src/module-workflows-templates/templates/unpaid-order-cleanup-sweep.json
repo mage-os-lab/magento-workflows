@@ -1,0 +1,48 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "unpaid-order-cleanup-sweep",
+        "title": "Unpaid order cleanup sweep",
+        "description": "Hourly sweep that cancels pending orders unpaid longer than a configurable age.",
+        "category": "Operations",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "actions": ["order.cancel", "order.add_comment"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": [
+            {"key": "stale_hours", "label": "Hours unpaid before cancelling", "type": "string", "default": "72"}
+        ]
+    },
+    "workflow": {
+        "name": "Unpaid order cleanup sweep",
+        "entity_type": "sales_order",
+        "trigger_type": "schedule",
+        "trigger_ref": "0 * * * *",
+        "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"status\",\"operator\":\"==\",\"value\":\"pending\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"created_at\",\"operator\":\"<=\",\"value\":\"-%param.stale_hours% hours\"}]}",
+        "definition": {
+            "schema": 1,
+            "entry": "cancel_stale",
+            "steps": {
+                "cancel_stale": {
+                    "type": "action",
+                    "action": "order.cancel",
+                    "config": {},
+                    "next": "note_reason"
+                },
+                "note_reason": {
+                    "type": "action",
+                    "action": "order.add_comment",
+                    "config": {
+                        "comment": "Auto-cancelled: unpaid for over %param.stale_hours% hours.",
+                        "is_visible_on_front": false
+                    },
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

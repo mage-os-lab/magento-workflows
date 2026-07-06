@@ -8,12 +8,13 @@ use MageOS\Workflows\Model\Rule\Hydrator\CustomerHydrator;
 use MageOS\Workflows\Model\Rule\Hydrator\EntityHydratorInterface;
 use MageOS\Workflows\Model\Rule\Hydrator\OrderHydrator;
 use MageOS\Workflows\Model\Rule\Hydrator\ProductHydrator;
+use MageOS\Workflows\Model\Rule\Hydrator\QuoteHydrator;
 
 /**
  * Hydrator-pool-backed hydration with a per-instance identity map — the
  * hydrator counterpart of ConditionCombinePool: a DI-registered map
- * entity_type => EntityHydratorInterface with the three built-in types
- * (sales_order, customer, catalog_product) as hardcoded defaults. Extensions
+ * entity_type => EntityHydratorInterface with the four built-in types
+ * (sales_order, customer, catalog_product, quote) as hardcoded defaults. Extensions
  * register additional entity types by appending to the `hydrators` argument
  * in di.xml; the per-entity loading + flat-array enrichment lives in the
  * Hydrator\* implementations.
@@ -43,6 +44,7 @@ class HydrationProvider implements HydrationProviderInterface
         OrderHydrator $orderHydrator,
         CustomerHydrator $customerHydrator,
         ProductHydrator $productHydrator,
+        QuoteHydrator $quoteHydrator,
         array $hydrators = []
     ) {
         $this->hydrators = array_merge(
@@ -50,6 +52,7 @@ class HydrationProvider implements HydrationProviderInterface
                 self::TYPE_ORDER => $orderHydrator,
                 self::TYPE_CUSTOMER => $customerHydrator,
                 self::TYPE_PRODUCT => $productHydrator,
+                self::TYPE_QUOTE => $quoteHydrator,
             ],
             $hydrators
         );

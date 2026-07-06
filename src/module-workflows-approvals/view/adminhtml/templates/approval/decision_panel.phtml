@@ -1,0 +1,85 @@
+<?php
+/**
+ * The decision-taking panel (docs/discovery/approval-gate.md §6): shared by the
+ * standalone decision view and the execution-view inline panel.
+ *
+ * @var \MageOS\WorkflowsApprovals\Block\Adminhtml\Approval\DecisionPanel $block
+ */
+if (!$block->shouldRender()) {
+    return;
+}
+$approval = $block->getApproval();
+?>
+<div class="admin__page-section mageos-workflows-approval-decision-panel">
+    <div class="admin__page-section-title">
+        <span class="title"><?= $block->escapeHtml(__('Decision')) ?></span>
+    </div>
+    <div class="admin__page-section-content">
+        <?php if (!$block->isOpen()): ?>
+            <div class="message message-notice">
+                <?= $block->escapeHtml(__('This task is no longer open (status: %1).', $approval->getStatus())) ?>
+            </div>
+        <?php elseif (!$block->canDecide()): ?>
+            <div class="message message-notice">
+                <?= $block->escapeHtml(__('You do not have permission to decide this task.')) ?>
+            </div>
+        <?php else: ?>
+            <form action="<?= $block->escapeUrl($block->getDecideUrl()) ?>" method="post"
+                  class="mageos-workflows-approval-decision-form">
+                <input type="hidden" name="form_key" value="<?= $block->escapeHtmlAttr($block->getFormKey()) ?>"/>
+                <input type="hidden" name="uuid" value="<?= $block->escapeHtmlAttr($approval->getUuid()) ?>"/>
+                <?php if ($block->getExecutionId()): ?>
+                    <input type="hidden" name="execution_id" value="<?= (int) $block->getExecutionId() ?>"/>
+                <?php endif; ?>
+
+                <div class="admin__field">
+                    <label class="admin__field-label" for="approval-note">
+                        <span><?= $block->escapeHtml(__('Note')) ?></span>
+                    </label>
+                    <div class="admin__field-control">
+                        <textarea id="approval-note" name="note" class="admin__control-textarea"
+                                  rows="3"></textarea>
+                    </div>
+                </div>
+
+                <?php foreach ($block->getPayloadFields() as $field): ?>
+                    <?php
+                    $fieldId = 'approval-payload-' . $block->escapeHtmlAttr($field['key']);
+                    $fieldName = 'payload[' . $field['key'] . ']';
+                    ?>
+                    <div class="admin__field <?= $field['required'] ? 'required' : '' ?>">
+                        <label class="admin__field-label" for="<?= $block->escapeHtmlAttr($fieldId) ?>">
+                            <span><?= $block->escapeHtml($field['label']) ?></span>
+                        </label>
+                        <div class="admin__field-control">
+                            <?php if ($field['type'] === 'boolean'): ?>
+                                <input type="checkbox" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                                       name="<?= $block->escapeHtmlAttr($fieldName) ?>" value="1"
+                                       class="admin__control-checkbox"/>
+                            <?php elseif ($field['type'] === 'number'): ?>
+                                <input type="number" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                                       name="<?= $block->escapeHtmlAttr($fieldName) ?>" step="any"
+                                       class="admin__control-text"
+                                       <?= $field['required'] ? 'required="required"' : '' ?>/>
+                            <?php else: ?>
+                                <input type="text" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                                       name="<?= $block->escapeHtmlAttr($fieldName) ?>"
+                                       class="admin__control-text"
+                                       <?= $field['required'] ? 'required="required"' : '' ?>/>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+
+                <div class="admin__field mageos-workflows-approval-actions">
+                    <button type="submit" name="decision" value="approved" class="action-primary">
+                        <span><?= $block->escapeHtml(__('Approve')) ?></span>
+                    </button>
+                    <button type="submit" name="decision" value="rejected" class="action-secondary">
+                        <span><?= $block->escapeHtml(__('Reject')) ?></span>
+                    </button>
+                </div>
+            </form>
+        <?php endif; ?>
+    </div>
+</div>

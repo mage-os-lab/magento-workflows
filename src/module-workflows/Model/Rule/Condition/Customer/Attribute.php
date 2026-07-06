@@ -32,6 +32,21 @@ class Attribute extends AbstractWorkflowCondition
     ];
 
     /**
+     * Order-history aggregates computed at hydration time by
+     * CustomerAggregateProvider (merged in CustomerHydrator). Never present
+     * in trigger snapshots, so they always classify as needs_hydration;
+     * last_order_at / days_since_last_order are absent for customers without
+     * orders and then only match negative operators (fail-toward-false).
+     */
+    private const AGGREGATE_ATTRIBUTES = [
+        'orders_count' => 'Order History: Number of Orders',
+        'lifetime_sales' => 'Order History: Lifetime Sales',
+        'avg_order_value' => 'Order History: Average Order Value',
+        'last_order_at' => 'Order History: Last Order Date',
+        'days_since_last_order' => 'Order History: Days Since Last Order',
+    ];
+
+    /**
      * System/credential attributes never exposed as condition targets
      */
     private const EXCLUDED_ATTRIBUTES = [
@@ -72,6 +87,9 @@ class Attribute extends AbstractWorkflowCondition
         foreach (self::FLAT_ATTRIBUTES as $code => $label) {
             $attributes[$code] = __($label);
         }
+        foreach (self::AGGREGATE_ATTRIBUTES as $code => $label) {
+            $attributes[$code] = __($label);
+        }
         try {
             foreach ($this->customerMetadata->getAllAttributesMetadata() as $metadata) {
                 $code = (string)$metadata->getAttributeCode();
@@ -98,6 +116,10 @@ class Attribute extends AbstractWorkflowCondition
      */
     public function getInputType()
     {
+        $code = (string)$this->getAttribute();
+        if (isset(self::AGGREGATE_ATTRIBUTES[$code])) {
+            return $code === 'last_order_at' ? 'date' : 'numeric';
+        }
         $metadata = $this->getMetadataForCurrentAttribute();
         if ($metadata !== null) {
             $mapped = match ((string)$metadata->getFrontendInput()) {
@@ -159,7 +181,7 @@ class Attribute extends AbstractWorkflowCondition
     private function getMetadataForCurrentAttribute(): ?AttributeMetadataInterface
     {
         $code = (string)$this->getAttribute();
-        if ($code === '') {
+        if ($code === '' || isset(self::AGGREGATE_ATTRIBUTES[$code])) {
             return null;
         }
         if (!isset($this->attributeMetadata[$code])) {

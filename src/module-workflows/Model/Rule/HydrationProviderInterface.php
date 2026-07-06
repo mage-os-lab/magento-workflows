@@ -42,6 +42,7 @@ interface HydrationProviderInterface
     public const TYPE_ORDER = 'sales_order';
     public const TYPE_CUSTOMER = 'customer';
     public const TYPE_PRODUCT = 'catalog_product';
+    public const TYPE_QUOTE = 'quote';
 
     /**
      * Load an entity as a flat DataObject (EAV/custom/extension attributes

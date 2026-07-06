@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!--
+  phpcs configuration for the Mage-OS Workflow Engine monorepo.
+
+  The check-extension `coding-standard` job (graycoreio/github-actions-magento2)
+  auto-discovers this file. It applies the full Magento2 coding standard and
+  gates the build on ERRORS only: this pre-alpha tree emits a large advisory
+  backlog of docblock/style WARNINGS (missing comment blocks, @param notes),
+  which are non-blocking here (warning-severity 0) so CI tracks real breakage —
+  including PHP 8.5 compatibility, which the Magento2 standard reports as errors.
+  Tighten warning-severity later to burn the docblock backlog down.
+-->
+<ruleset name="MageOS_Workflows">
+    <description>Magento 2 coding standard (error-gated) for the workflow monorepo.</description>
+
+    <!-- Lint the module source; the Composer install dir and build outputs are noise. -->
+    <file>src</file>
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/web/js/dist/*</exclude-pattern>
+    <exclude-pattern>*/app/*</exclude-pattern>
+    <exclude-pattern>*/Test/*</exclude-pattern>
+
+    <!-- Show progress and sniff codes; gate on errors, keep warnings advisory. -->
+    <arg value="sp"/>
+    <arg name="error-severity" value="1"/>
+    <arg name="warning-severity" value="0"/>
+    <arg name="extensions" value="php,phtml"/>
+
+    <rule ref="Magento2"/>
+</ruleset>

@@ -10,7 +10,11 @@ Composer packages, mirroring the `mageos-async-events` family layout:
 | `mage-os/workflows-triggers-core` | Trigger metadata over `mageos-common-async-events` + gap-fill events |
 | `mage-os/workflows-scheduler` | Cron/query-based triggers |
 | `mage-os/workflows-b2b` | B2B triggers/conditions/actions (suggest: Adobe Commerce only) |
-| `mage-os/workflows-canvas` | v2 React Flow builder (optional, reads the same definition) |
+| `mage-os/workflows-canvas` | React Flow viewer + editor (optional, reads the same definition) |
+| `mage-os/workflows-templates` | Bundled gallery template content pack (data-only; optional/trimmable — the gallery UI itself lives in `workflows-admin-ui`) |
+| `mage-os/workflows-import-suppression` | Suppresses dispatch during ImportExport CSV imports (optional; keeps core free of a hard ImportExport dependency) |
+| `mage-os/workflows-admin-extension` | ACL-gated summary strip + view/create deep links on native entity grids, layered on `mage-os/workflows` + `mage-os/workflows-admin-ui` (optional; entity modules are soft dependencies) |
+| `mage-os/workflows-approvals` | Human-decision gate: the approval task table, decision service, REST endpoint, and admin grid/decision view behind the schema-4 `approval` step's core seam (optional; see [Approval Gate discovery](discovery/approval-gate.md)) |
 
 ## Dependencies
 

@@ -1,0 +1,4 @@
+{
+    "format": "mageos-workflow-template/1",
+    "note": "Valid JSON but no template node -- BundledTemplateSource must skip it defensively."
+}

@@ -134,6 +134,44 @@
             </settings>
         </field>
     </fieldset>
+    <!-- Trigger-level fan-out (F1). Leaving the relation empty keeps today's
+         behavior: one execution per triggering entity. Choosing a relation
+         makes the workflow run once PER RELATED ENTITY of the trigger — the
+         plain-language preview leads with that per-target phrasing and the cap.
+         Save-time alignment (trigger source == relation source, relation
+         target == workflow entity type; schedule-type rejected) is enforced by
+         FanOutAlignmentCheck. -->
+    <fieldset name="fan_out">
+        <settings>
+            <label translate="true">Fan-Out (run per related entity)</label>
+            <collapsible>true</collapsible>
+            <opened>false</opened>
+        </settings>
+        <field name="fan_out_relation" formElement="select" sortOrder="10">
+            <settings>
+                <label translate="true">Fan Out Over Relation</label>
+                <dataType>text</dataType>
+                <notice translate="true">When set, one triggering event runs the workflow once for EACH related entity (e.g. "for each open order of that customer"), up to the cap. The workflow's Entity Type must be the relation's target, and the trigger's entity must be the relation's source. Like a manual mass-run, this may run against many entities per trigger.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="MageOS\WorkflowsAdminUi\Model\Source\FanOutRelation"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+        <field name="fan_out_cap" formElement="input" sortOrder="20">
+            <settings>
+                <label translate="true">Fan-Out Cap</label>
+                <dataType>number</dataType>
+                <notice translate="true">Maximum related entities to fan out to per trigger. Clamped to the global Fan-Out Cap (Stores → Configuration → Workflows → Guards). Leave blank to use the global cap. Excess targets are dropped with an admin-visible marker.</notice>
+                <validation>
+                    <rule name="validate-digits" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+        </field>
+    </fieldset>
     <fieldset name="conditions">
         <settings>
             <label translate="true">Conditions</label>
@@ -143,9 +181,17 @@
             <settings>
                 <label translate="true">Conditions</label>
                 <dataType>text</dataType>
-                <notice translate="true">v1 placeholder: a serialized condition tree (same shape as salesrule/catalogrule). The stock rule widget is a stretch goal for a future release; this keeps conditions authorable meanwhile. Leave blank for "always run".</notice>
+                <notice translate="true">A serialized condition tree (same shape as salesrule/catalogrule). Use "Edit conditions…" for the slide-out editor, or edit the JSON directly here. Leave blank for "always run".</notice>
             </settings>
         </field>
+        <!-- Shared condition slide-out (E1 seam). The textarea above is retained
+             as the "edit as JSON" fallback; the slide-out posts the serialized
+             tree to the shared Conditions controller. The stock rule widget is
+             deferred (E1 spike verdict, docs/11-admin-ui.md) — the slide-out is
+             the JSON editor until a full install can host the widget. -->
+        <htmlContent name="conditions_editor" sortOrder="20">
+            <argument name="block" xsi:type="object">MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\ConditionsEditor</argument>
+        </htmlContent>
     </fieldset>
     <fieldset name="actions">
         <settings>
@@ -162,6 +208,13 @@
                 </validation>
             </settings>
         </field>
+        <!-- Plain-language preview + save-time validation findings (implementation plan 01,
+             stage 3). Server-rendered from the saved definition on load; the block's
+             "Refresh preview" button re-runs the F2 pipeline over the unsaved textarea
+             content via the admin Preview controller. -->
+        <htmlContent name="definition_preview" sortOrder="20">
+            <argument name="block" xsi:type="object">MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\DefinitionPreview</argument>
+        </htmlContent>
     </fieldset>
     <!-- Embedded executions listing, filtered to the current workflow: the workflow_id from
          the form provider is exported into the external listing provider's request params,
