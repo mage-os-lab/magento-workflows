@@ -296,12 +296,32 @@ class QueryRunnerCollectedModeTest extends TestCase
             new StubScopeConfig(['mageos_workflows/scheduler/match_cap' => 5000]),
             new NullLogger(),
             ['catalog_product' => $repository],
-            new EntityDataConverter(new ExtensibleDataObjectConverter()),
+            new EntityDataConverter($this->dataObjectConverter()),
             $membership,
             new ItemProjector(),
             new BatchContextBuilder(),
             []
         );
+    }
+
+    /**
+     * An ExtensibleDataObjectConverter double with an empty constructor. Real
+     * Magento's converter requires a DataObjectProcessor dependency; these tests
+     * only exercise DataObject entities, which EntityDataConverter handles
+     * without ever reaching the converter, so construction is all that matters.
+     */
+    private function dataObjectConverter(): ExtensibleDataObjectConverter
+    {
+        return new class extends ExtensibleDataObjectConverter {
+            public function __construct()
+            {
+            }
+
+            public function toNestedArray($dataObject, $skipCustomAttributes = [], $dataObjectType = null)
+            {
+                throw new \RuntimeException('toNestedArray() not expected in these tests');
+            }
+        };
     }
 
     private function product(int $id, string $updatedAt, int $inStock, string $eav): DataObject

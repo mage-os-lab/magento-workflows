@@ -60,7 +60,7 @@ class DataProvider extends AbstractDataProvider
 
         $persisted = $this->dataPersistor->get(Save::PERSISTOR_KEY);
         if (is_array($persisted) && $persisted !== []) {
-            $id = !empty($persisted['workflow_id']) ? (int) $persisted['workflow_id'] : null;
+            $id = !empty($persisted['workflow_id']) ? (int) $persisted['workflow_id'] : '';
             $this->loadedData[$id] = array_merge($this->loadedData[$id] ?? [], $persisted);
             $this->dataPersistor->clear(Save::PERSISTOR_KEY);
         }
@@ -74,8 +74,9 @@ class DataProvider extends AbstractDataProvider
      * workflow from the <entity> grid" deep link. The param is honoured only
      * when it matches a known entity-type code (the authoritative core
      * catalogue, EntityTypeMetadataProviderInterface); unknown values are
-     * silently ignored. Seeded under the null id key so persisted merchant
-     * input (merged next in getData) still wins.
+     * silently ignored. Seeded under the empty-string id key (the reserved
+     * new-record slot) so persisted merchant input (merged next in getData)
+     * still wins.
      */
     private function seedNewWorkflow(): void
     {
@@ -86,7 +87,7 @@ class DataProvider extends AbstractDataProvider
         if ($entityType === '' || !$this->isKnownEntityType($entityType)) {
             return;
         }
-        $this->loadedData[null] = ['entity_type' => $entityType];
+        $this->loadedData[''] = ['entity_type' => $entityType];
     }
 
     private function isKnownEntityType(string $code): bool

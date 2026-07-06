@@ -18,11 +18,15 @@ class AbstractWorkflowConditionTest extends TestCase
 
     public function setUp(): void
     {
-        // Use a minimal concrete subclass for testing
-        // Since AbstractCondition extends DataObject, we can instantiate directly
+        // Use a minimal concrete subclass for testing. Real Magento's
+        // AbstractCondition requires a Rule Context (the shim let a bare data
+        // array through); the tested behavior never uses it, so pass a Context
+        // double with an empty constructor.
         $this->condition = new class extends AbstractWorkflowCondition {
             public function __construct() {
-                parent::__construct([]);
+                parent::__construct(new class extends Context {
+                    public function __construct() {}
+                }, []);
             }
             public function loadAttributeOptions() { return $this; }
             public function getInputType() { return 'string'; }

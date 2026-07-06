@@ -268,10 +268,32 @@ class FanOutExpanderTest extends TestCase
             $this->relationContext($relation, $config),
             new StubHydrationProvider($entities),
             $dispatcher,
-            new DataObjectFactory(),
+            $this->dataObjectFactory(),
             new StubScopeConfig($config),
             new NullLogger()
         );
+    }
+
+    /**
+     * A DataObjectFactory double whose create(['data' => [...]]) returns a
+     * DataObject seeded with that data. Real Magento's DataObjectFactory routes
+     * create() through the object manager (absent in a unit test, so it yields
+     * null); the shim runner's version wraps the data directly. This double
+     * pins the shim's behavior under both runners.
+     */
+    private function dataObjectFactory(): DataObjectFactory
+    {
+        return new class extends DataObjectFactory {
+            public function __construct()
+            {
+            }
+
+            public function create(array $arguments = []): DataObject
+            {
+                $data = $arguments['data'] ?? [];
+                return new DataObject(is_array($data) ? $data : []);
+            }
+        };
     }
 
     private function fanOutWorkflow(?int $cap = null): WorkflowStub

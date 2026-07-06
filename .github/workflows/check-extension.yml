@@ -106,12 +106,32 @@ jobs:
         env:
           COMPOSER_MIRROR_PATH_REPOS: 1
 
-      # The published spec/ schemas + conformance fixtures live at the monorepo
-      # root, not inside any module package, so they are absent from the vendor
-      # install. Several unit tests read them via dirname(__DIR__, 6) . '/spec/…'
-      # which resolves to <magento>/vendor/spec — stage them there.
-      - name: Stage monorepo spec/ fixtures
-        run: cp -r "${{ github.workspace }}/spec" "${{ steps.setup-magento.outputs.path }}/vendor/spec"
+      # Stage fixture/data trees the unit suite reads from disk into the vendor
+      # install:
+      #   * spec/ (root-level schemas + conformance fixtures) lives outside every
+      #     module package, so it is absent from vendor entirely. Tests read it
+      #     via dirname(__DIR__, 6) . '/spec/…' → <magento>/vendor/spec.
+      #   * The bundled-template data dirs (workflows-templates/templates and
+      #     workflows' Test/Unit/.../Template/_files) ARE inside their packages,
+      #     but the host Magento install does not reliably carry these non-PHP
+      #     data directories into vendor. BundledTemplateSource globs them at
+      #     their module-local paths, so refresh them from the checkout.
+      # cp -rT copies source *contents* into the destination, so an existing
+      # (partially populated) target dir is overlaid rather than nested.
+      - name: Stage monorepo fixtures and template data
+        run: |
+          set -eux
+          root="${{ github.workspace }}"
+          dest="${{ steps.setup-magento.outputs.path }}"
+          cp -r "$root/spec" "$dest/vendor/spec"
+
+          tpl="$dest/vendor/mage-os/workflows-templates/templates"
+          mkdir -p "$tpl"
+          cp -rT "$root/src/module-workflows-templates/templates" "$tpl"
+
+          files="$dest/vendor/mage-os/workflows/Test/Unit/Model/Template/_files"
+          mkdir -p "$files"
+          cp -rT "$root/src/module-workflows/Test/Unit/Model/Template/_files" "$files"
 
       - name: Configure phpunit.xml.dist
         working-directory: ${{ steps.setup-magento.outputs.path }}
