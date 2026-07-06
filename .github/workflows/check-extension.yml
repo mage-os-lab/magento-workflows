@@ -106,32 +106,14 @@ jobs:
         env:
           COMPOSER_MIRROR_PATH_REPOS: 1
 
-      # Stage fixture/data trees the unit suite reads from disk into the vendor
-      # install:
-      #   * spec/ (root-level schemas + conformance fixtures) lives outside every
-      #     module package, so it is absent from vendor entirely. Tests read it
-      #     via dirname(__DIR__, 6) . '/spec/…' → <magento>/vendor/spec.
-      #   * The bundled-template data dirs (workflows-templates/templates and
-      #     workflows' Test/Unit/.../Template/_files) ARE inside their packages,
-      #     but the host Magento install does not reliably carry these non-PHP
-      #     data directories into vendor. BundledTemplateSource globs them at
-      #     their module-local paths, so refresh them from the checkout.
-      # cp -rT copies source *contents* into the destination, so an existing
-      # (partially populated) target dir is overlaid rather than nested.
-      - name: Stage monorepo fixtures and template data
-        run: |
-          set -eux
-          root="${{ github.workspace }}"
-          dest="${{ steps.setup-magento.outputs.path }}"
-          cp -r "$root/spec" "$dest/vendor/spec"
-
-          tpl="$dest/vendor/mage-os/workflows-templates/templates"
-          mkdir -p "$tpl"
-          cp -rT "$root/src/module-workflows-templates/templates" "$tpl"
-
-          files="$dest/vendor/mage-os/workflows/Test/Unit/Model/Template/_files"
-          mkdir -p "$files"
-          cp -rT "$root/src/module-workflows/Test/Unit/Model/Template/_files" "$files"
+      # The published spec/ schemas + conformance fixtures live at the monorepo
+      # root, not inside any module package, so they are absent from the vendor
+      # install. Several unit tests read them via dirname(__DIR__, 6) . '/spec/…'
+      # which resolves to <magento>/vendor/spec — stage them there. (The bundled
+      # template data dirs, by contrast, DO ship inside their packages and are
+      # copied by composer's path-repo mirror, so they need no staging.)
+      - name: Stage monorepo spec/ fixtures
+        run: cp -r "${{ github.workspace }}/spec" "${{ steps.setup-magento.outputs.path }}/vendor/spec"
 
       - name: Configure phpunit.xml.dist
         working-directory: ${{ steps.setup-magento.outputs.path }}
@@ -148,36 +130,6 @@ jobs:
 
           ## Disable allure (See https://github.com/magento/magento2/issues/36702 )
           sed -i '/<extensions>/,/<\/extensions>/d' dev/tests/unit/phpunit.xml.dist
-
-      - name: DEBUG template fixture visibility
-        working-directory: ${{ steps.setup-magento.outputs.path }}
-        run: |
-          set +e
-          echo "== workflows install kind =="
-          ls -ld vendor/mage-os/workflows vendor/mage-os/workflows-templates
-          readlink -f vendor/mage-os/workflows
-          echo "== test-file dir contents =="
-          ls -la vendor/mage-os/workflows/Test/Unit/Model/Template/
-          echo "== pack-a templates =="
-          ls -la vendor/mage-os/workflows/Test/Unit/Model/Template/_files/pack-a/templates/
-          echo "== templates module dir =="
-          ls -la vendor/mage-os/workflows-templates/templates/ | head
-          echo "== replicate test logic via php =="
-          php -r '
-            require "vendor/autoload.php";
-            $dirs = [
-              "vendor/mage-os/workflows/Test/Unit/Model/Template/_files/pack-a/templates",
-              "vendor/mage-os/workflows-templates/templates",
-            ];
-            foreach ($dirs as $d) {
-              $abs = getcwd()."/".$d;
-              printf("dir=%s is_dir=%d glob=%d\n", $d, (int) is_dir($abs), count(glob($abs."/*.json")));
-            }
-            $c = "Magento\\Framework\\Module\\Dir";
-            printf("Dir const defined=%d value=%s\n", (int) defined("$c::MODULE_BASE_DIR"),
-              defined("$c::MODULE_BASE_DIR") ? var_export(constant("$c::MODULE_BASE_DIR"), true) : "N/A");
-          '
-          true
 
       - name: Run extension unit tests
         working-directory: ${{ steps.setup-magento.outputs.path }}

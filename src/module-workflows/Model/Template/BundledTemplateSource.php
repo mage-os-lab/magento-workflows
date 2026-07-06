@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Model\Template;
 
-use Magento\Framework\Module\Dir;
 use Magento\Framework\Module\Dir\Reader as ModuleDirReader;
 
 /**
@@ -127,7 +126,12 @@ class BundledTemplateSource implements TemplateSourceInterface
             return null;
         }
         try {
-            $base = rtrim($this->moduleDirReader->getModuleDir(Dir::MODULE_BASE_DIR, $module), '/');
+            // Empty directory type => the module's base directory. Real Magento
+            // has no Dir::MODULE_BASE_DIR constant (only the etc/i18n/view/…
+            // subdir types); referencing it would throw an Error that the catch
+            // below swallows, silently emptying the gallery. getModuleDir('', …)
+            // returns the base path on both real Magento and the shim.
+            $base = rtrim($this->moduleDirReader->getModuleDir('', $module), '/');
         } catch (\Throwable $e) {
             return null;
         }
