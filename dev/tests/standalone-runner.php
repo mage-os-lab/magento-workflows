@@ -256,15 +256,21 @@ namespace {
 
     // -----------------------------------------------------------------
     // Shim autoloader — registered LAST so that when real Magento /
-    // psr-log packages are installed their autoloaders (registered
-    // earlier in the chain) always win. Only fires for Magento\ and
-    // Psr\Log\ classes nothing else could load; each shim lives in its
-    // own file mirroring PSR-4 under dev/tests/shims/.
+    // psr-log / mageos-async-events / cloudevents packages are installed
+    // their autoloaders (registered earlier in the chain) always win. Only
+    // fires for third-party namespaces nothing else could load — never for
+    // this repo's own MageOS\Workflows* prefixes (their generated factories
+    // get per-file stand-ins instead); each shim lives in its own file
+    // mirroring PSR-4 under dev/tests/shims/.
     // -----------------------------------------------------------------
 
     $shimRoot = $repoRoot . '/dev/tests/shims';
     spl_autoload_register(static function (string $class) use ($shimRoot): void {
-        if (!str_starts_with($class, 'Magento\\') && !str_starts_with($class, 'Psr\\Log\\')) {
+        if (!str_starts_with($class, 'Magento\\')
+            && !str_starts_with($class, 'Psr\\Log\\')
+            && !str_starts_with($class, 'MageOS\\AsyncEvents\\')
+            && !str_starts_with($class, 'CloudEvents\\')
+        ) {
             return;
         }
         $path = $shimRoot . '/' . str_replace('\\', '/', $class) . '.php';
