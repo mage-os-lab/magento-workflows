@@ -127,7 +127,7 @@ class ValidateWorkflowOnSaveTest extends TestCase
      * the most robust option: the resolver reads getAclRoleId() and the check
      * reads isAllowed() live from the backend session, so no DI re-wiring or
      * ObjectManager preference is needed, and the role rows roll back under
-     * @magentoDbIsolation.
+     * db isolation.
      *
      * @magentoAppArea adminhtml
      * @magentoAppIsolation enabled

@@ -127,7 +127,7 @@ class CustomerConditionTest extends TestCase
     /**
      * Order-history aggregates are computed at hydration time and match the
      * two seeded orders (lifetime_sales 300, orders_count 2). Relies on the
-     * class-level @magentoAppIsolation to avoid a stale customer:1 aggregate
+     * class-level app isolation (see class docblock) to avoid a stale customer:1 aggregate
      * leaking in from an earlier method's hydration.
      *
      * @magentoDataFixture Magento/Customer/_files/customer.php

@@ -106,7 +106,7 @@ class DispatcherDebounceTest extends TestCase
 
     /**
      * The config path the dispatcher reads for the window is the one exercised
-     * by this suite's @magentoConfigFixture.
+     * by this suite's config fixture annotations.
      */
     public function testDebounceWindowConfigPathIsStable(): void
     {
