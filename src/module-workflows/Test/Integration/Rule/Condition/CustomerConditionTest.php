@@ -23,6 +23,15 @@ use PHPUnit\Framework\TestCase;
  *     phase-2 hydration (CustomerAggregateProvider);
  *   - a vanished customer fails closed on revalidation.
  *
+ * App isolation is enabled because HydrationProvider keeps a per-instance
+ * identity map keyed by "customer:<id>" and the core customer fixture always
+ * reuses id 1: without a fresh application per method, an earlier method (e.g.
+ * testFlatAttributes, 0 orders) memoizes customer:1 and testOrderHistory would
+ * then read that stale aggregate instead of its two seeded orders. It also
+ * gives the EAV attribute-metadata cache a cold start so the fixture-created
+ * custom attribute auto-discovers.
+ *
+ * @magentoAppIsolation enabled
  * @magentoDbIsolation enabled
  */
 class CustomerConditionTest extends TestCase
@@ -117,7 +126,9 @@ class CustomerConditionTest extends TestCase
 
     /**
      * Order-history aggregates are computed at hydration time and match the
-     * two seeded orders (lifetime_sales 300, orders_count 2).
+     * two seeded orders (lifetime_sales 300, orders_count 2). Relies on the
+     * class-level @magentoAppIsolation to avoid a stale customer:1 aggregate
+     * leaking in from an earlier method's hydration.
      *
      * @magentoDataFixture Magento/Customer/_files/customer.php
      * @magentoDataFixture MageOS_Workflows::Test/Integration/Rule/_files/customer_orders.php

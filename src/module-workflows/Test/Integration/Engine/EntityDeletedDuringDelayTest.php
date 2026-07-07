@@ -10,6 +10,7 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Model\Queue\ExecuteConsumer;
 use MageOS\Workflows\Model\Queue\ResumeConsumer;
 use MageOS\Workflows\Test\Integration\_files\WorkflowEngineTestTrait;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -25,10 +26,17 @@ use PHPUnit\Framework\TestCase;
  * Quarantined so that IMPLEMENTING the finding un-gates this test rather than
  * requiring a new one.
  *
+ * Quarantined as a docs/08:99 / docs/19 findings-registry OPEN entry. The
+ * docblock @group is retained for humans, but PHPUnit 12 no longer reads
+ * metadata from docblocks, so the CI gate's `--exclude-group known-divergence`
+ * only sees the #[Group] attribute below — it is what actually excludes this
+ * executable pin from the blocking lane.
+ *
  * @group known-divergence
  * @magentoDbIsolation enabled
  * @magentoDataFixture Magento/Sales/_files/order.php
  */
+#[Group('known-divergence')]
 class EntityDeletedDuringDelayTest extends TestCase
 {
     use WorkflowEngineTestTrait;

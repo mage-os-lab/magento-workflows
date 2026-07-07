@@ -40,7 +40,12 @@ class EmailTest extends ActionTestCase
 
     public function testAdhocEmailIsSentAndCaptured(): void
     {
-        $ctx = $this->buildContext(1);
+        // Distinct UUID per sending test: the send-once guard is a cache marker
+        // keyed on the execution dedupe key (uuid:step), and the cache is NOT
+        // reset by @magentoDbIsolation. Sharing the default UUID lets whichever
+        // send-test runs first leave a marker that suppresses the FIRST send of
+        // the others.
+        $ctx = $this->buildContext(1, 1, 's1', 'e1111111-1111-1111-1111-111111111111');
         $result = $this->action->execute($ctx, [
             'to' => self::RECIPIENT,
             'subject' => self::SUBJECT,
@@ -58,7 +63,7 @@ class EmailTest extends ActionTestCase
 
     public function testSendOnceGuardSuppressesRedelivery(): void
     {
-        $ctx = $this->buildContext(1);
+        $ctx = $this->buildContext(1, 1, 's1', 'e2222222-2222-2222-2222-222222222222');
         $config = ['to' => self::RECIPIENT, 'subject' => self::SUBJECT, 'body' => 'once'];
 
         $first = $this->action->execute($ctx, $config);
@@ -109,7 +114,7 @@ class EmailTest extends ActionTestCase
      */
     public function testConcurrentSendersCanBothSendKnownDivergence(): void
     {
-        $ctx = $this->buildContext(1);
+        $ctx = $this->buildContext(1, 1, 's1', 'e3333333-3333-3333-3333-333333333333');
         $config = ['to' => self::RECIPIENT, 'subject' => self::SUBJECT, 'body' => 'race'];
 
         $first = $this->action->execute($ctx, $config);

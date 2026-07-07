@@ -141,9 +141,21 @@ class ImportExportRoundTripTest extends TestCase
         $fixtureFiles = glob($this->specPath('fixtures') . '/*.json') ?: [];
         $this->assertNotEmpty($fixtureFiles, 'Expected at least one published spec/fixtures/*.json');
 
+        $envelopesTested = 0;
         foreach ($fixtureFiles as $file) {
             $raw = json_decode((string) file_get_contents($file), true);
             $this->assertIsArray($raw, basename($file) . ': fixture must decode to a JSON object');
+
+            // spec/fixtures also ships raw definition samples (schema-format
+            // showcases, e.g. abandoned-cart-wait-recovery.json) that are NOT
+            // `workflow:export` envelopes and are not importable by design —
+            // the importer requires the envelope format tag (see
+            // WorkflowImporter::assertEnvelope / testImportRejectsAnEnvelope-
+            // WithTheWrongFormatTag). Only exercise real export envelopes here.
+            if (($raw['format'] ?? null) !== \MageOS\Workflows\Model\Import\WorkflowImporter::FORMAT) {
+                continue;
+            }
+            $envelopesTested++;
 
             $tester = new CommandTester(Bootstrap::getObjectManager()->get(ImportCommand::class));
             $exitCode = $tester->execute(['file' => $file]);
@@ -161,6 +173,8 @@ class ImportExportRoundTripTest extends TestCase
                 basename($file) . ': imported definition must decoded-JSON equal the fixture'
             );
         }
+
+        $this->assertGreaterThan(0, $envelopesTested, 'Expected at least one published export-envelope fixture');
     }
 
     public function testImportRejectsAnEnvelopeWithTheWrongFormatTag(): void

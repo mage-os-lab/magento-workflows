@@ -72,7 +72,12 @@ class WorkflowRepositoryTest extends TestCase
         $this->assertSame($conditions, $loaded->getConditionsSerialized());
         $this->assertSame(3, $loaded->getLoopGuardDepth());
         $this->assertSame(1, $loaded->getVersion(), 'A fresh workflow starts at version 1');
-        $this->assertSame(
+        // `definition` is a MySQL json column: it normalizes object key order
+        // (by key length, then value) and whitespace, so identity is decoded-
+        // JSON equality (assertEquals), never byte/order identity (assertSame) —
+        // exactly the semantic contract this suite's docblock states. The
+        // multibyte/emoji content survives intact either way.
+        $this->assertEquals(
             $definition,
             json_decode($loaded->getDefinition(), true),
             'Definition JSON must round-trip semantically, multibyte content intact'

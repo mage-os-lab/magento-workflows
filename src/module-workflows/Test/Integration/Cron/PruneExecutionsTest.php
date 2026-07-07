@@ -16,13 +16,22 @@ use PHPUnit\Framework\TestCase;
  * (completed_at is null); step rows go with their execution.
  *
  * @magentoDbIsolation enabled
- * @magentoConfigFixture mageos_workflows/retention/days 30
- * @magentoConfigFixture mageos_workflows/dry_run/retention_days 7
  */
 class PruneExecutionsTest extends TestCase
 {
     use WorkflowEngineTestTrait;
 
+    /**
+     * The retention clocks are lowered via config fixture. NOTE: the framework's
+     * ConfigFixture annotation handler only honors METHOD-level
+     * {@}magentoConfigFixture (unlike DataFixture, which merges class + method),
+     * so these MUST live on the method — a class-level copy is silently ignored
+     * and the config.xml defaults (90 / 7 days) win, leaving the 40-day live row
+     * un-pruned.
+     *
+     * @magentoConfigFixture mageos_workflows/retention/days 30
+     * @magentoConfigFixture mageos_workflows/dry_run/retention_days 7
+     */
     public function testRetentionClocksAndInFlightImmunity(): void
     {
         $workflowId = (int) $this->createWorkflow([

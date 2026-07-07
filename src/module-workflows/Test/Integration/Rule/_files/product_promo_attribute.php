@@ -26,7 +26,11 @@ $eavSetup->addAttribute(Product::ENTITY, 'wf_promo_flag', [
     'source' => \Magento\Eav\Model\Entity\Attribute\Source\Boolean::class,
     'required' => false,
     'user_defined' => true,
-    'is_used_for_promo_rules' => 1,
+    // NB: the addAttribute INPUT key is 'used_for_promo_rules' (Catalog
+    // PropertyMapper maps it to the is_used_for_promo_rules column). Passing
+    // 'is_used_for_promo_rules' here is silently dropped and the column stays 0,
+    // so the Product condition's is_used_for_promo_rules=1 filter never matches.
+    'used_for_promo_rules' => 1,
     'used_in_product_listing' => 1,
     'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
     'group' => 'General',

@@ -83,8 +83,25 @@ class ExecutorWalkTest extends TestCase
             'entry' => 's1',
             'steps' => ['s1' => $this->actionStep('success', null)],
         ];
-        $conditions = '{"type":"combine","aggregator":"all","value":"1","conditions":'
-            . '[{"type":"order_attribute","attribute":"grand_total","operator":">=","value":"500"}]}';
+        // Real serialized condition format: the `type` is the FQCN of the
+        // condition/combine class (see Order\Combine::getNewChildSelectOptions
+        // and the spec envelopes). A made-up short alias like "order_attribute"
+        // does not resolve; core Combine::loadArray catches the factory failure
+        // and drops the leaf, leaving an empty combine that always validates
+        // true — so a false root condition would never skip.
+        $conditions = json_encode([
+            'type' => \MageOS\Workflows\Model\Rule\Condition\Order\Combine::class,
+            'aggregator' => 'all',
+            'value' => '1',
+            'conditions' => [
+                [
+                    'type' => \MageOS\Workflows\Model\Rule\Condition\Order\Attribute::class,
+                    'attribute' => 'grand_total',
+                    'operator' => '>=',
+                    'value' => '500',
+                ],
+            ],
+        ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $workflow = $this->createWorkflow([
             'name' => 'root false',
             'definition' => $definition,

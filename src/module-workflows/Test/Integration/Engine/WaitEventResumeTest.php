@@ -81,7 +81,9 @@ class WaitEventResumeTest extends TestCase
 
         $result = json_decode((string) $this->stepResult($executionId, 'w1'), true);
         $this->assertSame('event', $result['resolution'] ?? null);
-        $this->assertSame($payload, $result['event'] ?? null, 'The event payload is written into the wait step result');
+        // The step `result` is a MySQL json column, which normalizes object key
+        // order (by key length, then value), so compare decoded semantically.
+        $this->assertEquals($payload, $result['event'] ?? null, 'The event payload is written into the wait step result');
     }
 
     public function testPublishFailureRollsStatusBackButLeavesPayloadWritten(): void
@@ -99,7 +101,8 @@ class WaitEventResumeTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $throwing->attempts);
         // Ordering proof: payload was written BEFORE the publish attempt...
         $result = json_decode((string) $this->stepResult($executionId, 'w1'), true);
-        $this->assertSame($payload, $result['event'] ?? null, 'Payload persisted before the publish attempt');
+        // MySQL json column: normalized key order, so compare decoded semantically.
+        $this->assertEquals($payload, $result['event'] ?? null, 'Payload persisted before the publish attempt');
         // ...and the claim rolled back so the timeout sweeper still owns it.
         $this->assertSame(
             WorkflowExecutionInterface::STATUS_WAITING,

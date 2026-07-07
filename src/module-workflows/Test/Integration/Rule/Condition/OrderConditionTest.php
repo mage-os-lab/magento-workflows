@@ -103,14 +103,43 @@ class OrderConditionTest extends TestCase
                 false
             )
         );
-        $this->assertTrue(
-            $this->evaluator->evaluateSerialized(
-                $this->tree($this->leaf('customer_group_id', '==', (string)(int)$order->getCustomerGroupId())),
-                'sales_order',
-                $ctx,
-                false
-            )
-        );
+
+        // The core guest order fixture never sets customer_group_id, and the
+        // sales_order column is nullable with no default — so on this order the
+        // attribute is ABSENT, not 0. An absent attribute only matches negative
+        // operators (fail-toward-false), so a naive "== 0" cannot pass. Assert
+        // relative to the real value: equality when present, absent-semantics
+        // when null, keeping the pin robust if a version starts defaulting it.
+        $groupId = $order->getCustomerGroupId();
+        if ($groupId === null) {
+            $this->assertFalse(
+                $this->evaluator->evaluateSerialized(
+                    $this->tree($this->leaf('customer_group_id', '==', '0')),
+                    'sales_order',
+                    $ctx,
+                    false
+                ),
+                'An absent customer_group_id cannot satisfy a positive equality'
+            );
+            $this->assertTrue(
+                $this->evaluator->evaluateSerialized(
+                    $this->tree($this->leaf('customer_group_id', '!=', '0')),
+                    'sales_order',
+                    $ctx,
+                    false
+                ),
+                'An absent customer_group_id matches the negative operator'
+            );
+        } else {
+            $this->assertTrue(
+                $this->evaluator->evaluateSerialized(
+                    $this->tree($this->leaf('customer_group_id', '==', (string)(int)$groupId)),
+                    'sales_order',
+                    $ctx,
+                    false
+                )
+            );
+        }
     }
 
     /**

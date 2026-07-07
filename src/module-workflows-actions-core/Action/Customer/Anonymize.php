@@ -115,12 +115,17 @@ class Anonymize extends AbstractAction implements SimulateableActionInterface
         $customer->setFirstname(self::ANONYMIZED_FIRSTNAME);
         $customer->setLastname(self::ANONYMIZED_LASTNAME);
         $customer->setEmail($anonymizedEmail);
-        $customer->setDob(null);
-        $customer->setTaxvat(null);
-        $customer->setGender(null);
-        $customer->setMiddlename(null);
-        $customer->setPrefix(null);
-        $customer->setSuffix(null);
+        // Clear personal fields with EMPTY STRING, not null: CustomerRepository::save()
+        // serializes the DTO via toNestedArray(), which OMITS null-valued attributes,
+        // so a setXxx(null) is silently dropped and the previous PII survives the save
+        // (e.g. taxvat "12" would remain). Empty string IS carried through, and the EAV
+        // layer treats an empty value as "delete", so the attribute reads back as null.
+        $customer->setDob('');
+        $customer->setTaxvat('');
+        $customer->setGender('');
+        $customer->setMiddlename('');
+        $customer->setPrefix('');
+        $customer->setSuffix('');
 
         try {
             $this->customerRepository->save($customer);

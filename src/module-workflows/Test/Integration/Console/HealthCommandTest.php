@@ -92,9 +92,12 @@ class HealthCommandTest extends TestCase
         $this->assertSame(1, $exitCode);
         $display = $tester->getDisplay();
         $this->assertStringContainsString('FAIL', $display);
+        // Symfony's error block hard-wraps the summary across lines and pads
+        // with spaces, so collapse all whitespace before matching the message.
+        $normalized = (string) preg_replace('/\s+/', ' ', $display);
         $this->assertStringContainsString(
             'One or more workflow health checks failed. See docs/15-operations.md for remediation.',
-            $display
+            $normalized
         );
     }
 

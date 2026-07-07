@@ -153,10 +153,27 @@ class ServiceContractTest extends TestCase
     /**
      * GET /V1/workflows/meta/actions, /meta/triggers, /meta/entity-types,
      * /meta/relations, /meta/secrets, /meta/options.
+     *
+     * ActionMetadataProvider ACL-filters the palette (an action whose
+     * getAclResource() the current admin lacks is hidden — convenience, never
+     * the security gate; the save path re-authorizes). With no authenticated
+     * admin, AuthorizationInterface::isAllowed() denies every resource and the
+     * palette comes back empty. ACL enforcement is out of scope for this
+     * service-contract suite (§8 covers it), so we authenticate the default
+     * full-access admin — the "full monorepo install" reader — so the provider
+     * projects the real ActionPool.
+     *
+     * @magentoAppArea adminhtml
+     * @magentoAppIsolation enabled
      */
     public function testMetaProvidersReturnNonEmptyCorrectlyShapedPayloads(): void
     {
         $objectManager = Bootstrap::getObjectManager();
+
+        $objectManager->get(\Magento\Backend\Model\Auth::class)->login(
+            \Magento\TestFramework\Bootstrap::ADMIN_NAME,
+            \Magento\TestFramework\Bootstrap::ADMIN_PASSWORD
+        );
 
         $actions = $objectManager->get(ActionMetadataProviderInterface::class)->getActions();
         $this->assertNotEmpty($actions, 'ActionPool must be non-empty in a full monorepo install');

@@ -20,12 +20,20 @@ use PHPUnit\Framework\TestCase;
  *
  * @magentoDbIsolation enabled
  * @magentoAppIsolation enabled
- * @magentoConfigFixture mageos_workflows/guards/circuit_breaker_threshold 2
  */
 class CircuitBreakerTest extends TestCase
 {
     use WorkflowEngineTestTrait;
 
+    /**
+     * The threshold is lowered via config fixture. NOTE: the framework's
+     * ConfigFixture annotation handler only honors METHOD-level
+     * {@}magentoConfigFixture (unlike DataFixture, which merges class + method),
+     * so it MUST live on the method — a class-level copy is silently ignored and
+     * the config.xml default (10) wins, so two failures never trip the breaker.
+     *
+     * @magentoConfigFixture mageos_workflows/guards/circuit_breaker_threshold 2
+     */
     public function testConsecutiveFailuresSuspendTheWorkflowAndRefuseFurtherDispatch(): void
     {
         $action = new ProgrammableAction($this->om()->get(ResourceConnection::class));

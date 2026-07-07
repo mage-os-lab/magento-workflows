@@ -30,7 +30,7 @@ class CreditmemoTest extends ActionTestCase
     }
 
     /**
-     * @magentoDataFixture Magento/Sales/_files/invoice.php
+     * @magentoDataFixture MageOS_WorkflowsActionsCore::Test/Integration/_files/paid_order_for_creditmemo.php
      */
     public function testCreatesCreditmemoThenSkips(): void
     {
