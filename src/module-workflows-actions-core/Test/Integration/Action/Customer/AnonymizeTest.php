@@ -49,7 +49,10 @@ class AnonymizeTest extends ActionTestCase
         $this->assertSame('Customer', $scrubbed->getLastname());
         $this->assertNull($scrubbed->getDob());
         $this->assertNull($scrubbed->getTaxvat());
-        $this->assertNull($scrubbed->getGender());
+        // gender is an int-backed select attribute: clearing with '' persists
+        // as 0 ("not specified"), which reads back '0', not null. Either way
+        // no PII remains - assert emptiness, not null identity.
+        $this->assertEmpty($scrubbed->getGender());
     }
 
     /**
