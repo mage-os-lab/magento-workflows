@@ -5,6 +5,7 @@ namespace MageOS\WorkflowsApprovals\Test\Integration\Controller\Adminhtml;
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Data\Form\FormKey;
+use Magento\Framework\Message\ManagerInterface as MessageManagerInterface;
 use Magento\Framework\Message\MessageInterface;
 use Magento\TestFramework\TestCase\AbstractBackendController;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
@@ -113,11 +114,15 @@ class DecideControllerTest extends AbstractBackendController
         // and never overwrites the recorded decision.
         $this->postDecide(['uuid' => $uuid, 'decision' => ApprovalInterface::STATUS_REJECTED]);
 
-        $this->assertSessionMessages(
-            $this->anything(),
-            MessageInterface::TYPE_WARNING
+        $warnings = $this->_objectManager->get(MessageManagerInterface::class)
+            ->getMessages()
+            ->getItemsByType(MessageInterface::TYPE_WARNING);
+        $this->assertNotEmpty($warnings, 'A lost decision race surfaces a warning, not an error');
+        $this->assertSame(
+            ApprovalInterface::STATUS_APPROVED,
+            $this->taskStatus($executionId),
+            'The already-recorded decision is never overwritten by the losing attempt'
         );
-        $this->assertSame(ApprovalInterface::STATUS_APPROVED, $this->taskStatus($executionId));
     }
 
     /**
