@@ -11,6 +11,7 @@ use Magento\TestFramework\TestCase\AbstractBackendController;
  * has-access / no-access come from AbstractBackendController via $uri/$resource.
  *
  * @magentoAppArea adminhtml
+ * @magentoAppIsolation enabled
  * @magentoDbIsolation enabled
  */
 class WorkflowGridTest extends AbstractBackendController

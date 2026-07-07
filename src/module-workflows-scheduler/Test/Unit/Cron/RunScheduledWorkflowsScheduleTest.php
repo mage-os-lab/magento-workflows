@@ -332,7 +332,56 @@ class RunScheduledWorkflowsScheduleTest extends TestCase
                     }
                 };
             }
-        };
+
+            public function setIsSingleStoreModeAllowed($value)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function hasSingleStore()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function isSingleStoreMode()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getStores($withDefault = false, $codeKey = false)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getWebsites($withDefault = false, $codeKey = false)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function reinitStores()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getDefaultStoreView()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getGroup($groupId = NULL)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getGroups($withDefault = false)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function setCurrentStore($store)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }        };
     }
 
     /**
@@ -356,7 +405,71 @@ class RunScheduledWorkflowsScheduleTest extends TestCase
                 $this->calls[] = [$scopeType, $scopeCode];
                 return $scopeCode === null ? $this->defaultTimezone : $this->storeTimezone;
             }
-        };
+
+            public function getDefaultTimezonePath()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getDefaultTimezone()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getDateFormat($type = \IntlDateFormatter::SHORT)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getDateFormatWithLongYear()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getTimeFormat($type = NULL)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getDateTimeFormat($type)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function date($date = NULL, $locale = NULL, $useTimezone = true, $includeTime = true)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function scopeDate($scope = NULL, $date = NULL, $includeTime = false)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function scopeTimeStamp($scope = NULL)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function formatDate($date = NULL, $format = \IntlDateFormatter::SHORT, $showTime = false)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function isScopeDateInInterval($scope, $dateFrom = NULL, $dateTo = NULL)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function formatDateTime($date, $dateType = \IntlDateFormatter::SHORT, $timeType = \IntlDateFormatter::SHORT, $locale = NULL, $timezone = NULL, $pattern = NULL)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function convertConfigTimeToUtc($date, $format = 'Y-m-d H:i:s')
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }        };
     }
 
     private function cron(

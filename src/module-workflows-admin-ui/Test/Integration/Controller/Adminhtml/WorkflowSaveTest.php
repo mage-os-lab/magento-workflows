@@ -20,6 +20,7 @@ use MageOS\Workflows\Api\WorkflowRepositoryInterface;
  * (AbstractBackendController supplies the ACL has/no-access contract).
  *
  * @magentoAppArea adminhtml
+ * @magentoAppIsolation enabled
  * @magentoDbIsolation enabled
  */
 class WorkflowSaveTest extends AbstractBackendController
