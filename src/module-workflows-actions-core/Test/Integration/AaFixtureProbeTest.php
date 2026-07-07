@@ -51,6 +51,33 @@ class AaFixtureProbeTest extends TestCase
     }
 
     /**
+     * Measures the ANNOTATION-PARSING layer at runtime on the real installed
+     * framework: if the parsed sets below come back empty for a method that
+     * plainly carries the annotation, the whole fixture pipeline silently
+     * no-ops — which matches every observation so far (no errors, no rows,
+     * both core and module-scoped fixtures invisible).
+     *
+     * @magentoDataFixture Magento/Customer/_files/customer.php
+     */
+    public function testAnnotationParsingLayer(): void
+    {
+        $report = [];
+        try {
+            $annotations = \Magento\TestFramework\Annotation\TestCaseAnnotation::getInstance()
+                ->getAnnotations($this);
+            $report[] = 'method_fixtures=' . json_encode(
+                $annotations['method']['magentoDataFixture'] ?? 'KEY-ABSENT'
+            );
+            $report[] = 'class_keys=' . json_encode(array_keys((array)($annotations['class'] ?? [])));
+            $report[] = 'method_keys=' . json_encode(array_keys((array)($annotations['method'] ?? [])));
+        } catch (\Throwable $e) {
+            $report[] = 'annotation_service_error=' . get_class($e) . ': ' . $e->getMessage();
+        }
+
+        $this->assertSame('__annotations__', implode(' | ', $report));
+    }
+
+    /**
      * Applies the SAME legacy fixture in-body through the framework's own
      * resolver, bypassing the annotation machinery entirely: if this works,
      * the annotation layer is dropping fixtures; if it throws, the message
@@ -60,8 +87,10 @@ class AaFixtureProbeTest extends TestCase
     {
         $error = 'none';
         try {
-            \Magento\TestFramework\Workaround\Override\Fixture\Resolver::getInstance()
-                ->requireDataFixture('Magento/Customer/_files/customer.php');
+            $resolver = \Magento\TestFramework\Workaround\Override\Fixture\Resolver::getInstance();
+            $resolver->setCurrentFixtureType(\Magento\TestFramework\Annotation\DataFixture::ANNOTATION);
+            $resolver->requireDataFixture('Magento/Customer/_files/customer.php');
+            $resolver->setCurrentFixtureType(null);
         } catch (\Throwable $e) {
             $error = sprintf(
                 '%s: %s @ %s:%d',
