@@ -25,12 +25,14 @@ import {
   blankStep,
   connect as connectOp,
   deleteNode,
+  disconnect,
   moveNode,
   positionsOf,
 } from '../graphOps';
 import { canUndo, canRedo, initHistory, push, redo, undo, type History } from '../history';
 import { submitSave } from '../saveClient';
 import {
+  buildValidateRequest,
   debounce,
   pinMessages,
   postValidate,
@@ -90,7 +92,9 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   // ---- continuous validation (debounced) --------------------------------
   const runValidate = useRef(
     debounce((cfg: MountConfig, def: string) => {
-      postValidate(cfg, { definition: def })
+      // Root conditions ride along from the bootstrap so root-condition
+      // findings surface live, not only at save time (Data/Validate contract).
+      postValidate(cfg, buildValidateRequest(cfg, def))
         .then((res) => {
           if (res.success && res.messages) {
             setPinned(pinMessages(res.messages));
@@ -337,10 +341,17 @@ function FlowSurface({
         nodesConnectable={!readOnly}
         elementsSelectable
         deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
-        onNodesDelete={(deleted) => {
+        onDelete={({ nodes: deletedNodes, edges: deletedEdges }) => {
+          // One combined commit for a delete gesture: a bare edge delete must
+          // reach the graph too (it previously only touched React Flow's local
+          // state, so a save re-posted the visually-removed edge), and a node
+          // delete plus its touching edges must land as a single history entry.
           let g = graph;
-          for (const d of deleted) {
-            g = deleteNode(g, d.id);
+          for (const e of deletedEdges) {
+            g = disconnect(g, e.id);
+          }
+          for (const n of deletedNodes) {
+            g = deleteNode(g, n.id);
           }
           onCommit(g);
         }}

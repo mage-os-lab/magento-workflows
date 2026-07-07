@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { debounce, pinMessages, postValidate } from '../src/validateClient';
+import { buildValidateRequest, debounce, pinMessages, postValidate } from '../src/validateClient';
 import { makeConfig } from './support';
 import type { ValidationMessage } from '../src/types';
 
@@ -51,6 +51,55 @@ describe('postValidate', () => {
     const res = await postValidate(config, { definition: '{}' }, fetchImpl as unknown as typeof fetch);
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/500/);
+  });
+});
+
+describe('buildValidateRequest — the live-validation contract seam (Data/Validate)', () => {
+  it('carries the bootstrapped ROOT condition tree so root-condition findings surface live', () => {
+    const tree = '{"aggregator":"all","conditions":[]}';
+    const base = makeConfig();
+    const config = makeConfig({
+      workflow: { ...base.workflow!, conditionsSerialized: tree },
+    });
+    const req = buildValidateRequest(config, '{"schema":3}');
+    expect(req.definition).toBe('{"schema":3}');
+    expect(req.conditionsSerialized).toBe(tree);
+  });
+
+  it('yields null when the workflow has no root conditions (or no workflow yet)', () => {
+    expect(buildValidateRequest(makeConfig(), '{}').conditionsSerialized).toBeNull();
+    expect(buildValidateRequest(makeConfig({ workflow: null }), '{}').conditionsSerialized).toBeNull();
+  });
+
+  it('posts as the exact conditions_serialized param the Validate controller reads', async () => {
+    const tree = '{"aggregator":"all","conditions":[]}';
+    const base = makeConfig();
+    const config = makeConfig({
+      workflow: { ...base.workflow!, conditionsSerialized: tree },
+    });
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ success: true, valid: true, messages: [] }), { status: 200 }),
+    );
+    await postValidate(config, buildValidateRequest(config, '{"schema":3}'), fetchImpl as unknown as typeof fetch);
+
+    const body = (fetchImpl.mock.calls[0] as unknown[])[1] as RequestInit;
+    const params = new URLSearchParams(body.body as string);
+    // Param name must match Validate.php's getParam('conditions_serialized').
+    expect(params.get('conditions_serialized')).toBe(tree);
+    // The workflow's trigger/entity context rides along for plain-language rendering.
+    expect(params.get('trigger_type')).toBe('event');
+    expect(params.get('entity_type')).toBe('sales_order');
+  });
+
+  it('omits the param entirely for a null tree (the controller normalizes absent to null)', async () => {
+    const config = makeConfig();
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ success: true, valid: true, messages: [] }), { status: 200 }),
+    );
+    await postValidate(config, buildValidateRequest(config, '{}'), fetchImpl as unknown as typeof fetch);
+    const body = (fetchImpl.mock.calls[0] as unknown[])[1] as RequestInit;
+    const params = new URLSearchParams(body.body as string);
+    expect(params.has('conditions_serialized')).toBe(false);
   });
 });
 
