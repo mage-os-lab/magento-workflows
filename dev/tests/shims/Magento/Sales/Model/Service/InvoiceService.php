@@ -11,12 +11,18 @@ namespace Magento\Sales\Model\Service;
 class InvoiceService
 {
     /**
+     * Signature mirrors the real class (param name + InvoiceInterface
+     * return type) so doubles written against this shim stay drop-in
+     * compatible under real PHPUnit.
+     *
      * @param \Magento\Sales\Model\Order $order
-     * @param array $qtys
-     * @return \Magento\Sales\Model\Order\Invoice
+     * @param array $orderItemsQtyToInvoice
+     * @return \Magento\Sales\Api\Data\InvoiceInterface
      */
-    public function prepareInvoice(\Magento\Sales\Model\Order $order, array $qtys = [])
-    {
+    public function prepareInvoice(
+        \Magento\Sales\Model\Order $order,
+        array $orderItemsQtyToInvoice = []
+    ): \Magento\Sales\Api\Data\InvoiceInterface {
         throw new \RuntimeException('prepareInvoice() not implemented in shim');
     }
 }

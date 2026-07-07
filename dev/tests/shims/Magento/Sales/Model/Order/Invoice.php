@@ -8,7 +8,7 @@ namespace Magento\Sales\Model\Order;
  * values mirror the real class; behavioural methods throw unless a test
  * subclass overrides them.
  */
-class Invoice
+class Invoice implements \Magento\Sales\Api\Data\InvoiceInterface
 {
     public const CAPTURE_ONLINE = 'online';
     public const CAPTURE_OFFLINE = 'offline';

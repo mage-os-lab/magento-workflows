@@ -244,8 +244,10 @@ class CreateInvoiceTest extends TestCase
             public function __construct(private readonly Invoice $invoice)
             {
             }
-            public function prepareInvoice(Order $order, array $qtys = [])
-            {
+            public function prepareInvoice(
+                Order $order,
+                array $orderItemsQtyToInvoice = []
+            ): \Magento\Sales\Api\Data\InvoiceInterface {
                 $this->prepareCalls++;
                 if ($this->throwOnPrepare !== null) {
                     throw $this->throwOnPrepare;
