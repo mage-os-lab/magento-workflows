@@ -156,7 +156,8 @@ fixed in this pass; the rest are open, ordered by consequence.
 
 1. Stand up the Magento integration-test lane (schema, repositories,
    revision concurrency, debounce/claim atomicity under real MySQL) — most
-   remaining unit gaps are really integration gaps.
+   remaining unit gaps are really integration gaps. Planned in detail in
+   [20 — Integration Test Plan](20-integration-test-plan.md).
 2. Resolve the four unimplemented GA-blocker-class promises (delay-resume
    skip semantics, scope re-check, GDPR hook, ES redaction) — implement or
    descope in docs before any GA claim.
