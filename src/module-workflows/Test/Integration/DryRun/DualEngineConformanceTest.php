@@ -104,10 +104,7 @@ class DualEngineConformanceTest extends TestCase
 
     private function importShadow(string $fixture): WorkflowInterface
     {
-        // Same dirname() idiom as Test/Unit/.../ConformanceRoutingTest, adjusted
-        // for this file being one directory shallower: resolves to <repo>/spec
-        // in dev and <magento>/vendor/spec at CI runtime.
-        $path = dirname(__DIR__, 5) . '/spec/fixtures/' . $fixture;
+        $path = $this->specPath('fixtures/' . $fixture);
         $data = json_decode((string) file_get_contents($path), true, 64, JSON_THROW_ON_ERROR);
         $envelope = $this->asEnvelope($data);
 
@@ -201,5 +198,36 @@ class DualEngineConformanceTest extends TestCase
     private function distinct(array $keys): array
     {
         return array_values(array_unique($keys));
+    }
+
+    /**
+     * Resolves the monorepo's published spec/ directory from either layout,
+     * same idiom as the sibling Test/Integration/Console/ImportExportRoundTripTest
+     * (this class is adjusted from Test/Unit/Model/DryRun/ConformanceRoutingTest,
+     * which uses dirname(__DIR__, 6) from Test/Unit/Model/DryRun).
+     *
+     * __DIR__ here is .../Test/Integration/DryRun. Counting path segments to
+     * the sibling that contains spec/:
+     *   dirname(__DIR__, 1) = .../Test/Integration
+     *   dirname(__DIR__, 2) = .../Test
+     *   dirname(__DIR__, 3) = .../<module root>              (e.g. src/module-workflows, or vendor/mage-os/workflows)
+     *   dirname(__DIR__, 4) = .../<module vendor namespace>  (e.g. src, or vendor/mage-os)
+     *   dirname(__DIR__, 5) = .../<repo root or vendor>       (repo-root/spec in dev, <magento>/vendor/spec in CI)
+     * So depth 5 covers both the local dev checkout (<repo>/spec) and a
+     * composer-installed Magento where CI stages the monorepo spec/ dir to
+     * <magento>/vendor/spec (docs/20 §2.2, this file lives at
+     * <magento>/vendor/mage-os/workflows/Test/Integration/DryRun/...). A
+     * couple of neighboring depths are tried defensively since the exact
+     * vendor path depends on the installed package layout.
+     */
+    private function specPath(string $relative): string
+    {
+        foreach ([5, 4, 6] as $depth) {
+            $candidate = dirname(__DIR__, $depth) . '/spec';
+            if (is_dir($candidate)) {
+                return $candidate . '/' . ltrim($relative, '/');
+            }
+        }
+        throw new \RuntimeException('Could not locate the spec/ directory from ' . __DIR__);
     }
 }
