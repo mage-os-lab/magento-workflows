@@ -94,8 +94,7 @@ class WebhookDiWiringTest extends ActionTestCase
 
     private function propertyValue(\ReflectionObject $reflection, string $name): mixed
     {
-        $property = $reflection->getProperty($name);
-        $property->setAccessible(true);
-        return $property->getValue($this->action);
+        // No setAccessible(): a no-op since PHP 8.1 and a deprecation-exception on 8.5.
+        return $reflection->getProperty($name)->getValue($this->action);
     }
 }
