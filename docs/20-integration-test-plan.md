@@ -1,5 +1,32 @@
 # 20 — Magento Integration Test Suite Plan
 
+**Status: DELIVERED (2026-07, PR #21).** All 33 catalog suites are authored
+and green: 234 tests / 1,144 assertions against a real Magento 2.4.9 install
+(plus 3 `known-divergence` pins quarantined from the blocking gate). The
+bring-up surfaced eight shipped product defects — recorded in
+[docs/19's findings registry](19-testing-strategy.md#findings-registry).
+Environment lessons learned the hard way, now encoded in the harness:
+
+- The integration `phpunit.xml.dist` `<extensions>` block registers
+  `Magento\TestFramework\Event\Subscribers` — the framework's ENTIRE
+  event wiring. Remove only the Allure bootstrap element, never the block.
+- The integration lane runs **PHPUnit 12**: docblock `@group` is ignored;
+  quarantine tags must be `#[Group('known-divergence')]` attributes.
+- `@magentoConfigFixture` is honored at **method level only** (unlike
+  DataFixture/AppArea/AppIsolation, which fall back to class scope).
+- Magento's annotation parser regex-scans every docblock line: prose
+  mentions of `@magento*` annotations inside test docblocks parse as
+  malformed annotations and can abort the whole suite.
+- Backend-controller tests leak `State::$_areaCode` to later tests
+  (dispatch sets it without updating `Application::$_appArea`); controller
+  suites must carry `@magentoAppIsolation enabled`.
+- The unit/compile/phpcs jobs are temporarily in ECONOMY MODE (newest line
+  only) while the repository's CI-minutes budget recovers; restore
+  `outputs.matrix` in `check-extension.yml` when minutes allow. The nightly
+  full-matrix + `known-divergence` reporting job (§2.3) is still to be added.
+
+Remaining scope beyond this plan: the api-functional REST lane (§8).
+
 The build-out plan for lane 2 of the ideal portfolio in
 [19 — Testing Strategy](19-testing-strategy.md): **behavior tests that run
 inside Magento's integration test framework** (`dev/tests/integration`),

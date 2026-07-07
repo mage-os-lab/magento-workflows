@@ -13,6 +13,7 @@ in [§Findings registry](#findings-registry).
 |---|---|---|---|
 | PHP unit (standalone) | `dev/tests/standalone-runner.php`, PHPUnit-shim + Magento shims, PHP 8.1–8.5 | 1,067 tests | `lint.yml`, blocking |
 | PHP unit (real Magento) | same suites under real PHPUnit inside a real Magento install, 2.4.6→2.4.9 matrix | same files | `check-extension.yml`, blocking |
+| PHP integration (real Magento) | `src/*/Test/Integration` under `dev/tests/integration` — real MySQL, merged DI, EAV, db-transport queue, real `setup:install` | 234 tests / 1,144 assertions (+3 `known-divergence` quarantined, run nightly-only) | `check-extension.yml`, blocking (newest line) |
 | DI compile | `setup:di:compile` against every supported Magento line | — | `check-extension.yml`, blocking |
 | phpcs | Magento2 standard | — | `check-extension.yml`, blocking |
 | Canvas unit | vitest, jsdom | 114 tests | `canvas.yml`, blocking |
@@ -56,10 +57,12 @@ For this engine the ideal test portfolio is, in priority order:
 2. **Integration tests against a real database** (Magento's
    `dev/tests/integration`): schema install, repository round-trips, revision
    concurrency, the save-plugin pipeline, debounce/claim UPDATEs under real
-   MySQL semantics, queue consumers end-to-end. Status: **absent** — the
-   single biggest structural gap. The atomicity tests in the unit lane prove
-   the *logic* honors 0-rows-affected; only MySQL can prove the UPDATEs are
-   actually atomic under concurrency.
+   MySQL semantics, queue consumers end-to-end. Status: **present and green**
+   (2026-07, PR #21): 33 suites across all nine modules, 234 tests / 1,144
+   assertions against real Magento 2.4.9 — including a real `setup:install`,
+   which alone surfaced eight shipped defects (see the findings registry).
+   Full catalog and environment learnings in
+   [20 — Integration Test Plan](20-integration-test-plan.md).
 3. **API functional tests** for the REST surface (workflow CRUD, validate,
    dry-run, approvals decide) with real ACL enforcement. Status: **absent**;
    route/ACL contracts are pinned only structurally from `webapi.xml`.
@@ -80,6 +83,39 @@ For this engine the ideal test portfolio is, in priority order:
 Behavior issues surfaced by writing tests to the docs. **Fixed** items were
 fixed in this pass; the rest are open, ordered by consequence.
 
+### Fixed — by the integration-lane bring-up (2026-07, PR #21)
+Eight defects only a real install could catch; every one shipped broken:
+- **`setup:install` crashed on a fresh DB** — `bin/magento` constructs all
+  CLI commands eagerly; the workflow commands' graphs reached the customer
+  resource model, which queries `eav_entity_type` before schema exists.
+  Command deps are now DI proxies (core convention).
+- **`dragonmantank/cron-expression` undeclared** — the scheduler used
+  `Cron\CronExpression` but never required the package; Magento doesn't
+  ship it, so the class was missing on every real install.
+- **Invalid `db_schema.xml` default** — scheduler `last_run_at` declared
+  `default="null"` (lowercase); the declarative-schema XSD rejects it, so
+  `setup:install` died reading the schema. xmllint cannot catch this.
+- **Workflows admin grid page fatal** — the page block extended
+  `Widget\Grid\Container`, whose convention synthesizes a nonexistent
+  `...\Workflow\Grid` child ("Invalid block type") on every page load.
+- **Area-only auth-mode inference** — `ValidationContextResolver` granted
+  MODE_ADMIN_CONTEXT from the area alone; emulated admin areas with no
+  principal were denied outright. ADMIN mode now also requires a non-empty
+  `RoleLocatorInterface::getAclRoleId()` (docs/09: the session/token
+  carries the authorization context).
+- **Anonymize never scrubbed PII on a real install** —
+  `CustomerRepository::save()` omits null attributes from the payload
+  (`toNestedArray()`), so null "clears" silently kept dob/taxvat/gender/
+  names. GDPR-relevant. Fields are now cleared with `''`, which the EAV
+  layer deletes.
+- **Coupon generation never worked** — `CouponGenerator` reads quantity
+  from the legacy `qty` key; the action passed `quantity`, so every call
+  failed input validation.
+- **Published spec fixture referenced a nonexistent action** —
+  `guest-nudge-register-invite.json` used `notify.send_email` (real code:
+  `notify.email`); every real import of the published fixture failed. The
+  unit-lane conformance tests pin routing, not action-code resolution.
+
 ### Fixed
 - **Canvas live-validation dropped root conditions** — the editor never sent
   `conditions_serialized` to `Data/Validate`, so condition findings surfaced
@@ -89,6 +125,10 @@ fixed in this pass; the rest are open, ordered by consequence.
   edge. Fixed with a combined `onDelete` commit; pinned by an e2e scenario.
 
 ### Open — documented behavior not implemented
+- **`{{ ... number:2 }}` unquoted filter args render literally**
+  (docs/07 documents unquoted `number:2`; the resolver's placeholder regex
+  accepts only quoted args). Pinned `known-divergence` in the integration
+  `ResolverTest`; implement or amend docs/07.
 - **Entity deleted during a delay is NOT resumed as `skipped`**
   (docs/08:99). `ResumeConsumer` never re-checks the entity; root conditions
   are evaluated only on first run (`Executor.php:108-123`), so a vanished
@@ -114,6 +154,10 @@ fixed in this pass; the rest are open, ordered by consequence.
   could re-resolve a validated redirect hop between validation and connect.
 
 ### Open — implementation right, docs stale (amend docs)
+- The approvals "expiry cron" (`ReconcileApprovals`) is state-driven
+  (orphan/expire by execution state), never reads `due_at`; the SLA
+  timeout actually runs through `ResumeConsumer::routeApprovalStep`.
+  Integration suites pin the real split; docs/20 §6 wording amended.
 - docs/07:50 says a non-shippable/refundable order is "a step failure";
   the actions correctly return `skipped` (at-least-once safety). Reword to
   distinguish "illegal" from "already done".
@@ -154,10 +198,10 @@ fixed in this pass; the rest are open, ordered by consequence.
 
 ## Priorities from here
 
-1. Stand up the Magento integration-test lane (schema, repositories,
-   revision concurrency, debounce/claim atomicity under real MySQL) — most
-   remaining unit gaps are really integration gaps. Planned in detail in
-   [20 — Integration Test Plan](20-integration-test-plan.md).
+1. ~~Stand up the Magento integration-test lane~~ **DONE (2026-07, PR #21)**:
+   234 tests / 1,144 assertions green under real Magento 2.4.9 — see
+   [20 — Integration Test Plan](20-integration-test-plan.md) §Status for
+   what was delivered and the environment lessons learned.
 2. Resolve the four unimplemented GA-blocker-class promises (delay-resume
    skip semantics, scope re-check, GDPR hook, ES redaction) — implement or
    descope in docs before any GA claim.
