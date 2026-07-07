@@ -175,6 +175,20 @@ class TriggerWiringTest extends TestCase
         $this->objectManager->configure([
             'preferences' => [EventPublisher::class => RecordingEventPublisher::class],
         ]);
+
+        // The order/customer data fixtures SAVE their entity while loading,
+        // which fires sales_order_save_after / customer_save_after BEFORE this
+        // swap runs. The observers are shared (no shared="false" in
+        // events.xml), so that fixture save already cached each observer
+        // singleton wired to the PRODUCTION EventPublisher. Evict those
+        // singletons so the next real dispatch rebuilds them against the
+        // recording double resolved below — otherwise the observer publishes to
+        // the real async transport and this recorder captures nothing (the
+        // review case has no data fixture, so it never hit the stale cache).
+        $this->objectManager->removeSharedInstance(OrderStatusChangeObserver::class);
+        $this->objectManager->removeSharedInstance(CustomerGroupChangeObserver::class);
+        $this->objectManager->removeSharedInstance(ReviewSubmittedObserver::class);
+
         /** @var RecordingEventPublisher $publisher */
         $publisher = $this->objectManager->get(EventPublisher::class);
         return $publisher;

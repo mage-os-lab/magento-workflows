@@ -82,7 +82,10 @@ jobs:
     needs: compute_matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+      # ECONOMY MODE: newest supported line only while the account is near its
+      # CI-minutes cap. Full-matrix coverage last green at 951e05e; restore
+      # `outputs.matrix` here when minutes allow.
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -161,7 +164,10 @@ jobs:
     needs: compute_matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+      # ECONOMY MODE: newest supported line only while the account is near its
+      # CI-minutes cap. Full-matrix coverage last green at 951e05e; restore
+      # `outputs.matrix` here when minutes allow.
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -209,7 +215,10 @@ jobs:
     needs: compute_matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+      # ECONOMY MODE: newest supported line only while the account is near its
+      # CI-minutes cap. Full-matrix coverage last green at 951e05e; restore
+      # `outputs.matrix` here when minutes allow.
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
