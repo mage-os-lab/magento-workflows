@@ -9,6 +9,7 @@ use Magento\TestFramework\Mail\Template\TransportBuilderMock;
 use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\WorkflowsActionsCore\Action\Notify\Email;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Plan #19 (docs/20-integration-test-plan.md §5) — notify.email captured via
@@ -112,6 +113,7 @@ class EmailTest extends ActionTestCase
      *
      * @group known-divergence
      */
+    #[Group('known-divergence')]
     public function testConcurrentSendersCanBothSendKnownDivergence(): void
     {
         $ctx = $this->buildContext(1, 1, 's1', 'e3333333-3333-3333-3333-333333333333');

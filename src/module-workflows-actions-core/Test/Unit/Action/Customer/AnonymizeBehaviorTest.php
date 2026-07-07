@@ -80,12 +80,17 @@ class AnonymizeBehaviorTest extends TestCase
         $this->assertSame('Anonymized', $customer->set['firstname']);
         $this->assertSame('Customer', $customer->set['lastname']);
         $this->assertSame(self::ANONYMIZED_EMAIL, $customer->set['email']);
-        $this->assertNull($customer->set['dob']);
-        $this->assertNull($customer->set['taxvat']);
-        $this->assertNull($customer->set['gender']);
-        $this->assertNull($customer->set['middlename']);
-        $this->assertNull($customer->set['prefix']);
-        $this->assertNull($customer->set['suffix']);
+        // Cleared with '' (not null): CustomerRepository::save() serializes the
+        // DTO via toNestedArray(), which OMITS null attributes entirely - a
+        // null "scrub" silently left the old PII in place on a real install
+        // (integration-lane finding). Empty string survives serialization and
+        // the EAV layer deletes the value, so it reads back null afterwards.
+        $this->assertSame('', $customer->set['dob']);
+        $this->assertSame('', $customer->set['taxvat']);
+        $this->assertSame('', $customer->set['gender']);
+        $this->assertSame('', $customer->set['middlename']);
+        $this->assertSame('', $customer->set['prefix']);
+        $this->assertSame('', $customer->set['suffix']);
         $this->assertSame(self::ANONYMIZED_EMAIL, $result->getOutput()['email']);
         $this->assertTrue($result->getOutput()['unsubscribed']);
     }
