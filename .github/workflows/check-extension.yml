@@ -345,8 +345,14 @@ jobs:
           EOF
           sed -i '/<testsuites>/r /tmp/int-testsuite.xml' dev/tests/integration/phpunit.xml.dist
 
-          ## Disable allure (See https://github.com/magento/magento2/issues/36702 )
-          sed -i '/<extensions>/,/<\/extensions>/d' dev/tests/integration/phpunit.xml.dist
+          ## Disable ONLY the Allure extension (magento/magento2#36702). The
+          ## integration <extensions> block ALSO registers
+          ## Magento\TestFramework\Event\Subscribers — the framework's entire
+          ## event wiring (data fixtures, db/app isolation, app-area handling).
+          ## Deleting the whole block (as the unit job safely does with ITS
+          ## allure-only block) silently disabled every fixture and isolation
+          ## annotation in the suite.
+          sed -i '/<bootstrap class="Qameta/,/<\/bootstrap>/d' dev/tests/integration/phpunit.xml.dist
 
       # First run installs the test-framework database (the dominant cost);
       # the tests themselves follow in the same process. `known-divergence`
