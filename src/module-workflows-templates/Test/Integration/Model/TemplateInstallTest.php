@@ -92,6 +92,7 @@ class TemplateInstallTest extends TestCase
     private InstallProvenance $provenance;
     private ResourceConnection $resourceConnection;
     private SecretsProviderInterface $secretsProvider;
+    private bool $adminLoggedIn = false;
 
     protected function setUp(): void
     {
@@ -113,11 +114,16 @@ class TemplateInstallTest extends TestCase
 
     protected function tearDown(): void
     {
-        // Guarded logout so an admin authenticated by a MODE_ADMIN_CONTEXT test
-        // does not leak into a sibling test sharing the same app instance.
-        $auth = Bootstrap::getObjectManager()->get(Auth::class);
-        if ($auth->isLoggedIn()) {
-            $auth->logout();
+        // Only the MODE_ADMIN_CONTEXT tests authenticate an admin (and run in
+        // the adminhtml area). Touch the backend Auth service only when we
+        // logged in, so the non-admin CLI/exception tests never build a backend
+        // auth session outside the adminhtml area.
+        if ($this->adminLoggedIn) {
+            $auth = Bootstrap::getObjectManager()->get(Auth::class);
+            if ($auth->isLoggedIn()) {
+                $auth->logout();
+            }
+            $this->adminLoggedIn = false;
         }
     }
 
@@ -133,6 +139,7 @@ class TemplateInstallTest extends TestCase
     {
         $auth = Bootstrap::getObjectManager()->get(Auth::class);
         $auth->login(TestBootstrap::ADMIN_NAME, TestBootstrap::ADMIN_PASSWORD);
+        $this->adminLoggedIn = true;
     }
 
     /**
