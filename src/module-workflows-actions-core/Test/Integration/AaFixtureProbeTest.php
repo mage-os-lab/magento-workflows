@@ -51,6 +51,42 @@ class AaFixtureProbeTest extends TestCase
     }
 
     /**
+     * Applies the SAME legacy fixture in-body through the framework's own
+     * resolver, bypassing the annotation machinery entirely: if this works,
+     * the annotation layer is dropping fixtures; if it throws, the message
+     * below is the real reason the entities never materialize.
+     */
+    public function testDirectLegacyFixtureApplication(): void
+    {
+        $error = 'none';
+        try {
+            \Magento\TestFramework\Workaround\Override\Fixture\Resolver::getInstance()
+                ->requireDataFixture('Magento/Customer/_files/customer.php');
+        } catch (\Throwable $e) {
+            $error = sprintf(
+                '%s: %s @ %s:%d',
+                get_class($e),
+                $e->getMessage(),
+                basename((string)$e->getFile()),
+                $e->getLine()
+            );
+        }
+
+        $connection = Bootstrap::getObjectManager()->get(ResourceConnection::class)->getConnection();
+        $rows = (int)$connection->fetchOne(
+            'SELECT COUNT(*) FROM ' . $connection->getTableName('customer_entity')
+            . ' WHERE email = ?',
+            ['customer@example.com']
+        );
+
+        $this->assertSame(
+            1,
+            $rows,
+            sprintf('direct requireDataFixture: rows=%d, error=%s', $rows, $error)
+        );
+    }
+
+    /**
      * @magentoDbIsolation enabled
      * @magentoDataFixture Magento/Customer/_files/customer.php
      */
