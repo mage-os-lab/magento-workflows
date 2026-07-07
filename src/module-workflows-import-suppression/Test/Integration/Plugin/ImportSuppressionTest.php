@@ -103,7 +103,7 @@ class ImportSuppressionTest extends TestCase
 
     /**
      * @magentoDataFixture MageOS_WorkflowsImportSuppression::Test/Integration/_files/suppression_dispatch_workflow.php
-     * @magentoConfigFixture current_store mageos_workflows/general/suppress_bulk_imports 1
+     * @magentoConfigFixture mageos_workflows/general/suppress_bulk_imports 1
      */
     public function testDispatchIsSuppressedDuringImportWindowAndResumesAfter(): void
     {
@@ -133,8 +133,12 @@ class ImportSuppressionTest extends TestCase
     }
 
     /**
+     * The plugin reads isSetFlag() with no scope argument, i.e. the DEFAULT
+     * scope; a current_store (store-scope) fixture never reaches that read, so
+     * the toggle must be set in the global/default scope to take effect.
+     *
      * @magentoDataFixture MageOS_WorkflowsImportSuppression::Test/Integration/_files/suppression_dispatch_workflow.php
-     * @magentoConfigFixture current_store mageos_workflows/general/suppress_bulk_imports 0
+     * @magentoConfigFixture mageos_workflows/general/suppress_bulk_imports 0
      */
     public function testToggleOffAllowsNormalDispatchDuringImport(): void
     {

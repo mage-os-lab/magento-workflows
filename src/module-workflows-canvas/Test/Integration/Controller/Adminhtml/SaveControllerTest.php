@@ -92,8 +92,11 @@ class SaveControllerTest extends AbstractBackendController
         $this->assertSame(WorkflowInterface::STATUS_ENABLED, (int) $saved->getStatus());
         $this->assertSame('sales_order', $saved->getEntityType());
 
-        // Server re-normalizes via fromJson->toJson; equality is decoded, not byte.
-        $this->assertSame(
+        // Server re-normalizes via Definition::fromArray->toJson, which canonicalizes
+        // key order (schema last; each step emitted next/type/action/config). That
+        // reordering is the correct, stable controller contract, so equality is
+        // decoded and key-order-independent, not byte-for-byte.
+        $this->assertEqualsCanonicalizing(
             $definition,
             json_decode((string) $saved->getDefinition(), true),
             'The canvas-posted definition round-trips decoded-equal through the save controller'

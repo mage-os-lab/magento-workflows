@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsTemplates\Test\Integration\Model;
 
+use Magento\Backend\Model\Auth;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Module\Dir\Reader as ModuleDirReader;
+use Magento\TestFramework\Bootstrap as TestBootstrap;
 use Magento\TestFramework\Helper\Bootstrap;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
@@ -109,6 +111,30 @@ class TemplateInstallTest extends TestCase
         $this->secretsProvider->set('supplier_hmac_key', 'test-supplier-secret');
     }
 
+    protected function tearDown(): void
+    {
+        // Guarded logout so an admin authenticated by a MODE_ADMIN_CONTEXT test
+        // does not leak into a sibling test sharing the same app instance.
+        $auth = Bootstrap::getObjectManager()->get(Auth::class);
+        if ($auth->isLoggedIn()) {
+            $auth->logout();
+        }
+    }
+
+    /**
+     * Authenticate the default full-permission integration admin (role
+     * "Administrators", all ACL) so ActionAuthorizationCheck — which runs in
+     * MODE_ADMIN_CONTEXT (the admin-gallery install path this test drives) —
+     * authorizes every per-action ACL resource the bundled templates require.
+     * Without an authenticated principal the resolver grants an empty role and
+     * per-action authoring is denied (docs/09).
+     */
+    private function loginFullAdmin(): void
+    {
+        $auth = Bootstrap::getObjectManager()->get(Auth::class);
+        $auth->login(TestBootstrap::ADMIN_NAME, TestBootstrap::ADMIN_PASSWORD);
+    }
+
     /**
      * The bundled pack ships exactly the 14 templates the discovery doc and
      * README both cite; catches an accidental addition/removal early.
@@ -129,9 +155,18 @@ class TemplateInstallTest extends TestCase
      * Every installable template: real install path, saved workflow passes
      * live validation (it went through the repository), created disabled, and
      * a mageos_workflow_template_install row is written.
+     *
+     * Drives the admin-gallery install path (MODE_ADMIN_CONTEXT), so it runs in
+     * the adminhtml area with a full-permission admin authenticated — the
+     * per-action ACL re-authorization (ActionAuthorizationCheck) must pass.
+     *
+     * @magentoAppArea adminhtml
+     * @magentoAppIsolation enabled
      */
     public function testEveryInstallableTemplateInstallsAndValidatesLive(): void
     {
+        $this->loginFullAdmin();
+
         foreach (self::INSTALLABLE_TEMPLATE_PARAMS as $code => $params) {
             $result = $this->templateInstaller->install(new TemplateInstallRequest(
                 $code,
@@ -201,9 +236,18 @@ class TemplateInstallTest extends TestCase
      * Installing the same template twice creates two independent workflows
      * and two provenance rows (fork-on-install; no update-in-place / upgrade
      * path — see class docblock for the plan-vs-implementation note).
+     *
+     * Drives the admin-gallery install path (MODE_ADMIN_CONTEXT default), so it
+     * runs in the adminhtml area with a full-permission admin authenticated so
+     * the per-action ACL re-authorization passes.
+     *
+     * @magentoAppArea adminhtml
+     * @magentoAppIsolation enabled
      */
     public function testReinstallForksANewWorkflowRatherThanUpdating(): void
     {
+        $this->loginFullAdmin();
+
         $request = new TemplateInstallRequest('vip-order-notification', ['vip_group_id' => '5']);
 
         $first = $this->templateInstaller->install($request);
