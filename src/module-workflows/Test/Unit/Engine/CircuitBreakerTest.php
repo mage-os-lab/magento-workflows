@@ -249,7 +249,7 @@ class BreakerRecordingNotifier implements NotifierInterface
         return $this;
     }
 
-    public function addCritical($title, $description, $url = '')
+    public function addCritical($title, $description, $url = '', $isInternal = true)
     {
         if ($this->throwOnCritical) {
             throw new \RuntimeException('inbox table gone');
@@ -258,17 +258,17 @@ class BreakerRecordingNotifier implements NotifierInterface
         return $this;
     }
 
-    public function addMajor($title, $description, $url = '')
+    public function addMajor($title, $description, $url = '', $isInternal = true)
     {
         return $this;
     }
 
-    public function addMinor($title, $description, $url = '')
+    public function addMinor($title, $description, $url = '', $isInternal = true)
     {
         return $this;
     }
 
-    public function addNotice($title, $description, $url = '')
+    public function addNotice($title, $description, $url = '', $isInternal = true)
     {
         return $this;
     }
