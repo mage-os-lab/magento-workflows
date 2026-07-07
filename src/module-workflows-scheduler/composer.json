@@ -13,7 +13,8 @@
         "magento/module-customer": "*",
         "magento/module-catalog": "*",
         "magento/module-catalog-inventory": "*",
-        "mage-os/workflows": "*"
+        "mage-os/workflows": "*",
+        "dragonmantank/cron-expression": "^3.3"
     },
     "suggest": {
         "mage-os/workflows-triggers-core": "Publishes quote.abandoned as a real async event via EventPublisher; without it, AbandonedCartDetector only logs a debug message"
