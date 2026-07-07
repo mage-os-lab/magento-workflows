@@ -198,12 +198,12 @@ class ChangeStatusTest extends TestCase
         };
 
         $orderConfig = new class($stateStatuses) extends OrderConfig {
-            public function __construct(private readonly array $stateStatuses)
+            public function __construct(private readonly array $allowedStateStatuses)
             {
             }
             public function getStateStatuses($state, $addLabels = true)
             {
-                return $this->stateStatuses;
+                return $this->allowedStateStatuses;
             }
             public function getStatuses()
             {
