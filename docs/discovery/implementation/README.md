@@ -40,6 +40,7 @@ with the shipped engine instead of each carving its own seams.
 | 3 | [04 — Fan-out](04-fan-out.md) · [05 — Batch aggregation](05-batch-aggregation.md) (parallel; both dispatch-layer, disjoint code) | — |
 | 4 | [06 — Template gallery](06-template-gallery.md) | — |
 | 5 | [07 — Canvas](07-canvas.md) (Phase A viewer, then Phase B editor) | — |
+| — | [08 — Domain packs](08-domain-packs.md) — vertical split of entity bindings into per-domain packages (pure reorganization; independent of 01–07, schedulable any time) | the [core-coverage backlog](../core-coverage.md#the-backlog) |
 
 Stages 2–5 can overlap where teams allow; the hard edges are only the ones in the graph above.
 

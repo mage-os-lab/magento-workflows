@@ -16,15 +16,17 @@ Composer packages, mirroring the `mageos-async-events` family layout:
 | `mage-os/workflows-admin-extension` | ACL-gated summary strip + view/create deep links on native entity grids, layered on `mage-os/workflows` + `mage-os/workflows-admin-ui` (optional; entity modules are soft dependencies) |
 | `mage-os/workflows-approvals` | Human-decision gate: the approval task table, decision service, REST endpoint, and admin grid/decision view behind the schema-4 `approval` step's core seam (optional; see [Approval Gate discovery](discovery/approval-gate.md)) |
 
-> **Proposed evolution (discovery):** to execute the [core coverage
+> **Decided evolution (July 2026, discovery):** to execute the [core coverage
 > backlog](discovery/core-coverage.md) without breaking compilation or runtime on installs
-> missing optional core modules, the shared packs keep hard requires on the never-absent
-> domains (Sales, Customer, Catalog, …) — declared honestly — while the plausibly-absent
-> domains get **small dedicated modules** (`workflows-review`, `workflows-wishlist`,
-> `workflows-newsletter`, deferred `-cms`) plus a `workflows-suite` metapackage; MSI keeps the
-> runtime-guard pattern. Module enable state, not in-code guards, is the absence-safety
-> boundary. See
-> [Core Coverage §Packaging](discovery/core-coverage.md#packaging-where-the-backlog-lives).
+> missing individual core modules, the bundled entity bindings split out of the shared packs
+> into **vertical domain packs** — `workflows-sales`, `workflows-customer`,
+> `workflows-catalog`, `workflows-inventory`, plus small `-review` / `-newsletter` (and later
+> `-wishlist`) modules and a `workflows-suite` metapackage — with engine, triggers-core,
+> actions-core and scheduler slimmed to entity-agnostic remainders; MSI keeps the runtime-guard
+> pattern. Module enable state, not in-code guards, is the absence-safety boundary. Decision
+> context: [Core Coverage §Packaging](discovery/core-coverage.md#packaging-where-the-backlog-lives);
+> staged plan: [08 — Domain Packs](discovery/implementation/08-domain-packs.md). This table
+> describes the **current** layout until that plan executes.
 
 ## Dependencies
 

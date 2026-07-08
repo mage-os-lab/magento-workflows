@@ -353,73 +353,33 @@ The compile constraint only *bites* where a module can realistically be missing:
 
 | Tier | Modules | Treatment |
 |---|---|---|
-| **Never absent on a functioning store** — required by `magento/product-community-edition` and presupposed by the engine's purpose | Sales, Quote, Customer, Catalog, Eav, CatalogInventory, SalesRule, Email, Store, Rule | Plain hard requires, declared honestly. No isolation gymnastics — a workflow engine on a store without Sales or Catalog is meaningless |
+| **Never absent on a functioning store** — required by `magento/product-community-edition` and presupposed by the engine's purpose | Sales, Quote, Customer, Catalog, Eav, CatalogInventory, SalesRule, Email, Store, Rule | Plain hard requires, declared honestly, wherever the artifact lives — any pack may require these without ceremony. (Their bindings still get their own domain packs in the decided layout below — for organization and Mage-OS removability alignment, not compile-safety) |
 | **Plausibly disabled, occasionally pruned** (headless/slim builds) | Newsletter, Review, Wishlist, Cms | Isolate at module granularity: one small workflows module per domain |
 | **Genuinely removable package family** | MSI (`magento/module-inventory-*`) | Keep the shipped runtime-guard pattern (`set_stock`); stock condition leaves follow the same style or live behind an MSI-aware provider that degrades to legacy |
 
-### Recommended layout (lean version)
+### Decided layout: the full vertical split (July 2026)
 
-The existing shared packs stay, get honest, and keep the never-absent tier as hard requires;
-new small modules exist **only where absence is real**:
+**Decision:** go with the full split — `workflows-sales`, `workflows-customer`,
+`workflows-catalog`, `workflows-inventory` plus the small optional-domain modules
+(`workflows-review`, `workflows-newsletter`, `workflows-wishlist` when its first item lands,
+`workflows-cms` deferred) and a `workflows-suite` metapackage, with the engine,
+triggers-core, actions-core and scheduler slimmed to their entity-agnostic remainders.
 
-| Package | Change |
-|---|---|
-| `mage-os/workflows` (engine) | Composer honesty pass: declare sales, customer, catalog, eav (all never-absent) for the roots/hydrators/relations it already contains — or, optional hygiene, move the roots out (below). Either way the metadata stops lying |
-| `workflows-triggers-core` | Declare sales + customer; **move the review observer out** to `workflows-review`. Backlog observers for never-absent domains (ORD-T\*, DOC-T\*, CUS-T1/T2, PRD-T\*) land here |
-| `workflows-actions-core` | Keeps sales/customer/catalog/catalog-inventory/sales-rule/email requires (all never-absent). **Moves `customer.newsletter` out**; `anonymize`'s newsletter-unsubscribe becomes a plugin contributed by `workflows-newsletter` (or a runtime-guarded seam). Backlog actions for never-absent domains land here |
-| `workflows-scheduler` | Unchanged requires (all never-absent). Birthday detector (CUS-T3) and the stock-event extensions (INV-T1/T2) land here |
-| **`workflows-review`** (new, small) | Existing `review_submitted` observer moves in; REV-T1, REV-A1, PRD-C2, `reviews_count` half of CUS-C3. Requires `magento/module-review` |
-| **`workflows-wishlist`** (new, small) | WSH-T1, WSH-C1, `wishlist_items_count` half of CUS-C3. Requires `magento/module-wishlist` |
-| **`workflows-newsletter`** (new, small) | SUB-T1, SUB-C1, CUS-C1, `customer.newsletter` action, anonymize-unsubscribe plugin. Requires `magento/module-newsletter` |
-| `workflows-cms` (deferred) | CMS-T1, pending the entity-less execution decision. Requires `magento/module-cms` |
-| **`mage-os/workflows-suite`** (metapackage) | Batteries-included install: engine + ui + triggers/actions/scheduler + the three optional domain modules |
+A leaner variant (shared packs keep honest hard requires on the never-absent tier; new modules
+only for the plausibly-absent domains) was considered and set aside: the full split gives one
+uniform placement rule for the entire backlog, makes the engine entity-agnostic in fact rather
+than by intention, and aligns with Mage-OS's module-removability direction — at the cost of
+four more small packages, which the monorepo's publishing and CI already absorb.
 
-Net cost over today: **three small modules plus a metapackage** (CMS deferred), instead of the
-six-to-seven-package vertical split. One module per composer package, per Magento convention —
-`module:enable` dependency checking works through per-package composer metadata, and the
-monorepo's publishing/CI already handles the multi-package layout.
+The tiering above still governs two things in the decided layout: **composer requires** (packs
+may freely hard-require never-absent `magento/*` modules — e.g. `workflows-customer` requires
+`magento/module-sales` for its open-orders relation — while plausibly-absent domains only ever
+appear as requires of their own small module) and **MSI** (the `set_stock` runtime-guard
+pattern stays).
 
-**Optional hygiene, not required by the constraint:** the fuller vertical split
-(`workflows-sales` / `-customer` / `-catalog` / `-inventory`, engine stripped of entity
-bindings) remains the architecturally purest shape and becomes *worth doing* if Mage-OS's
-module-removability direction makes the never-absent tier genuinely removable. Nothing in the
-lean layout forecloses it: the same DI-pool seams carry either packaging, so the split can
-happen later as pure file moves. Decide then, not now.
-
-### Composition rules (what keeps it clean)
-
-1. **Placement follows absence-realism.** Never-absent domain artifacts go in the shared packs
-   with declared requires; plausibly-absent domain artifacts go in that domain's small module;
-   single optional seams inside otherwise hard-dep classes use the `set_stock` runtime-guard
-   style — and stay rare.
-2. **Contributions flow toward the owner of the source data**, wherever the artifact lives:
-   review contributes rating aggregates to the product root, wishlist/newsletter contribute
-   leaves to the customer root — via the DI pools, never by patching the root's class. The
-   shared packs must never import from Newsletter/Review/Wishlist/Cms.
-3. **Optional modules may require shared packs, never each other.** Cross-domain behavior
-   spanning two optional domains (none exists in this backlog) would get a leaf bridge module —
-   the standard Magento pattern.
-4. **`composer.json` must match compile-time references.** Add a CI check greping each module's
-   `use`/`extends`/type-hints against declared requires, with an explicit allowlist annotation
-   for sanctioned runtime-guarded references (`SetStock`'s `Magento\InventoryApi\*` strings) so
-   the honesty is enforced, not aspirational.
-5. **`module.xml` `<sequence>` entries are free** — the module loader ignores sequence
-   references to absent modules, so ordering hints toward optional modules cost nothing.
-
-### Migration items (prepend to the backlog)
-
-Pre-alpha, no live installs ([README §Status](../../README.md)) — classes move without BC shims.
-
-| ID | Item | Size |
-|---|---|---|
-| PKG-0 | Pool-ify `CustomerAggregateProvider`: aggregate providers per root become a DI map so review/wishlist (and future packs) can contribute customer-root aggregates; confirm with a test that the leaf/child-condition/hydrator maps accept cross-module contribution | M |
-| PKG-1 | Composer honesty pass: add the missing never-absent requires to engine and triggers-core; add the import-vs-require CI check with the runtime-guard allowlist | S |
-| PKG-2 | Create `workflows-review`: move the review observer + trigger metadata out of triggers-core (REV-T1/REV-A1/PRD-C2 then land here) | S |
-| PKG-3 | Create `workflows-newsletter`: move `customer.newsletter` out of actions-core; convert anonymize's newsletter-unsubscribe into a plugin contributed by this module (SUB-T1/SUB-C1/CUS-C1 then land here) | M |
-| PKG-4 | Create `workflows-wishlist` skeleton — or simply let WSH-T1 create it | S |
-| PKG-5 | `workflows-suite` metapackage + README / [02 — Packages](../02-packages.md) update | S |
-
-PKG-0 and PKG-1 land first (PKG-0 unblocks the cross-module aggregate contributions; PKG-1 makes
-the baseline honest); PKG-2..4 are independent and agent-parallelizable; PKG-5 closes. The
-Tier 1–3 backlog then executes against this layout — each item's home follows from the tier
-table above.
+The target package table, placement rules, enablers (hydrator-map defaults, the aggregate
+pool, the CI dependency-honesty check), PR-sized stages S0–S6, the golden composition test,
+and the db_schema/config compatibility notes live in the implementation plan:
+**[08 — Domain Packs](implementation/08-domain-packs.md)**. The plan is pure reorganization —
+no behavior change, codes stable, templates/spec/REST untouched — and its S0 must land before
+the Tier 1–3 backlog items, whose homes then follow from the package table.
