@@ -17,12 +17,13 @@ Composer packages, mirroring the `mageos-async-events` family layout:
 | `mage-os/workflows-approvals` | Human-decision gate: the approval task table, decision service, REST endpoint, and admin grid/decision view behind the schema-4 `approval` step's core seam (optional; see [Approval Gate discovery](discovery/approval-gate.md)) |
 
 > **Proposed evolution (discovery):** to execute the [core coverage
-> backlog](discovery/core-coverage.md) without making every Magento core domain a hard
-> dependency of the shared packs, the bundled trigger/condition/action content would
-> reorganize into **vertical domain packs** (`workflows-sales`, `workflows-customer`,
-> `workflows-catalog`, `workflows-inventory`, plus small optional `-review` / `-wishlist` /
-> `-newsletter` packs and a `workflows-suite` metapackage), with `workflows-actions-core` /
-> `-triggers-core` / `-scheduler` slimmed to their entity-agnostic remainders. See
+> backlog](discovery/core-coverage.md) without breaking compilation or runtime on installs
+> missing optional core modules, the shared packs keep hard requires on the never-absent
+> domains (Sales, Customer, Catalog, …) — declared honestly — while the plausibly-absent
+> domains get **small dedicated modules** (`workflows-review`, `workflows-wishlist`,
+> `workflows-newsletter`, deferred `-cms`) plus a `workflows-suite` metapackage; MSI keeps the
+> runtime-guard pattern. Module enable state, not in-code guards, is the absence-safety
+> boundary. See
 > [Core Coverage §Packaging](discovery/core-coverage.md#packaging-where-the-backlog-lives).
 
 ## Dependencies
