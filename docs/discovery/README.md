@@ -58,6 +58,15 @@ Independent of Tracks 1–3 (depends only on the shipped wait/resume machinery).
 v1 approval-chain non-goal at its narrowest point: one gate step, not a chain/task-management
 subsystem.
 
+## Track 5 — Core coverage
+
+| Doc | Covers |
+|---|---|
+| [core-coverage.md](core-coverage.md) | Gap analysis of trigger/condition/action coverage against Magento Open Source core, per entity, ending in a tiered agent-sized implementation backlog (~15 triggers, ~14 condition/relation enrichments, 1 new entity root, 9 actions) |
+
+Pure breadth work over existing patterns (observer + async-event, condition root/leaf, relation
+resolver, action class) — independent of Tracks 1–4 and parallelizable item-by-item.
+
 ## Pre-discovery explorations
 
 Earlier-stage than the tracks above: architecture mapping with no recommendation or committed
