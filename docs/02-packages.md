@@ -16,6 +16,15 @@ Composer packages, mirroring the `mageos-async-events` family layout:
 | `mage-os/workflows-admin-extension` | ACL-gated summary strip + view/create deep links on native entity grids, layered on `mage-os/workflows` + `mage-os/workflows-admin-ui` (optional; entity modules are soft dependencies) |
 | `mage-os/workflows-approvals` | Human-decision gate: the approval task table, decision service, REST endpoint, and admin grid/decision view behind the schema-4 `approval` step's core seam (optional; see [Approval Gate discovery](discovery/approval-gate.md)) |
 
+> **Proposed evolution (discovery):** to execute the [core coverage
+> backlog](discovery/core-coverage.md) without making every Magento core domain a hard
+> dependency of the shared packs, the bundled trigger/condition/action content would
+> reorganize into **vertical domain packs** (`workflows-sales`, `workflows-customer`,
+> `workflows-catalog`, `workflows-inventory`, plus small optional `-review` / `-wishlist` /
+> `-newsletter` packs and a `workflows-suite` metapackage), with `workflows-actions-core` /
+> `-triggers-core` / `-scheduler` slimmed to their entity-agnostic remainders. See
+> [Core Coverage §Packaging](discovery/core-coverage.md#packaging-where-the-backlog-lives).
+
 ## Dependencies
 
 - **Hard dependency of core:** `mage-os/mageos-async-events` — the engine rides its notifier seam, queue transport, retry, and tracing (see [Triggers](05-triggers.md) and [Execution Model](08-execution-model.md)).
