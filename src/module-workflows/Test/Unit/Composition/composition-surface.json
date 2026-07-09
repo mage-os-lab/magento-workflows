@@ -17,6 +17,7 @@
         "order.create_invoice": "MageOS\\WorkflowsSales\\Action\\Order\\CreateInvoice",
         "order.create_shipment": "MageOS\\WorkflowsSales\\Action\\Order\\CreateShipment",
         "order.hold": "MageOS\\WorkflowsSales\\Action\\Order\\Hold",
+        "order.send_email": "MageOS\\WorkflowsSales\\Action\\Order\\SendEmail",
         "order.unhold": "MageOS\\WorkflowsSales\\Action\\Order\\Unhold",
         "product.set_attribute": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetAttribute",
         "product.set_categories": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetCategories",
@@ -71,11 +72,13 @@
         "sales.creditmemo.created": "sales_order|Sales",
         "sales.invoice.created": "sales_order|Sales",
         "sales.invoice.paid": "sales_order|Sales",
+        "sales.order.comment_added": "sales_order|Sales",
         "sales.order.created": "sales_order|Sales",
         "sales.order.paid": "sales_order|Sales",
         "sales.order.status_changed": "sales_order|Sales",
         "sales.order.updated": "sales_order|Sales",
-        "sales.shipment.created": "sales_order|Sales"
+        "sales.shipment.created": "sales_order|Sales",
+        "sales.shipment.tracking_added": "sales_order|Sales"
     },
     "async_events": {
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
@@ -86,8 +89,10 @@
         "newsletter.subscription_changed": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\SubscriberHydrationService::getById",
         "quote.abandoned": "Magento\\Quote\\Api\\CartRepositoryInterface::get",
         "sales.invoice.paid": "Magento\\Sales\\Api\\OrderRepositoryInterface::get",
+        "sales.order.comment_added": "Magento\\Sales\\Api\\OrderRepositoryInterface::get",
         "sales.order.paid": "Magento\\Sales\\Api\\OrderRepositoryInterface::get",
-        "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
+        "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get",
+        "sales.shipment.tracking_added": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
     },
     "observers": {
         "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerGroupChangeObserver",
@@ -97,7 +102,9 @@
         "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsReview\\Observer\\ReviewSubmittedObserver",
         "sales_order_invoice_pay::mageos_workflows_triggers_invoice_paid": "MageOS\\WorkflowsSales\\Observer\\InvoicePaidObserver",
         "sales_order_save_after::mageos_workflows_triggers_order_paid": "MageOS\\WorkflowsSales\\Observer\\OrderPaidObserver",
-        "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver"
+        "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver",
+        "sales_order_shipment_track_save_after::mageos_workflows_triggers_shipment_tracking_added": "MageOS\\WorkflowsSales\\Observer\\ShipmentTrackingAddedObserver",
+        "sales_order_status_history_save_after::mageos_workflows_triggers_order_comment_added": "MageOS\\WorkflowsSales\\Observer\\OrderCommentAddedObserver"
     },
     "leaf_conditions": {
         "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Condition\\Product\\Attribute"

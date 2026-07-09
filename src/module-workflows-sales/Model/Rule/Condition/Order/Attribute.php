@@ -13,12 +13,14 @@ use Magento\Store\Model\System\Store as SystemStore;
 use MageOS\Workflows\Model\Rule\AggregateProviderPool;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCondition;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
+use MageOS\WorkflowsSales\Model\Option\CartPriceRuleOptionSource;
 
 /**
  * Order attribute condition over common flat sales_order columns, plus the
  * lifecycle-flag aggregates contributed to the order root through the
  * AggregateProviderPool (ORD-C1 / E2) — can_invoice, can_ship, can_creditmemo,
- * is_virtual, invoice_count, shipment_count.
+ * is_virtual, invoice_count, shipment_count — plus the `applied_rule_ids`
+ * multiselect (ORD-C2).
  *
  * The flat columns are fully snapshot-servable for event triggers riding the
  * async-events order payload; anything missing (e.g. shipping_method on a slim
@@ -27,6 +29,17 @@ use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
  * needs_hydration and resolve in phase 2 against the hydrated order (OrderHydrator
  * merges them through the same pool); absent-for-this-order aggregates then
  * only match the negative operators (fail-toward-false).
+ *
+ * applied_rule_ids (ORD-C2) is the flat, comma-separated list of cart-price-rule
+ * ids the order matched (a snapshot-friendly sales_order column). It is a
+ * multiselect handled with SET semantics, mirroring category_ids in the catalog
+ * pack's Product/Attribute: the stored "1,4,7" string is exploded into a list so
+ * the `is one of` / `is not one of` operators reduce to set intersection against
+ * the selected rule ids (core's array_intersect branch). Options come from the
+ * pack's CartPriceRuleOptionSource. An order that matched NO rule is the empty
+ * set — "is one of X" is false, "is not one of X" is true — which is a genuine
+ * answer, distinct from an indeterminable (absent) attribute that only the
+ * negative operators match.
  */
 class Attribute extends AbstractWorkflowCondition
 {
@@ -60,6 +73,7 @@ class Attribute extends AbstractWorkflowCondition
         'shipping_region' => 'Shipping State/Province',
         'shipping_postcode' => 'Shipping Postcode',
         'shipping_city' => 'Shipping City',
+        'applied_rule_ids' => 'Applied Cart Price Rules',
     ];
 
     /**
@@ -96,6 +110,7 @@ class Attribute extends AbstractWorkflowCondition
         private readonly PaymentMethods $paymentMethods,
         private readonly ShippingMethods $shippingMethods,
         private readonly AggregateProviderPool $aggregateProviderPool,
+        private readonly CartPriceRuleOptionSource $cartPriceRuleOptionSource,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -146,6 +161,7 @@ class Attribute extends AbstractWorkflowCondition
             'created_at' => 'date',
             'customer_is_guest' => 'boolean',
             'status', 'state', 'customer_group_id', 'store_id', 'payment_method', 'shipping_method' => 'select',
+            'applied_rule_ids' => 'multiselect',
             default => 'string',
         };
     }
@@ -158,6 +174,7 @@ class Attribute extends AbstractWorkflowCondition
         return match ($this->getInputType()) {
             'date' => 'date',
             'select', 'boolean' => 'select',
+            'multiselect' => 'multiselect',
             default => 'text',
         };
     }
@@ -175,6 +192,9 @@ class Attribute extends AbstractWorkflowCondition
                 'store_id' => $this->systemStore->getStoreValuesForForm(),
                 'payment_method' => $this->paymentMethods->toOptionArray(),
                 'shipping_method' => $this->shippingMethods->toOptionArray(),
+                // Cart-price-rule ids from the pack's search-typed option source
+                // (F6); capped at the source's RESULT_LIMIT.
+                'applied_rule_ids' => $this->cartPriceRuleOptionSource->fetch(),
                 default => [],
             };
             // Yes/No for every boolean attribute — the flat customer_is_guest
@@ -193,6 +213,14 @@ class Attribute extends AbstractWorkflowCondition
     public function validate(DataObject $model): bool
     {
         $attribute = (string)$this->getAttribute();
+
+        // applied_rule_ids is a flat comma-separated column matched as a SET:
+        // explode it (snapshot-first, hydrate on miss) so the `is one of` /
+        // `is not one of` operators reduce to a set intersection.
+        if ($attribute === 'applied_rule_ids') {
+            return $this->validateAppliedRuleIds($model);
+        }
+
         if (!$model->hasData($attribute) && isset(self::NESTED_SOURCES[$attribute])) {
             [$payloadKey, $nestedKey] = self::NESTED_SOURCES[$attribute];
             $nested = $model->getData($payloadKey);
@@ -201,6 +229,45 @@ class Attribute extends AbstractWorkflowCondition
             }
         }
         return parent::validate($model);
+    }
+
+    /**
+     * Set-match the order's applied_rule_ids, snapshot-first then hydrated.
+     * A present-but-empty list is the empty set (a real answer); a fully absent
+     * attribute (neither snapshot nor hydrated order carries it) stays null so
+     * only the negative operators match (fail-toward-false).
+     */
+    private function validateAppliedRuleIds(DataObject $model): bool
+    {
+        if ($model->hasData('applied_rule_ids')) {
+            return (bool)$this->validateAttribute($this->splitRuleIds($model->getData('applied_rule_ids')));
+        }
+        $entity = $this->hydrateEntity($model);
+        if ($entity !== null) {
+            return (bool)$this->validateAttribute($this->splitRuleIds($entity->getData('applied_rule_ids')));
+        }
+        return (bool)$this->validateAttribute(null);
+    }
+
+    /**
+     * Normalize a stored applied_rule_ids value ("1,4,7", or an already-split
+     * array) into a list of non-empty id strings.
+     *
+     * @return string[]
+     */
+    private function splitRuleIds(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            $parts = $raw;
+        } elseif (is_string($raw) || is_numeric($raw)) {
+            $parts = preg_split('/\s*,\s*/', trim((string)$raw), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        } else {
+            $parts = [];
+        }
+        return array_values(array_filter(
+            array_map(static fn ($v): string => trim((string)$v), $parts),
+            static fn (string $v): bool => $v !== ''
+        ));
     }
 
     /**

@@ -51,6 +51,46 @@ class Order
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
+    public function getStatus()
+    {
+        return null;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getCreatedAt()
+    {
+        return null;
+    }
+
+    /**
+     * @return array
+     */
+    public function getStatusHistories()
+    {
+        return [];
+    }
+
+    /**
+     * @return float|string|null
+     */
+    public function getTotalPaid()
+    {
+        return null;
+    }
+
+    /**
+     * @return float|string|null
+     */
+    public function getTotalRefunded()
+    {
+        return null;
+    }
+
     public function canShip(): bool
     {
         throw new \RuntimeException('canShip() not implemented in shim');

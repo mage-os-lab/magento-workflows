@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsSales\Test\Unit\Model\Rule\Condition\Order;
 
+use Magento\Framework\DataObject;
 use MageOS\Workflows\Model\Rule\AggregateProviderInterface;
 use MageOS\Workflows\Model\Rule\AggregateProviderPool;
+use MageOS\WorkflowsSales\Model\Option\CartPriceRuleOptionSource;
 use MageOS\WorkflowsSales\Model\Rule\Condition\Order\Attribute;
 use PHPUnit\Framework\TestCase;
 
@@ -30,6 +32,32 @@ class AttributeTest extends TestCase
         $prop = $ref->getProperty('aggregateProviderPool');
         $prop->setValue($attribute, $pool);
         return $attribute;
+    }
+
+    private function attributeWithSource(CartPriceRuleOptionSource $source): Attribute
+    {
+        $ref = new \ReflectionClass(Attribute::class);
+        /** @var Attribute $attribute */
+        $attribute = $this->attributeWithPool($this->pool());
+        $prop = $ref->getProperty('cartPriceRuleOptionSource');
+        $prop->setValue($attribute, $source);
+        return $attribute;
+    }
+
+    private function ruleSourceReturning(array $options): CartPriceRuleOptionSource
+    {
+        return new class($options) extends CartPriceRuleOptionSource {
+            /**
+             * @param array<int, array{value: string, label: string}> $options
+             */
+            public function __construct(private readonly array $options)
+            {
+            }
+            protected function loadOptions(): array
+            {
+                return $this->options;
+            }
+        };
     }
 
     private function pool(): AggregateProviderPool
@@ -98,5 +126,83 @@ class AttributeTest extends TestCase
         $this->assertTrue(in_array(1, $values, true));
         $this->assertTrue(in_array(0, $values, true));
         $this->assertSame('select', $attribute->getValueElementType());
+    }
+
+    // --- ORD-C2: applied_rule_ids multiselect --------------------------------
+
+    public function testAppliedRuleIdsIsMultiselect(): void
+    {
+        $attribute = $this->attributeWithPool($this->pool());
+        $attribute->setData('attribute', 'applied_rule_ids');
+
+        $this->assertSame('multiselect', $attribute->getInputType());
+        $this->assertSame('multiselect', $attribute->getValueElementType());
+        $this->assertArrayHasKey('applied_rule_ids', $attribute->loadAttributeOptions()->getAttributeOption());
+    }
+
+    public function testAppliedRuleIdsOptionsComeFromCartPriceRuleSource(): void
+    {
+        $attribute = $this->attributeWithSource($this->ruleSourceReturning([
+            ['value' => '1', 'label' => 'Summer Sale'],
+            ['value' => '4', 'label' => 'VIP'],
+        ]));
+        $attribute->setData('attribute', 'applied_rule_ids');
+
+        $options = $attribute->getValueSelectOptions();
+
+        $this->assertSame(['1', '4'], array_column($options, 'value'));
+        $this->assertSame(['Summer Sale', 'VIP'], array_column($options, 'label'));
+    }
+
+    public function testAppliedRuleIdsIsOneOfMatchesOnSetIntersection(): void
+    {
+        $attribute = $this->appliedRuleIdsCondition('()', '1,4');
+
+        // Order matched rules 4 and 7: shares 4 with the selected {1,4} -> match.
+        $this->assertTrue($attribute->validate(new DataObject(['applied_rule_ids' => '4,7'])));
+        // Order matched rules 8 and 9: disjoint from {1,4} -> no match.
+        $this->assertFalse($attribute->validate(new DataObject(['applied_rule_ids' => '8,9'])));
+    }
+
+    public function testAppliedRuleIdsIsNotOneOfIsTheSetComplement(): void
+    {
+        $attribute = $this->appliedRuleIdsCondition('!()', '1,4');
+
+        // Disjoint -> "is not one of" is true.
+        $this->assertTrue($attribute->validate(new DataObject(['applied_rule_ids' => '8,9'])));
+        // Intersecting -> false.
+        $this->assertFalse($attribute->validate(new DataObject(['applied_rule_ids' => '4,7'])));
+    }
+
+    public function testAppliedRuleIdsEmptyOrderIsTheEmptySet(): void
+    {
+        // An order that matched no rule: "is one of" false, "is not one of" true.
+        $this->assertFalse(
+            $this->appliedRuleIdsCondition('()', '1,4')->validate(new DataObject(['applied_rule_ids' => '']))
+        );
+        $this->assertTrue(
+            $this->appliedRuleIdsCondition('!()', '1,4')->validate(new DataObject(['applied_rule_ids' => '']))
+        );
+    }
+
+    public function testAppliedRuleIdsAbsentFailsTowardFalse(): void
+    {
+        // Attribute entirely absent (no snapshot value, no hydration provider):
+        // only the negative operator matches.
+        $this->assertFalse(
+            $this->appliedRuleIdsCondition('()', '1,4')->validate(new DataObject([]))
+        );
+        $this->assertTrue(
+            $this->appliedRuleIdsCondition('!()', '1,4')->validate(new DataObject([]))
+        );
+    }
+
+    private function appliedRuleIdsCondition(string $operator, string $value): Attribute
+    {
+        $attribute = $this->attributeWithPool($this->pool());
+        $attribute->setData('attribute', 'applied_rule_ids');
+        $attribute->setData('operator', $operator);
+        $attribute->setData('value', $value);
+        return $attribute;
     }
 }

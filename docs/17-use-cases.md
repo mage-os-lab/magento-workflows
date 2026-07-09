@@ -33,6 +33,10 @@ side — flows the engine still does *not* support — is catalogued in
 - Paid-but-unshipped SLA: on a daily schedule, escalate orders still shippable (`can_ship = Yes`) 48 hours after they were paid.
 - Add carrier tracking to the latest shipment and email the customer the moment an online capture settles (`sales.invoice.paid` + `order.add_tracking`).
 - Park a goodwill-credit request for a sales-manager decision; issue the approved amount on approval, send a policy email on rejection, escalate on silence (`approval` gate).
+- Email the customer whenever a storefront-visible order comment is posted: on `sales.order.comment_added` (fires only for rows with real comment text, not status-only history), send them the latest visible comment (`order.send_email` in `comment` mode) — the comment is recorded once by `order.add_comment` and the email composes on top rather than re-adding it.
+- React the instant carrier tracking is attached: on `sales.shipment.tracking_added`, notify the customer (or a 3PL webhook) with the carrier code, tracking number and shipment increment id carried in the payload.
+- Time-in-status SLA with goodwill: on a daily schedule, for orders sitting in "Processing" longer than 48 hours (`hours_in_current_status >= 48`), issue a 10%-of-paid goodwill credit (`order.create_creditmemo`, `mode = percent`, `percent = 10`) and add an internal comment — no item lines, a clean adjustment refund.
+- Refund a flat concession capped at what remains: `order.create_creditmemo` with `mode = fixed`, `amount = 25` refunds $25, or the refundable remainder if less than $25 is still open.
 
 ## Fraud, risk & payments
 
@@ -107,6 +111,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Schedule a "release at 09:00 store time" price drop the morning of a product launch.
 - End a promotion and restore regular pricing after exactly 7 business days.
 - Detect a price drop steeper than 30% and revert it unless a merchandiser confirms within 24 hours (`approval` gate with a required timeout).
+- Act on orders that redeemed a specific promotion: condition on the order's `applied_rule_ids` (multiselect, "is one of" the selected cart-price rules) to, say, tag every order that used the "Summer Sale" rule for a post-campaign audit, or suppress a stacking follow-up offer when a VIP rule already applied.
 
 ## Marketing, reviews & post-purchase
 
