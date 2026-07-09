@@ -201,14 +201,27 @@ Sizes: **S** = pattern clone (≤ ~half day), **M** = new pattern variant (1–2
 new triggers must also state their loop-guard/debounce interaction in the class docblock.
 
 > **Execution status (July 2026).** The [domain-pack split](implementation/08-domain-packs.md)
-> that hosts this backlog executed first (S0–S6 + E5). **Tier 1 is implemented** — ORD-T1,
-> DOC-T1, INV-T1, SUB-T1, SUB-C1, CUS-T3 (+CUS-C4 pulled forward), CUS-C1, ORD-C1, QTE-C1,
-> PRD-C1, ORD-A1 — each in its domain pack per the placement rules, with the golden
-> composition fixture growing by exactly the expected keys per item. **Blocked, needs the
-> upstream repo added to the session:** VER-1 (audit of `mageos-common-async-events`
-> declarations) and with it CUS-T1 (`customer.deleted`), which should not be implemented as a
-> gap-fill until the upstream check rules out a collision. Tier-2 items implemented since are
-> marked in their sections' commit history; Tier 3 remains demand-driven.
+> that hosts this backlog executed first (S0–S6 + E5). **Tier 1 and Tier 2 are implemented**
+> — every item in its domain pack per the placement rules, the golden composition fixture
+> growing by exactly the expected keys per item, suite green throughout (1069 → 1300 tests).
+> Net new surface: **+14 event triggers** (order paid/comment-added, invoice paid, shipment
+> tracking-added, back-in-stock, subscription-changed, birthday-upcoming, address-changed,
+> product created/updated/price-changed/status-changed, review status-changed, wishlist
+> item-added), **+1 detector** (birthday), **+1 entity root** (`newsletter_subscriber`),
+> **+1 relation** (`product.wishlisted_customers`), **~25 condition attributes** via seven new
+> aggregate providers plus applied-rules/website multiselects and the quote items subtree,
+> **+6 actions** (add-tracking, send-email, partial creditmemo modes, assign-websites,
+> product-links, review set-status), and the `workflows-wishlist` pack was born.
+>
+> **Deviations:** DOC-C2 (order→document relations) was *skipped honestly* — leaf-less
+> relation targets lack an engine contract and bare EXISTS duplicates the ORD-C1 counts; a
+> future `creditmemo_count` aggregate is the clean substitute. CUS-C4 was pulled forward from
+> Tier 3. **Blocked, needs `mage-os/mageos-common-async-events` added to the session:** VER-1
+> (upstream declaration audit), CUS-T1 (`customer.deleted` — collision risk until audited),
+> and DOC-C1's upstream-payload half. PRD-T1's and CUS-T2's upstream assumptions are
+> documented in their packs' async_events.xml headers for reconciliation when VER-1 runs.
+> **Tier 3 remains demand-driven** (PRD-T4 snapshot-only deleted triggers, tier prices,
+> password-reset action, coupon deactivation, category/CMS ops triggers).
 
 ### Tier 0 — verify first (blocks scoping of several items)
 
