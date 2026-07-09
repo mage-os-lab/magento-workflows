@@ -39,7 +39,7 @@ The webhook action ships **hardened, not hardenable**:
 
 ## Subscription ownership
 
-The hidden async-events subscriptions created for event triggers carry an `owner=workflow:<id>` marker; the async-events admin UI and REST API **refuse mutation of owned subscriptions**, preventing an out-of-band edit from redirecting a workflow's event stream.
+The hidden async-events subscriptions created for event triggers are owned via their **recipient URL**: `workflow:<id>` (and `workflow:<id>:wait:<event>` for wait resumes) is both the dispatch routing key and the ownership marker — there is no separate owner field. `SubscriptionOwnershipPlugin` **refuses mutation of owned subscriptions** (checking both the incoming and the persisted recipient), preventing an out-of-band edit via the async-events admin UI or REST API from redirecting a workflow's event stream. Pinned by `SubscriptionOwnershipPluginTest`.
 
 ## PII containment
 

@@ -64,8 +64,11 @@ class DryRunService
         // Purely additive — null for non-fan-out workflows.
         $fanOutNode = $this->fanOutTracePreview->build($request->getFanOut(), $request->getEntityId());
 
-        // 2. Missing entity is a trace-level error up front, mirroring the
-        //    production skipped-on-missing-entity semantics (real-entity runs only).
+        // 2. Missing entity is a trace-level error up front (real-entity runs
+        //    only). Production has no execution-level skipped-on-missing-entity
+        //    path — a vanished entity surfaces per-action there (issue #13) —
+        //    but a dry run against a nonexistent entity is operator error and
+        //    deserves an immediate, explicit answer.
         if (!$request->isSynthetic()
             && $request->getEntityId() !== null && $request->getEntityId() > 0
             && $this->hydrationProvider->getEntity($request->getEntityType(), $request->getEntityId(), false) === null

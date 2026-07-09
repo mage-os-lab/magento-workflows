@@ -47,7 +47,7 @@ An optional `simulate()` interface is added to the contract in v1 (as an optiona
 
 ² Status transitions are validated against the state machine — reuse `Magento\Sales\Model\Order` guards; an invalid transition = step failure, not silent corruption.
 
-³ Same guard philosophy: `order.create_shipment` (`ShipOrderInterface`) is gated by `canShip()`, `order.create_creditmemo` (`RefundOrderInterface`) by `canCreditmemo()` — a non-shippable/non-refundable order is a step failure, not silent corruption.
+³ Same guard philosophy: `order.create_shipment` (`ShipOrderInterface`) is gated by `canShip()`, `order.create_creditmemo` (`RefundOrderInterface`) by `canCreditmemo()` — but the two outcomes differ. An *illegal transition* (invalid target state) is a step failure; a *not-applicable* order (nothing left to ship, already fully refunded/invoiced) returns `skipped` with an explanatory message. Skipped-not-failed is what makes the actions safe under at-least-once delivery: a redelivered creditmemo step must not fail the execution because the refund already happened on the first delivery. Pinned by `CreateShipmentBehaviorTest`, `CreateCreditmemoBehaviorTest`, and `CreateInvoiceTest`.
 
 ⁴ `customer.anonymize` is a GDPR assist: scrambles PII fields to an RFC 2606 marker email and unsubscribes newsletter. It requires an explicit `confirm: true` in the step config (refuses to run otherwise) and is idempotent — re-running an already-anonymized customer is a no-op.
 

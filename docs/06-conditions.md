@@ -93,11 +93,11 @@ The identified primary risk is hydration cost per event. Mitigation is structura
 
 ## Delay semantics
 
-After a delay, the world has moved. Each post-delay branch/step carries `revalidate_entity: bool`:
+After a delay, the world has moved. Each branch/switch step carries `revalidate_entity: bool`:
 
 | `revalidate_entity` | Behavior | Correct for |
 |---|---|---|
 | `true` | Re-hydrate fresh and re-evaluate (AutomateWoo's "validate before send") | "Email 1h after abandonment *if still abandoned*" |
 | `false` | Evaluate against the frozen trigger snapshot | "Log what it looked like at order time" |
 
-Exposed as a checkbox; **defaults to `true` on branches following delays**. The form assembler applies that default (a branch row whose preceding row is a `delay` gets `revalidate_entity: true` unless the row sets it explicitly); a post-delay `branch`/`switch` left at `false` raises the `GRAPH_POST_DELAY_STALE` warning in the save-time validation pipeline ([Execution Model §Static graph validation](08-execution-model.md#static-graph-validation)) — non-blocking, but usually a mistake. `switch` carries one shared `revalidate_entity` for the whole step: one hydration, N case evaluations. An `approval` gate ([Execution Model §Approval steps](08-execution-model.md#approval-steps-schema-4)) can park for days awaiting a decision, so the same staleness hazard — and the same `GRAPH_POST_DELAY_STALE` warning — applies to a `revalidate_entity: false` branch/switch directly after one.
+Exposed as a checkbox; **the executor defaults to `true` for every branch/switch step**, not only those following a delay — snapshots can be stale for other reasons (queue lag, redelivery), so fresh-by-default is the safer posture and post-delay staleness is just the motivating case (pinned by `ExecutorWalkTest` / `ConditionEvaluatorTest`). The form assembler applies that default (a branch row whose preceding row is a `delay` gets `revalidate_entity: true` unless the row sets it explicitly); a post-delay `branch`/`switch` left at `false` raises the `GRAPH_POST_DELAY_STALE` warning in the save-time validation pipeline ([Execution Model §Static graph validation](08-execution-model.md#static-graph-validation)) — non-blocking, but usually a mistake. `switch` carries one shared `revalidate_entity` for the whole step: one hydration, N case evaluations. An `approval` gate ([Execution Model §Approval steps](08-execution-model.md#approval-steps-schema-4)) can park for days awaiting a decision, so the same staleness hazard — and the same `GRAPH_POST_DELAY_STALE` warning — applies to a `revalidate_entity: false` branch/switch directly after one.

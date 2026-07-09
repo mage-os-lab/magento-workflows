@@ -11,15 +11,17 @@ class WorkflowNotifier implements NotifierInterface   // metadata: "workflow"
 {
     public function notify(AsyncEventDisplayInterface $event, array $data): ResultInterface
     {
+        // The workflow id is derived from the subscription's recipient_url
+        // ("workflow:<id>"; wait resumes use "workflow:<id>:wait:<event>").
         // $data = resolved service-class output (already the hydrated DTO, e.g. OrderInterface as array)
         return $this->dispatcher->dispatch(
-            (int) $event->getSubscriptionData('workflow_id'), $data
+            $this->workflowIdFromRecipient($event), $data
         );
     }
 }
 ```
 
-Enabling a workflow programmatically creates a hidden async-event subscription (`event_name` = trigger ref, `metadata` = `workflow`, recipient = workflow ID). Disabling deactivates it. Consequences, all favorable:
+Enabling a workflow programmatically creates a hidden async-event subscription (`event_name` = trigger ref, `metadata` = `workflow`, `recipient_url` = `workflow:<id>`). Disabling deactivates it. Consequences, all favorable:
 
 - The engine inherits async-events' **queue transport, quadratic backoff retry, dead-lettering, UUID tracing, replay, and ES-indexed searchability** with zero code. A failed workflow dispatch is just a failed delivery — replayable from the existing admin grid.
 - The **payload arrives pre-hydrated** by the event's declared service class (`OrderRepositoryInterface::get` etc.) — the same snapshot an HTTP subscriber would get. This becomes the trigger snapshot placed into execution `context.trigger`.
@@ -29,7 +31,7 @@ Enabling a workflow programmatically creates a hidden async-event subscription (
 
 ² Same query shape, same answer: `StockThresholdDetector` (scheduler cron, every 10 minutes) publishes `inventory.stock_threshold_crossed` when a managed product's qty drops to or at `mageos_workflows/scheduler/stock_threshold` (default 5; `0` disables the detector). Hysteresis via the `mageos_workflow_stock_flag` table: a product is flagged on the downward crossing and unflagged only once qty recovers *above* the threshold, so a product hovering at the boundary fires once, not every 10 minutes.
 
-The hidden subscriptions carry an `owner=workflow:<id>` marker; the async-events admin UI and REST API refuse mutation of owned subscriptions ([Security §Subscription ownership](10-security.md#subscription-ownership)).
+There is no separate owner field: the `workflow:<id>` recipient URL **is** the ownership marker. `SubscriptionOwnershipPlugin` refuses mutation of any subscription whose incoming *or* persisted recipient carries the `workflow:` prefix, covering the async-events admin UI and REST API ([Security §Subscription ownership](10-security.md#subscription-ownership); pinned by `WorkflowNotifierTest` and `SubscriptionOwnershipPluginTest`).
 
 Wait steps (definition schema 2) add a second class of hidden subscription: one per waited-on event, recipient `workflow:<id>:wait:<event>`, reconciled at workflow save time. These deliver to `Dispatcher::resumeWaiting()` — waking parked executions for the matching entity — rather than spawning a fresh dispatch, and they exist independently of the workflow's own trigger type: a schedule- or manual-triggered workflow with wait steps still needs its wait events delivered ([Execution Model §Wait steps](08-execution-model.md#wait-steps-schema-2)).
 
