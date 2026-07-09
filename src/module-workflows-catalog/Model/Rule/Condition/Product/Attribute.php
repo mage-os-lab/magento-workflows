@@ -8,6 +8,7 @@ use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as P
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory as AttributeSetCollectionFactory;
 use Magento\Rule\Model\Condition\Context;
+use Magento\Store\Api\WebsiteRepositoryInterface;
 use MageOS\Workflows\Model\Rule\AggregateProviderPool;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCondition;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
@@ -18,19 +19,32 @@ use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
  *
  * loadAttributeOptions() offers every product attribute flagged usable in
  * promo rules or searchable — custom EAV attributes included automatically —
- * plus the special attribute_set_id and category_ids handling, plus any
- * aggregate leaves contributed to the catalog_product root through the
+ * plus the special attribute_set_id, category_ids and website_ids handling,
+ * plus any aggregate leaves contributed to the catalog_product root through the
  * aggregate pool (E2) — the inventory pack's stock leaves qty / is_in_stock /
  * salable_qty (PRD-C1) when that pack is installed, and nothing when it is not.
  * Validation targets order-item snapshots or hydrated products; snapshot misses
  * (which includes every aggregate leaf) hydrate the full product through the
  * provider (AbstractWorkflowCondition).
+ *
+ * website_ids (PRD-C3) is a multiselect special attribute with set semantics
+ * that mirror category_ids: the product's website membership is compared with
+ * "is one of / is not one of" over the website ids. It comes from
+ * $product->getWebsiteIds() (a lazy resource load), which ProductHydrator
+ * force-loads onto the hydrated product exactly like category_ids — so it is
+ * reliably present on hydrated products, but is NOT part of a typical trigger
+ * snapshot, so a website_ids condition classifies as needs_hydration and
+ * resolves in phase 2 (AbstractWorkflowCondition), same graceful path as
+ * category_ids and the aggregate leaves. Its option list is sourced from the
+ * store/website system (WebsiteRepositoryInterface), the way other packs
+ * option their bounded select fields.
  */
 class Attribute extends AbstractWorkflowCondition
 {
     private const SPECIAL_ATTRIBUTES = [
         'attribute_set_id' => 'Attribute Set',
         'category_ids' => 'Category',
+        'website_ids' => 'Website',
         'sku' => 'SKU',
     ];
 
@@ -48,6 +62,7 @@ class Attribute extends AbstractWorkflowCondition
         private readonly EavConfig $eavConfig,
         private readonly AttributeSetCollectionFactory $attributeSetCollectionFactory,
         private readonly AggregateProviderPool $aggregateProviderPool,
+        private readonly WebsiteRepositoryInterface $websiteRepository,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -118,7 +133,7 @@ class Attribute extends AbstractWorkflowCondition
         if ($code === 'attribute_set_id') {
             return 'select';
         }
-        if ($code === 'category_ids') {
+        if ($code === 'category_ids' || $code === 'website_ids') {
             // Simplified vs CatalogRule's dedicated "category" input: base
             // multiselect operators (is one of / is not one of) over the ids
             return 'multiselect';
@@ -166,6 +181,14 @@ class Attribute extends AbstractWorkflowCondition
                     $options = $this->attributeSetCollectionFactory->create()
                         ->setEntityTypeFilter($entityTypeId)
                         ->toOptionArray();
+                } elseif ($code === 'website_ids') {
+                    // Bounded system source: every website id => name (PRD-C3).
+                    foreach ($this->websiteRepository->getList() as $website) {
+                        $options[] = [
+                            'value' => (string)$website->getId(),
+                            'label' => (string)$website->getName(),
+                        ];
+                    }
                 } else {
                     $attribute = $this->getEavAttribute();
                     if ($attribute !== null && $attribute->usesSource()) {

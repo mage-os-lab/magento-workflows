@@ -18,8 +18,10 @@
         "order.create_shipment": "MageOS\\WorkflowsSales\\Action\\Order\\CreateShipment",
         "order.hold": "MageOS\\WorkflowsSales\\Action\\Order\\Hold",
         "order.unhold": "MageOS\\WorkflowsSales\\Action\\Order\\Unhold",
+        "product.assign_websites": "MageOS\\WorkflowsCatalog\\Action\\Product\\AssignWebsites",
         "product.set_attribute": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetAttribute",
         "product.set_categories": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetCategories",
+        "product.set_product_links": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetProductLinks",
         "product.set_special_price": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetSpecialPrice",
         "product.set_status": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetStatus",
         "product.set_stock": "MageOS\\WorkflowsInventory\\Action\\Product\\SetStock"
@@ -56,10 +58,15 @@
         "cart_price_rules": "MageOS\\WorkflowsSales\\Model\\Option\\CartPriceRuleOptionSource",
         "customer_groups": "MageOS\\WorkflowsCustomer\\Model\\Option\\CustomerGroupOptionSource",
         "email_templates": "MageOS\\Workflows\\Model\\Option\\EmailTemplateOptionSource",
-        "order_statuses": "MageOS\\WorkflowsSales\\Model\\Option\\OrderStatusOptionSource"
+        "order_statuses": "MageOS\\WorkflowsSales\\Model\\Option\\OrderStatusOptionSource",
+        "websites": "MageOS\\WorkflowsCatalog\\Model\\Option\\WebsiteOptionSource"
     },
     "trigger_events": {
+        "catalog.product.created": "catalog_product|Catalog",
+        "catalog.product.price_changed": "catalog_product|Catalog",
         "catalog.product.review_submitted": "catalog_product|Catalog",
+        "catalog.product.status_changed": "catalog_product|Catalog",
+        "catalog.product.updated": "catalog_product|Catalog",
         "customer.birthday_upcoming": "customer|Customer",
         "customer.created": "customer|Customer",
         "customer.group_changed": "customer|Customer",
@@ -78,7 +85,11 @@
         "sales.shipment.created": "sales_order|Sales"
     },
     "async_events": {
+        "catalog.product.created": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
+        "catalog.product.price_changed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
+        "catalog.product.status_changed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
+        "catalog.product.updated": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "customer.birthday_upcoming": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "customer.group_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "inventory.back_in_stock": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
@@ -90,6 +101,7 @@
         "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
     },
     "observers": {
+        "catalog_product_save_after::mageos_workflows_catalog_product_save": "MageOS\\WorkflowsCatalog\\Observer\\ProductSaveObserver",
         "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerGroupChangeObserver",
         "mageos_workflow_delete_after::mageos_workflows_triggers_subscription_sync_delete": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",

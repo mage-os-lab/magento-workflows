@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for product lifecycle (PRD-T1/T2/T3).
+         ONE observer publishes catalog.product.created / updated /
+         price_changed / status_changed off a single save. See
+         Observer\ProductSaveObserver for the created-vs-updated discrimination,
+         the no-op-save (hasDataChanges) gate, and the import-suppression +
+         debounce interaction. -->
+    <event name="catalog_product_save_after">
+        <observer name="mageos_workflows_catalog_product_save"
+                  instance="MageOS\WorkflowsCatalog\Observer\ProductSaveObserver"/>
+    </event>
+</config>

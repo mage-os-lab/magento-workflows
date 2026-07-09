@@ -94,6 +94,11 @@ side — flows the engine still does *not* support — is catalogued in
 - Notify (or webhook a wishlist fan-out) when a product comes back in stock — the `inventory.back_in_stock` trigger fires once as the stock-threshold flag clears on recovery.
 - Schedule a nightly scan for products whose MSI `salable_qty` has fallen at or below a reorder point and open a replenishment task (`catalog_product` condition on the `salable_qty` stock leaf; degrades to `qty`/`is_in_stock` where MSI is absent).
 
+**Sanctioned price recipes** (no bespoke action needed — the base actions already cover them):
+
+- Set a base price, scoped to the workflow's store view — `product.set_attribute` writes `price` at the execution's store scope, so a store/website-scoped roll-out touches only that scope: `{"type":"action","action":"product.set_attribute","config":{"attribute_code":"price","value":"19.99"}}` (`price` is not on the set_attribute denylist; only `sku` and `status` are).
+- Clear an expired special price — `product.set_special_price` with `clear` removes the special price and its from/to dates together in one scoped write: `{"type":"action","action":"product.set_special_price","config":{"clear":true}}` (special-price *windows* themselves are a scheduled workflow + relative-date condition, not a trigger).
+
 ## Pricing & promotions
 
 - Apply a special price with automatic from/to dates when a flash sale window opens.
