@@ -47,6 +47,7 @@
     },
     "aggregate_providers": {
         "catalog_product.stock": "MageOS\\WorkflowsInventory\\Model\\Rule\\Hydrator\\ProductStockAggregateProvider",
+        "customer.addresses": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerDefaultAddressAggregateProvider",
         "customer.birthday": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerBirthdayAggregateProvider",
         "customer.newsletter_status": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\NewsletterStatusAggregateProvider",
         "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider",
@@ -60,6 +61,7 @@
     },
     "trigger_events": {
         "catalog.product.review_submitted": "catalog_product|Catalog",
+        "customer.address_changed": "customer|Customer",
         "customer.birthday_upcoming": "customer|Customer",
         "customer.created": "customer|Customer",
         "customer.group_changed": "customer|Customer",
@@ -79,6 +81,7 @@
     },
     "async_events": {
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
+        "customer.address_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "customer.birthday_upcoming": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "customer.group_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "inventory.back_in_stock": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
@@ -90,6 +93,8 @@
         "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
     },
     "observers": {
+        "customer_address_delete_after::mageos_workflows_triggers_customer_address_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerAddressChangeObserver",
+        "customer_address_save_after::mageos_workflows_triggers_customer_address_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerAddressChangeObserver",
         "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerGroupChangeObserver",
         "mageos_workflow_delete_after::mageos_workflows_triggers_subscription_sync_delete": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",

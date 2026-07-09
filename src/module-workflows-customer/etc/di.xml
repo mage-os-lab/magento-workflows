@@ -42,6 +42,8 @@
             <argument name="providers" xsi:type="array">
                 <item name="customer" xsi:type="array">
                     <item name="birthday" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Hydrator\CustomerBirthdayAggregateProvider</item>
+                    <!-- Default billing/shipping address leaves (CUS-C2). -->
+                    <item name="addresses" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Hydrator\CustomerDefaultAddressAggregateProvider</item>
                 </item>
             </argument>
         </arguments>

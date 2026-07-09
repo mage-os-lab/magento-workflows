@@ -7,4 +7,17 @@
         <observer name="mageos_workflows_triggers_customer_group_changed"
                   instance="MageOS\WorkflowsCustomer\Observer\CustomerGroupChangeObserver"/>
     </event>
+    <!-- Gap-fill publisher for customer.address_changed (CUS-T2). One observer
+         class on both AbstractModel seams of Magento\Customer\Model\Address; the
+         change_type (created|updated|deleted) is derived from the event name +
+         orig data. See the observer docblock for the upstream (VER-1) assumption
+         that mageos-common-async-events does NOT declare address events. -->
+    <event name="customer_address_save_after">
+        <observer name="mageos_workflows_triggers_customer_address_changed"
+                  instance="MageOS\WorkflowsCustomer\Observer\CustomerAddressChangeObserver"/>
+    </event>
+    <event name="customer_address_delete_after">
+        <observer name="mageos_workflows_triggers_customer_address_changed"
+                  instance="MageOS\WorkflowsCustomer\Observer\CustomerAddressChangeObserver"/>
+    </event>
 </config>
