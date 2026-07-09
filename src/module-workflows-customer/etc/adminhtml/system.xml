@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- Merges the birthday look-ahead into the engine's mageos_workflows/scheduler
+     group (same section/group/field ids so Magento merges it into the existing
+     Scheduler group). The field lives here because BirthdayDetector (this pack)
+     owns it; the config path mageos_workflows/scheduler/birthday_days_ahead is
+     stable (CUS-T3). -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="mageos_workflows">
+            <group id="scheduler">
+                <field id="birthday_days_ahead" translate="label comment" type="text" sortOrder="40" showInDefault="1">
+                    <label>Birthday Look-Ahead (days)</label>
+                    <comment>Publishes the Customer Birthday Upcoming trigger this many days before each customer's birthday. 0 disables the detector.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

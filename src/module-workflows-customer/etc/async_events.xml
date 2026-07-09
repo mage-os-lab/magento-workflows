@@ -6,13 +6,17 @@
  * hydrates the delivered payload from the id in the published data;
  * publisher-supplied extra keys (from_group_id/to_group_id) ride along.
  *
- * Publisher: Observer\CustomerGroupChangeObserver (this module) publishes
- * customer.group_changed.
+ * Publishers: Observer\CustomerGroupChangeObserver (this module) publishes
+ * customer.group_changed; Model\BirthdayDetector (this module) publishes
+ * customer.birthday_upcoming.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
     <async_event name="customer.group_changed">
+        <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
+    </async_event>
+    <async_event name="customer.birthday_upcoming">
         <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
     </async_event>
 </config>

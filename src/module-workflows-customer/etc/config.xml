@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <mageos_workflows>
+            <scheduler>
+                <!-- BirthdayDetector (CUS-T3): publish customer.birthday_upcoming this many
+                     days before a customer's birthday anniversary. 0 disables the detector.
+                     Path: mageos_workflows/scheduler/birthday_days_ahead. -->
+                <birthday_days_ahead>7</birthday_days_ahead>
+            </scheduler>
+        </mageos_workflows>
+    </default>
+</config>

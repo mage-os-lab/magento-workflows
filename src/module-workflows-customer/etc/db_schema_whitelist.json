@@ -1,0 +1,13 @@
+{
+    "mageos_workflow_birthday_flag": {
+        "column": {
+            "customer_id": true,
+            "birth_year": true,
+            "flagged_at": true
+        },
+        "index": {},
+        "constraint": {
+            "PRIMARY": true
+        }
+    }
+}

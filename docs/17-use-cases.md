@@ -51,6 +51,8 @@ side — flows the engine still does *not* support — is catalogued in
 - Move customers to a "Wholesale" group after their order count passes 10.
 - Tag customers who haven't ordered in 180 days as "At Risk" for a win-back campaign.
 - Welcome-email new customers, wait 3 days, then send a first-purchase incentive.
+- Send a birthday coupon a week ahead: on `customer.birthday_upcoming`, generate a one-time coupon and email it (`birthday_upcoming` → `generate_coupon` → `notify.email`); tune the lead time with the Birthday Look-Ahead (days) setting.
+- Condition a birthday campaign on `days_until_birthday` / `birthday_month` to stagger offers by month.
 - Downgrade a loyalty tier when average order value drops below a set floor over time.
 - Add a "High-AOV" attribute flag to customers whose average order value exceeds $250.
 - Assign a dedicated account manager attribute when a B2B buyer's order history qualifies.
