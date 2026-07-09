@@ -5,7 +5,7 @@ namespace MageOS\WorkflowsActionsCore\Test\Integration\Action\Customer;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use MageOS\Workflows\Api\ActionResultInterface;
-use MageOS\WorkflowsActionsCore\Action\Customer\Anonymize;
+use MageOS\WorkflowsCustomer\Action\Customer\Anonymize;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 
 /**

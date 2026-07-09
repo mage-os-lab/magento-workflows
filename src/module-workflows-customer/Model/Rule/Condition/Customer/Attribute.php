@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Rule\Condition\Customer;
+namespace MageOS\WorkflowsCustomer\Model\Rule\Condition\Customer;
 
 use Magento\Customer\Api\CustomerMetadataInterface;
 use Magento\Customer\Api\Data\AttributeMetadataInterface;

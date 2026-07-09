@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Action\Customer;
+namespace MageOS\WorkflowsCustomer\Action\Customer;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\GroupRepositoryInterface;
@@ -11,7 +11,7 @@ use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
-use MageOS\Workflows\Model\Option\CustomerGroupOptionSource;
+use MageOS\WorkflowsCustomer\Model\Option\CustomerGroupOptionSource;
 
 /**
  * customer.assign_group — moves the customer into the configured group.

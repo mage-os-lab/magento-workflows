@@ -8,7 +8,7 @@ use Magento\Framework\Event\ManagerInterface;
 use Magento\Review\Model\Review;
 use Magento\Sales\Model\Order;
 use Magento\TestFramework\Helper\Bootstrap;
-use MageOS\WorkflowsTriggersCore\Observer\CustomerGroupChangeObserver;
+use MageOS\WorkflowsCustomer\Observer\CustomerGroupChangeObserver;
 use MageOS\WorkflowsSales\Observer\OrderStatusChangeObserver;
 use MageOS\WorkflowsTriggersCore\Observer\ReviewSubmittedObserver;
 use MageOS\WorkflowsTriggersCore\Service\EventPublisher;

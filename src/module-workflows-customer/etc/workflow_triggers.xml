@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Customer trigger metadata (relocated from mage-os/workflows-triggers-core,
+ * domain-packs S2). The customer "created/updated" events are declared by
+ * mage-os/mageos-common-async-events; customer.group_changed is declared by
+ * this module (etc/async_events.xml).
+ */
+-->
+<triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
+    <!-- Customer -->
+    <trigger event="customer.created" entity="customer" label="Customer Created" group="Customer"/>
+    <trigger event="customer.updated" entity="customer" label="Customer Updated" group="Customer"/>
+    <trigger event="customer.group_changed" entity="customer" label="Customer Group Changed" group="Customer"/>
+</triggers>

@@ -2,10 +2,8 @@
     "mage-os/workflows": [
         "magento/module-catalog",
         "magento/module-config",
-        "magento/module-customer",
         "magento/module-eav",
-        "magento/module-email",
-        "magento/module-sales"
+        "magento/module-email"
     ],
     "mage-os/workflows-actions-core": [
         "magento/module-eav",
@@ -19,7 +17,6 @@
     ],
     "mage-os/workflows-triggers-core": [
         "magento/module-catalog",
-        "magento/module-customer",
         "magento/module-review"
     ]
 }

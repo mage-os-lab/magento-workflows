@@ -9,8 +9,8 @@
     <type name="MageOS\WorkflowsScheduler\Model\QueryRunner">
         <arguments>
             <argument name="repositories" xsi:type="array">
-                <!-- sales_order + quote relocated to mage-os/workflows-sales (domain-packs S1). -->
-                <item name="customer" xsi:type="object">Magento\Customer\Api\CustomerRepositoryInterface</item>
+                <!-- sales_order + quote relocated to mage-os/workflows-sales (domain-packs S1);
+                     customer relocated to mage-os/workflows-customer (domain-packs S2). -->
                 <item name="catalog_product" xsi:type="object">Magento\Catalog\Api\ProductRepositoryInterface</item>
             </argument>
             <!-- DTO interfaces for EntityDataConverter's converter path (05 B1
@@ -18,8 +18,8 @@
                  ignore it; declared here so pure-DTO entity types still lift
                  EAV/extension attributes to the same shape B2 produces. -->
             <argument name="dtoInterfaces" xsi:type="array">
-                <!-- sales_order + quote relocated to mage-os/workflows-sales (domain-packs S1). -->
-                <item name="customer" xsi:type="string">Magento\Customer\Api\Data\CustomerInterface</item>
+                <!-- sales_order + quote relocated to mage-os/workflows-sales (domain-packs S1);
+                     customer relocated to mage-os/workflows-customer (domain-packs S2). -->
                 <item name="catalog_product" xsi:type="string">Magento\Catalog\Api\Data\ProductInterface</item>
             </argument>
         </arguments>

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Rule\Condition\Customer;
+namespace MageOS\WorkflowsCustomer\Model\Rule\Condition\Customer;
 
 use Magento\Framework\DataObject;
 use Magento\Rule\Model\Condition\Context;

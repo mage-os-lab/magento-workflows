@@ -99,7 +99,6 @@
     <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
         <arguments>
             <argument name="sources" xsi:type="array">
-                <item name="customer_groups" xsi:type="object">MageOS\Workflows\Model\Option\CustomerGroupOptionSource</item>
                 <item name="email_templates" xsi:type="object">MageOS\Workflows\Model\Option\EmailTemplateOptionSource</item>
             </argument>
         </arguments>
@@ -241,7 +240,6 @@
     <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
         <arguments>
             <argument name="hydrators" xsi:type="array">
-                <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\CustomerHydrator</item>
                 <item name="catalog_product" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\ProductHydrator</item>
             </argument>
         </arguments>
@@ -268,29 +266,24 @@
     <!-- Relation registry (F5) — the extension surface for entity
          cross-referencing. Seed relations (docs/discovery/entity-cross-
          referencing.md §4); third-party packs append one resolver + one line
-         here (docs/07 SDK note). -->
-    <type name="MageOS\Workflows\Model\Relation\RelationPool">
-        <arguments>
-            <argument name="relations" xsi:type="array">
-                <item name="customer.open_orders" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\CustomerOpenOrders</item>
-            </argument>
-        </arguments>
-    </type>
+         here (docs/07 SDK note). The seed relations relocated to their source
+         entity's domain pack: order.* / quote.* to mage-os/workflows-sales
+         (domain-packs S1); customer.open_orders to mage-os/workflows-customer
+         (domain-packs S2). Each registers back into this pool via its own
+         di.xml. -->
+
 
     <!-- Child-condition options offered by the RelatedEntity combine, keyed by
          the relation's target entity type (the leaf classes reused from the
-         target's own condition subtree). Third-party targets append here. -->
-    <type name="MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine">
-        <arguments>
-            <argument name="targetChildConditions" xsi:type="array">
-                <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Customer\Attribute</item>
-            </argument>
-        </arguments>
-    </type>
+         target's own condition subtree). Third-party targets append here. The
+         seed targets relocated with their entity's domain pack: sales_order to
+         mage-os/workflows-sales (domain-packs S1); customer to
+         mage-os/workflows-customer (domain-packs S2). Each registers back into
+         this map via its own di.xml. -->
+
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
         <arguments>
             <argument name="combines" xsi:type="array">
-                <item name="customer" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Customer\Combine</item>
                 <item name="catalog_product" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Product\Combine</item>
             </argument>
         </arguments>

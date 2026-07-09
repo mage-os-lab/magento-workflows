@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Test\Unit\Action\Customer;
+namespace MageOS\WorkflowsCustomer\Test\Unit\Action\Customer;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Eav\Api\AttributeRepositoryInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
-use MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute;
+use MageOS\WorkflowsCustomer\Action\Customer\SetAttribute;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,7 +33,7 @@ class SetAttributeTest extends TestCase
         $this->assertNotNull($xml === false ? null : $xml, 'etc/di.xml must parse');
 
         $items = $xml->xpath(
-            '//type[@name="MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute"]'
+            '//type[@name="MageOS\WorkflowsCustomer\Action\Customer\SetAttribute"]'
             . '//argument[@name="deniedAttributes"]/item'
         );
         $codes = [];

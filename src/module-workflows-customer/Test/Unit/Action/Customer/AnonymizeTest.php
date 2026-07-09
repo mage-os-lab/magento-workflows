@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Test\Unit\Action\Customer;
+namespace MageOS\WorkflowsCustomer\Test\Unit\Action\Customer;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Newsletter\Model\SubscriptionManagerInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\Customer\Anonymize;
+use MageOS\WorkflowsCustomer\Action\Customer\Anonymize;
 use PHPUnit\Framework\TestCase;
 
 class AnonymizeTest extends TestCase

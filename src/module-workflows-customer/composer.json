@@ -1,0 +1,26 @@
+{
+    "name": "mage-os/workflows-customer",
+    "description": "Mage-OS Workflow Engine customer domain pack: the customer condition root, customer hydrator, the customer.open_orders relation, the customer-group-changed trigger, the assign-group/set-attribute/anonymize actions, and the customer-group option source",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "mage-os/workflows": "*",
+        "mage-os/workflows-triggers-core": "*",
+        "magento/framework": ">=103.0.4",
+        "magento/module-customer": "*",
+        "magento/module-eav": "*",
+        "magento/module-sales": "*",
+        "magento/module-store": "*",
+        "magento/module-rule": "*",
+        "magento/module-newsletter": "*"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "MageOS\\WorkflowsCustomer\\": ""
+        }
+    }
+}

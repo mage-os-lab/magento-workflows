@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsTriggersCore\Test\Unit\Observer;
+namespace MageOS\WorkflowsCustomer\Test\Unit\Observer;
 
 use Magento\Framework\Event;
 use Magento\Framework\Event\Observer;
-use MageOS\WorkflowsTriggersCore\Observer\CustomerGroupChangeObserver;
+use MageOS\WorkflowsCustomer\Observer\CustomerGroupChangeObserver;
 use MageOS\WorkflowsTriggersCore\Test\Unit\Stub\FakeCustomer;
 use MageOS\WorkflowsTriggersCore\Test\Unit\Stub\RecordingEventPublisher;
 use MageOS\WorkflowsTriggersCore\Test\Unit\Stub\RecordingLogger;

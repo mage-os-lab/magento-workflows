@@ -1,21 +1,15 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Trigger metadata for the standard event coverage. The customer
- * "created/updated" events are declared by mage-os/mageos-common-async-events;
- * the customer.group_changed / review / stock gap-fill events are declared and
- * published by this module (etc/async_events.xml). The Sales group and the
- * Cart group (quote.abandoned) moved to mage-os/workflows-sales (domain-packs
- * S1).
+ * Trigger metadata for the standard event coverage. The review / stock
+ * gap-fill events are declared and published by this module
+ * (etc/async_events.xml). The Sales group and the Cart group (quote.abandoned)
+ * moved to mage-os/workflows-sales (domain-packs S1); the Customer group moved
+ * to mage-os/workflows-customer (domain-packs S2).
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
-    <!-- Customer -->
-    <trigger event="customer.created" entity="customer" label="Customer Created" group="Customer"/>
-    <trigger event="customer.updated" entity="customer" label="Customer Updated" group="Customer"/>
-    <trigger event="customer.group_changed" entity="customer" label="Customer Group Changed" group="Customer"/>
-
     <!-- Catalog -->
     <trigger event="catalog.product.review_submitted" entity="catalog_product"
              label="Product Review Submitted" group="Catalog"/>

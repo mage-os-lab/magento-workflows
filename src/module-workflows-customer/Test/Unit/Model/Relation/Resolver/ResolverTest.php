@@ -1,20 +1,20 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Test\Unit\Model\Relation\Resolver;
+namespace MageOS\WorkflowsCustomer\Test\Unit\Model\Relation\Resolver;
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\DataObject;
 use Magento\Sales\Api\OrderRepositoryInterface;
-use MageOS\Workflows\Model\Relation\Resolver\CustomerOpenOrders;
+use MageOS\WorkflowsCustomer\Model\Relation\Resolver\CustomerOpenOrders;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Engine-resident seed relation resolver coverage
+ * customer.open_orders seed relation resolver coverage
  * (docs/discovery/entity-cross-referencing.md §4–5). The order and quote
- * resolvers moved to mage-os/workflows-sales (domain-packs S1) along with
- * their tests; customer.open_orders stays in the engine until domain-packs S2,
- * so its coverage stays here.
+ * resolvers moved to mage-os/workflows-sales (domain-packs S1) with their
+ * tests; customer.open_orders and this coverage moved to
+ * mage-os/workflows-customer (domain-packs S2).
  *
  * Resolvers are pure repository wrappers, so these run against recording
  * SearchCriteriaBuilder + repository doubles — asserting both the ids they

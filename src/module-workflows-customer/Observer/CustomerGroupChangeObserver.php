@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsTriggersCore\Observer;
+namespace MageOS\WorkflowsCustomer\Observer;
 
 use Magento\Customer\Model\Customer;
 use Magento\Framework\Event\Observer;

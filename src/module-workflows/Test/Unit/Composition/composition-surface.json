@@ -1,9 +1,9 @@
 {
     "actions": {
-        "customer.anonymize": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\Anonymize",
-        "customer.assign_group": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\AssignGroup",
+        "customer.anonymize": "MageOS\\WorkflowsCustomer\\Action\\Customer\\Anonymize",
+        "customer.assign_group": "MageOS\\WorkflowsCustomer\\Action\\Customer\\AssignGroup",
         "customer.newsletter": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\Newsletter",
-        "customer.set_attribute": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\SetAttribute",
+        "customer.set_attribute": "MageOS\\WorkflowsCustomer\\Action\\Customer\\SetAttribute",
         "flow.set_variable": "MageOS\\WorkflowsActionsCore\\Action\\Flow\\SetVariable",
         "marketing.generate_coupon": "MageOS\\WorkflowsSales\\Action\\Marketing\\GenerateCoupon",
         "notify.admin": "MageOS\\WorkflowsActionsCore\\Action\\Notify\\AdminNotification",
@@ -25,12 +25,12 @@
     },
     "combines": {
         "catalog_product": "MageOS\\Workflows\\Model\\Rule\\Condition\\Product\\Combine",
-        "customer": "MageOS\\Workflows\\Model\\Rule\\Condition\\Customer\\Combine",
+        "customer": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Condition\\Customer\\Combine",
         "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Quote\\Combine",
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Order\\Combine"
     },
     "relations": {
-        "customer.open_orders": "MageOS\\Workflows\\Model\\Relation\\Resolver\\CustomerOpenOrders",
+        "customer.open_orders": "MageOS\\WorkflowsCustomer\\Model\\Relation\\Resolver\\CustomerOpenOrders",
         "order.customer": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\OrderCustomer",
         "order.customer_by_email": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\OrderCustomerByEmail",
         "order.orders_by_email": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\OrderOrdersByEmail",
@@ -38,7 +38,7 @@
     },
     "hydrators": {
         "catalog_product": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\ProductHydrator",
-        "customer": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\CustomerHydrator",
+        "customer": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerHydrator",
         "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\QuoteHydrator",
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"
     },
@@ -47,7 +47,7 @@
     },
     "option_sources": {
         "cart_price_rules": "MageOS\\WorkflowsSales\\Model\\Option\\CartPriceRuleOptionSource",
-        "customer_groups": "MageOS\\Workflows\\Model\\Option\\CustomerGroupOptionSource",
+        "customer_groups": "MageOS\\WorkflowsCustomer\\Model\\Option\\CustomerGroupOptionSource",
         "email_templates": "MageOS\\Workflows\\Model\\Option\\EmailTemplateOptionSource",
         "order_statuses": "MageOS\\WorkflowsSales\\Model\\Option\\OrderStatusOptionSource"
     },
@@ -73,7 +73,7 @@
         "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
     },
     "observers": {
-        "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsTriggersCore\\Observer\\CustomerGroupChangeObserver",
+        "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerGroupChangeObserver",
         "mageos_workflow_delete_after::mageos_workflows_triggers_subscription_sync_delete": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsTriggersCore\\Observer\\ReviewSubmittedObserver",

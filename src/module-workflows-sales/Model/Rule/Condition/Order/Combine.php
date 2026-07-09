@@ -6,7 +6,7 @@ namespace MageOS\WorkflowsSales\Model\Rule\Condition\Order;
 use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Model\Relation\RelationPool;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;
-use MageOS\Workflows\Model\Rule\Condition\Customer\Combine as CustomerCombine;
+use MageOS\WorkflowsCustomer\Model\Rule\Condition\Customer\Combine as CustomerCombine;
 use MageOS\Workflows\Model\Rule\Condition\TriggerData;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 

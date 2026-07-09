@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for customer group changes (relocated
+         from mage-os/workflows-triggers-core). Publishes customer.group_changed. -->
+    <event name="customer_save_after">
+        <observer name="mageos_workflows_triggers_customer_group_changed"
+                  instance="MageOS\WorkflowsCustomer\Observer\CustomerGroupChangeObserver"/>
+    </event>
+</config>

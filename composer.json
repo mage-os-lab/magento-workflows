@@ -14,6 +14,7 @@
             "src/module-workflows-admin-ui",
             "src/module-workflows-approvals",
             "src/module-workflows-canvas",
+            "src/module-workflows-customer",
             "src/module-workflows-import-suppression",
             "src/module-workflows-sales",
             "src/module-workflows-scheduler",

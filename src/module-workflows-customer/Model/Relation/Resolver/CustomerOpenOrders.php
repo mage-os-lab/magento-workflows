@@ -1,13 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Relation\Resolver;
+namespace MageOS\WorkflowsCustomer\Model\Relation\Resolver;
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\DataObject;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
 use MageOS\Workflows\Api\RelationInterface;
+use MageOS\Workflows\Model\Relation\Resolver\OrderIdCollector;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 
 /**

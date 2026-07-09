@@ -1,10 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Option;
+namespace MageOS\WorkflowsCustomer\Model\Option;
 
 use Magento\Customer\Api\GroupRepositoryInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
+use MageOS\Workflows\Model\Option\AbstractOptionSource;
 
 /**
  * Bounded option source: customer group id => code (F6). Enumerable in full,
