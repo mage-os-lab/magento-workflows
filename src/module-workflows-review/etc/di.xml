@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Review domain pack: the REV-A1 action and the PRD-C2 / CUS-C3 (reviews
+         half) aggregate providers. -->
+
+    <!-- REV-A1: review.set_status action (approve|pending|not_approved). The
+         review is resolved from the trigger context (review_id), not the
+         product entity — see SetStatus's class docblock for the constraint. -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <item name="review.set_status" xsi:type="object">MageOS\WorkflowsReview\Action\Review\SetStatus</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- PRD-C2 + CUS-C3 (reviews half): review aggregates contributed through
+         the aggregate pool (E2). Placement rule 3 — review-owned data lives with
+         the review pack and contributes onto OTHER packs' roots via the pool:
+
+           - catalog_product.reviews: reviews_count + rating_percent (approved),
+             merged onto the catalog pack's product root;
+           - customer.reviews: the customer's approved reviews_count, registered
+             ALONGSIDE sales' order_history, customer's birthday and newsletter's
+             status providers (the pool keys entity_type => provider[] and merges
+             every provider). Neither catalog nor customer packs are touched. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="catalog_product" xsi:type="array">
+                    <item name="reviews" xsi:type="object">MageOS\WorkflowsReview\Model\Rule\Hydrator\ProductReviewAggregateProvider</item>
+                </item>
+                <item name="customer" xsi:type="array">
+                    <item name="reviews" xsi:type="object">MageOS\WorkflowsReview\Model\Rule\Hydrator\CustomerReviewAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+</config>
