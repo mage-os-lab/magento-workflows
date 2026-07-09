@@ -21,7 +21,7 @@
         "product.set_categories": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetCategories",
         "product.set_special_price": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetSpecialPrice",
         "product.set_status": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetStatus",
-        "product.set_stock": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetStock"
+        "product.set_stock": "MageOS\\WorkflowsInventory\\Action\\Product\\SetStock"
     },
     "combines": {
         "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Condition\\Product\\Combine",

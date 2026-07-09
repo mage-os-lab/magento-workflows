@@ -16,9 +16,6 @@
         "magento/module-email": "*",
         "guzzlehttp/guzzle": "^7"
     },
-    "suggest": {
-        "magento/module-inventory-api": "Enables MSI source-aware stock updates via product.set_stock source_code"
-    },
     "autoload": {
         "files": ["registration.php"],
         "psr-4": {

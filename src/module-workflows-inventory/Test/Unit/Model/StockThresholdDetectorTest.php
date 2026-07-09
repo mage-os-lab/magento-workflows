@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsScheduler\Test\Unit\Model;
+namespace MageOS\WorkflowsInventory\Test\Unit\Model;
 
 use MageOS\Workflows\Test\Unit\Stub\StubScopeConfig;
-use MageOS\WorkflowsScheduler\Model\StockThresholdDetector;
+use MageOS\WorkflowsInventory\Model\StockThresholdDetector;
 use MageOS\WorkflowsScheduler\Test\Unit\Stub\FakeObjectManager;
 use MageOS\WorkflowsScheduler\Test\Unit\Stub\FakeResourceConnection;
 use MageOS\WorkflowsScheduler\Test\Unit\Stub\FakeStockDb;

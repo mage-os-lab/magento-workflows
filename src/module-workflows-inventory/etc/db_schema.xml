@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- Relocated from the engine (mage-os/workflows) with the
+         StockThresholdDetector (domain-packs S4). Same table name: declarative
+         schema treats same-name redeclaration in another module as continuity -
+         no drop/recreate. -->
+    <table name="mageos_workflow_stock_flag" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Stock Threshold Flags (hysteresis for the crossing detector)">
+        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="Product ID"/>
+        <column xsi:type="decimal" name="qty_at_flag" scale="4" precision="12" nullable="false" default="0"
+                comment="Quantity When Flagged"/>
+        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Flagged At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="product_id"/>
+        </constraint>
+    </table>
+
+</schema>

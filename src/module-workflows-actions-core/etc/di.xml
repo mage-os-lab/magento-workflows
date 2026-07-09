@@ -13,8 +13,8 @@
                 <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Newsletter</item>
                 <!-- Catalog: product.set_attribute / set_status / set_categories /
                      set_special_price moved to mage-os/workflows-catalog
-                     (domain-packs S3). product.set_stock stays here until S4. -->
-                <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStock</item>
+                     (domain-packs S3); product.set_stock to
+                     mage-os/workflows-inventory (domain-packs S4). -->
                 <!-- Marketing (marketing.generate_coupon) moved to mage-os/workflows-sales (domain-packs S1). -->
                 <!-- Notify -->
                 <item name="notify.email" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Email</item>

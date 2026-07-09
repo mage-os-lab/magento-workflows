@@ -17,6 +17,7 @@
             "src/module-workflows-customer",
             "src/module-workflows-catalog",
             "src/module-workflows-import-suppression",
+            "src/module-workflows-inventory",
             "src/module-workflows-sales",
             "src/module-workflows-scheduler",
             "src/module-workflows-templates",

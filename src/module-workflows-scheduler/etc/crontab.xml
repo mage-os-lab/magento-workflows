@@ -9,10 +9,7 @@
         </job>
         <!-- The abandoned-cart query trigger (mageos_workflows_abandoned_carts /
              AbandonedCartDetector) moved to mage-os/workflows-sales (domain-packs S1). -->
-        <!-- Query trigger for the inventory.stock_threshold_crossed async event
-             (declared in mageos-workflows-triggers-core etc/async_events.xml) -->
-        <job name="mageos_workflows_stock_threshold" instance="MageOS\WorkflowsScheduler\Model\StockThresholdDetector" method="execute">
-            <schedule>*/10 * * * *</schedule>
-        </job>
+        <!-- The stock-threshold query trigger (mageos_workflows_stock_threshold /
+             StockThresholdDetector) moved to mage-os/workflows-inventory (domain-packs S4). -->
     </group>
 </config>

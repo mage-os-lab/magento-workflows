@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Inventory domain pack (domain-packs S4). Every registration here
+         relocated verbatim from actions-core: same code, only the class FQCN
+         moves into MageOS\WorkflowsInventory. -->
+
+    <!-- product.set_stock action (relocated from actions-core). Action code
+         unchanged. -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <!-- Catalog -->
+                <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsInventory\Action\Product\SetStock</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

@@ -1,0 +1,25 @@
+{
+    "name": "mage-os/workflows-inventory",
+    "description": "Mage-OS Workflow Engine inventory domain pack: the stock-threshold-crossed trigger + detector, the stock-flag hysteresis table, and the product.set_stock action",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "mage-os/workflows": "*",
+        "magento/framework": ">=103.0.4",
+        "magento/module-catalog-inventory": "*",
+        "magento/module-catalog": "*",
+        "magento/module-store": "*"
+    },
+    "suggest": {
+        "magento/module-inventory-api": "Enables MSI source-aware stock updates via product.set_stock source_code"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "MageOS\\WorkflowsInventory\\": ""
+        }
+    }
+}

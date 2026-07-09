@@ -8,7 +8,7 @@ use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\TestFramework\Helper\Bootstrap;
-use MageOS\WorkflowsScheduler\Model\StockThresholdDetector;
+use MageOS\WorkflowsInventory\Model\StockThresholdDetector;
 use MageOS\WorkflowsScheduler\Test\Integration\_files\RecordingEventPublisher;
 use MageOS\WorkflowsTriggersCore\Service\EventPublisher;
 use PHPUnit\Framework\TestCase;
