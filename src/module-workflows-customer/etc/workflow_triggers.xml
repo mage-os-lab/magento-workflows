@@ -3,9 +3,10 @@
 /**
  * Customer trigger metadata (relocated from mage-os/workflows-triggers-core,
  * domain-packs S2). The customer "created/updated" events are declared by
- * mage-os/mageos-common-async-events; customer.group_changed and
- * customer.birthday_upcoming are declared by this module
- * (etc/async_events.xml).
+ * mage-os/mageos-common-async-events; customer.group_changed,
+ * customer.birthday_upcoming and customer.address_changed are declared by this
+ * module (etc/async_events.xml). customer.address_changed rides the CUS-T2
+ * gap-fill under the VER-1 assumption that upstream declares no address events.
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -15,4 +16,5 @@
     <trigger event="customer.updated" entity="customer" label="Customer Updated" group="Customer"/>
     <trigger event="customer.group_changed" entity="customer" label="Customer Group Changed" group="Customer"/>
     <trigger event="customer.birthday_upcoming" entity="customer" label="Customer Birthday Upcoming" group="Customer"/>
+    <trigger event="customer.address_changed" entity="customer" label="Customer Address Changed" group="Customer"/>
 </triggers>

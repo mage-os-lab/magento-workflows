@@ -8,7 +8,14 @@
  *
  * Publishers: Observer\CustomerGroupChangeObserver (this module) publishes
  * customer.group_changed; Model\BirthdayDetector (this module) publishes
- * customer.birthday_upcoming.
+ * customer.birthday_upcoming; Observer\CustomerAddressChangeObserver (this
+ * module) publishes customer.address_changed.
+ *
+ * customer.address_changed is a GAP-FILL declaration made under the documented
+ * VER-1 assumption that mageos-common-async-events does NOT declare customer-
+ * address events (the upstream audit is BLOCKED — repo inaccessible). If a later
+ * upstream version DOES declare address events, drop this declaration (and the
+ * observer) and keep only the workflow_triggers.xml metadata row.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -17,6 +24,9 @@
         <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
     </async_event>
     <async_event name="customer.birthday_upcoming">
+        <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
+    </async_event>
+    <async_event name="customer.address_changed">
         <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
     </async_event>
 </config>

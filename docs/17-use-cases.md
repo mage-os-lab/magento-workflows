@@ -47,6 +47,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Alert finance when a single customer's lifetime refunds cross a defined threshold.
 - Flag orders using a payment method newly seen for an otherwise long-standing customer.
 - Hold a high-risk order and park it for a fraud-team decision: on approve unhold and invoice, on reject cancel and notify, on 4-hour silence escalate to a second reviewer (`approval` gate).
+- Fraud-review an account whose address just changed while it has money in flight: on `customer.address_changed`, fan out over the customer's `open_orders` relation and hold any not-yet-shipped order for manual review (guard on the `change_type` payload key so only `updated`/`created` addresses trigger, not deletes).
 
 ## Customer lifecycle & segmentation
 
@@ -62,6 +63,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Auto-subscribe customers to the newsletter after their second completed order.
 - Build a "New Parent" segment when a customer buys from the Baby category twice.
 - Re-engage lapsed VIPs with a personalized offer the day they cross 90 days inactive.
+- Re-segment a customer who relocates: on `customer.address_changed`, compare the hydrated `default_shipping_country` against the store's home country and move cross-border movers into an "International" group (or assign a tax/shipping-profile attribute) — the default-address leaves (`default_billing_country` / `default_shipping_region` / postcode / city) are absent-when-unset, so the branch simply doesn't fire for customers with no default address.
 - Invite a guest checkout to register when their email has no account yet, or nudge them to log in when it does (entity cross-referencing).
 - Spot a guest placing their third order under the same email and route them into an account-creation offer (cross-referenced order history).
 
