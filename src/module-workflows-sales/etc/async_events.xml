@@ -4,27 +4,29 @@
  * Sales/cart async-event definitions (relocated from
  * mage-os/workflows-triggers-core, domain-packs S1). The service class/method
  * hydrates the delivered payload from the id in the published data;
- * publisher-supplied extra keys (from_status/to_status) ride along.
+ * publisher-supplied extra keys (from_status/to_status, comment fields,
+ * tracking fields) ride along.
  *
  * Publishers: Observer\OrderStatusChangeObserver publishes
- * sales.order.status_changed; Observer\OrderPaidObserver publishes
- * sales.order.paid (paid transition, ORD-T1); Observer\InvoicePaidObserver
- * publishes sales.invoice.paid (invoice pay, DOC-T1, hydrating the parent
- * order); Observer\OrderCommentAddedObserver publishes sales.order.comment_added
- * (ORD-T2); Observer\ShipmentTrackingAddedObserver publishes
- * sales.shipment.tracking_added (DOC-T2, hydrating the parent order);
- * Model\AbandonedCartDetector publishes quote.abandoned.
+ * sales.order.status_changed; Observer\OrderCommentAddedObserver publishes
+ * sales.order.comment_added (ORD-T2); Observer\ShipmentTrackingAddedObserver
+ * publishes sales.shipment.tracking_added (DOC-T2, hydrating the parent
+ * order); Model\AbandonedCartDetector publishes quote.abandoned.
+ *
+ * VER-1 reconciliation (July 2026, audited against
+ * mageos-common-async-events): sales.order.paid and sales.invoice.paid are
+ * declared AND published upstream (SalesOrderSaveAfterObserver's
+ * base_total_due-reaches-zero transition; SalesOrderInvoiceSaveAfterObserver),
+ * so this module's earlier gap-fill declarations and publishers (ORD-T1,
+ * DOC-T1) were removed to avoid double publication — those two triggers are
+ * now metadata-only over the upstream events. Note the payload difference:
+ * upstream sales.invoice.paid hydrates the INVOICE
+ * (InvoiceRepositoryInterface::get), same shape as sales.invoice.created.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
     <async_event name="sales.order.status_changed">
-        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
-    </async_event>
-    <async_event name="sales.order.paid">
-        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
-    </async_event>
-    <async_event name="sales.invoice.paid">
         <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
     </async_event>
     <async_event name="sales.order.comment_added">

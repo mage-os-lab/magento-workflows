@@ -6,7 +6,16 @@
  * mage-os/mageos-common-async-events; customer.group_changed,
  * customer.birthday_upcoming and customer.address_changed are declared by this
  * module (etc/async_events.xml). customer.address_changed rides the CUS-T2
- * gap-fill under the VER-1 assumption that upstream declares no address events.
+ * gap-fill under the VER-1 reconciliation (July 2026, audited against mageos-common-async-events):
+ * upstream declares customer.address.created / customer.address.updated
+ * (address-entity payload via AsyncCustomerAddressManagement::getById) but NO
+ * delete event. This module's customer.address_changed deliberately coexists:
+ * different event name (no declaration collision), CUSTOMER-entity payload
+ * (conditions author against the owner), and unified coverage including
+ * change_type=deleted, which upstream cannot express. customer.deleted does
+ * not exist upstream either — CUS-T1 remains a genuine (Tier-3, snapshot-only)
+ * gap. Upstream also offers customer.login, deliberately not surfaced here
+ * (behavioral trigger, through-line 1).
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

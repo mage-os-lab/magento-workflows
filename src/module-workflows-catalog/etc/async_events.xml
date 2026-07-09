@@ -10,23 +10,14 @@
  * Publisher: Observer\ProductSaveObserver (this module) publishes all four
  * off 'catalog_product_save_after'.
  *
- * UPSTREAM ASSUMPTION (VER-1 audit blocked — upstream repo not accessible in
- * this environment): assumes `mageos-common-async-events` does NOT declare
- * catalog.product.created / catalog.product.updated (its coverage is
- * sales/customer documents). If upstream later declares those two events,
- * THESE gap-fill declarations (created/updated) collide and should be dropped
- * in favor of upstream's — replace them with metadata-only trigger entries.
- * price_changed / status_changed have no upstream equivalent and stay.
- */
+ * VER-1 reconciliation (July 2026): catalog.product.created/updated are
+ * declared and published by mageos-common-async-events — the gap-fill
+ * declarations that used to live here were removed; only the transition
+ * events with no upstream equivalent (price_changed, status_changed) remain.
+ /
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
-    <async_event name="catalog.product.created">
-        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
-    </async_event>
-    <async_event name="catalog.product.updated">
-        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
-    </async_event>
     <async_event name="catalog.product.price_changed">
         <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
     </async_event>

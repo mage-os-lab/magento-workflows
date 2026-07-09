@@ -15,13 +15,13 @@ use Psr\Log\LoggerInterface;
  * with a 'change_type' payload key (created|updated|deleted) plus a snapshot of
  * the address in flight.
  *
- * Upstream assumption (VER-1 audit BLOCKED — mageos-common-async-events repo
- * inaccessible): that package does NOT declare customer-address events, so this
- * module gap-fills both the observer and the async_events.xml declaration. IF a
- * later mageos-common-async-events version DOES declare address events, drop
- * this observer + the async_events.xml entry and keep only the
- * workflow_triggers.xml metadata row (metadata-only, mirroring how
- * customer.created/updated already ride the upstream declarations).
+ * VER-1 reconciliation (July 2026, audited against mageos-common-async-events):
+ * upstream declares customer.address.created / customer.address.updated
+ * (address-entity payload via AsyncCustomerAddressManagement::getById) but NO
+ * delete event. This observer deliberately coexists rather than being dropped:
+ * different event name (customer.address_changed — no declaration collision),
+ * CUSTOMER-entity payload so conditions author against the owner, and unified
+ * coverage including change_type=deleted, which upstream cannot express.
  *
  * One observer class, two seams — both AbstractModel events dispatched by
  * Magento\Customer\Model\Address ('_eventPrefix = customer_address'):
