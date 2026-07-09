@@ -43,6 +43,7 @@
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"
     },
     "aggregate_providers": {
+        "customer.birthday": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerBirthdayAggregateProvider",
         "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
     },
     "option_sources": {
@@ -53,6 +54,7 @@
     },
     "trigger_events": {
         "catalog.product.review_submitted": "catalog_product|Catalog",
+        "customer.birthday_upcoming": "customer|Customer",
         "customer.created": "customer|Customer",
         "customer.group_changed": "customer|Customer",
         "customer.updated": "customer|Customer",
@@ -67,6 +69,7 @@
     },
     "async_events": {
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
+        "customer.birthday_upcoming": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "customer.group_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "inventory.stock_threshold_crossed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "quote.abandoned": "Magento\\Quote\\Api\\CartRepositoryInterface::get",

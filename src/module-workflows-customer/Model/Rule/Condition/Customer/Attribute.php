@@ -172,6 +172,15 @@ class Attribute extends AbstractWorkflowCondition
     {
         if (!$this->hasData('value_select_options')) {
             $options = [];
+            if ((string)$this->getAttribute() === 'birthday_month') {
+                // The birthday_month aggregate (CUS-C4) is a numeric 1-12 select;
+                // its options aren't EAV-backed, so supply the month values here.
+                for ($month = 1; $month <= 12; $month++) {
+                    $options[] = ['value' => $month, 'label' => (string)$month];
+                }
+                $this->setData('value_select_options', $options);
+                return $this->getData('value_select_options');
+            }
             $metadata = $this->getMetadataForCurrentAttribute();
             if ($metadata !== null) {
                 foreach ((array)$metadata->getOptions() as $option) {

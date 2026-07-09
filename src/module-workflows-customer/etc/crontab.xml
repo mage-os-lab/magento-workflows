@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Birthday-upcoming detector (CUS-T3). Runs once a day, early morning
+             (06:00 in the cron/server clock), so "today" in the store's
+             configured default-scope timezone is stable when the anniversary
+             math runs. See BirthdayDetector for the single-timezone semantics.
+             magento/module-cron arrives transitively via
+             mage-os/workflows-scheduler (this pack's require), matching how the
+             sales/inventory detectors declare their crons. -->
+        <job name="mageos_workflows_birthday_upcoming" instance="MageOS\WorkflowsCustomer\Model\BirthdayDetector" method="execute">
+            <schedule>0 6 * * *</schedule>
+        </job>
+    </group>
+</config>

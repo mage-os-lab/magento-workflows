@@ -33,6 +33,20 @@
         </arguments>
     </type>
 
+    <!-- Birthday aggregates on the customer root (CUS-C4), contributed through
+         the aggregate pool ALONGSIDE the sales pack's order-history provider.
+         The pool keys entity_type => provider[], so registering another item
+         under "customer" merges with (does not replace) sales' entry. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="array">
+                    <item name="birthday" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Hydrator\CustomerBirthdayAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- RelatedEntity child-condition option for the customer target (relocated
          from the engine). The customer leaf classes are reused from the
          customer condition subtree. -->
