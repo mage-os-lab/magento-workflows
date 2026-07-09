@@ -1,0 +1,20 @@
+{
+    "name": "mage-os/workflows-suite",
+    "description": "Mage-OS Workflow Engine batteries-included install: the engine, admin UI, the trigger/action/scheduler infrastructure, and all six first-party domain packs (sales, customer, catalog, inventory, review, newsletter). The optional extras (canvas, templates, approvals, admin-extension, import-suppression) stay opt-in and are required separately.",
+    "type": "metapackage",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "mage-os/workflows": "*",
+        "mage-os/workflows-admin-ui": "*",
+        "mage-os/workflows-actions-core": "*",
+        "mage-os/workflows-triggers-core": "*",
+        "mage-os/workflows-scheduler": "*",
+        "mage-os/workflows-sales": "*",
+        "mage-os/workflows-customer": "*",
+        "mage-os/workflows-catalog": "*",
+        "mage-os/workflows-inventory": "*",
+        "mage-os/workflows-review": "*",
+        "mage-os/workflows-newsletter": "*"
+    }
+}

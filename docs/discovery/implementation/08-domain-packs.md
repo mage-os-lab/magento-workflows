@@ -5,6 +5,28 @@ shared packages, chosen July 2026 (decision context:
 [Core Coverage §Packaging](../core-coverage.md#packaging-where-the-backlog-lives)). This is the
 prerequisite reorganization for executing the core-coverage backlog; it changes **no behavior**.
 
+## Execution record
+
+**Executed July 2026 — stages S0–S6 all landed** (see commit history for per-stage detail).
+The six domain packs (`workflows-{sales,customer,catalog,inventory,review,newsletter}`) exist,
+the shared packs are slimmed to their entity-agnostic remainders, and the `workflows-suite`
+metapackage ships. Two things diverged from the plan as written below:
+
+- **E5 was added mid-flight** (during the S3/S4 merge): the `ConditionLeafPool` +
+  non-throwing `getCombineClass()` on the combine pool, resolving two lateral couplings the S3
+  report surfaced (see the Enablers table). Placement rule 5 holds with zero lateral requires.
+- **S5's anonymize handling diverged**: rather than `workflows-customer` requiring
+  `workflows-newsletter`, the newsletter-unsubscribe step was extracted into a plugin on
+  `workflows-customer`'s Anonymize that ships *in the newsletter pack* — so the dependency runs
+  newsletter → customer (optional-domain-on-domain, rule 5), and `workflows-customer` dropped
+  its newsletter require entirely.
+
+S6 also declared the honest cross-pack requires the domain packs owe the shared infrastructure
+(`workflows-sales`/`-customer`/`-catalog` → `workflows-scheduler` for their `QueryRunner` maps),
+extended the honesty check to cover `MageOS\Workflows*` cross-pack references, moved the
+`abandoned_hours`/`stock_threshold` system.xml fields to sales/inventory (paths unchanged), and
+emptied the dependency-honesty baseline.
+
 ## Intent
 
 Dissolve the order/customer/product/quote bindings out of `workflows` (engine),
@@ -73,6 +95,8 @@ Placement rules (also the review checklist for future backlog items):
 | E5 *(added during S3/S4 merge)* | `ConditionLeafPool` — engine map entity_type → leaf condition class (string-wired, ObjectManager-created, mirroring `ConditionCombinePool`), plus a non-throwing `getCombineClass()` on the combine pool. The S3 report surfaced two lateral couplings hidden inside the sales pack while their targets lived in the engine: `Order/ItemsFound` constructor-injected the *catalog* pack's product leaf, and the Order/Quote combines imported the *customer* pack's root combine for their Customer subtree. Both now resolve by entity-type string through the engine pools and degrade gracefully (no product-attribute children / no Customer subtree offered) when the owning pack is absent — placement rule 5 holds with zero lateral requires | Cross-pack child-condition offering without compile coupling |
 
 ## Stages
+
+**All stages S0–S6 are done (July 2026)** — see the Execution record above.
 
 Each stage is 1–2 PRs, leaves `main` shippable, and moves the `Test/Unit` tree with its classes
 (the standalone runner auto-discovers `src/module-*`; CI needs no changes).

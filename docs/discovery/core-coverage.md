@@ -301,6 +301,12 @@ dependency of the shared packs — `workflows-actions-core` already requires sev
 Inventory to that list. This section defines the target organization so the backlog lands
 cleanly instead.
 
+> **Status (July 2026): executed.** The vertical domain-pack split described below has shipped
+> (stages S0–S6) — the entity bindings now live in `workflows-{sales,customer,catalog,inventory,review,newsletter}`,
+> the shared packs are entity-agnostic, and composer honesty is CI-enforced. The audit table
+> immediately below is the pre-split "before" snapshot, kept for context. See the
+> [domain-packs plan §Execution record](implementation/08-domain-packs.md#execution-record).
+
 ### The current state is already dishonest
 
 Audit of `use Magento\…` imports vs. declared composer requires (July 2026):

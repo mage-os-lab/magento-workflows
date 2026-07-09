@@ -99,20 +99,17 @@
                     <validate>validate-digits</validate>
                 </field>
             </group>
+            <!-- The Scheduler group holds only the engine-generic scheduling field.
+                 Domain-specific detector thresholds live in the packs that own the
+                 detector and merge into this same section/group/field id (Magento
+                 merges system.xml across modules): abandoned_hours ->
+                 mage-os/workflows-sales, stock_threshold -> mage-os/workflows-inventory
+                 (domain-packs S6). Config paths are unchanged. -->
             <group id="scheduler" translate="label" type="text" sortOrder="50" showInDefault="1">
                 <label>Scheduler</label>
                 <field id="match_cap" translate="label comment" type="text" sortOrder="10" showInDefault="1">
                     <label>Per-Run Match Cap</label>
                     <comment>Maximum entities a scheduled workflow may dispatch per run.</comment>
-                    <validate>validate-digits</validate>
-                </field>
-                <field id="abandoned_hours" translate="label" type="text" sortOrder="20" showInDefault="1">
-                    <label>Cart Abandonment Threshold (hours)</label>
-                    <validate>validate-digits</validate>
-                </field>
-                <field id="stock_threshold" translate="label comment" type="text" sortOrder="30" showInDefault="1">
-                    <label>Stock Threshold Quantity</label>
-                    <comment>Publishes the Stock Threshold Crossed trigger when a managed product's quantity drops to or below this value. 0 disables the detector.</comment>
                     <validate>validate-digits</validate>
                 </field>
             </group>

@@ -20,8 +20,9 @@ use Psr\Log\LoggerInterface;
  * async_events.xml) so they ride the same single dispatch path as every
  * other trigger.
  *
- * Hysteresis via mageos_workflow_stock_flag (owned by the core module's
- * db_schema): a product fires once when it crosses at-or-below the
+ * Hysteresis via mageos_workflow_stock_flag (owned by this module's
+ * db_schema, relocated from the engine in domain-packs S4): a product fires
+ * once when it crosses at-or-below the
  * threshold, then stays flagged. The recovery pass deletes flags for
  * products whose qty is back above the threshold, re-arming the trigger.
  * Note: AbandonedCartDetector never unflags (quotes age out via MAX_AGE_DAYS

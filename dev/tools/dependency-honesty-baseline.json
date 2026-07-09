@@ -1,15 +1,1 @@
-{
-    "mage-os/workflows": [
-        "magento/module-config",
-        "magento/module-email"
-    ],
-    "mage-os/workflows-actions-core": [
-        "magento/module-store"
-    ],
-    "mage-os/workflows-admin-extension": [
-        "magento/module-config"
-    ],
-    "mage-os/workflows-import-suppression": [
-        "magento/module-config"
-    ]
-}
+{}

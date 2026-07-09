@@ -20,6 +20,14 @@ declare(strict_types=1);
  * `Magento\Xyz` => magento/module-<kebab(Xyz)> (CatalogInventory =>
  * catalog-inventory, SalesRule => sales-rule). Magento\TestFramework is ignored.
  *
+ * Cross-pack (first-party): a `MageOS\Workflows...` reference maps to the sibling
+ * workflows package — `MageOS\Workflows` => mage-os/workflows,
+ * `MageOS\WorkflowsSales` => mage-os/workflows-sales, etc. A package referencing
+ * another workflows pack's classes at compile time must require it (a package's
+ * own namespace is excluded). Other `MageOS\*` namespaces (e.g. AsyncEvents) are
+ * third-party and not tracked here — their composer names don't follow this
+ * kebab mapping. Same baseline/inline-allowlist mechanics apply.
+ *
  * Two escape hatches:
  *   - Inline: a PHP file carrying the comment
  *     `@workflows-dependency-allowlist Magento\Xyz` has that module's references
@@ -57,17 +65,25 @@ function packageForFqcn(string $fqcn): ?string
 {
     $fqcn = ltrim($fqcn, '\\');
     $parts = explode('\\', $fqcn);
-    if (count($parts) < 2 || $parts[0] !== 'Magento') {
+    if (count($parts) < 2) {
         return null;
     }
-    $module = $parts[1];
-    if ($module === 'TestFramework') {
-        return null;
+    if ($parts[0] === 'Magento') {
+        $module = $parts[1];
+        if ($module === 'TestFramework') {
+            return null;
+        }
+        if ($module === 'Framework') {
+            return 'magento/framework';
+        }
+        return 'magento/module-' . kebab($module);
     }
-    if ($module === 'Framework') {
-        return 'magento/framework';
+    // First-party cross-pack: MageOS\Workflows... => mage-os/workflows...
+    // (kebab of the second segment). Other MageOS\* namespaces are third-party.
+    if ($parts[0] === 'MageOS' && str_starts_with($parts[1], 'Workflows')) {
+        return 'mage-os/' . kebab($parts[1]);
     }
-    return 'magento/module-' . kebab($module);
+    return null;
 }
 
 /**
@@ -126,7 +142,7 @@ function scanXmlFile(string $path): array
     $xpath = new \DOMXPath($dom);
     // Every text node and every attribute value; comments are not selected.
     foreach ($xpath->query('//text() | //@*') as $node) {
-        if (preg_match_all('/\\\\?Magento(?:\\\\[A-Za-z0-9_]+)+/', (string) $node->nodeValue, $matches)) {
+        if (preg_match_all('/\\\\?(?:Magento|MageOS)(?:\\\\[A-Za-z0-9_]+)+/', (string) $node->nodeValue, $matches)) {
             foreach ($matches[0] as $fqcn) {
                 $package = packageForFqcn($fqcn);
                 if ($package !== null) {
@@ -194,6 +210,9 @@ function analyzePackage(string $moduleDir): array
             $referenced[$package] = true;
         }
     }
+
+    // A package never requires itself.
+    unset($referenced[$name]);
 
     $missing = [];
     foreach (array_keys($referenced) as $package) {

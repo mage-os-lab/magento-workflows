@@ -23,7 +23,8 @@
             "src/module-workflows-sales",
             "src/module-workflows-scheduler",
             "src/module-workflows-templates",
-            "src/module-workflows-triggers-core"
+            "src/module-workflows-triggers-core",
+            "src/metapackage-workflows-suite"
         ]
     }
 }

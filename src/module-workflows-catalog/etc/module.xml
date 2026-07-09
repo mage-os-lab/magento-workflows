@@ -4,6 +4,7 @@
     <module name="MageOS_WorkflowsCatalog">
         <sequence>
             <module name="MageOS_Workflows"/>
+            <module name="MageOS_WorkflowsScheduler"/>
             <module name="Magento_Catalog"/>
         </sequence>
     </module>

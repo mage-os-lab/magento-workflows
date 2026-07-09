@@ -12,6 +12,7 @@
         "magento/module-store": "*"
     },
     "suggest": {
+        "mage-os/workflows-triggers-core": "Publishes inventory.stock_threshold_crossed as a real async event via EventPublisher; without it, StockThresholdDetector only logs a debug message",
         "magento/module-inventory-api": "Enables MSI source-aware stock updates via product.set_stock source_code"
     },
     "autoload": {

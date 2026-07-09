@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- Merges the stock-threshold quantity into the engine's
+     mageos_workflows/scheduler group (same section/group/field ids so Magento
+     merges it into the existing Scheduler group). The field lives here because
+     StockThresholdDetector (this pack) owns it; the config path
+     mageos_workflows/scheduler/stock_threshold is unchanged (domain-packs S6). -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="mageos_workflows">
+            <group id="scheduler">
+                <field id="stock_threshold" translate="label comment" type="text" sortOrder="30" showInDefault="1">
+                    <label>Stock Threshold Quantity</label>
+                    <comment>Publishes the Stock Threshold Crossed trigger when a managed product's quantity drops to or below this value. 0 disables the detector.</comment>
+                    <validate>validate-digits</validate>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
