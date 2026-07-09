@@ -85,6 +85,8 @@ side — flows the engine still does *not* support — is catalogued in
 - Flag products with a cost above price (negative margin) for a pricing-team review.
 - Nightly: scan the catalog and disable products with no image or empty required attributes.
 - Auto-assign seasonal products to the "Holiday" category as a scheduled campaign kicks off.
+- Notify (or webhook a wishlist fan-out) when a product comes back in stock — the `inventory.back_in_stock` trigger fires once as the stock-threshold flag clears on recovery.
+- Schedule a nightly scan for products whose MSI `salable_qty` has fallen at or below a reorder point and open a replenishment task (`catalog_product` condition on the `salable_qty` stock leaf; degrades to `qty`/`is_in_stock` where MSI is absent).
 
 ## Pricing & promotions
 

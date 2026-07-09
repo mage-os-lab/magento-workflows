@@ -43,6 +43,7 @@
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"
     },
     "aggregate_providers": {
+        "catalog_product.stock": "MageOS\\WorkflowsInventory\\Model\\Rule\\Hydrator\\ProductStockAggregateProvider",
         "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
     },
     "option_sources": {
@@ -56,6 +57,7 @@
         "customer.created": "customer|Customer",
         "customer.group_changed": "customer|Customer",
         "customer.updated": "customer|Customer",
+        "inventory.back_in_stock": "catalog_product|Catalog",
         "inventory.stock_threshold_crossed": "catalog_product|Catalog",
         "quote.abandoned": "quote|Cart",
         "sales.creditmemo.created": "sales_order|Sales",
@@ -68,6 +70,7 @@
     "async_events": {
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "customer.group_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
+        "inventory.back_in_stock": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "inventory.stock_threshold_crossed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "quote.abandoned": "Magento\\Quote\\Api\\CartRepositoryInterface::get",
         "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"

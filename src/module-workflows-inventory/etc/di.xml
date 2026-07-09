@@ -15,4 +15,19 @@
             </argument>
         </arguments>
     </type>
+
+    <!-- Product stock condition leaves (PRD-C1): qty, is_in_stock and the
+         MSI-aware salable_qty, contributed to the catalog_product root via the
+         aggregate pool (E2). The queried stock data is owned by this pack, so
+         the provider registration lives here; the catalog pack's product root
+         reads it only through the engine pool (no cross-pack require). -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="catalog_product" xsi:type="array">
+                    <item name="stock" xsi:type="object">MageOS\WorkflowsInventory\Model\Rule\Hydrator\ProductStockAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
 </config>

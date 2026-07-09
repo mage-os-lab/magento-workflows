@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Inventory trigger metadata (relocated from mage-os/workflows-triggers-core,
- * domain-packs S4). inventory.stock_threshold_crossed is declared and
- * published by this module (etc/async_events.xml, Model\StockThresholdDetector).
- * The trigger's group (Catalog) and entity (catalog_product) are unchanged.
+ * Inventory trigger metadata. inventory.stock_threshold_crossed (relocated
+ * from mage-os/workflows-triggers-core, domain-packs S4) and
+ * inventory.back_in_stock (INV-T1) are both declared and published by this
+ * module (etc/async_events.xml, Model\StockThresholdDetector). Their group
+ * (Catalog) and entity (catalog_product) match the other catalog-product
+ * triggers so they surface alongside them in the picker.
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -12,4 +14,6 @@
     <!-- Catalog -->
     <trigger event="inventory.stock_threshold_crossed" entity="catalog_product"
              label="Stock Threshold Crossed" group="Catalog"/>
+    <trigger event="inventory.back_in_stock" entity="catalog_product"
+             label="Product Back in Stock" group="Catalog"/>
 </triggers>
