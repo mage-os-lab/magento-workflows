@@ -7,7 +7,7 @@
         "category": "Catalog & inventory",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["inventory.stock_threshold_crossed"],
             "actions": ["notify.webhook", "notify.admin"],
             "modules": [],
@@ -25,7 +25,7 @@
         "trigger_ref": "inventory.stock_threshold_crossed",
         "conditions_serialized": null,
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "alert_supplier",
             "steps": {
                 "alert_supplier": {

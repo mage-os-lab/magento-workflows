@@ -6,7 +6,7 @@
     "trigger_ref": "sales.order.created",
     "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"customer_is_guest\",\"operator\":\"==\",\"value\":\"1\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\RelatedEntity\\\\Combine\",\"relation\":\"order.customer_by_email\",\"value\":\"0\",\"match_mode\":\"any\",\"conditions\":[]}]}",
     "definition": {
-        "schema": 1,
+        "schema": 4,
         "entry": "wait_grace",
         "steps": {
             "wait_grace": {

@@ -5,6 +5,22 @@ Published deliverables: `workflow-definition.schema.json`, `workflow-export.sche
 event per definition-schema revision; the engine (`Model/Definition/Definition.php`) and this
 spec move in lockstep.
 
+## Single-version collapse (schema 4 is the only version)
+
+- **Versions 1–3 collapsed into 4.** They were purely additive — each revision differed only
+  by which step types it gated (v2: `wait` + delay `business_days`/`at`; v3: `switch`;
+  v4: `approval`) — so every v1–v3 document was already a valid v4 document. No step type is
+  version-gated anymore.
+- **Legacy numbers normalize on parse.** `"schema": 1|2|3` remains *accepted as input*; the
+  engine normalizes it to 4 immediately (`Definition::fromArray()`), always reports schema 4,
+  and always emits 4 on serialize — stored legacy documents upgrade transparently on their
+  next save. There is no separate migration step.
+- New documents SHOULD declare `"schema": 4`. Numbers above 4 are still rejected as
+  unsupported (future-proofing; the canvas renders unknown-newer schemas read-only).
+- Conformance fixtures and bundled templates now all declare schema 4.
+- The version-history entries below are retained for archaeology; their "MUST declare
+  schema N" gating language no longer applies.
+
 ## Template schema 1
 
 - **`workflow-template.schema.json` (`mageos-workflow-template/1`)** — the gallery template

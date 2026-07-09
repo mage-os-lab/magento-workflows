@@ -1,5 +1,5 @@
 {
-    "schema": 2,
+    "schema": 4,
     "entry": "wait_for_order",
     "steps": {
         "wait_for_order": {

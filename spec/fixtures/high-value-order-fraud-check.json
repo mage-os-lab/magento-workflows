@@ -6,7 +6,7 @@
     "trigger_ref": "sales.order.created",
     "conditions_serialized": "{\"type\":\"combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"order_attribute\",\"attribute\":\"grand_total\",\"operator\":\">=\",\"value\":\"500\"}]}",
     "definition": {
-        "schema": 1,
+        "schema": 4,
         "entry": "s1",
         "steps": {
             "s1": {

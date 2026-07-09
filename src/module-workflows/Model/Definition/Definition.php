@@ -7,14 +7,14 @@ namespace MageOS\Workflows\Model\Definition;
  * Parsed, validated step-graph definition (docs/04-definition-format.md).
  * The single contract shared by the form UI, canvas, import/export, executor.
  *
- * Schema versions: v1 is the original action/delay/branch/stop set. v2 adds
- * the "wait" step (park until an event fires for the same entity, with a
- * timeout edge) and optional delay fields business_days / at. v3 adds the
- * "switch" step (first-match-wins multi-way branch with a default edge). v4
- * adds the "approval" step (a human-decision gate parked on the wait spine,
- * with on_approved / on_rejected / on_timeout edges and a required timeout).
- * A document using features of a later schema than it declares is rejected —
- * bump "schema" to use them.
+ * Schema versions: there is exactly one current schema (4). Historical
+ * versions 1-3 differed only by which step types they gated (v2 added "wait"
+ * and the delay extras business_days / at, v3 "switch", v4 "approval") —
+ * every v1-v3 document is a valid v4 document. Legacy numbers are still
+ * accepted as *input* and normalized to SCHEMA_VERSION on parse:
+ * getSchemaVersion() always returns 4 and toArray()/toJson() always emit 4,
+ * so stored legacy documents upgrade transparently on their next save. No
+ * step type is version-gated.
  *
  * The optional top-level "ui" block (canvas layout persistence) is
  * non-semantic: it is preserved verbatim through fromArray()/toArray(),
@@ -24,6 +24,11 @@ namespace MageOS\Workflows\Model\Definition;
 class Definition
 {
     public const SCHEMA_VERSION = 4;
+
+    /**
+     * Legacy version numbers accepted as input; all normalize to
+     * SCHEMA_VERSION on parse.
+     */
     public const SCHEMA_VERSIONS = [1, 2, 3, 4];
 
     public const STEP_ACTION = 'action';
@@ -51,7 +56,6 @@ class Definition
     private function __construct(
         private readonly array $steps,
         private readonly ?string $entry,
-        private readonly int $schema,
         private readonly ?array $ui = null
     ) {
     }
@@ -78,6 +82,9 @@ class Definition
         if (!in_array($schema, self::SCHEMA_VERSIONS, true)) {
             throw new \InvalidArgumentException(sprintf('Unsupported definition schema "%s"', (string) $schema));
         }
+        // Legacy numbers (1-3) normalize upward here; the parsed document is
+        // always current-schema. Serialization emits SCHEMA_VERSION, so stored
+        // legacy documents upgrade on their next save.
         $steps = $data['steps'] ?? [];
         if (!is_array($steps)) {
             throw new \InvalidArgumentException('Definition "steps" must be an object');
@@ -103,14 +110,9 @@ class Definition
             }
             if ($type === self::STEP_DELAY) {
                 self::assertDuration($step['config']['duration'] ?? null, $key, 'config.duration');
-                self::assertDelayExtras($step, $key, (int) $schema);
+                self::assertDelayExtras($step, $key);
             }
             if ($type === self::STEP_WAIT) {
-                if ($schema < 2) {
-                    throw new \InvalidArgumentException(
-                        sprintf('Step "%s": wait steps require definition schema 2', $key)
-                    );
-                }
                 $event = $step['config']['event'] ?? null;
                 if (!is_string($event) || $event === '' || !preg_match('/^[a-z0-9_.\-]{1,128}$/', $event)) {
                     throw new \InvalidArgumentException(
@@ -120,10 +122,10 @@ class Definition
                 self::assertDuration($step['config']['timeout'] ?? null, $key, 'config.timeout');
             }
             if ($type === self::STEP_SWITCH) {
-                self::assertSwitchStep($step, $steps, $key, (int) $schema);
+                self::assertSwitchStep($step, $steps, $key);
             }
             if ($type === self::STEP_APPROVAL) {
-                self::assertApprovalStep($step, $key, (int) $schema);
+                self::assertApprovalStep($step, $key);
             }
         }
         $entry = $data['entry'] ?? null;
@@ -137,24 +139,19 @@ class Definition
         if ($ui !== null && !is_array($ui)) {
             throw new \InvalidArgumentException('Definition "ui" must be an object when present');
         }
-        return new self($steps, $entry, (int) $schema, $ui);
+        return new self($steps, $entry, $ui);
     }
 
     /**
-     * Switch step (schema 3): first-match-wins cases, each reusing the
-     * serialized condition-tree format, plus a nullable "default" edge and
-     * one shared step-level revalidate_entity flag.
+     * Switch step: first-match-wins cases, each reusing the serialized
+     * condition-tree format, plus a nullable "default" edge and one shared
+     * step-level revalidate_entity flag.
      *
      * @param array<string, array> $steps all steps, for edge-target validation
-     * @throws \InvalidArgumentException on invalid switch shape or schema < 3
+     * @throws \InvalidArgumentException on invalid switch shape
      */
-    private static function assertSwitchStep(array $step, array $steps, string $key, int $schema): void
+    private static function assertSwitchStep(array $step, array $steps, string $key): void
     {
-        if ($schema < 3) {
-            throw new \InvalidArgumentException(
-                sprintf('Step "%s": switch steps require definition schema 3', $key)
-            );
-        }
         $cases = $step['cases'] ?? null;
         if (!is_array($cases) || $cases === [] || array_keys($cases) !== range(0, count($cases) - 1)) {
             throw new \InvalidArgumentException(
@@ -213,22 +210,17 @@ class Definition
     }
 
     /**
-     * Approval step (schema 4): a human-decision gate parked on the wait spine.
+     * Approval step: a human-decision gate parked on the wait spine.
      * config.title is the request label (interpolated at park time); timeout is
      * REQUIRED — a gate that never times out would leave an open task forever
      * (docs/discovery/approval-gate.md §4 "No indefinite parks"). Optional
      * payload_fields declare the value form the decider fills in; each entry's
      * key is unique and constrained so it can key context output safely.
      *
-     * @throws \InvalidArgumentException on invalid approval shape or schema < 4
+     * @throws \InvalidArgumentException on invalid approval shape
      */
-    private static function assertApprovalStep(array $step, string $key, int $schema): void
+    private static function assertApprovalStep(array $step, string $key): void
     {
-        if ($schema < 4) {
-            throw new \InvalidArgumentException(
-                sprintf('Step "%s": approval steps require definition schema 4', $key)
-            );
-        }
         $config = is_array($step['config'] ?? null) ? $step['config'] : [];
 
         $title = $config['title'] ?? null;
@@ -350,19 +342,14 @@ class Definition
     }
 
     /**
-     * @throws \InvalidArgumentException on invalid v2 delay extras or v1 use of them
+     * @throws \InvalidArgumentException on invalid delay extras (business_days / at)
      */
-    private static function assertDelayExtras(array $step, string $key, int $schema): void
+    private static function assertDelayExtras(array $step, string $key): void
     {
         $businessDays = $step['config']['business_days'] ?? null;
         $at = $step['config']['at'] ?? null;
         if ($businessDays === null && $at === null) {
             return;
-        }
-        if ($schema < 2) {
-            throw new \InvalidArgumentException(
-                sprintf('Delay step "%s": business_days / at require definition schema 2', $key)
-            );
         }
         if ($businessDays !== null && !is_bool($businessDays)) {
             throw new \InvalidArgumentException(
@@ -378,7 +365,7 @@ class Definition
 
     public function getSchemaVersion(): int
     {
-        return $this->schema;
+        return self::SCHEMA_VERSION;
     }
 
     public function getEntryKey(): ?string
@@ -502,7 +489,7 @@ class Definition
     public function toArray(): array
     {
         $data = [
-            'schema' => $this->schema,
+            'schema' => self::SCHEMA_VERSION,
             'steps' => $this->steps,
             'entry' => $this->entry,
         ];

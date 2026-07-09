@@ -6,7 +6,7 @@
     "trigger_ref": "sales.order.created",
     "conditions_serialized": null,
     "definition": {
-        "schema": 1,
+        "schema": 4,
         "entry": "s1",
         "steps": {
             "s1": {

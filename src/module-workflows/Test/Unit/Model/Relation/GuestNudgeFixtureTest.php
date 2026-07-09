@@ -32,8 +32,9 @@ class GuestNudgeFixtureTest extends TestCase
         $envelope = $this->envelope();
         $definition = Definition::fromArray($envelope['definition']);
 
-        // No schema bump — the relation lives entirely in conditions_serialized.
-        $this->assertSame(1, $definition->getSchemaVersion());
+        // The relation lives entirely in conditions_serialized; the parsed
+        // definition always reports the single current schema version.
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
         $this->assertSame('wait_grace', $definition->getEntryKey());
     }
 

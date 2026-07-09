@@ -21,7 +21,7 @@ one di.xml entry.
     "category": "Cart recovery",
     "version": "1.0.0",                          // semver of the template content
     "requires": {
-      "schema": 2,                               // min definition schema version
+      "schema": 4,                               // min definition schema version
       "triggers": ["sales.order.created"],       // trigger event names (TriggerRegistry)
       "actions": ["notify.email", "marketing.generate_coupon"],  // action codes (ActionPool)
       "modules": [],                             // module names that must be enabled
@@ -41,7 +41,7 @@ one di.xml entry.
     "trigger_type": "event",
     "trigger_ref": "sales.order.created",
     "conditions_serialized": null,
-    "definition": { "schema": 2, "entry": "...", "steps": { } },
+    "definition": { "schema": 4, "entry": "...", "steps": { } },
     "loop_guard_depth": 1
   }
 }

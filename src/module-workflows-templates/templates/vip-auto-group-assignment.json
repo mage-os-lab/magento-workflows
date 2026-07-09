@@ -7,7 +7,7 @@
         "category": "Customer lifecycle",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["customer.updated"],
             "actions": ["customer.assign_group", "notify.email"],
             "modules": [],
@@ -25,7 +25,7 @@
         "trigger_ref": "customer.updated",
         "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Customer\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Customer\\\\Attribute\",\"attribute\":\"lifetime_sales\",\"operator\":\">=\",\"value\":\"%param.spend_threshold%\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Customer\\\\Attribute\",\"attribute\":\"group_id\",\"operator\":\"!=\",\"value\":\"%param.vip_group_id%\"}]}",
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "promote",
             "steps": {
                 "promote": {

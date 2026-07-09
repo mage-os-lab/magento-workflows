@@ -7,7 +7,7 @@
         "category": "Notifications & internal alerts",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["sales.order.created"],
             "actions": ["order.add_comment", "notify.admin"],
             "modules": [],
@@ -24,7 +24,7 @@
         "trigger_ref": "sales.order.created",
         "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"customer_group_id\",\"operator\":\"==\",\"value\":\"%param.vip_group_id%\"}",
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "tag_comment",
             "steps": {
                 "tag_comment": {

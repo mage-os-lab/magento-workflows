@@ -104,7 +104,7 @@ The `definition` JSON is the single artifact the form UI, the future canvas, imp
 
 ```json
 {
-  "schema": 1,
+  "schema": 4,
   "steps": {
     "s1": {"type": "action", "action": "order.add_comment",
            "config": {"comment": "High-value order flagged ({{ trigger.grand_total }})"},
