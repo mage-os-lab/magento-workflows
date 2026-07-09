@@ -32,10 +32,20 @@ use Psr\Log\LoggerInterface;
  * exceptions are reported as unsuccessful + retryable and thereby redelivered
  * with backoff.
  *
- * Contract (verified against mage-os/mageos-async-events >= 4.0):
- * - NotifierInterface::notify(AsyncEventInterface, CloudEventImmutable): NotifierResult
- * - NotifierResult exposes setSubscriptionId(int), setIsSuccessful(bool),
- *   setIsRetryable(bool), setResponseData(string).
+ * Contract (verified against mage-os/mageos-async-events @ b249976):
+ * - Service/AsyncEvent/NotifierInterface.php:20 declares
+ *   notify(AsyncEventInterface $asyncEvent, CloudEventImmutable $event): ResultInterface;
+ *   we narrow the return to NotifierResult (a legal covariant return, exactly
+ *   as upstream's own HttpNotifier does at HttpNotifier.php:42).
+ * - The subscription is Api/Data/AsyncEventInterface (NOT AsyncEventDisplayInterface):
+ *   it exposes getRecipientUrl()/getSubscriptionId()/getEventName()/getMetadata()
+ *   but no arbitrary key-value bag, so the workflow id travels in the recipient
+ *   marker rather than a custom subscription field.
+ * - The event payload is the CloudEvent's getData() (Service/AsyncEvent/
+ *   EventDispatcher.php:69 wraps the resolved output) and the trace UUID is
+ *   getId() (the identity-service uuid stamped at EventDispatcher.php:67,82).
+ * - Helper/NotifierResult.php exposes setSubscriptionId(int), setIsSuccessful(bool),
+ *   setIsRetryable(bool), setResponseData(string) — all consumed by buildResult().
  */
 class WorkflowNotifier implements NotifierInterface
 {
