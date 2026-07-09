@@ -47,7 +47,7 @@ Execution `context` holds entity snapshots (names, emails, addresses). Three con
 
 1. **TTL pruning cron** — default 90 days, configurable down to hours.
 2. **Field-level redaction config** applied before ES indexing — index metadata + IDs by default, full payload opt-in.
-3. **GDPR erasure hook** into `CustomerRepository::delete` / erasure flows that scrubs matching execution contexts.
+3. **GDPR erasure hook** into `CustomerRepository::delete` / `deleteById` (`CustomerErasureScrubPlugin` in `mage-os/workflows-customer`, backed by `ExecutionPiiScrubber`): after a successful deletion, executions rooted on the deleted customer (workflow `entity_type=customer`, matching `entity_id`) have their context trigger snapshot and step outputs replaced wholesale with a `{"gdpr_redacted": true}` marker, and executions of *any* entity type whose context carries the customer's email (order/quote snapshots' `customer_email`, address `email` fields) get targeted redaction — every email occurrence plus the person-field siblings of each match (name parts, dob, taxvat, telephone, street, ...). Execution rows themselves survive as the audit trail (status, timestamps, workflow id, step keys); step-row result JSON and error text are scrubbed the same way. Known limits: snapshots carrying the customer's PII *without* their email anywhere in the same context cannot be attributed safely, and aggregation batch items are not scrubbed — both fall to TTL pruning (#1). Pinned by `ExecutionPiiScrubberTest` / `CustomerErasureScrubPluginTest`.
 
 ## Manual mass-run
 
