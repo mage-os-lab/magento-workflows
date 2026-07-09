@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for newsletter subscription changes
+         (SUB-T1). Publishes newsletter.subscription_changed with from/to status
+         on every real status transition (and on first subscribe). -->
+    <event name="newsletter_subscriber_save_after">
+        <observer name="mageos_workflows_newsletter_subscription_changed"
+                  instance="MageOS\WorkflowsNewsletter\Observer\SubscriptionChangeObserver"/>
+    </event>
+</config>

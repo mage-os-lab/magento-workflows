@@ -4,6 +4,7 @@
     <module name="MageOS_WorkflowsNewsletter">
         <sequence>
             <module name="MageOS_Workflows"/>
+            <module name="MageOS_WorkflowsTriggersCore"/>
             <module name="MageOS_WorkflowsCustomer"/>
             <module name="Magento_Newsletter"/>
         </sequence>

@@ -26,6 +26,7 @@
     "combines": {
         "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Condition\\Product\\Combine",
         "customer": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Condition\\Customer\\Combine",
+        "newsletter_subscriber": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Condition\\Subscriber\\Combine",
         "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Quote\\Combine",
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Order\\Combine"
     },
@@ -39,10 +40,12 @@
     "hydrators": {
         "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Hydrator\\ProductHydrator",
         "customer": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerHydrator",
+        "newsletter_subscriber": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\SubscriberHydrator",
         "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\QuoteHydrator",
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"
     },
     "aggregate_providers": {
+        "customer.newsletter_status": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\NewsletterStatusAggregateProvider",
         "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
     },
     "option_sources": {
@@ -57,6 +60,7 @@
         "customer.group_changed": "customer|Customer",
         "customer.updated": "customer|Customer",
         "inventory.stock_threshold_crossed": "catalog_product|Catalog",
+        "newsletter.subscription_changed": "newsletter_subscriber|Marketing",
         "quote.abandoned": "quote|Cart",
         "sales.creditmemo.created": "sales_order|Sales",
         "sales.invoice.created": "sales_order|Sales",
@@ -69,6 +73,7 @@
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "customer.group_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "inventory.stock_threshold_crossed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
+        "newsletter.subscription_changed": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\SubscriberHydrationService::getById",
         "quote.abandoned": "Magento\\Quote\\Api\\CartRepositoryInterface::get",
         "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
     },
@@ -76,6 +81,7 @@
         "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerGroupChangeObserver",
         "mageos_workflow_delete_after::mageos_workflows_triggers_subscription_sync_delete": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
+        "newsletter_subscriber_save_after::mageos_workflows_newsletter_subscription_changed": "MageOS\\WorkflowsNewsletter\\Observer\\SubscriptionChangeObserver",
         "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsReview\\Observer\\ReviewSubmittedObserver",
         "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver"
     },
