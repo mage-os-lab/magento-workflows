@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Catalog product-lifecycle trigger metadata (PRD-T1/T2/T3). All four events
+ * are declared and published by this module (etc/async_events.xml,
+ * Observer\ProductSaveObserver). Two metadata rows for the created/updated
+ * pair, one for each transition event.
+ */
+-->
+<triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
+    <!-- Catalog -->
+    <trigger event="catalog.product.created" entity="catalog_product"
+             label="Product Created" group="Catalog"/>
+    <trigger event="catalog.product.updated" entity="catalog_product"
+             label="Product Updated" group="Catalog"/>
+    <trigger event="catalog.product.price_changed" entity="catalog_product"
+             label="Product Price Changed" group="Catalog"/>
+    <trigger event="catalog.product.status_changed" entity="catalog_product"
+             label="Product Enabled/Disabled" group="Catalog"/>
+</triggers>

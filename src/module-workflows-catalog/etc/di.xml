@@ -44,6 +44,17 @@
                 <item name="product.set_status" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetStatus</item>
                 <item name="product.set_categories" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetCategories</item>
                 <item name="product.set_special_price" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetSpecialPrice</item>
+                <item name="product.assign_websites" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\AssignWebsites</item>
+                <item name="product.set_product_links" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetProductLinks</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Bounded website option source (PRD-C3/PRD-A1): website id => name. -->
+    <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="websites" xsi:type="object">MageOS\WorkflowsCatalog\Model\Option\WebsiteOptionSource</item>
             </argument>
         </arguments>
     </type>

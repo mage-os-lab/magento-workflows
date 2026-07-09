@@ -7,6 +7,7 @@ use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as P
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute\Set\CollectionFactory as AttributeSetCollectionFactory;
 use Magento\Rule\Model\Condition\Context;
+use Magento\Store\Api\WebsiteRepositoryInterface;
 use MageOS\Workflows\Model\Rule\AggregateProviderInterface;
 use MageOS\Workflows\Model\Rule\AggregateProviderPool;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
@@ -41,7 +42,33 @@ class AttributeTest extends TestCase
         // ...alongside the always-present special attributes.
         $this->assertArrayHasKey('attribute_set_id', $options);
         $this->assertArrayHasKey('category_ids', $options);
+        $this->assertArrayHasKey('website_ids', $options);
         $this->assertArrayHasKey('sku', $options);
+    }
+
+    public function testWebsiteIdsIsAMultiselectSpecialAttribute(): void
+    {
+        // PRD-C3: website membership mirrors category_ids' multiselect set
+        // semantics.
+        $attribute = $this->attribute();
+        $attribute->setAttribute('website_ids');
+
+        $this->assertSame('multiselect', $attribute->getInputType());
+        $this->assertSame('multiselect', $attribute->getValueElementType());
+    }
+
+    public function testWebsiteIdsValueOptionsComeFromTheWebsiteSource(): void
+    {
+        $attribute = $this->attribute();
+        $attribute->setAttribute('website_ids');
+
+        $options = $attribute->getValueSelectOptions();
+        $values = array_column($options, 'value');
+        $labels = array_column($options, 'label');
+
+        $this->assertSame(['1', '2'], $values);
+        $this->assertTrue(in_array('Main Website', $labels, true));
+        $this->assertTrue(in_array('B2B Website', $labels, true));
     }
 
     public function testAggregateLeavesUseTheProviderDeclaredInputTypes(): void
@@ -86,8 +113,55 @@ class AttributeTest extends TestCase
             },
             new class extends AttributeSetCollectionFactory {
             },
-            $pool ?? $this->poolWithStockProvider()
+            $pool ?? $this->poolWithStockProvider(),
+            $this->websiteRepository()
         );
+    }
+
+    /**
+     * Two-website system source for the website_ids special attribute (PRD-C3).
+     */
+    private function websiteRepository(): WebsiteRepositoryInterface
+    {
+        return new class implements WebsiteRepositoryInterface {
+            public function get($code)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getById($id)
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function getList()
+            {
+                // Plain website-like data bags: only getId()/getName() are read.
+                $make = static fn (int $id, string $name): object => new class ($id, $name) {
+                    public function __construct(private int $id, private string $name)
+                    {
+                    }
+                    public function getId(): int
+                    {
+                        return $this->id;
+                    }
+                    public function getName(): string
+                    {
+                        return $this->name;
+                    }
+                };
+                return [$make(1, 'Main Website'), $make(2, 'B2B Website')];
+            }
+
+            public function getDefault()
+            {
+                throw new \BadMethodCallException(__METHOD__);
+            }
+
+            public function clean()
+            {
+            }
+        };
     }
 
     private function poolWithStockProvider(): AggregateProviderPool

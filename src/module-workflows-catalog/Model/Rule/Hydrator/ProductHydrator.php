@@ -15,9 +15,10 @@ use MageOS\Workflows\Model\Rule\Hydrator\EntityDataConverter;
 use MageOS\Workflows\Model\Rule\Hydrator\EntityHydratorInterface;
 
 /**
- * catalog_product hydrator: flat product data with EAV attributes and
- * `category_ids` (lazy category links force-loaded) at top level, enriched with
- * aggregate attributes contributed to the catalog_product root through
+ * catalog_product hydrator: flat product data with EAV attributes,
+ * `category_ids` (lazy category links force-loaded) and `website_ids` (lazy
+ * website links force-loaded, PRD-C3) at top level, enriched with aggregate
+ * attributes contributed to the catalog_product root through
  * AggregateProviderPool (E2) — the inventory pack's stock leaves (qty,
  * is_in_stock, salable_qty; PRD-C1) today, plus whatever later packs register
  * for the product entity type.
@@ -47,8 +48,10 @@ class ProductHydrator implements EntityHydratorInterface
         }
 
         if ($product instanceof \Magento\Catalog\Model\Product) {
-            // Force lazy category link load so `category_ids` is present in data
+            // Force lazy link loads so `category_ids` and `website_ids` are
+            // present in data (both back the multiselect special attributes).
             $product->getCategoryIds();
+            $product->getWebsiteIds();
         }
 
         $data = array_merge(
