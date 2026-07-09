@@ -54,8 +54,11 @@ Placement rules (also the review checklist for future backlog items):
 4. **Option sources live with their consumer.**
 5. **Packs may require any never-absent `magento/*` module freely** (Sales, Customer, Catalog,
    Quote, Eav, CatalogInventory, SalesRule, Email — required by `product-community-edition`).
-   Workflows packs never require each other laterally; only the small optional-domain packs may
-   require the domain packs beneath them (newsletter → customer).
+   Workflows packs never require each other *laterally* (sales ↔ customer); domain packs may —
+   and must, honestly — require the shared infrastructure packs they build on (`workflows`
+   always; `workflows-triggers-core` when they publish through its `EventPublisher`, as the
+   sales pack's order-status observer does). Only the small optional-domain packs may
+   additionally require the domain packs beneath them (newsletter → customer).
 6. The `set_stock` runtime-guard style stays reserved for genuinely removable package families
    (MSI) inside an otherwise hard-dep class.
 

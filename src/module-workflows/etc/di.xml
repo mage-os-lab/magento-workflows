@@ -99,9 +99,7 @@
     <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
         <arguments>
             <argument name="sources" xsi:type="array">
-                <item name="order_statuses" xsi:type="object">MageOS\Workflows\Model\Option\OrderStatusOptionSource</item>
                 <item name="customer_groups" xsi:type="object">MageOS\Workflows\Model\Option\CustomerGroupOptionSource</item>
-                <item name="cart_price_rules" xsi:type="object">MageOS\Workflows\Model\Option\CartPriceRuleOptionSource</item>
                 <item name="email_templates" xsi:type="object">MageOS\Workflows\Model\Option\EmailTemplateOptionSource</item>
             </argument>
         </arguments>
@@ -243,10 +241,8 @@
     <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
         <arguments>
             <argument name="hydrators" xsi:type="array">
-                <item name="sales_order" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\OrderHydrator</item>
                 <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\CustomerHydrator</item>
                 <item name="catalog_product" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\ProductHydrator</item>
-                <item name="quote" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\QuoteHydrator</item>
             </argument>
         </arguments>
     </type>
@@ -263,20 +259,11 @@
 
     <!-- Aggregate-provider pool (E2 / domain-packs): per-target-entity map of
          providers supplying hydration-time aggregate attributes (metadata +
-         computation) to a condition root. CustomerAggregateProvider is the
-         first registered provider, contributing order-history aggregates to the
-         customer root; S1 relocates this entry to the sales pack, and later
-         packs append reviews_count / wishlist_items_count here without touching
-         the customer root. -->
-    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
-        <arguments>
-            <argument name="providers" xsi:type="array">
-                <item name="customer" xsi:type="array">
-                    <item name="order_history" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\CustomerAggregateProvider</item>
-                </item>
-            </argument>
-        </arguments>
-    </type>
+         computation) to a condition root. The first provider, order-history
+         aggregates on the customer root, ships with mage-os/workflows-sales
+         (the pack owning the queried sales_order data) and registers there via
+         di.xml (domain-packs S1); later packs append reviews_count /
+         wishlist_items_count without touching the customer root. -->
 
     <!-- Relation registry (F5) — the extension surface for entity
          cross-referencing. Seed relations (docs/discovery/entity-cross-
@@ -285,10 +272,6 @@
     <type name="MageOS\Workflows\Model\Relation\RelationPool">
         <arguments>
             <argument name="relations" xsi:type="array">
-                <item name="order.customer" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderCustomer</item>
-                <item name="order.customer_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderCustomerByEmail</item>
-                <item name="quote.customer_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\QuoteCustomerByEmail</item>
-                <item name="order.orders_by_email" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\OrderOrdersByEmail</item>
                 <item name="customer.open_orders" xsi:type="object">MageOS\Workflows\Model\Relation\Resolver\CustomerOpenOrders</item>
             </argument>
         </arguments>
@@ -301,17 +284,14 @@
         <arguments>
             <argument name="targetChildConditions" xsi:type="array">
                 <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Customer\Attribute</item>
-                <item name="sales_order" xsi:type="object">MageOS\Workflows\Model\Rule\Condition\Order\Attribute</item>
             </argument>
         </arguments>
     </type>
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
         <arguments>
             <argument name="combines" xsi:type="array">
-                <item name="sales_order" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Order\Combine</item>
                 <item name="customer" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Customer\Combine</item>
                 <item name="catalog_product" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Product\Combine</item>
-                <item name="quote" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Quote\Combine</item>
             </argument>
         </arguments>
     </type>

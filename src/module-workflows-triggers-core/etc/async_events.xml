@@ -7,11 +7,12 @@
  * extra keys (from_status/to_status, from_group_id/to_group_id, review_*)
  * ride along in the message.
  *
- * Publishers: Observer\OrderStatusChangeObserver,
- * Observer\CustomerGroupChangeObserver, Observer\ReviewSubmittedObserver
- * (this module); inventory.stock_threshold_crossed and quote.abandoned are
- * published by the scheduler package (mage-os/workflows-scheduler) — they
- * are declared here so trigger metadata is never dangling.
+ * Publishers: Observer\CustomerGroupChangeObserver,
+ * Observer\ReviewSubmittedObserver (this module);
+ * inventory.stock_threshold_crossed is published by the scheduler package
+ * (mage-os/workflows-scheduler) — declared here so trigger metadata is never
+ * dangling. The sales.order.status_changed and quote.abandoned definitions
+ * moved to mage-os/workflows-sales (domain-packs S1).
  *
  * Node name assumption: mageos-async-events' async_events.xsd uses
  * <async_event name="..."><service class="..." method="..."/></async_event>
@@ -21,9 +22,6 @@
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
-    <async_event name="sales.order.status_changed">
-        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
-    </async_event>
     <async_event name="customer.group_changed">
         <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
     </async_event>
@@ -32,8 +30,5 @@
     </async_event>
     <async_event name="inventory.stock_threshold_crossed">
         <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
-    </async_event>
-    <async_event name="quote.abandoned">
-        <service class="Magento\Quote\Api\CartRepositoryInterface" method="get"/>
     </async_event>
 </config>

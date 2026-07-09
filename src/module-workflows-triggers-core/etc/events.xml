@@ -12,11 +12,9 @@
                   instance="MageOS\WorkflowsTriggersCore\Observer\WorkflowSaveObserver"/>
     </event>
 
-    <!-- Gap-fill async-event publishers -->
-    <event name="sales_order_save_after">
-        <observer name="mageos_workflows_triggers_order_status_changed"
-                  instance="MageOS\WorkflowsTriggersCore\Observer\OrderStatusChangeObserver"/>
-    </event>
+    <!-- Gap-fill async-event publishers.
+         sales_order_save_after (OrderStatusChangeObserver) moved to
+         mage-os/workflows-sales (domain-packs S1). -->
     <event name="customer_save_after">
         <observer name="mageos_workflows_triggers_customer_group_changed"
                   instance="MageOS\WorkflowsTriggersCore\Observer\CustomerGroupChangeObserver"/>

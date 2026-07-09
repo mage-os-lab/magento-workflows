@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for order status changes (relocated from
+         mage-os/workflows-triggers-core). Publishes sales.order.status_changed. -->
+    <event name="sales_order_save_after">
+        <observer name="mageos_workflows_triggers_order_status_changed"
+                  instance="MageOS\WorkflowsSales\Observer\OrderStatusChangeObserver"/>
+    </event>
+</config>

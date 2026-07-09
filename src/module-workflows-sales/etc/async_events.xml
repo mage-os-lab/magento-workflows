@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Sales/cart async-event definitions (relocated from
+ * mage-os/workflows-triggers-core, domain-packs S1). The service class/method
+ * hydrates the delivered payload from the id in the published data;
+ * publisher-supplied extra keys (from_status/to_status) ride along.
+ *
+ * Publishers: Observer\OrderStatusChangeObserver (this module) publishes
+ * sales.order.status_changed; Model\AbandonedCartDetector (this module)
+ * publishes quote.abandoned.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
+    <async_event name="sales.order.status_changed">
+        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
+    </async_event>
+    <async_event name="quote.abandoned">
+        <service class="Magento\Quote\Api\CartRepositoryInterface" method="get"/>
+    </async_event>
+</config>

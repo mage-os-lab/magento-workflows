@@ -5,7 +5,7 @@ namespace MageOS\WorkflowsScheduler\Test\Integration\Model;
 
 use Magento\Framework\App\ResourceConnection;
 use Magento\TestFramework\Helper\Bootstrap;
-use MageOS\WorkflowsScheduler\Model\AbandonedCartDetector;
+use MageOS\WorkflowsSales\Model\AbandonedCartDetector;
 use MageOS\WorkflowsScheduler\Test\Integration\_files\RecordingEventPublisher;
 use MageOS\WorkflowsTriggersCore\Service\EventPublisher;
 use PHPUnit\Framework\TestCase;

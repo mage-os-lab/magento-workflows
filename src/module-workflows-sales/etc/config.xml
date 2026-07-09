@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <mageos_workflows>
+            <scheduler>
+                <!-- AbandonedCartDetector: quotes idle at least this many hours are candidates.
+                     Path preserved (mageos_workflows/scheduler/abandoned_hours); relocated with
+                     the detector from mage-os/workflows-scheduler (domain-packs S1). -->
+                <abandoned_hours>4</abandoned_hours>
+            </scheduler>
+        </mageos_workflows>
+    </default>
+</config>

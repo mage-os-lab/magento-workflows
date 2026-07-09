@@ -6,15 +6,7 @@
     <type name="MageOS\Workflows\Model\Action\ActionPool">
         <arguments>
             <argument name="actions" xsi:type="array">
-                <!-- Sales -->
-                <item name="order.add_comment" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\AddComment</item>
-                <item name="order.change_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\ChangeStatus</item>
-                <item name="order.hold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Hold</item>
-                <item name="order.unhold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Unhold</item>
-                <item name="order.create_invoice" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateInvoice</item>
-                <item name="order.create_shipment" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateShipment</item>
-                <item name="order.create_creditmemo" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateCreditmemo</item>
-                <item name="order.cancel" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Cancel</item>
+                <!-- Sales (order.*) moved to mage-os/workflows-sales (domain-packs S1). -->
                 <!-- Customer -->
                 <item name="customer.assign_group" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\AssignGroup</item>
                 <item name="customer.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute</item>
@@ -26,8 +18,7 @@
                 <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStock</item>
                 <item name="product.set_categories" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetCategories</item>
                 <item name="product.set_special_price" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetSpecialPrice</item>
-                <!-- Marketing -->
-                <item name="marketing.generate_coupon" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Marketing\GenerateCoupon</item>
+                <!-- Marketing (marketing.generate_coupon) moved to mage-os/workflows-sales (domain-packs S1). -->
                 <!-- Notify -->
                 <item name="notify.email" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Email</item>
                 <item name="notify.webhook" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Webhook</item>

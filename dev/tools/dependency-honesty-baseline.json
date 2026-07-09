@@ -5,10 +5,7 @@
         "magento/module-customer",
         "magento/module-eav",
         "magento/module-email",
-        "magento/module-payment",
-        "magento/module-sales",
-        "magento/module-sales-rule",
-        "magento/module-shipping"
+        "magento/module-sales"
     ],
     "mage-os/workflows-actions-core": [
         "magento/module-eav",
@@ -23,8 +20,6 @@
     "mage-os/workflows-triggers-core": [
         "magento/module-catalog",
         "magento/module-customer",
-        "magento/module-quote",
-        "magento/module-review",
-        "magento/module-sales"
+        "magento/module-review"
     ]
 }

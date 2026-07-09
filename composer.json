@@ -15,6 +15,7 @@
             "src/module-workflows-approvals",
             "src/module-workflows-canvas",
             "src/module-workflows-import-suppression",
+            "src/module-workflows-sales",
             "src/module-workflows-scheduler",
             "src/module-workflows-templates",
             "src/module-workflows-triggers-core"

@@ -5,7 +5,7 @@ namespace MageOS\WorkflowsActionsCore\Test\Integration\Action\Marketing;
 
 use Magento\Framework\App\ResourceConnection;
 use Magento\SalesRule\Model\ResourceModel\Rule\CollectionFactory as RuleCollectionFactory;
-use MageOS\WorkflowsActionsCore\Action\Marketing\GenerateCoupon;
+use MageOS\WorkflowsSales\Action\Marketing\GenerateCoupon;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 
 /**

@@ -5,18 +5,18 @@
         "customer.newsletter": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\Newsletter",
         "customer.set_attribute": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\SetAttribute",
         "flow.set_variable": "MageOS\\WorkflowsActionsCore\\Action\\Flow\\SetVariable",
-        "marketing.generate_coupon": "MageOS\\WorkflowsActionsCore\\Action\\Marketing\\GenerateCoupon",
+        "marketing.generate_coupon": "MageOS\\WorkflowsSales\\Action\\Marketing\\GenerateCoupon",
         "notify.admin": "MageOS\\WorkflowsActionsCore\\Action\\Notify\\AdminNotification",
         "notify.email": "MageOS\\WorkflowsActionsCore\\Action\\Notify\\Email",
         "notify.webhook": "MageOS\\WorkflowsActionsCore\\Action\\Notify\\Webhook",
-        "order.add_comment": "MageOS\\WorkflowsActionsCore\\Action\\Order\\AddComment",
-        "order.cancel": "MageOS\\WorkflowsActionsCore\\Action\\Order\\Cancel",
-        "order.change_status": "MageOS\\WorkflowsActionsCore\\Action\\Order\\ChangeStatus",
-        "order.create_creditmemo": "MageOS\\WorkflowsActionsCore\\Action\\Order\\CreateCreditmemo",
-        "order.create_invoice": "MageOS\\WorkflowsActionsCore\\Action\\Order\\CreateInvoice",
-        "order.create_shipment": "MageOS\\WorkflowsActionsCore\\Action\\Order\\CreateShipment",
-        "order.hold": "MageOS\\WorkflowsActionsCore\\Action\\Order\\Hold",
-        "order.unhold": "MageOS\\WorkflowsActionsCore\\Action\\Order\\Unhold",
+        "order.add_comment": "MageOS\\WorkflowsSales\\Action\\Order\\AddComment",
+        "order.cancel": "MageOS\\WorkflowsSales\\Action\\Order\\Cancel",
+        "order.change_status": "MageOS\\WorkflowsSales\\Action\\Order\\ChangeStatus",
+        "order.create_creditmemo": "MageOS\\WorkflowsSales\\Action\\Order\\CreateCreditmemo",
+        "order.create_invoice": "MageOS\\WorkflowsSales\\Action\\Order\\CreateInvoice",
+        "order.create_shipment": "MageOS\\WorkflowsSales\\Action\\Order\\CreateShipment",
+        "order.hold": "MageOS\\WorkflowsSales\\Action\\Order\\Hold",
+        "order.unhold": "MageOS\\WorkflowsSales\\Action\\Order\\Unhold",
         "product.set_attribute": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetAttribute",
         "product.set_categories": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetCategories",
         "product.set_special_price": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetSpecialPrice",
@@ -26,30 +26,30 @@
     "combines": {
         "catalog_product": "MageOS\\Workflows\\Model\\Rule\\Condition\\Product\\Combine",
         "customer": "MageOS\\Workflows\\Model\\Rule\\Condition\\Customer\\Combine",
-        "quote": "MageOS\\Workflows\\Model\\Rule\\Condition\\Quote\\Combine",
-        "sales_order": "MageOS\\Workflows\\Model\\Rule\\Condition\\Order\\Combine"
+        "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Quote\\Combine",
+        "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Order\\Combine"
     },
     "relations": {
         "customer.open_orders": "MageOS\\Workflows\\Model\\Relation\\Resolver\\CustomerOpenOrders",
-        "order.customer": "MageOS\\Workflows\\Model\\Relation\\Resolver\\OrderCustomer",
-        "order.customer_by_email": "MageOS\\Workflows\\Model\\Relation\\Resolver\\OrderCustomerByEmail",
-        "order.orders_by_email": "MageOS\\Workflows\\Model\\Relation\\Resolver\\OrderOrdersByEmail",
-        "quote.customer_by_email": "MageOS\\Workflows\\Model\\Relation\\Resolver\\QuoteCustomerByEmail"
+        "order.customer": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\OrderCustomer",
+        "order.customer_by_email": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\OrderCustomerByEmail",
+        "order.orders_by_email": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\OrderOrdersByEmail",
+        "quote.customer_by_email": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\QuoteCustomerByEmail"
     },
     "hydrators": {
         "catalog_product": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\ProductHydrator",
         "customer": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\CustomerHydrator",
-        "quote": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\QuoteHydrator",
-        "sales_order": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\OrderHydrator"
+        "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\QuoteHydrator",
+        "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"
     },
     "aggregate_providers": {
-        "customer.order_history": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
+        "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
     },
     "option_sources": {
-        "cart_price_rules": "MageOS\\Workflows\\Model\\Option\\CartPriceRuleOptionSource",
+        "cart_price_rules": "MageOS\\WorkflowsSales\\Model\\Option\\CartPriceRuleOptionSource",
         "customer_groups": "MageOS\\Workflows\\Model\\Option\\CustomerGroupOptionSource",
         "email_templates": "MageOS\\Workflows\\Model\\Option\\EmailTemplateOptionSource",
-        "order_statuses": "MageOS\\Workflows\\Model\\Option\\OrderStatusOptionSource"
+        "order_statuses": "MageOS\\WorkflowsSales\\Model\\Option\\OrderStatusOptionSource"
     },
     "trigger_events": {
         "catalog.product.review_submitted": "catalog_product|Catalog",
@@ -77,6 +77,6 @@
         "mageos_workflow_delete_after::mageos_workflows_triggers_subscription_sync_delete": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsTriggersCore\\Observer\\ReviewSubmittedObserver",
-        "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsTriggersCore\\Observer\\OrderStatusChangeObserver"
+        "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver"
     }
 }

@@ -90,12 +90,12 @@ class ExecutorWalkTest extends TestCase
         // and drops the leaf, leaving an empty combine that always validates
         // true — so a false root condition would never skip.
         $conditions = json_encode([
-            'type' => \MageOS\Workflows\Model\Rule\Condition\Order\Combine::class,
+            'type' => \MageOS\WorkflowsSales\Model\Rule\Condition\Order\Combine::class,
             'aggregator' => 'all',
             'value' => '1',
             'conditions' => [
                 [
-                    'type' => \MageOS\Workflows\Model\Rule\Condition\Order\Attribute::class,
+                    'type' => \MageOS\WorkflowsSales\Model\Rule\Condition\Order\Attribute::class,
                     'attribute' => 'grand_total',
                     'operator' => '>=',
                     'value' => '500',
