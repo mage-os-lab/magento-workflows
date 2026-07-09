@@ -78,5 +78,8 @@
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsTriggersCore\\Observer\\ReviewSubmittedObserver",
         "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver"
+    },
+    "leaf_conditions": {
+        "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Condition\\Product\\Attribute"
     }
 }

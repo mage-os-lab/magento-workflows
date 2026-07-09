@@ -7,8 +7,8 @@ use Magento\Framework\DataObject;
 use Magento\Framework\DataObjectFactory;
 use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;
+use MageOS\Workflows\Model\Rule\ConditionLeafPool;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
-use MageOS\WorkflowsCatalog\Model\Rule\Condition\Product\Attribute as ProductAttribute;
 
 /**
  * "Order items" subtree — the SalesRule Found pattern over order items:
@@ -24,7 +24,7 @@ class ItemsFound extends AbstractWorkflowCombine
 {
     public function __construct(
         Context $context,
-        private readonly ProductAttribute $productCondition,
+        private readonly ConditionLeafPool $leafPool,
         private readonly DataObjectFactory $dataObjectFactory,
         array $data = []
     ) {
@@ -54,9 +54,18 @@ class ItemsFound extends AbstractWorkflowCombine
      */
     public function getNewChildSelectOptions()
     {
+        // The product leaf arrives through the engine's ConditionLeafPool so
+        // this pack never compile-references the catalog pack; without the
+        // catalog pack, item children by product attribute are simply not
+        // offered (item conditions on the raw item fields still work).
+        $productCondition = $this->leafPool->createLeaf(HydrationProviderInterface::TYPE_PRODUCT);
+        if ($productCondition === null) {
+            return parent::getNewChildSelectOptions();
+        }
+        $leafClass = get_class($productCondition);
         $attributeOptions = [];
-        foreach ($this->productCondition->loadAttributeOptions()->getAttributeOption() as $code => $label) {
-            $attributeOptions[] = ['value' => ProductAttribute::class . '|' . $code, 'label' => $label];
+        foreach ($productCondition->loadAttributeOptions()->getAttributeOption() as $code => $label) {
+            $attributeOptions[] = ['value' => $leafClass . '|' . $code, 'label' => $label];
         }
         return array_merge_recursive(
             parent::getNewChildSelectOptions(),

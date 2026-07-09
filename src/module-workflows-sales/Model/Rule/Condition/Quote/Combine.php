@@ -6,7 +6,7 @@ namespace MageOS\WorkflowsSales\Model\Rule\Condition\Quote;
 use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Model\Relation\RelationPool;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;
-use MageOS\WorkflowsCustomer\Model\Rule\Condition\Customer\Combine as CustomerCombine;
+use MageOS\Workflows\Model\Rule\ConditionCombinePool;
 use MageOS\Workflows\Model\Rule\Condition\TriggerData;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 
@@ -15,7 +15,7 @@ use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
  *
  * Child choices:
  *  - Quote Attribute leaves (flat quote columns);
- *  - Customer subtree (CustomerCombine: traverses quote.customer_id →
+ *  - Customer subtree (the customer pack's root combine, resolved through ConditionCombinePool: traverses quote.customer_id →
  *    CustomerRepository through the hydration provider; guest quotes with no
  *    customer_id never match);
  *  - Trigger Data leaves (raw payload dot-path, advanced);
@@ -27,6 +27,7 @@ class Combine extends AbstractWorkflowCombine
         Context $context,
         private readonly Attribute $conditionAttribute,
         private readonly RelationPool $relationPool,
+        private readonly ConditionCombinePool $combinePool,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -42,11 +43,20 @@ class Combine extends AbstractWorkflowCombine
         foreach ($this->conditionAttribute->loadAttributeOptions()->getAttributeOption() as $code => $label) {
             $attributeOptions[] = ['value' => Attribute::class . '|' . $code, 'label' => $label];
         }
+        // The Customer subtree is the customer pack's root combine, resolved
+        // by entity type through the engine pool so this pack never
+        // compile-references the customer pack; without it the subtree is
+        // simply not offered.
+        $customerOptions = [];
+        $customerCombineClass = $this->combinePool->getCombineClass(HydrationProviderInterface::TYPE_CUSTOMER);
+        if ($customerCombineClass !== null) {
+            $customerOptions[] = ['value' => $customerCombineClass, 'label' => __('Customer')];
+        }
         return array_merge_recursive(
             parent::getNewChildSelectOptions(),
             [
                 ['value' => self::class, 'label' => __('Conditions Combination')],
-                ['value' => CustomerCombine::class, 'label' => __('Customer')],
+                ...$customerOptions,
                 ['value' => TriggerData::class, 'label' => __('Trigger Data (advanced)')],
                 ['label' => __('Quote Attribute'), 'value' => $attributeOptions],
             ],

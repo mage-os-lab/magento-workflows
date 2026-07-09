@@ -43,6 +43,17 @@ class ConditionCombinePool
     }
 
     /**
+     * Combine class name for the entity type, null when no domain pack has
+     * registered one — the non-throwing lookup consumers use to OFFER a
+     * cross-entity subtree only when the owning pack is installed (e.g. the
+     * sales pack's Order/Quote combines offering the Customer subtree).
+     */
+    public function getCombineClass(string $entityType): ?string
+    {
+        return $this->combines[$entityType] ?? null;
+    }
+
+    /**
      * Create a fresh root combine for the entity type. Always a new instance:
      * combines are stateful (children, aggregator) and never shareable.
      *

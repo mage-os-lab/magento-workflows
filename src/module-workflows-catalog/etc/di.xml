@@ -6,6 +6,17 @@
          codes/keys, only the class FQCNs move into MageOS\WorkflowsCatalog. -->
 
     <!-- Condition root: catalog_product combine (relocated from the engine). -->
+    <!-- Leaf registration: lets other packs (sales' Order\ItemsFound) offer
+         product-attribute child conditions without compile-referencing this
+         pack — resolved by entity type through the engine's ConditionLeafPool. -->
+    <type name="MageOS\Workflows\Model\Rule\ConditionLeafPool">
+        <arguments>
+            <argument name="leaves" xsi:type="array">
+                <item name="catalog_product" xsi:type="string">MageOS\WorkflowsCatalog\Model\Rule\Condition\Product\Attribute</item>
+            </argument>
+        </arguments>
+    </type>
+
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
         <arguments>
             <argument name="combines" xsi:type="array">

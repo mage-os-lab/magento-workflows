@@ -27,6 +27,7 @@ final class CompositionSurfaceExtractor
     private const FLAT_POOLS = [
         'actions' => ['MageOS\\Workflows\\Model\\Action\\ActionPool', 'actions'],
         'combines' => ['MageOS\\Workflows\\Model\\Rule\\ConditionCombinePool', 'combines'],
+        'leaf_conditions' => ['MageOS\\Workflows\\Model\\Rule\\ConditionLeafPool', 'leaves'],
         'relations' => ['MageOS\\Workflows\\Model\\Relation\\RelationPool', 'relations'],
         'hydrators' => ['MageOS\\Workflows\\Model\\Rule\\HydrationProvider', 'hydrators'],
         'option_sources' => ['MageOS\\Workflows\\Model\\Option\\OptionSourcePool', 'sources'],
