@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Inventory trigger metadata (relocated from mage-os/workflows-triggers-core,
+ * domain-packs S4). inventory.stock_threshold_crossed is declared and
+ * published by this module (etc/async_events.xml, Model\StockThresholdDetector).
+ * The trigger's group (Catalog) and entity (catalog_product) are unchanged.
+ */
+-->
+<triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
+    <!-- Catalog -->
+    <trigger event="inventory.stock_threshold_crossed" entity="catalog_product"
+             label="Stock Threshold Crossed" group="Catalog"/>
+</triggers>

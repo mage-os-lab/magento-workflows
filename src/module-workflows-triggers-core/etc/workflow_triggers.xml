@@ -3,10 +3,11 @@
 /**
  * Trigger metadata for the standard event coverage. The customer
  * "created/updated" events are declared by mage-os/mageos-common-async-events;
- * the customer.group_changed / review / stock gap-fill events are declared and
+ * the customer.group_changed / review gap-fill events are declared and
  * published by this module (etc/async_events.xml). The Sales group and the
  * Cart group (quote.abandoned) moved to mage-os/workflows-sales (domain-packs
- * S1).
+ * S1); inventory.stock_threshold_crossed moved to mage-os/workflows-inventory
+ * (domain-packs S4).
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -19,6 +20,4 @@
     <!-- Catalog -->
     <trigger event="catalog.product.review_submitted" entity="catalog_product"
              label="Product Review Submitted" group="Catalog"/>
-    <trigger event="inventory.stock_threshold_crossed" entity="catalog_product"
-             label="Stock Threshold Crossed" group="Catalog"/>
 </triggers>

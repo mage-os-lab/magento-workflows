@@ -8,11 +8,10 @@
  * ride along in the message.
  *
  * Publishers: Observer\CustomerGroupChangeObserver,
- * Observer\ReviewSubmittedObserver (this module);
- * inventory.stock_threshold_crossed is published by the scheduler package
- * (mage-os/workflows-scheduler) — declared here so trigger metadata is never
- * dangling. The sales.order.status_changed and quote.abandoned definitions
- * moved to mage-os/workflows-sales (domain-packs S1).
+ * Observer\ReviewSubmittedObserver (this module). The
+ * sales.order.status_changed and quote.abandoned definitions moved to
+ * mage-os/workflows-sales (domain-packs S1); inventory.stock_threshold_crossed
+ * moved to mage-os/workflows-inventory (domain-packs S4).
  *
  * Node name assumption: mageos-async-events' async_events.xsd uses
  * <async_event name="..."><service class="..." method="..."/></async_event>
@@ -26,9 +25,6 @@
         <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
     </async_event>
     <async_event name="catalog.product.review_submitted">
-        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
-    </async_event>
-    <async_event name="inventory.stock_threshold_crossed">
         <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
     </async_event>
 </config>

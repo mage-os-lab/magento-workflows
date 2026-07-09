@@ -15,7 +15,7 @@
                 <!-- Catalog -->
                 <item name="product.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetAttribute</item>
                 <item name="product.set_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStatus</item>
-                <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStock</item>
+                <!-- product.set_stock moved to mage-os/workflows-inventory (domain-packs S4). -->
                 <item name="product.set_categories" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetCategories</item>
                 <item name="product.set_special_price" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetSpecialPrice</item>
                 <!-- Marketing (marketing.generate_coupon) moved to mage-os/workflows-sales (domain-packs S1). -->
