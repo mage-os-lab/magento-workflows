@@ -14,13 +14,12 @@ use Magento\Rule\Model\Condition\Combine;
  */
 class ConditionCombinePool
 {
-    // Order and quote roots ship with mage-os/workflows-sales (domain-packs S1)
-    // and the customer root with mage-os/workflows-customer (domain-packs S2),
-    // each contributing its entry via di.xml. They are no longer defaulted here
-    // because their classes moved out of this package. The product root stays
-    // until domain-packs S3.
+    // All four built-in roots are contributed via di.xml by their domain packs
+    // (sales_order/quote: mage-os/workflows-sales, S1; customer:
+    // mage-os/workflows-customer, S2; catalog_product: mage-os/workflows-catalog,
+    // S3) — nothing is defaulted here because the classes live outside this
+    // package. The const remains as the extension seam contract.
     private const DEFAULT_COMBINES = [
-        HydrationProviderInterface::TYPE_PRODUCT => Condition\Product\Combine::class,
     ];
 
     /**

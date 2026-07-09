@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Action\Product;
+namespace MageOS\WorkflowsCatalog\Action\Product;
 
 use Magento\Catalog\Model\Product\Action as ProductAction;
 use Magento\Eav\Api\AttributeRepositoryInterface;

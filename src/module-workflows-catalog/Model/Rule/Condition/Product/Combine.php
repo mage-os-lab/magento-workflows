@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Rule\Condition\Product;
+namespace MageOS\WorkflowsCatalog\Model\Rule\Condition\Product;
 
 use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;

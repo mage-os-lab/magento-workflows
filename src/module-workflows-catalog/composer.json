@@ -1,0 +1,23 @@
+{
+    "name": "mage-os/workflows-catalog",
+    "description": "Mage-OS Workflow Engine catalog domain pack: product condition root, product hydrator, and the product attribute/status/categories/special-price actions",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "mage-os/workflows": "*",
+        "magento/framework": ">=103.0.4",
+        "magento/module-catalog": "*",
+        "magento/module-eav": "*",
+        "magento/module-store": "*",
+        "magento/module-rule": "*"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "MageOS\\WorkflowsCatalog\\": ""
+        }
+    }
+}

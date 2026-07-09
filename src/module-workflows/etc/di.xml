@@ -240,7 +240,8 @@
     <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
         <arguments>
             <argument name="hydrators" xsi:type="array">
-                <item name="catalog_product" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\ProductHydrator</item>
+                <!-- customer relocated to mage-os/workflows-customer (domain-packs S2);
+                     catalog_product to mage-os/workflows-catalog (domain-packs S3). -->
             </argument>
         </arguments>
     </type>
@@ -284,7 +285,8 @@
     <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
         <arguments>
             <argument name="combines" xsi:type="array">
-                <item name="catalog_product" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\Product\Combine</item>
+                <!-- customer relocated to mage-os/workflows-customer (domain-packs S2);
+                     catalog_product to mage-os/workflows-catalog (domain-packs S3). -->
             </argument>
         </arguments>
     </type>

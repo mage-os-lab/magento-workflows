@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Test\Unit\Action\Product;
+namespace MageOS\WorkflowsCatalog\Test\Unit\Action\Product;
 
 use Magento\Catalog\Model\Product\Action as ProductAction;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
-use MageOS\WorkflowsActionsCore\Action\Product\SetSpecialPrice;
+use MageOS\WorkflowsCatalog\Action\Product\SetSpecialPrice;
 use PHPUnit\Framework\TestCase;
 
 class SetSpecialPriceTest extends TestCase
