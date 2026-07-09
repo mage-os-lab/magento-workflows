@@ -1,15 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsTriggersCore\Test\Unit\Observer;
+namespace MageOS\WorkflowsReview\Test\Unit\Observer;
 
 use Magento\Framework\Event;
 use Magento\Framework\Event\Observer;
 use Magento\Review\Model\Review;
-use MageOS\WorkflowsTriggersCore\Observer\ReviewSubmittedObserver;
-use MageOS\WorkflowsTriggersCore\Test\Unit\Stub\FakeReview;
-use MageOS\WorkflowsTriggersCore\Test\Unit\Stub\RecordingEventPublisher;
-use MageOS\WorkflowsTriggersCore\Test\Unit\Stub\RecordingLogger;
+use MageOS\WorkflowsReview\Observer\ReviewSubmittedObserver;
+use MageOS\WorkflowsReview\Test\Unit\Stub\FakeReview;
+use MageOS\WorkflowsReview\Test\Unit\Stub\RecordingEventPublisher;
+use MageOS\WorkflowsReview\Test\Unit\Stub\RecordingLogger;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -8,9 +8,8 @@
             <argument name="actions" xsi:type="array">
                 <!-- Sales (order.*) moved to mage-os/workflows-sales (domain-packs S1). -->
                 <!-- Customer: assign_group / set_attribute / anonymize moved to
-                     mage-os/workflows-customer (domain-packs S2). customer.newsletter
-                     stays here until domain-packs S5. -->
-                <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Newsletter</item>
+                     mage-os/workflows-customer (domain-packs S2); customer.newsletter
+                     moved to mage-os/workflows-newsletter (domain-packs S5). -->
                 <!-- Catalog: product.set_attribute / set_status / set_categories /
                      set_special_price moved to mage-os/workflows-catalog
                      (domain-packs S3); product.set_stock to

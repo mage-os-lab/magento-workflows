@@ -12,8 +12,7 @@
         "magento/module-eav": "*",
         "magento/module-sales": "*",
         "magento/module-store": "*",
-        "magento/module-rule": "*",
-        "magento/module-newsletter": "*"
+        "magento/module-rule": "*"
     },
     "autoload": {
         "files": [

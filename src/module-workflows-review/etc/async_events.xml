@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Review async-event definition (relocated from mage-os/workflows-triggers-core,
+ * domain-packs S5). The service class/method hydrates the delivered payload
+ * from the id in the published data; publisher-supplied extra keys
+ * (review_id/review_title/review_nickname) ride along in the message.
+ *
+ * Publisher: Observer\ReviewSubmittedObserver (this module) publishes
+ * catalog.product.review_submitted, hydrating the reviewed product.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
+    <async_event name="catalog.product.review_submitted">
+        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
+    </async_event>
+</config>

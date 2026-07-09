@@ -55,7 +55,8 @@
     </type>
 
     <!-- Customer actions (relocated from actions-core). Action codes unchanged.
-         customer.newsletter stays in actions-core until domain-packs S5. -->
+         customer.newsletter and the anonymize-unsubscribe plugin live in
+         mage-os/workflows-newsletter (domain-packs S5). -->
     <type name="MageOS\Workflows\Model\Action\ActionPool">
         <arguments>
             <argument name="actions" xsi:type="array">

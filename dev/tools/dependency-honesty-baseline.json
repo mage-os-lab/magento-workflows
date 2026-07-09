@@ -11,9 +11,5 @@
     ],
     "mage-os/workflows-import-suppression": [
         "magento/module-config"
-    ],
-    "mage-os/workflows-triggers-core": [
-        "magento/module-catalog",
-        "magento/module-review"
     ]
 }

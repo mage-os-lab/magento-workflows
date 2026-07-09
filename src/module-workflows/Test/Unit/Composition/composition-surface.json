@@ -2,7 +2,7 @@
     "actions": {
         "customer.anonymize": "MageOS\\WorkflowsCustomer\\Action\\Customer\\Anonymize",
         "customer.assign_group": "MageOS\\WorkflowsCustomer\\Action\\Customer\\AssignGroup",
-        "customer.newsletter": "MageOS\\WorkflowsActionsCore\\Action\\Customer\\Newsletter",
+        "customer.newsletter": "MageOS\\WorkflowsNewsletter\\Action\\Customer\\Newsletter",
         "customer.set_attribute": "MageOS\\WorkflowsCustomer\\Action\\Customer\\SetAttribute",
         "flow.set_variable": "MageOS\\WorkflowsActionsCore\\Action\\Flow\\SetVariable",
         "marketing.generate_coupon": "MageOS\\WorkflowsSales\\Action\\Marketing\\GenerateCoupon",
@@ -76,7 +76,7 @@
         "customer_save_after::mageos_workflows_triggers_customer_group_changed": "MageOS\\WorkflowsCustomer\\Observer\\CustomerGroupChangeObserver",
         "mageos_workflow_delete_after::mageos_workflows_triggers_subscription_sync_delete": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
-        "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsTriggersCore\\Observer\\ReviewSubmittedObserver",
+        "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsReview\\Observer\\ReviewSubmittedObserver",
         "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver"
     },
     "leaf_conditions": {

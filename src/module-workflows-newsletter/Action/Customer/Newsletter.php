@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Action\Customer;
+namespace MageOS\WorkflowsNewsletter\Action\Customer;
 
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Newsletter\Model\SubscriptionManagerInterface;

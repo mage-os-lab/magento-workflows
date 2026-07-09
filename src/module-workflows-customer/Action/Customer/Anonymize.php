@@ -5,7 +5,6 @@ namespace MageOS\WorkflowsCustomer\Action\Customer;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Newsletter\Model\SubscriptionManagerInterface;
 use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
@@ -26,9 +25,13 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * The email becomes anonymized+<customer_id>@invalid.example (.example is an
  * RFC 2606 reserved TLD, so mail can never actually route). That pattern
  * doubles as the idempotency marker: an already-anonymized customer skips.
- * The newsletter unsubscribe runs BEFORE the save (while the real email
- * still identifies the subscriber), so a failed save retries the whole
- * sequence safely.
+ *
+ * Newsletter unsubscription is NOT part of this action's core: the optional
+ * mage-os/workflows-newsletter pack contributes it as an around-plugin
+ * (Plugin\AnonymizeUnsubscribePlugin) that unsubscribes BEFORE this action's
+ * save, so an unsubscribe failure blocks the irreversible scrub and the whole
+ * step retries safely. Without that pack, anonymization runs unchanged and
+ * simply does not touch the newsletter subscription.
  */
 class Anonymize extends AbstractAction implements SimulateableActionInterface
 {
@@ -49,8 +52,7 @@ class Anonymize extends AbstractAction implements SimulateableActionInterface
     ];
 
     public function __construct(
-        private readonly CustomerRepositoryInterface $customerRepository,
-        private readonly SubscriptionManagerInterface $subscriptionManager
+        private readonly CustomerRepositoryInterface $customerRepository
     ) {
     }
 
@@ -101,17 +103,6 @@ class Anonymize extends AbstractAction implements SimulateableActionInterface
             return ActionResult::skipped('Customer is already anonymized');
         }
 
-        // Unsubscribe FIRST, while the real email still identifies the
-        // subscriber row; a later save failure retries the full sequence
-        // (re-unsubscribing is a no-op).
-        try {
-            $this->subscriptionManager->unsubscribeCustomer($ctx->getEntityId(), $ctx->getStoreId());
-        } catch (NoSuchEntityException $e) {
-            // No subscription to remove — fine
-        } catch (\Exception $e) {
-            return ActionResult::failure('Could not unsubscribe customer before anonymizing: ' . $e->getMessage(), true);
-        }
-
         $customer->setFirstname(self::ANONYMIZED_FIRSTNAME);
         $customer->setLastname(self::ANONYMIZED_LASTNAME);
         $customer->setEmail($anonymizedEmail);
@@ -133,11 +124,13 @@ class Anonymize extends AbstractAction implements SimulateableActionInterface
             return ActionResult::failure('Could not anonymize customer: ' . $e->getMessage(), true);
         }
 
+        // 'unsubscribed' is contributed to this output by the newsletter pack's
+        // AnonymizeUnsubscribePlugin when it is installed; without that pack the
+        // action reports only what it does itself.
         return ActionResult::success([
             'customer_id' => $ctx->getEntityId(),
             'email' => $anonymizedEmail,
             'scrubbed' => self::SCRUBBED_FIELDS,
-            'unsubscribed' => true,
         ]);
     }
 
@@ -161,7 +154,7 @@ class Anonymize extends AbstractAction implements SimulateableActionInterface
 
         return $this->simulated(
             sprintf(
-                'IRREVERSIBLY scrub customer %d: overwrite %s, then unsubscribe from newsletter',
+                'IRREVERSIBLY scrub customer %d: overwrite %s',
                 $ctx->getEntityId(),
                 implode(', ', self::SCRUBBED_FIELDS)
             ),

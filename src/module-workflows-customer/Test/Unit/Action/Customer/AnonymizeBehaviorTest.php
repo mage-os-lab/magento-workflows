@@ -4,9 +4,6 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsCustomer\Test\Unit\Action\Customer;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Newsletter\Model\Subscriber;
-use Magento\Newsletter\Model\SubscriptionManagerInterface;
 use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
@@ -15,67 +12,56 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Behaviour coverage for customer.anonymize beyond the confirm gate (pinned
- * in AnonymizeTest). Pins the class docblock promises: the anonymized-email
- * pattern doubles as the idempotency marker (already-anonymized skips, no
- * second save), and the newsletter unsubscribe runs BEFORE the customer save
- * so a failed save can retry the whole sequence safely.
+ * in AnonymizeTest). Pins the class docblock promises this action still owns
+ * after domain-packs S5 extracted the newsletter unsubscribe into the
+ * mage-os/workflows-newsletter plugin: the anonymized-email pattern doubles as
+ * the idempotency marker (already-anonymized skips, no save), all PII fields
+ * are scrubbed with empty strings, and a save failure is retryable.
+ *
+ * The unsubscribe-before-save ordering, the unsubscribe-failure-blocks-save
+ * guarantee and the 'unsubscribed' output marker now live in
+ * MageOS\WorkflowsNewsletter\Test\Unit\Plugin\AnonymizeUnsubscribePluginTest.
  */
 class AnonymizeBehaviorTest extends TestCase
 {
     private const CUSTOMER_ID = 123;
     private const ANONYMIZED_EMAIL = 'anonymized+123@invalid.example';
 
-    public function testExecuteSkipsAlreadyAnonymizedCustomerWithoutSavingOrUnsubscribing(): void
+    public function testExecuteSkipsAlreadyAnonymizedCustomerWithoutSaving(): void
     {
-        $log = new \ArrayObject();
         $customer = $this->createFakeCustomer(self::ANONYMIZED_EMAIL);
-        $repository = $this->createRepository($log, $customer);
-        $subscriptions = $this->createSubscriptionManager($log);
-        $action = new Anonymize($repository, $subscriptions);
+        $repository = $this->createRepository($customer);
+        $action = new Anonymize($repository);
 
         $result = $action->execute($this->createContext(), ['confirm' => true]);
 
         $this->assertSame(ActionResultInterface::STATUS_SKIPPED, $result->getStatus());
         $this->assertFalse($result->isFailure());
         $this->assertSame(0, $repository->saveCalls, 'Redelivery must not save an already-anonymized customer again');
-        $this->assertSame(0, $subscriptions->calls, 'No unsubscribe for an already-anonymized customer');
         $this->assertStringContainsString('already anonymized', (string)($result->getOutput()['reason'] ?? ''));
     }
 
     public function testExecuteSkipsAlreadyAnonymizedCustomerCaseInsensitively(): void
     {
-        $log = new \ArrayObject();
         $customer = $this->createFakeCustomer('Anonymized+123@Invalid.Example');
-        $repository = $this->createRepository($log, $customer);
-        $subscriptions = $this->createSubscriptionManager($log);
-        $action = new Anonymize($repository, $subscriptions);
+        $repository = $this->createRepository($customer);
+        $action = new Anonymize($repository);
 
         $result = $action->execute($this->createContext(), ['confirm' => true]);
 
         $this->assertSame(ActionResultInterface::STATUS_SKIPPED, $result->getStatus());
         $this->assertSame(0, $repository->saveCalls);
-        $this->assertSame(0, $subscriptions->calls);
     }
 
-    public function testExecuteUnsubscribesBeforeSavingAndScrubsAllPiiFields(): void
+    public function testExecuteScrubsAllPiiFields(): void
     {
-        $log = new \ArrayObject();
         $customer = $this->createFakeCustomer('jane.doe@example.com');
-        $repository = $this->createRepository($log, $customer);
-        $subscriptions = $this->createSubscriptionManager($log);
-        $action = new Anonymize($repository, $subscriptions);
+        $repository = $this->createRepository($customer);
+        $action = new Anonymize($repository);
 
         $result = $action->execute($this->createContext(), ['confirm' => true]);
 
         $this->assertTrue($result->isSuccess());
-        $this->assertSame(
-            ['unsubscribe', 'save'],
-            $log->getArrayCopy(),
-            'Unsubscribe must run BEFORE the save, while the real email still identifies the subscriber'
-        );
-        $this->assertSame(1, $subscriptions->calls);
-        $this->assertSame(self::CUSTOMER_ID, $subscriptions->lastCustomerId);
-        $this->assertSame(1, $subscriptions->lastStoreId);
         $this->assertSame(1, $repository->saveCalls);
         $this->assertSame('Anonymized', $customer->set['firstname']);
         $this->assertSame('Customer', $customer->set['lastname']);
@@ -92,57 +78,23 @@ class AnonymizeBehaviorTest extends TestCase
         $this->assertSame('', $customer->set['prefix']);
         $this->assertSame('', $customer->set['suffix']);
         $this->assertSame(self::ANONYMIZED_EMAIL, $result->getOutput()['email']);
-        $this->assertTrue($result->getOutput()['unsubscribed']);
+        // 'unsubscribed' is not set by the action itself; the newsletter pack's
+        // plugin contributes it when installed.
+        $this->assertFalse(array_key_exists('unsubscribed', $result->getOutput()));
     }
 
-    public function testExecuteSaveFailureIsRetryableAndUnsubscribeAlreadyHappened(): void
+    public function testExecuteSaveFailureIsRetryable(): void
     {
-        $log = new \ArrayObject();
         $customer = $this->createFakeCustomer('jane.doe@example.com');
-        $repository = $this->createRepository($log, $customer);
+        $repository = $this->createRepository($customer);
         $repository->throwOnSave = new \RuntimeException('Deadlock found when trying to get lock');
-        $subscriptions = $this->createSubscriptionManager($log);
-        $action = new Anonymize($repository, $subscriptions);
+        $action = new Anonymize($repository);
 
         $result = $action->execute($this->createContext(), ['confirm' => true]);
 
         $this->assertTrue($result->isFailure());
-        $this->assertTrue($result->isRetryable(), 'A failed save must retry; re-unsubscribing on retry is a no-op');
+        $this->assertTrue($result->isRetryable(), 'A failed save must retry');
         $this->assertStringContainsString('Deadlock', (string)$result->getError());
-        $this->assertSame(1, $subscriptions->calls, 'Unsubscribe already happened before the failed save');
-    }
-
-    public function testExecuteProceedsToSaveWhenCustomerHasNoNewsletterSubscription(): void
-    {
-        $log = new \ArrayObject();
-        $customer = $this->createFakeCustomer('jane.doe@example.com');
-        $repository = $this->createRepository($log, $customer);
-        $subscriptions = $this->createSubscriptionManager($log);
-        $subscriptions->throwOnUnsubscribe = new NoSuchEntityException();
-        $action = new Anonymize($repository, $subscriptions);
-
-        $result = $action->execute($this->createContext(), ['confirm' => true]);
-
-        $this->assertTrue($result->isSuccess(), 'A missing subscription row must not block anonymization');
-        $this->assertSame(1, $repository->saveCalls);
-        $this->assertSame(self::ANONYMIZED_EMAIL, $customer->set['email']);
-    }
-
-    public function testExecuteUnsubscribeInfrastructureFailureIsRetryableAndCustomerIsNotSaved(): void
-    {
-        $log = new \ArrayObject();
-        $customer = $this->createFakeCustomer('jane.doe@example.com');
-        $repository = $this->createRepository($log, $customer);
-        $subscriptions = $this->createSubscriptionManager($log);
-        $subscriptions->throwOnUnsubscribe = new \RuntimeException('Connection refused');
-        $action = new Anonymize($repository, $subscriptions);
-
-        $result = $action->execute($this->createContext(), ['confirm' => true]);
-
-        $this->assertTrue($result->isFailure());
-        $this->assertTrue($result->isRetryable());
-        $this->assertSame(0, $repository->saveCalls, 'Customer must keep the real email until the unsubscribe succeeds');
-        $this->assertStringContainsString('unsubscribe', (string)$result->getError());
     }
 
     private function createContext(): ExecutionContext
@@ -211,13 +163,12 @@ class AnonymizeBehaviorTest extends TestCase
         };
     }
 
-    private function createRepository(\ArrayObject $log, object $customer)
+    private function createRepository(object $customer)
     {
-        return new class($log, $customer) implements CustomerRepositoryInterface {
+        return new class($customer) implements CustomerRepositoryInterface {
             public int $saveCalls = 0;
             public ?\Throwable $throwOnSave = null;
             public function __construct(
-                private readonly \ArrayObject $log,
                 private readonly object $customer
             ) {
             }
@@ -231,44 +182,12 @@ class AnonymizeBehaviorTest extends TestCase
                 if ($this->throwOnSave !== null) {
                     throw $this->throwOnSave;
                 }
-                $this->log->append('save');
                 return $customer;
             }
             public function get($email, $websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
             public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
             public function delete($customer) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($customerId) { throw new \BadMethodCallException(__METHOD__); }
-        };
-    }
-
-    private function createSubscriptionManager(\ArrayObject $log)
-    {
-        return new class($log) implements SubscriptionManagerInterface {
-            public int $calls = 0;
-            public ?int $lastCustomerId = null;
-            public ?int $lastStoreId = null;
-            public ?\Throwable $throwOnUnsubscribe = null;
-            public function __construct(private readonly \ArrayObject $log)
-            {
-            }
-            public function unsubscribeCustomer($customerId, $storeId): Subscriber
-            {
-                $this->calls++;
-                $this->lastCustomerId = (int)$customerId;
-                $this->lastStoreId = (int)$storeId;
-                if ($this->throwOnUnsubscribe !== null) {
-                    throw $this->throwOnUnsubscribe;
-                }
-                $this->log->append('unsubscribe');
-                return new class extends Subscriber {
-                    public function __construct()
-                    {
-                    }
-                };
-            }
-            public function subscribe($email, $storeId): Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function unsubscribe($email, $storeId, $confirmCode): Subscriber { throw new \BadMethodCallException(__METHOD__); }
-            public function subscribeCustomer($customerId, $storeId): Subscriber { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 }

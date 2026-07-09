@@ -1,18 +1,19 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Trigger metadata for the standard event coverage. The review gap-fill
- * event is declared and published by this module (etc/async_events.xml).
- * The Sales group and the Cart group (quote.abandoned) moved to
- * mage-os/workflows-sales (domain-packs S1); the Customer group to
- * mage-os/workflows-customer (domain-packs S2);
- * inventory.stock_threshold_crossed to mage-os/workflows-inventory
- * (domain-packs S4).
+ * Trigger metadata has all moved to the domain packs that own each entity:
+ *   - the Sales group and the Cart group (quote.abandoned) ->
+ *     mage-os/workflows-sales (domain-packs S1)
+ *   - the Customer group -> mage-os/workflows-customer (domain-packs S2)
+ *   - inventory.stock_threshold_crossed -> mage-os/workflows-inventory
+ *     (domain-packs S4)
+ *   - catalog.product.review_submitted -> mage-os/workflows-review
+ *     (domain-packs S5)
+ *
+ * This module now declares no trigger metadata of its own; the file is
+ * retained as an empty-but-valid config (trigger minOccurs=0) so the schema
+ * binding stays visible.
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
-    <!-- Catalog -->
-    <trigger event="catalog.product.review_submitted" entity="catalog_product"
-             label="Product Review Submitted" group="Catalog"/>
-</triggers>
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd"/>

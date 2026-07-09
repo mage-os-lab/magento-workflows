@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsTriggersCore\Test\Unit\Stub;
+namespace MageOS\WorkflowsReview\Test\Unit\Stub;
 
 use Magento\Review\Model\Review;
 

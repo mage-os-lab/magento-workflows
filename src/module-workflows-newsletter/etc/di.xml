@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Newsletter domain pack (domain-packs S5). -->
+
+    <!-- customer.newsletter action (relocated from actions-core, code unchanged). -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsNewsletter\Action\Customer\Newsletter</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Anonymize-unsubscribe plugin: reintroduces the newsletter unsubscription
+         that customer.anonymize performed inline before the split, without
+         workflows-customer depending on Magento\Newsletter (placement rule 5). -->
+    <type name="MageOS\WorkflowsCustomer\Action\Customer\Anonymize">
+        <plugin name="mageos_workflows_newsletter_anonymize_unsubscribe"
+                type="MageOS\WorkflowsNewsletter\Plugin\AnonymizeUnsubscribePlugin"/>
+    </type>
+</config>
