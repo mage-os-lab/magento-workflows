@@ -41,6 +41,11 @@ class Invoice implements \Magento\Sales\Api\Data\InvoiceInterface
         throw new \RuntimeException('getOrder() not implemented in shim');
     }
 
+    public function getOrderId()
+    {
+        throw new \RuntimeException('getOrderId() not implemented in shim');
+    }
+
     public function getEntityId()
     {
         throw new \RuntimeException('getEntityId() not implemented in shim');

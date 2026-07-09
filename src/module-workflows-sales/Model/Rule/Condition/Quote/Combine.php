@@ -15,6 +15,8 @@ use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
  *
  * Child choices:
  *  - Quote Attribute leaves (flat quote columns);
+ *  - Cart Items subtree (ItemsFound: ANY/ALL product conditions over items,
+ *    QTE-C1);
  *  - Customer subtree (the customer pack's root combine, resolved through ConditionCombinePool: traverses quote.customer_id →
  *    CustomerRepository through the hydration provider; guest quotes with no
  *    customer_id never match);
@@ -56,6 +58,7 @@ class Combine extends AbstractWorkflowCombine
             parent::getNewChildSelectOptions(),
             [
                 ['value' => self::class, 'label' => __('Conditions Combination')],
+                ['value' => ItemsFound::class, 'label' => __('Cart Items')],
                 ...$customerOptions,
                 ['value' => TriggerData::class, 'label' => __('Trigger Data (advanced)')],
                 ['label' => __('Quote Attribute'), 'value' => $attributeOptions],

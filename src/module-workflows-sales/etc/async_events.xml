@@ -6,14 +6,22 @@
  * hydrates the delivered payload from the id in the published data;
  * publisher-supplied extra keys (from_status/to_status) ride along.
  *
- * Publishers: Observer\OrderStatusChangeObserver (this module) publishes
- * sales.order.status_changed; Model\AbandonedCartDetector (this module)
- * publishes quote.abandoned.
+ * Publishers: Observer\OrderStatusChangeObserver publishes
+ * sales.order.status_changed; Observer\OrderPaidObserver publishes
+ * sales.order.paid (paid transition, ORD-T1); Observer\InvoicePaidObserver
+ * publishes sales.invoice.paid (invoice pay, DOC-T1, hydrating the parent
+ * order); Model\AbandonedCartDetector publishes quote.abandoned.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
     <async_event name="sales.order.status_changed">
+        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
+    </async_event>
+    <async_event name="sales.order.paid">
+        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
+    </async_event>
+    <async_event name="sales.invoice.paid">
         <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
     </async_event>
     <async_event name="quote.abandoned">

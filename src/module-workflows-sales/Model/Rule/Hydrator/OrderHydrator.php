@@ -12,6 +12,8 @@ use Magento\Sales\Api\Data\OrderItemInterface;
 use Magento\Sales\Api\Data\OrderPaymentInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
+use MageOS\Workflows\Model\Rule\AggregateProviderPool;
+use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 use MageOS\Workflows\Model\Rule\Hydrator\EntityDataConverter;
 use MageOS\Workflows\Model\Rule\Hydrator\EntityHydratorInterface;
 
@@ -19,14 +21,19 @@ use MageOS\Workflows\Model\Rule\Hydrator\EntityHydratorInterface;
  * sales_order hydrator: flat order data enriched with `items`, `payment`,
  * a flat `payment_method` and flat billing_/shipping_ address basics
  * (country, region name, postcode, city) — mirroring the trigger snapshot
- * shape.
+ * shape — plus the lifecycle-flag aggregates (can_invoice, can_ship,
+ * can_creditmemo, is_virtual, invoice_count, shipment_count) contributed to
+ * the order root through AggregateProviderPool (E2 / ORD-C1). The aggregates
+ * exist ONLY on hydrated orders — trigger snapshots never carry them — so
+ * conditions on them always classify as needs_hydration and resolve in phase 2.
  */
 class OrderHydrator implements EntityHydratorInterface
 {
     public function __construct(
         private readonly OrderRepositoryInterface $orderRepository,
         private readonly EntityDataConverter $dataConverter,
-        private readonly DataObjectFactory $dataObjectFactory
+        private readonly DataObjectFactory $dataObjectFactory,
+        private readonly AggregateProviderPool $aggregateProviderPool
     ) {
     }
 
@@ -64,6 +71,11 @@ class OrderHydrator implements EntityHydratorInterface
             $data['shipping_postcode'] = $shipping->getPostcode();
             $data['shipping_city'] = $shipping->getCity();
         }
+
+        $data = array_merge(
+            $data,
+            $this->aggregateProviderPool->getAggregates(HydrationProviderInterface::TYPE_ORDER, $entityId)
+        );
 
         return $this->dataObjectFactory->create(['data' => $data]);
     }

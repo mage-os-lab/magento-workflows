@@ -1,4 +1,5 @@
 "Add Order Comment","Add Order Comment"
+"Add Shipment Tracking","Add Shipment Tracking"
 "Cancel Order","Cancel Order"
 "Cart price rule %1 (""%2"") does not allow auto-generated coupons","Cart price rule %1 (""%2"") does not allow auto-generated coupons"
 "Cart price rule %1 does not allow auto-generated coupons","Cart price rule %1 does not allow auto-generated coupons"
@@ -12,6 +13,7 @@
 "Hold Order","Hold Order"
 "Invalid capture mode ""%1"" (online|offline)","Invalid capture mode ""%1"" (online|offline)"
 "Marketing","Marketing"
+"Order %1 has no shipment to add tracking to","Order %1 has no shipment to add tracking to"
 "Order %1 not found","Order %1 not found"
 "Sales","Sales"
 "Status ""%1"" is not valid for order state ""%2""","Status ""%1"" is not valid for order state ""%2"""

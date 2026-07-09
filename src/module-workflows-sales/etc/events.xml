@@ -2,9 +2,20 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
     <!-- Gap-fill async-event publisher for order status changes (relocated from
-         mage-os/workflows-triggers-core). Publishes sales.order.status_changed. -->
+         mage-os/workflows-triggers-core). Publishes sales.order.status_changed.
+         The paid-transition publisher (ORD-T1) rides the same save event and
+         publishes sales.order.paid on the transition to fully paid. -->
     <event name="sales_order_save_after">
         <observer name="mageos_workflows_triggers_order_status_changed"
                   instance="MageOS\WorkflowsSales\Observer\OrderStatusChangeObserver"/>
+        <observer name="mageos_workflows_triggers_order_paid"
+                  instance="MageOS\WorkflowsSales\Observer\OrderPaidObserver"/>
+    </event>
+    <!-- Gap-fill publisher for invoice payment (DOC-T1): Invoice::pay() dispatches
+         'sales_order_invoice_pay'. Publishes sales.invoice.paid, hydrating the
+         parent order (entity=sales_order), mirroring sales.invoice.created. -->
+    <event name="sales_order_invoice_pay">
+        <observer name="mageos_workflows_triggers_invoice_paid"
+                  instance="MageOS\WorkflowsSales\Observer\InvoicePaidObserver"/>
     </event>
 </config>

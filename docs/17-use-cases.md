@@ -29,6 +29,9 @@ side — flows the engine still does *not* support — is catalogued in
 - Add a gift-wrap prep comment when the order contains any SKU in the "Gift" category.
 - Escalate any order that has sat in "Processing" for more than 5 business days.
 - Fan out from one customer event to every one of that customer's open orders and act on each (capped fan-out).
+- Kick off fulfillment the instant payment clears: on `sales.order.paid`, create the shipment for pre-packed SKUs and notify the customer (fires on every payment method, not just status changes).
+- Paid-but-unshipped SLA: on a daily schedule, escalate orders still shippable (`can_ship = Yes`) 48 hours after they were paid.
+- Add carrier tracking to the latest shipment and email the customer the moment an online capture settles (`sales.invoice.paid` + `order.add_tracking`).
 - Park a goodwill-credit request for a sales-manager decision; issue the approved amount on approval, send a policy email on rejection, escalate on silence (`approval` gate).
 
 ## Fraud, risk & payments
@@ -69,6 +72,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Revalidate before sending: cancel the reminder if the customer completed checkout meanwhile.
 - Notify sales when a known wholesale buyer abandons a cart above $1,000.
 - Send a "back in stock — finish your order" nudge when an abandoned cart's SKU restocks.
+- Target the nudge by contents: on cart abandoned, only email when the cart contains any SKU in the "Premium" category (`Cart Items` ANY/ALL subtree).
 - Escalate high-value abandoned carts to a human callback task instead of an email.
 - Suppress recovery emails for customers who abandoned more than 3 carts this week.
 - Wait for a `sales.order.updated` event per cart and thank the customer if they convert.
