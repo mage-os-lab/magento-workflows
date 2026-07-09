@@ -92,6 +92,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Nightly: scan the catalog and disable products with no image or empty required attributes.
 - Auto-assign seasonal products to the "Holiday" category as a scheduled campaign kicks off.
 - Notify (or webhook a wishlist fan-out) when a product comes back in stock — the `inventory.back_in_stock` trigger fires once as the stock-threshold flag clears on recovery.
+- Email every shopper who wishlisted a product the moment it comes back in stock: `inventory.back_in_stock` (entity = catalog_product) fans out over the `product.wishlisted_customers` relation, giving each wishlisting customer their own execution (the relation cap bounds a viral-product blast; the same shape drives a price-drop alert off a catalog price-change trigger).
 - Schedule a nightly scan for products whose MSI `salable_qty` has fallen at or below a reorder point and open a replenishment task (`catalog_product` condition on the `salable_qty` stock leaf; degrades to `qty`/`is_in_stock` where MSI is absent).
 
 ## Pricing & promotions
@@ -122,6 +123,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Congratulate customers on a purchase anniversary with a loyalty bonus each year.
 - Win back an opt-out: when a subscriber's status changes to Unsubscribed, post to an ESP win-back webhook — guests and account holders alike (`newsletter.subscription_changed`).
 - Welcome a brand-new newsletter signup the moment they subscribe, even without an account, via `notify.email` on the guest-safe subscription event (`newsletter.subscription_changed`, `from_status` null).
+- Nudge a shopper who wishlisted a product but hasn't bought it: the `wishlist.item_added` trigger (entity = catalog_product, `customer_id` in the payload) starts a flow that waits a day, then emails a reminder — gated on the customer still not having purchased, expressible today as a customer-root condition over the sales pack's order-history aggregates (via fan-out to the wishlisting customer) or, for the volume-based variant, the `wishlist_items_count` aggregate ("has 3+ saved items but no recent order"). Rapid re-adds collapse to one run through the engine's per-entity debounce window.
 
 ## Notifications & internal alerts
 

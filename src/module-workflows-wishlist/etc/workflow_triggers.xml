@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Wishlist trigger metadata (WSH-T1). wishlist.item_added is declared and
+ * published by this module (etc/async_events.xml, Observer\WishlistItemAddedObserver).
+ *
+ * entity = catalog_product: the added product is the workflow entity, so
+ * conditions author against product attributes (and the product-side stock /
+ * price leaves the catalog/inventory packs contribute); the wishlisting
+ * customer_id rides in the payload as Trigger Data.
+ *
+ * group = Marketing (not Catalog): a wishlist add is a merchant marketing
+ * signal, not a catalog-operations event — grouping it with the newsletter
+ * subscription trigger matches the merchant mental model in the trigger picker.
+ * The entity type (catalog_product) is independent of the UI group.
+ */
+-->
+<triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
+    <!-- Marketing -->
+    <trigger event="wishlist.item_added" entity="catalog_product"
+             label="Added to Wishlist" group="Marketing"/>
+</triggers>
