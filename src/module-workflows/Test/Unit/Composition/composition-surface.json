@@ -45,6 +45,7 @@
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"
     },
     "aggregate_providers": {
+        "catalog_product.stock": "MageOS\\WorkflowsInventory\\Model\\Rule\\Hydrator\\ProductStockAggregateProvider",
         "customer.birthday": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerBirthdayAggregateProvider",
         "customer.newsletter_status": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\NewsletterStatusAggregateProvider",
         "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
@@ -61,6 +62,7 @@
         "customer.created": "customer|Customer",
         "customer.group_changed": "customer|Customer",
         "customer.updated": "customer|Customer",
+        "inventory.back_in_stock": "catalog_product|Catalog",
         "inventory.stock_threshold_crossed": "catalog_product|Catalog",
         "newsletter.subscription_changed": "newsletter_subscriber|Marketing",
         "quote.abandoned": "quote|Cart",
@@ -75,6 +77,7 @@
         "catalog.product.review_submitted": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "customer.birthday_upcoming": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
         "customer.group_changed": "Magento\\Customer\\Api\\CustomerRepositoryInterface::getById",
+        "inventory.back_in_stock": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "inventory.stock_threshold_crossed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "newsletter.subscription_changed": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\SubscriberHydrationService::getById",
         "quote.abandoned": "Magento\\Quote\\Api\\CartRepositoryInterface::get",

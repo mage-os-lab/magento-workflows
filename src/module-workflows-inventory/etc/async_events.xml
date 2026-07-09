@@ -1,20 +1,25 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Inventory async-event definition (relocated from
+ * Inventory async-event definitions (relocated from
  * mage-os/workflows-triggers-core, domain-packs S4). The service class/method
  * hydrates the delivered payload from the id in the published data;
  * publisher-supplied extra keys (sku/qty/threshold) ride along.
  *
  * Publisher: Model\StockThresholdDetector (this module) publishes
- * inventory.stock_threshold_crossed via mage-os/workflows-triggers-core's
- * EventPublisher (soft dependency, class_exists-probed - see the detector's
- * class docblock).
+ * inventory.stock_threshold_crossed (downward crossing) and
+ * inventory.back_in_stock (recovery transition, INV-T1) via
+ * mage-os/workflows-triggers-core's EventPublisher (soft dependency,
+ * class_exists-probed - see the detector's class docblock). Both hydrate the
+ * same catalog_product entity via ProductRepositoryInterface::getById.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
     <async_event name="inventory.stock_threshold_crossed">
+        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
+    </async_event>
+    <async_event name="inventory.back_in_stock">
         <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
     </async_event>
 </config>

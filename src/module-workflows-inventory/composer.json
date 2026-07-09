@@ -12,8 +12,10 @@
         "magento/module-store": "*"
     },
     "suggest": {
-        "mage-os/workflows-triggers-core": "Publishes inventory.stock_threshold_crossed as a real async event via EventPublisher; without it, StockThresholdDetector only logs a debug message",
-        "magento/module-inventory-api": "Enables MSI source-aware stock updates via product.set_stock source_code"
+        "mage-os/workflows-triggers-core": "Publishes inventory.stock_threshold_crossed and inventory.back_in_stock as real async events via EventPublisher; without it, StockThresholdDetector only logs a debug message",
+        "magento/module-inventory-api": "Enables MSI source-aware stock updates via product.set_stock source_code",
+        "magento/module-inventory-sales-api": "Enables the MSI-aware salable_qty product stock condition (GetProductSalableQtyInterface); without it, salable_qty is absent and matches negative operators only",
+        "magento/module-inventory-catalog-api": "Resolves the default MSI stock id for the salable_qty product stock condition (DefaultStockProviderInterface)"
     },
     "autoload": {
         "files": [

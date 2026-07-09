@@ -2,4 +2,8 @@
 "Configure at least one of ""qty"" or ""is_in_stock""","Configure at least one of ""qty"" or ""is_in_stock"""
 "Invalid qty ""%1""","Invalid qty ""%1"""
 "MSI is not installed; omit source_code to use legacy stock","MSI is not installed; omit source_code to use legacy stock"
+"Product Back in Stock","Product Back in Stock"
 "Set Stock Status/Qty","Set Stock Status/Qty"
+"Stock: In Stock","Stock: In Stock"
+"Stock: Quantity","Stock: Quantity"
+"Stock: Salable Quantity (MSI)","Stock: Salable Quantity (MSI)"
