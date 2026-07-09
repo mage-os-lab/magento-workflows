@@ -1,9 +1,7 @@
 {
     "mage-os/workflows": [
-        "magento/module-catalog",
         "magento/module-config",
         "magento/module-customer",
-        "magento/module-eav",
         "magento/module-email",
         "magento/module-sales"
     ],

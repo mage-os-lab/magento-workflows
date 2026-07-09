@@ -7,8 +7,8 @@ use Magento\Framework\DataObject;
 use Magento\Framework\DataObjectFactory;
 use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCombine;
-use MageOS\Workflows\Model\Rule\Condition\Product\Attribute as ProductAttribute;
 use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
+use MageOS\WorkflowsCatalog\Model\Rule\Condition\Product\Attribute as ProductAttribute;
 
 /**
  * "Order items" subtree — the SalesRule Found pattern over order items:

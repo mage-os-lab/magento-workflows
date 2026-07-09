@@ -17,14 +17,14 @@
         "order.create_shipment": "MageOS\\WorkflowsSales\\Action\\Order\\CreateShipment",
         "order.hold": "MageOS\\WorkflowsSales\\Action\\Order\\Hold",
         "order.unhold": "MageOS\\WorkflowsSales\\Action\\Order\\Unhold",
-        "product.set_attribute": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetAttribute",
-        "product.set_categories": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetCategories",
-        "product.set_special_price": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetSpecialPrice",
-        "product.set_status": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetStatus",
+        "product.set_attribute": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetAttribute",
+        "product.set_categories": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetCategories",
+        "product.set_special_price": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetSpecialPrice",
+        "product.set_status": "MageOS\\WorkflowsCatalog\\Action\\Product\\SetStatus",
         "product.set_stock": "MageOS\\WorkflowsActionsCore\\Action\\Product\\SetStock"
     },
     "combines": {
-        "catalog_product": "MageOS\\Workflows\\Model\\Rule\\Condition\\Product\\Combine",
+        "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Condition\\Product\\Combine",
         "customer": "MageOS\\Workflows\\Model\\Rule\\Condition\\Customer\\Combine",
         "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Quote\\Combine",
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Condition\\Order\\Combine"
@@ -37,7 +37,7 @@
         "quote.customer_by_email": "MageOS\\WorkflowsSales\\Model\\Relation\\Resolver\\QuoteCustomerByEmail"
     },
     "hydrators": {
-        "catalog_product": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\ProductHydrator",
+        "catalog_product": "MageOS\\WorkflowsCatalog\\Model\\Rule\\Hydrator\\ProductHydrator",
         "customer": "MageOS\\Workflows\\Model\\Rule\\Hydrator\\CustomerHydrator",
         "quote": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\QuoteHydrator",
         "sales_order": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderHydrator"

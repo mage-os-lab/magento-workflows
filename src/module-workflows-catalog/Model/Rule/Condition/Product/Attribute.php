@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Rule\Condition\Product;
+namespace MageOS\WorkflowsCatalog\Model\Rule\Condition\Product;
 
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as ProductAttributeCollectionFactory;

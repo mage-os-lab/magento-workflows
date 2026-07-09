@@ -14,12 +14,12 @@ use Magento\Rule\Model\Condition\Combine;
  */
 class ConditionCombinePool
 {
-    // Order and quote roots ship with mage-os/workflows-sales, which contributes
-    // their sales_order/quote entries via di.xml (domain-packs S1). They are no
-    // longer defaulted here because their classes moved out of this package.
+    // Order/quote (mage-os/workflows-sales) and product (mage-os/workflows-catalog)
+    // roots contribute their sales_order/quote/catalog_product entries via di.xml
+    // (domain-packs S1/S3). They are no longer defaulted here because their
+    // classes moved out of this package.
     private const DEFAULT_COMBINES = [
         HydrationProviderInterface::TYPE_CUSTOMER => Condition\Customer\Combine::class,
-        HydrationProviderInterface::TYPE_PRODUCT => Condition\Product\Combine::class,
     ];
 
     /**

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\Workflows\Model\Rule\Hydrator;
+namespace MageOS\WorkflowsCatalog\Model\Rule\Hydrator;
 
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
@@ -9,6 +9,8 @@ use Magento\Framework\DataObject;
 use Magento\Framework\DataObjectFactory;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use MageOS\Workflows\Model\Rule\Hydrator\EntityDataConverter;
+use MageOS\Workflows\Model\Rule\Hydrator\EntityHydratorInterface;
 
 /**
  * catalog_product hydrator: flat product data with EAV attributes and

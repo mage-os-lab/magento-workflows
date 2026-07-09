@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsActionsCore\Test\Integration\Action\Product;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use MageOS\WorkflowsActionsCore\Action\Product\SetAttribute;
+use MageOS\WorkflowsCatalog\Action\Product\SetAttribute;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 
 /**

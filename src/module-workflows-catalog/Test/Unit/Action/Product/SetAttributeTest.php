@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsActionsCore\Test\Unit\Action\Product;
+namespace MageOS\WorkflowsCatalog\Test\Unit\Action\Product;
 
 use Magento\Catalog\Model\Product\Action as ProductAction;
 use Magento\Eav\Api\AttributeRepositoryInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
-use MageOS\WorkflowsActionsCore\Action\Product\SetAttribute;
+use MageOS\WorkflowsCatalog\Action\Product\SetAttribute;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -31,7 +31,7 @@ class SetAttributeTest extends TestCase
         $this->assertNotNull($xml === false ? null : $xml, 'etc/di.xml must parse');
 
         $items = $xml->xpath(
-            '//type[@name="MageOS\WorkflowsActionsCore\Action\Product\SetAttribute"]'
+            '//type[@name="MageOS\WorkflowsCatalog\Action\Product\SetAttribute"]'
             . '//argument[@name="deniedAttributes"]/item'
         );
         $codes = [];
