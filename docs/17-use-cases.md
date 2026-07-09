@@ -114,6 +114,8 @@ side — flows the engine still does *not* support — is catalogued in
 - Ask for a referral after a customer's third successful, non-refunded order.
 - Post-delivery: request an NPS score via webhook to a survey platform.
 - Congratulate customers on a purchase anniversary with a loyalty bonus each year.
+- Win back an opt-out: when a subscriber's status changes to Unsubscribed, post to an ESP win-back webhook — guests and account holders alike (`newsletter.subscription_changed`).
+- Welcome a brand-new newsletter signup the moment they subscribe, even without an account, via `notify.email` on the guest-safe subscription event (`newsletter.subscription_changed`, `from_status` null).
 
 ## Notifications & internal alerts
 
