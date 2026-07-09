@@ -7,5 +7,11 @@
     <event name="review_save_after">
         <observer name="mageos_workflows_triggers_review_submitted"
                   instance="MageOS\WorkflowsReview\Observer\ReviewSubmittedObserver"/>
+        <!-- REV-T1: sibling observer on the same seam, publishes
+             review.status_changed on a moderation transition (from/to). See the
+             ReviewStatusChangedObserver docblock for the submitted-vs-changed
+             boundary and the REV-A1 loop guard. -->
+        <observer name="mageos_workflows_triggers_review_status_changed"
+                  instance="MageOS\WorkflowsReview\Observer\ReviewStatusChangedObserver"/>
     </event>
 </config>

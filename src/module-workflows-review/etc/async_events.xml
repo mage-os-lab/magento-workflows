@@ -15,4 +15,10 @@
     <async_event name="catalog.product.review_submitted">
         <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
     </async_event>
+    <!-- REV-T1: review.status_changed hydrates the reviewed product from the
+         published 'productId'; review context (from_status/to_status + labels,
+         rating_summary, review_id/title/nickname) rides along as extra keys. -->
+    <async_event name="review.status_changed">
+        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
+    </async_event>
 </config>

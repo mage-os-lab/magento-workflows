@@ -122,6 +122,8 @@ side — flows the engine still does *not* support — is catalogued in
 - Congratulate customers on a purchase anniversary with a loyalty bonus each year.
 - Win back an opt-out: when a subscriber's status changes to Unsubscribed, post to an ESP win-back webhook — guests and account holders alike (`newsletter.subscription_changed`).
 - Welcome a brand-new newsletter signup the moment they subscribe, even without an account, via `notify.email` on the guest-safe subscription event (`newsletter.subscription_changed`, `from_status` null).
+- Auto-approve trustworthy reviews: on `catalog.product.review_submitted`, when the Trigger Data `rating` is 5 stars and the reviewer's customer subtree shows `orders_count >= 2` (a repeat buyer), run `review.set_status` = Approved — the review is taken from the trigger context, no manual moderation. Closes the auto-moderation loop with `review.status_changed` (REV-T1/REV-A1); the action is idempotent and the engine's chain-depth guard bounds any set-status → status-changed re-trigger.
+- Escalate harsh reviews: on `catalog.product.review_submitted` (or `review.status_changed`) with Trigger Data `rating <= 1`, `notify.email` / `notify.admin` the CX team with the review title, nickname and product — a 1-star alert instead of an auto-action.
 
 ## Notifications & internal alerts
 
