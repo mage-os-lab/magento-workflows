@@ -38,11 +38,22 @@ abstract class AbstractCondition extends DataObject
             case '<':
                 return $value < $compareValue;
             case '()':
+                // Set intersection when the validated value is itself a list
+                // (multiselect columns like category_ids / applied_rule_ids):
+                // mirrors core's array_intersect branch.
+                if (is_array($value)) {
+                    $needle = is_array($compareValue) ? $compareValue : explode(',', (string)$compareValue);
+                    return count(array_intersect(array_map('strval', $value), array_map('strval', $needle))) > 0;
+                }
                 if (is_array($compareValue)) {
                     return in_array($value, $compareValue);
                 }
                 return in_array((string)$value, explode(',', (string)$compareValue));
             case '!()':
+                if (is_array($value)) {
+                    $needle = is_array($compareValue) ? $compareValue : explode(',', (string)$compareValue);
+                    return count(array_intersect(array_map('strval', $value), array_map('strval', $needle))) === 0;
+                }
                 if (is_array($compareValue)) {
                     return !in_array($value, $compareValue);
                 }

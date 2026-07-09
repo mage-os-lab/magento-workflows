@@ -16,7 +16,9 @@
     <trigger event="sales.order.paid" entity="sales_order" label="Order Paid" group="Sales"/>
     <trigger event="sales.invoice.created" entity="sales_order" label="Invoice Created" group="Sales"/>
     <trigger event="sales.invoice.paid" entity="sales_order" label="Invoice Paid" group="Sales"/>
+    <trigger event="sales.order.comment_added" entity="sales_order" label="Order Comment Added" group="Sales"/>
     <trigger event="sales.shipment.created" entity="sales_order" label="Shipment Created" group="Sales"/>
+    <trigger event="sales.shipment.tracking_added" entity="sales_order" label="Shipment Tracking Added" group="Sales"/>
     <trigger event="sales.creditmemo.created" entity="sales_order" label="Credit Memo Created" group="Sales"/>
 
     <!-- Cart -->

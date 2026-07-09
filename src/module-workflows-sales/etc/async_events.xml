@@ -10,7 +10,10 @@
  * sales.order.status_changed; Observer\OrderPaidObserver publishes
  * sales.order.paid (paid transition, ORD-T1); Observer\InvoicePaidObserver
  * publishes sales.invoice.paid (invoice pay, DOC-T1, hydrating the parent
- * order); Model\AbandonedCartDetector publishes quote.abandoned.
+ * order); Observer\OrderCommentAddedObserver publishes sales.order.comment_added
+ * (ORD-T2); Observer\ShipmentTrackingAddedObserver publishes
+ * sales.shipment.tracking_added (DOC-T2, hydrating the parent order);
+ * Model\AbandonedCartDetector publishes quote.abandoned.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -22,6 +25,12 @@
         <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
     </async_event>
     <async_event name="sales.invoice.paid">
+        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
+    </async_event>
+    <async_event name="sales.order.comment_added">
+        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
+    </async_event>
+    <async_event name="sales.shipment.tracking_added">
         <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
     </async_event>
     <async_event name="quote.abandoned">

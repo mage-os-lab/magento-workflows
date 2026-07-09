@@ -95,6 +95,7 @@
                 <item name="order.create_shipment" xsi:type="object">MageOS\WorkflowsSales\Action\Order\CreateShipment</item>
                 <item name="order.create_creditmemo" xsi:type="object">MageOS\WorkflowsSales\Action\Order\CreateCreditmemo</item>
                 <item name="order.add_tracking" xsi:type="object">MageOS\WorkflowsSales\Action\Order\AddTracking</item>
+                <item name="order.send_email" xsi:type="object">MageOS\WorkflowsSales\Action\Order\SendEmail</item>
                 <item name="order.cancel" xsi:type="object">MageOS\WorkflowsSales\Action\Order\Cancel</item>
                 <!-- Marketing -->
                 <item name="marketing.generate_coupon" xsi:type="object">MageOS\WorkflowsSales\Action\Marketing\GenerateCoupon</item>
