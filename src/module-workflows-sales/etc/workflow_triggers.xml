@@ -13,7 +13,9 @@
     <trigger event="sales.order.created" entity="sales_order" label="Order Created" group="Sales"/>
     <trigger event="sales.order.updated" entity="sales_order" label="Order Updated" group="Sales"/>
     <trigger event="sales.order.status_changed" entity="sales_order" label="Order Status Changed" group="Sales"/>
+    <trigger event="sales.order.paid" entity="sales_order" label="Order Paid" group="Sales"/>
     <trigger event="sales.invoice.created" entity="sales_order" label="Invoice Created" group="Sales"/>
+    <trigger event="sales.invoice.paid" entity="sales_order" label="Invoice Paid" group="Sales"/>
     <trigger event="sales.shipment.created" entity="sales_order" label="Shipment Created" group="Sales"/>
     <trigger event="sales.creditmemo.created" entity="sales_order" label="Credit Memo Created" group="Sales"/>
 

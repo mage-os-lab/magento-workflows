@@ -10,6 +10,7 @@
         "notify.email": "MageOS\\WorkflowsActionsCore\\Action\\Notify\\Email",
         "notify.webhook": "MageOS\\WorkflowsActionsCore\\Action\\Notify\\Webhook",
         "order.add_comment": "MageOS\\WorkflowsSales\\Action\\Order\\AddComment",
+        "order.add_tracking": "MageOS\\WorkflowsSales\\Action\\Order\\AddTracking",
         "order.cancel": "MageOS\\WorkflowsSales\\Action\\Order\\Cancel",
         "order.change_status": "MageOS\\WorkflowsSales\\Action\\Order\\ChangeStatus",
         "order.create_creditmemo": "MageOS\\WorkflowsSales\\Action\\Order\\CreateCreditmemo",
@@ -48,7 +49,8 @@
         "catalog_product.stock": "MageOS\\WorkflowsInventory\\Model\\Rule\\Hydrator\\ProductStockAggregateProvider",
         "customer.birthday": "MageOS\\WorkflowsCustomer\\Model\\Rule\\Hydrator\\CustomerBirthdayAggregateProvider",
         "customer.newsletter_status": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\NewsletterStatusAggregateProvider",
-        "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider"
+        "customer.order_history": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\CustomerAggregateProvider",
+        "sales_order.lifecycle": "MageOS\\WorkflowsSales\\Model\\Rule\\Hydrator\\OrderLifecycleAggregateProvider"
     },
     "option_sources": {
         "cart_price_rules": "MageOS\\WorkflowsSales\\Model\\Option\\CartPriceRuleOptionSource",
@@ -68,7 +70,9 @@
         "quote.abandoned": "quote|Cart",
         "sales.creditmemo.created": "sales_order|Sales",
         "sales.invoice.created": "sales_order|Sales",
+        "sales.invoice.paid": "sales_order|Sales",
         "sales.order.created": "sales_order|Sales",
+        "sales.order.paid": "sales_order|Sales",
         "sales.order.status_changed": "sales_order|Sales",
         "sales.order.updated": "sales_order|Sales",
         "sales.shipment.created": "sales_order|Sales"
@@ -81,6 +85,8 @@
         "inventory.stock_threshold_crossed": "Magento\\Catalog\\Api\\ProductRepositoryInterface::getById",
         "newsletter.subscription_changed": "MageOS\\WorkflowsNewsletter\\Model\\Rule\\Hydrator\\SubscriberHydrationService::getById",
         "quote.abandoned": "Magento\\Quote\\Api\\CartRepositoryInterface::get",
+        "sales.invoice.paid": "Magento\\Sales\\Api\\OrderRepositoryInterface::get",
+        "sales.order.paid": "Magento\\Sales\\Api\\OrderRepositoryInterface::get",
         "sales.order.status_changed": "Magento\\Sales\\Api\\OrderRepositoryInterface::get"
     },
     "observers": {
@@ -89,6 +95,8 @@
         "mageos_workflow_save_after::mageos_workflows_triggers_subscription_sync_save": "MageOS\\WorkflowsTriggersCore\\Observer\\WorkflowSaveObserver",
         "newsletter_subscriber_save_after::mageos_workflows_newsletter_subscription_changed": "MageOS\\WorkflowsNewsletter\\Observer\\SubscriptionChangeObserver",
         "review_save_after::mageos_workflows_triggers_review_submitted": "MageOS\\WorkflowsReview\\Observer\\ReviewSubmittedObserver",
+        "sales_order_invoice_pay::mageos_workflows_triggers_invoice_paid": "MageOS\\WorkflowsSales\\Observer\\InvoicePaidObserver",
+        "sales_order_save_after::mageos_workflows_triggers_order_paid": "MageOS\\WorkflowsSales\\Observer\\OrderPaidObserver",
         "sales_order_save_after::mageos_workflows_triggers_order_status_changed": "MageOS\\WorkflowsSales\\Observer\\OrderStatusChangeObserver"
     },
     "leaf_conditions": {
