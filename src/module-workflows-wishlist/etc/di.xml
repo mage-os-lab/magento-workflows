@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Wishlist domain pack. -->
+
+    <!-- WSH-C1: product.wishlisted_customers relation — the fan-out enabler for
+         price-drop / back-in-stock flows. Registered in the RelationPool (the
+         extension surface, mirroring the sales pack's order.* resolvers); source
+         catalog_product, target customer, cardinality many. Child conditions run
+         against the customer root, which workflows-customer registers via the
+         RelatedEntity combine's targetChildConditions — this relation only
+         declares source/target types. -->
+    <type name="MageOS\Workflows\Model\Relation\RelationPool">
+        <arguments>
+            <argument name="relations" xsi:type="array">
+                <item name="product.wishlisted_customers" xsi:type="object">MageOS\WorkflowsWishlist\Model\Relation\Resolver\ProductWishlistedCustomers</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- CUS-C3 (wishlist half): contribute wishlist_items_count to the CUSTOMER
+         root via the aggregate pool (E2) — registered ALONGSIDE the sales
+         order-history, customer birthday and newsletter providers (the pool
+         accepts multiple providers per entity type). The queried data (wishlist /
+         wishlist_item tables) lives in this pack, so the provider registration
+         does too. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="array">
+                    <item name="wishlist" xsi:type="object">MageOS\WorkflowsWishlist\Model\Rule\Hydrator\CustomerWishlistAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+</config>

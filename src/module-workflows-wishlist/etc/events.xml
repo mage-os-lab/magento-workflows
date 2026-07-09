@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Wishlist domain pack (WSH-T1). Publishes wishlist.item_added when a
+         product is added to a wishlist (the canonical storefront event
+         'wishlist_add_product', dispatched by Magento\Wishlist\Controller\Index\Add
+         with keys wishlist/product/item). -->
+    <event name="wishlist_add_product">
+        <observer name="mageos_workflows_wishlist_item_added"
+                  instance="MageOS\WorkflowsWishlist\Observer\WishlistItemAddedObserver"/>
+    </event>
+</config>

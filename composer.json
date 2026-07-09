@@ -24,6 +24,7 @@
             "src/module-workflows-scheduler",
             "src/module-workflows-templates",
             "src/module-workflows-triggers-core",
+            "src/module-workflows-wishlist",
             "src/metapackage-workflows-suite"
         ]
     }

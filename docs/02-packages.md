@@ -27,12 +27,13 @@ entity-agnostic *in fact*. Every package's composer metadata is CI-enforced hone
 | `mage-os/workflows-inventory` | `StockThresholdDetector`, the stock-threshold-crossed trigger, the stock-flag hysteresis table, `product.set_stock`, the stock-threshold config field; *suggests* MSI (runtime-guarded) |
 | `mage-os/workflows-review` | `ReviewSubmittedObserver` + the `catalog.product.review_submitted` trigger |
 | `mage-os/workflows-newsletter` | `customer.newsletter` action + the anonymize-unsubscribe plugin on `workflows-customer`'s Anonymize |
+| `mage-os/workflows-wishlist` | `WishlistItemAddedObserver` + the `wishlist.item_added` trigger, the `product.wishlisted_customers` fan-out relation, and the `wishlist_items_count` aggregate on the customer root |
 
 **Metapackage:**
 
 | Package | Contents |
 |---|---|
-| `mage-os/workflows-suite` | Batteries-included install: engine, admin-ui, the three infrastructure packs, and all six domain packs. The optional extras below stay opt-in and are required separately. |
+| `mage-os/workflows-suite` | Batteries-included install: engine, admin-ui, the three infrastructure packs, and all seven domain packs. The optional extras below stay opt-in and are required separately. |
 
 **Optional extras** (opt-in, not in the suite):
 
@@ -44,7 +45,7 @@ entity-agnostic *in fact*. Every package's composer metadata is CI-enforced hone
 | `mage-os/workflows-admin-extension` | ACL-gated summary strip + view/create deep links on native entity grids, layered on `workflows` + `workflows-admin-ui` |
 | `mage-os/workflows-approvals` | Human-decision gate: the approval task table, decision service, REST endpoint, and admin grid/decision view behind the schema-4 `approval` step's core seam (see [Approval Gate discovery](discovery/approval-gate.md)) |
 
-`mage-os/workflows-wishlist` is not created yet — it is born with its first core-coverage backlog item. Module enable state, not in-code guards, is the absence-safety boundary: a domain pack can be omitted or disabled without compile or runtime breakage.
+Module enable state, not in-code guards, is the absence-safety boundary: a domain pack can be omitted or disabled without compile or runtime breakage.
 
 ## Dependencies
 
