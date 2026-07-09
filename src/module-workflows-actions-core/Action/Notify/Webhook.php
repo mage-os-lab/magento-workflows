@@ -36,6 +36,10 @@ use Psr\Http\Message\UriInterface;
  *    validation and connect.
  *  - Redirects: max 3, each destination re-validated against the same
  *    private-range rules via on_redirect; a violation aborts the transfer.
+ *    Each hop is ALSO pinned to the address that just passed validation —
+ *    the resolve map is shared by reference with the on_redirect hook, so
+ *    the rebinding window closed for the original request cannot reopen on
+ *    a redirect hop.
  *  - HMAC-SHA256 of the body in X-MageOS-Webhook-Signature when sign_with is
  *    configured (same convention as the async-events HTTP notifier).
  *  - First-class auth: auth_type bearer|basic resolves a NAMED secret via
@@ -197,6 +201,15 @@ class Webhook extends AbstractAction implements SimulateableActionInterface, Bat
             $this->configuredMaxTimeout($storeId)
         );
 
+        // CURLOPT_RESOLVE map shared BY REFERENCE between the curl options and
+        // the on_redirect hook: PHP array copies preserve reference elements,
+        // and Guzzle fires on_redirect before initiating the next transfer, so
+        // a pin appended here is in force when curl connects to the hop.
+        $resolveMap = [];
+        if ($pinnedIp !== null) {
+            $resolveMap[] = sprintf('%s:%d:%s', $host, $port, $pinnedIp);
+        }
+
         $options = [
             RequestOptions::HEADERS => $headers,
             RequestOptions::TIMEOUT => $timeout,
@@ -208,21 +221,28 @@ class Webhook extends AbstractAction implements SimulateableActionInterface, Bat
                 'strict' => true,
                 'referer' => false,
                 'protocols' => $insecureAllowed ? ['http', 'https'] : ['https'],
-                'on_redirect' => function (RequestInterface $request, ResponseInterface $response, UriInterface $uri) use ($storeId): void {
-                    // Re-validate every redirect destination against the same rules
-                    $this->resolveAndValidate(strtolower(trim($uri->getHost(), '[]')), $storeId);
+                'on_redirect' => function (RequestInterface $request, ResponseInterface $response, UriInterface $uri) use (&$resolveMap, $storeId): void {
+                    // Re-validate every redirect destination against the same
+                    // rules, then pin the hop's connection to the address that
+                    // just passed validation. Without the pin, a rebinding DNS
+                    // server can answer the validation lookup with a public
+                    // record and curl's connect-time lookup with a private one.
+                    $redirectHost = strtolower(trim($uri->getHost(), '[]'));
+                    $redirectIp = $this->resolveAndValidate($redirectHost, $storeId);
+                    if ($redirectIp !== null) {
+                        $redirectPort = $uri->getPort()
+                            ?? (strtolower($uri->getScheme()) === 'http' ? 80 : 443);
+                        $resolveMap[] = sprintf('%s:%d:%s', $redirectHost, $redirectPort, $redirectIp);
+                    }
                 },
             ],
         ];
         if ($body !== '' && $method !== 'GET' && $method !== 'HEAD') {
             $options[RequestOptions::BODY] = $body;
         }
-        if ($pinnedIp !== null) {
-            // Pin the connection to the address we validated (defeats DNS rebinding)
-            $options['curl'] = [
-                CURLOPT_RESOLVE => [sprintf('%s:%d:%s', $host, $port, $pinnedIp)],
-            ];
-        }
+        // Pin every connection to the addresses we validated (defeats DNS
+        // rebinding). Set even when empty so redirect hops can still be pinned.
+        $options['curl'] = [CURLOPT_RESOLVE => &$resolveMap];
 
         try {
             $response = $this->httpClient->request($method, $url, $options);

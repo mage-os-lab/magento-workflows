@@ -17,7 +17,7 @@ The webhook action ships **hardened, not hardenable**:
 - **HTTPS only by default** (HTTP behind a config flag with warning).
 - **DNS pinning:** resolve DNS *then* connect to the resolved IP (defeats rebinding).
 - **Private-range denial:** reject private/link-local/loopback ranges (RFC1918, 169.254.0.0/16, ::1, cloud metadata endpoints) unless the host is on an explicit admin-configured allowlist — the same posture Shopify Flow takes.
-- **Redirect re-validation:** deny redirects across the private-range boundary (Guzzle `on_redirect` re-validation).
+- **Redirect re-validation + per-hop pinning:** deny redirects across the private-range boundary (Guzzle `on_redirect` re-validation), and pin each redirect hop's connection to the IP that passed validation — the rebinding window stays closed on every hop, not just the first request.
 - **Response caps:** 256KB body, JSON depth ≤ 10; parse failures capture `{parse_error: true}` rather than raw bytes.
 - **Explicit trust boundary:** captured responses are attacker-influenceable data. They are usable in branch conditions and variable interpolation but **never as action identifiers** (no `{{ steps.x.response.action_code }}` resolving which action runs), **never in attribute codes**, and always type-coerced at the condition comparator. Documented in the SDK: action configs interpolate *values*, never *structure*.
 - **Optional response JSON Schema per step** — mismatch = step failure, keeping garbage out of downstream branches.
