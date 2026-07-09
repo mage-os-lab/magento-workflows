@@ -235,6 +235,21 @@
     <!-- Condition engine -->
     <preference for="MageOS\Workflows\Model\Rule\HydrationProviderInterface"
                 type="MageOS\Workflows\Model\Rule\HydrationProvider"/>
+    <!-- Phase-2 hydrator map: entity_type => EntityHydratorInterface. No type
+         is hardcoded in the provider — each entity's hydrator is a di.xml
+         contribution so a domain pack owning the Magento module owns the
+         registration (E1 / domain-packs S1–S3 relocate these four entries to
+         the sales/customer/catalog packs). Extensions append their own. -->
+    <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
+        <arguments>
+            <argument name="hydrators" xsi:type="array">
+                <item name="sales_order" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\OrderHydrator</item>
+                <item name="customer" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\CustomerHydrator</item>
+                <item name="catalog_product" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\ProductHydrator</item>
+                <item name="quote" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\QuoteHydrator</item>
+            </argument>
+        </arguments>
+    </type>
     <!-- Condition-node types that force hydration regardless of referenced
          attributes (F4). First entry arrives with the RelatedEntity combine
          (entity cross-referencing); extensions append their own. -->
@@ -242,6 +257,23 @@
         <arguments>
             <argument name="hydrationForcingNodeTypes" xsi:type="array">
                 <item name="related_entity" xsi:type="string">MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Aggregate-provider pool (E2 / domain-packs): per-target-entity map of
+         providers supplying hydration-time aggregate attributes (metadata +
+         computation) to a condition root. CustomerAggregateProvider is the
+         first registered provider, contributing order-history aggregates to the
+         customer root; S1 relocates this entry to the sales pack, and later
+         packs append reviews_count / wishlist_items_count here without touching
+         the customer root. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="array">
+                    <item name="order_history" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\CustomerAggregateProvider</item>
+                </item>
             </argument>
         </arguments>
     </type>

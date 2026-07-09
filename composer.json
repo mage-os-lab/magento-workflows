@@ -9,10 +9,15 @@
     "extra": {
         "packages": [
             "src/module-workflows",
-            "src/module-workflows-admin-ui",
             "src/module-workflows-actions-core",
-            "src/module-workflows-triggers-core",
-            "src/module-workflows-scheduler"
+            "src/module-workflows-admin-extension",
+            "src/module-workflows-admin-ui",
+            "src/module-workflows-approvals",
+            "src/module-workflows-canvas",
+            "src/module-workflows-import-suppression",
+            "src/module-workflows-scheduler",
+            "src/module-workflows-templates",
+            "src/module-workflows-triggers-core"
         ]
     }
 }

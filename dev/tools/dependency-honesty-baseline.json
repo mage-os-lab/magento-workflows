@@ -1,0 +1,30 @@
+{
+    "mage-os/workflows": [
+        "magento/module-catalog",
+        "magento/module-config",
+        "magento/module-customer",
+        "magento/module-eav",
+        "magento/module-email",
+        "magento/module-payment",
+        "magento/module-sales",
+        "magento/module-sales-rule",
+        "magento/module-shipping"
+    ],
+    "mage-os/workflows-actions-core": [
+        "magento/module-eav",
+        "magento/module-store"
+    ],
+    "mage-os/workflows-admin-extension": [
+        "magento/module-config"
+    ],
+    "mage-os/workflows-import-suppression": [
+        "magento/module-config"
+    ],
+    "mage-os/workflows-triggers-core": [
+        "magento/module-catalog",
+        "magento/module-customer",
+        "magento/module-quote",
+        "magento/module-review",
+        "magento/module-sales"
+    ]
+}

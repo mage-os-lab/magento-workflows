@@ -9,12 +9,16 @@ use Magento\Framework\DataObject;
 use Magento\Framework\DataObjectFactory;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use MageOS\Workflows\Model\Rule\AggregateProviderPool;
+use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
 
 /**
  * customer hydrator: flat customer DTO data with custom/extension attributes
- * lifted to top-level keys, enriched with order-history aggregates
+ * lifted to top-level keys, enriched with aggregate attributes contributed to
+ * the customer root through AggregateProviderPool (E2) — order-history totals
  * (orders_count, lifetime_sales, avg_order_value, last_order_at,
- * days_since_last_order) from CustomerAggregateProvider.
+ * days_since_last_order) from CustomerAggregateProvider today, plus whatever
+ * later packs register for the customer entity type.
  *
  * The aggregates exist ONLY on hydrated customers — trigger snapshots come
  * from trigger payloads and never carry them, so conditions on aggregate
@@ -26,7 +30,7 @@ class CustomerHydrator implements EntityHydratorInterface
         private readonly CustomerRepositoryInterface $customerRepository,
         private readonly EntityDataConverter $dataConverter,
         private readonly DataObjectFactory $dataObjectFactory,
-        private readonly CustomerAggregateProvider $aggregateProvider
+        private readonly AggregateProviderPool $aggregateProviderPool
     ) {
     }
 
@@ -40,7 +44,7 @@ class CustomerHydrator implements EntityHydratorInterface
 
         $data = array_merge(
             $this->dataConverter->toFlatArray($customer, CustomerInterface::class),
-            $this->aggregateProvider->getAggregates($entityId)
+            $this->aggregateProviderPool->getAggregates(HydrationProviderInterface::TYPE_CUSTOMER, $entityId)
         );
 
         return $this->dataObjectFactory->create(['data' => $data]);

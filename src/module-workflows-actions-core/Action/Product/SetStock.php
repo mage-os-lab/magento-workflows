@@ -26,6 +26,8 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * the whole bundled action pool — unloadable on installs where MSI is
  * removed. interface_exists() gates the path; a missing MSI install is a
  * terminal, clearly-worded failure rather than a fatal.
+ *
+ * @workflows-dependency-allowlist Magento\InventoryApi
  */
 class SetStock extends AbstractAction implements SimulateableActionInterface
 {

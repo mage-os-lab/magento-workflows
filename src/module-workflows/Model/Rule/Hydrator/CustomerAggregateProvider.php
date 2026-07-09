@@ -5,6 +5,7 @@ namespace MageOS\Workflows\Model\Rule\Hydrator;
 
 use Magento\Framework\App\ResourceConnection;
 use Magento\Sales\Model\Order;
+use MageOS\Workflows\Model\Rule\AggregateProviderInterface;
 
 /**
  * Customer order-history aggregates in ONE sales_order query (canceled
@@ -16,14 +17,39 @@ use Magento\Sales\Model\Order;
  * customer has no orders: absent attributes only match the negative
  * operators (fail-toward-false, AbstractWorkflowCondition::validateAttribute()).
  *
- * Merged into hydrated customer data by CustomerHydrator — hydration-time
- * only, never part of trigger snapshots.
+ * The first-registered aggregate provider (E2): contributed to the customer
+ * condition root via AggregateProviderPool under entity type 'customer'.
+ * Domain-packs S1 relocates this class and its pool entry to the sales pack
+ * (order history is sales-owned data). Merged into hydrated customer data by
+ * CustomerHydrator through the pool — hydration-time only, never part of
+ * trigger snapshots.
  */
-class CustomerAggregateProvider
+class CustomerAggregateProvider implements AggregateProviderInterface
 {
+    /**
+     * Attribute code => [label, workflow input type]. last_order_at is a date;
+     * the rest are numeric. Labels are raw strings ( __()-wrapped by the
+     * consuming condition root).
+     */
+    private const ATTRIBUTE_METADATA = [
+        'orders_count' => ['label' => 'Order History: Number of Orders', 'input_type' => 'numeric'],
+        'lifetime_sales' => ['label' => 'Order History: Lifetime Sales', 'input_type' => 'numeric'],
+        'avg_order_value' => ['label' => 'Order History: Average Order Value', 'input_type' => 'numeric'],
+        'last_order_at' => ['label' => 'Order History: Last Order Date', 'input_type' => 'date'],
+        'days_since_last_order' => ['label' => 'Order History: Days Since Last Order', 'input_type' => 'numeric'],
+    ];
+
     public function __construct(
         private readonly ResourceConnection $resourceConnection
     ) {
+    }
+
+    /**
+     * @return array<string, array{label: string, input_type: string}>
+     */
+    public function getAttributeMetadata(): array
+    {
+        return self::ATTRIBUTE_METADATA;
     }
 
     /**
