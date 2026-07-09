@@ -200,6 +200,16 @@ Sizes: **S** = pattern clone (≤ ~half day), **M** = new pattern variant (1–2
 **L** = small subsystem. Every item includes unit tests in the standalone runner and an i18n pass;
 new triggers must also state their loop-guard/debounce interaction in the class docblock.
 
+> **Execution status (July 2026).** The [domain-pack split](implementation/08-domain-packs.md)
+> that hosts this backlog executed first (S0–S6 + E5). **Tier 1 is implemented** — ORD-T1,
+> DOC-T1, INV-T1, SUB-T1, SUB-C1, CUS-T3 (+CUS-C4 pulled forward), CUS-C1, ORD-C1, QTE-C1,
+> PRD-C1, ORD-A1 — each in its domain pack per the placement rules, with the golden
+> composition fixture growing by exactly the expected keys per item. **Blocked, needs the
+> upstream repo added to the session:** VER-1 (audit of `mageos-common-async-events`
+> declarations) and with it CUS-T1 (`customer.deleted`), which should not be implemented as a
+> gap-fill until the upstream check rules out a collision. Tier-2 items implemented since are
+> marked in their sections' commit history; Tier 3 remains demand-driven.
+
 ### Tier 0 — verify first (blocks scoping of several items)
 
 | ID | Item | Size | Notes |
