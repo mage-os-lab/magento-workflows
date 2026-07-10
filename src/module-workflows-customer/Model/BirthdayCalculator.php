@@ -23,7 +23,7 @@ namespace MageOS\WorkflowsCustomer\Model;
  *
  * Final: value-object helper, no dependencies, safe to `new`.
  */
-final class BirthdayCalculator
+class BirthdayCalculator
 {
     /**
      * The date a customer's birthday falls on in a given calendar year,
