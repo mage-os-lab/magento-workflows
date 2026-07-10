@@ -258,6 +258,14 @@ class SendEmailTest extends TestCase
                 $this->notifiedOrderIds[] = (int)$id;
                 return (bool)$this->returns;
             }
+            // Full OrderManagementInterface surface (only notify() is exercised).
+            public function cancel($id) { throw new \BadMethodCallException(__METHOD__); }
+            public function getCommentsList($id) { throw new \BadMethodCallException(__METHOD__); }
+            public function addComment($id, $statusHistory) { throw new \BadMethodCallException(__METHOD__); }
+            public function getStatus($id) { throw new \BadMethodCallException(__METHOD__); }
+            public function hold($id) { throw new \BadMethodCallException(__METHOD__); }
+            public function unHold($id) { throw new \BadMethodCallException(__METHOD__); }
+            public function place($order) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 

@@ -115,6 +115,17 @@ class ProductStockAggregateProviderTest extends TestCase
                 }
                 return $this->item;
             }
+
+            // Remaining StockRegistryInterface surface — unused here but required
+            // so the double satisfies the FULL real interface under real Magento.
+            public function getStock($scopeId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getStockItemBySku($productSku, $scopeId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getStockStatus($productId, $scopeId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getStockStatusBySku($productSku, $scopeId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getProductStockStatus($productId, $scopeId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getProductStockStatusBySku($productSku, $scopeId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getLowStockItems($scopeId, $qty, $currentPage = 1, $pageSize = 0) { throw new \BadMethodCallException(__METHOD__); }
+            public function updateStockItemBySku($productSku, $stockItem) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 
@@ -146,6 +157,11 @@ class ProductStockAggregateProviderTest extends TestCase
             {
                 throw new \RuntimeException('getById must not be called when MSI is absent');
             }
+            public function save($product, $saveOptions = false) { throw new \BadMethodCallException(__METHOD__); }
+            public function get($sku, $editMode = false, $storeId = null, $forceReload = false) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($product) { throw new \BadMethodCallException(__METHOD__); }
+            public function deleteById($sku) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 }

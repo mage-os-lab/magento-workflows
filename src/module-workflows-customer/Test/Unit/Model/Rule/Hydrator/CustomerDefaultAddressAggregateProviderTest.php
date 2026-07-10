@@ -33,6 +33,11 @@ class CustomerDefaultAddressAggregateProviderTest extends TestCase
             {
                 throw new \BadMethodCallException(__METHOD__);
             }
+            // Full CustomerRepositoryInterface surface (only getById is exercised).
+            public function get($email, $websiteId = null) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($customer) { throw new \BadMethodCallException(__METHOD__); }
+            public function deleteById($customerId) { throw new \BadMethodCallException(__METHOD__); }
         };
 
         return new CustomerDefaultAddressAggregateProvider($repository);

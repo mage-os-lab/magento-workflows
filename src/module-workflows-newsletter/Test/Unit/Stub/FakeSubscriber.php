@@ -81,10 +81,14 @@ class FakeSubscriber extends Subscriber
     }
 
     /**
+     * Signature mirrors AbstractModel::load($modelId, $field = null) so the
+     * override is declaration-compatible with the real parent.
+     *
      * @param mixed $id
+     * @param string|null $field
      * @return $this
      */
-    public function load($id)
+    public function load($id, $field = null)
     {
         return $this;
     }

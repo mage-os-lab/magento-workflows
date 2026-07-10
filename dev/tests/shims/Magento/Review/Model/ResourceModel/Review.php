@@ -14,12 +14,16 @@ use Magento\Review\Model\Review as ReviewModel;
  */
 class Review
 {
-    public function load(ReviewModel $object, $value, $field = null): self
+    // Params UNTYPED to mirror the real parent AbstractDb::load()/save(), which
+    // type the model as AbstractModel — a subclass double narrowing this to the
+    // concrete Review would be a contravariance fatal under real Magento, so the
+    // shim must not invite (or mask) that narrowing.
+    public function load($object, $value, $field = null): self
     {
         return $this;
     }
 
-    public function save(ReviewModel $object): self
+    public function save($object): self
     {
         return $this;
     }

@@ -34,7 +34,11 @@ class SetStatusTest extends TestCase
             {
             }
 
-            public function load(Review $object, $value, $field = null): self
+            // Params are UNTYPED: the real parent is AbstractDb, whose
+            // load()/save() type the model as AbstractModel — hinting the
+            // narrower Review here would narrow the param (contravariance
+            // violation → fatal) under real Magento.
+            public function load($object, $value, $field = null): self
             {
                 if (isset($this->rows[(int) $value])) {
                     $object->setData('review_id', (int) $value);
@@ -43,7 +47,7 @@ class SetStatusTest extends TestCase
                 return $this;
             }
 
-            public function save(Review $object): self
+            public function save($object): self
             {
                 $this->saveCalls++;
                 if ($this->throwOnSave !== null) {
@@ -58,6 +62,10 @@ class SetStatusTest extends TestCase
     private function factory(): ReviewFactory
     {
         return new class extends ReviewFactory {
+            // Bypass the generated factory's DI constructor (ObjectManager).
+            public function __construct()
+            {
+            }
             public function create(array $data = []): Review
             {
                 return new Review();
