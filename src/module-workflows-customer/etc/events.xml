@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for customer group changes (relocated
+         from mage-os/workflows-triggers-core). Publishes customer.group_changed. -->
+    <event name="customer_save_after">
+        <observer name="mageos_workflows_triggers_customer_group_changed"
+                  instance="MageOS\WorkflowsCustomer\Observer\CustomerGroupChangeObserver"/>
+    </event>
+    <!-- Gap-fill publisher for customer.address_changed (CUS-T2). One observer
+         class on both AbstractModel seams of Magento\Customer\Model\Address; the
+         change_type (created|updated|deleted) is derived from the event name +
+         orig data. See the observer docblock for the upstream (VER-1 reconciliation (July 2026, audited against mageos-common-async-events):
+ * upstream declares customer.address.created / customer.address.updated
+ * (address-entity payload via AsyncCustomerAddressManagement::getById) but NO
+ * delete event. This module's customer.address_changed deliberately coexists:
+ * different event name (no declaration collision), CUSTOMER-entity payload
+ * (conditions author against the owner), and unified coverage including
+ * change_type=deleted, which upstream cannot express. customer.deleted does
+ * not exist upstream either — CUS-T1 remains a genuine (Tier-3, snapshot-only)
+ * gap. Upstream also offers customer.login, deliberately not surfaced here
+ * (behavioral trigger, through-line 1).
+ -->
+    <event name="customer_address_save_after">
+        <observer name="mageos_workflows_triggers_customer_address_changed"
+                  instance="MageOS\WorkflowsCustomer\Observer\CustomerAddressChangeObserver"/>
+    </event>
+    <event name="customer_address_delete_after">
+        <observer name="mageos_workflows_triggers_customer_address_changed"
+                  instance="MageOS\WorkflowsCustomer\Observer\CustomerAddressChangeObserver"/>
+    </event>
+</config>

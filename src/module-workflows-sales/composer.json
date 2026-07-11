@@ -1,0 +1,29 @@
+{
+    "name": "mage-os/workflows-sales",
+    "description": "Mage-OS Workflow Engine sales domain pack: order + quote condition roots, hydrators, relations, option sources, the order-status/abandoned-cart triggers, order + coupon actions, and the abandoned-cart detector",
+    "type": "magento2-module",
+    "license": "OSL-3.0",
+    "require": {
+        "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "mage-os/workflows": "*",
+        "mage-os/workflows-triggers-core": "*",
+        "mage-os/workflows-scheduler": "*",
+        "magento/framework": ">=103.0.4",
+        "magento/module-sales": "*",
+        "magento/module-quote": "*",
+        "magento/module-rule": "*",
+        "magento/module-sales-rule": "*",
+        "magento/module-customer": "*",
+        "magento/module-store": "*",
+        "magento/module-payment": "*",
+        "magento/module-shipping": "*"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "MageOS\\WorkflowsSales\\": ""
+        }
+    }
+}

@@ -29,7 +29,14 @@ side — flows the engine still does *not* support — is catalogued in
 - Add a gift-wrap prep comment when the order contains any SKU in the "Gift" category.
 - Escalate any order that has sat in "Processing" for more than 5 business days.
 - Fan out from one customer event to every one of that customer's open orders and act on each (capped fan-out).
+- Kick off fulfillment the instant payment clears: on `sales.order.paid`, create the shipment for pre-packed SKUs and notify the customer (fires on every payment method, not just status changes).
+- Paid-but-unshipped SLA: on a daily schedule, escalate orders still shippable (`can_ship = Yes`) 48 hours after they were paid.
+- Add carrier tracking to the latest shipment and email the customer the moment an online capture settles (`sales.invoice.paid` + `order.add_tracking`).
 - Park a goodwill-credit request for a sales-manager decision; issue the approved amount on approval, send a policy email on rejection, escalate on silence (`approval` gate).
+- Email the customer whenever a storefront-visible order comment is posted: on `sales.order.comment_added` (fires only for rows with real comment text, not status-only history), send them the latest visible comment (`order.send_email` in `comment` mode) — the comment is recorded once by `order.add_comment` and the email composes on top rather than re-adding it.
+- React the instant carrier tracking is attached: on `sales.shipment.tracking_added`, notify the customer (or a 3PL webhook) with the carrier code, tracking number and shipment increment id carried in the payload.
+- Time-in-status SLA with goodwill: on a daily schedule, for orders sitting in "Processing" longer than 48 hours (`hours_in_current_status >= 48`), issue a 10%-of-paid goodwill credit (`order.create_creditmemo`, `mode = percent`, `percent = 10`) and add an internal comment — no item lines, a clean adjustment refund.
+- Refund a flat concession capped at what remains: `order.create_creditmemo` with `mode = fixed`, `amount = 25` refunds $25, or the refundable remainder if less than $25 is still open.
 
 ## Fraud, risk & payments
 
@@ -44,6 +51,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Alert finance when a single customer's lifetime refunds cross a defined threshold.
 - Flag orders using a payment method newly seen for an otherwise long-standing customer.
 - Hold a high-risk order and park it for a fraud-team decision: on approve unhold and invoice, on reject cancel and notify, on 4-hour silence escalate to a second reviewer (`approval` gate).
+- Fraud-review an account whose address just changed while it has money in flight: on `customer.address_changed`, fan out over the customer's `open_orders` relation and hold any not-yet-shipped order for manual review (guard on the `change_type` payload key so only `updated`/`created` addresses trigger, not deletes).
 
 ## Customer lifecycle & segmentation
 
@@ -51,12 +59,15 @@ side — flows the engine still does *not* support — is catalogued in
 - Move customers to a "Wholesale" group after their order count passes 10.
 - Tag customers who haven't ordered in 180 days as "At Risk" for a win-back campaign.
 - Welcome-email new customers, wait 3 days, then send a first-purchase incentive.
+- Send a birthday coupon a week ahead: on `customer.birthday_upcoming`, generate a one-time coupon and email it (`birthday_upcoming` → `generate_coupon` → `notify.email`); tune the lead time with the Birthday Look-Ahead (days) setting.
+- Condition a birthday campaign on `days_until_birthday` / `birthday_month` to stagger offers by month.
 - Downgrade a loyalty tier when average order value drops below a set floor over time.
 - Add a "High-AOV" attribute flag to customers whose average order value exceeds $250.
 - Assign a dedicated account manager attribute when a B2B buyer's order history qualifies.
 - Auto-subscribe customers to the newsletter after their second completed order.
 - Build a "New Parent" segment when a customer buys from the Baby category twice.
 - Re-engage lapsed VIPs with a personalized offer the day they cross 90 days inactive.
+- Re-segment a customer who relocates: on `customer.address_changed`, compare the hydrated `default_shipping_country` against the store's home country and move cross-border movers into an "International" group (or assign a tax/shipping-profile attribute) — the default-address leaves (`default_billing_country` / `default_shipping_region` / postcode / city) are absent-when-unset, so the branch simply doesn't fire for customers with no default address.
 - Invite a guest checkout to register when their email has no account yet, or nudge them to log in when it does (entity cross-referencing).
 - Spot a guest placing their third order under the same email and route them into an account-creation offer (cross-referenced order history).
 
@@ -69,6 +80,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Revalidate before sending: cancel the reminder if the customer completed checkout meanwhile.
 - Notify sales when a known wholesale buyer abandons a cart above $1,000.
 - Send a "back in stock — finish your order" nudge when an abandoned cart's SKU restocks.
+- Target the nudge by contents: on cart abandoned, only email when the cart contains any SKU in the "Premium" category (`Cart Items` ANY/ALL subtree).
 - Escalate high-value abandoned carts to a human callback task instead of an email.
 - Suppress recovery emails for customers who abandoned more than 3 carts this week.
 - Wait for a `sales.order.updated` event per cart and thank the customer if they convert.
@@ -85,6 +97,14 @@ side — flows the engine still does *not* support — is catalogued in
 - Flag products with a cost above price (negative margin) for a pricing-team review.
 - Nightly: scan the catalog and disable products with no image or empty required attributes.
 - Auto-assign seasonal products to the "Holiday" category as a scheduled campaign kicks off.
+- Notify (or webhook a wishlist fan-out) when a product comes back in stock — the `inventory.back_in_stock` trigger fires once as the stock-threshold flag clears on recovery.
+- Email every shopper who wishlisted a product the moment it comes back in stock: `inventory.back_in_stock` (entity = catalog_product) fans out over the `product.wishlisted_customers` relation, giving each wishlisting customer their own execution (the relation cap bounds a viral-product blast; the same shape drives a price-drop alert off a catalog price-change trigger).
+- Schedule a nightly scan for products whose MSI `salable_qty` has fallen at or below a reorder point and open a replenishment task (`catalog_product` condition on the `salable_qty` stock leaf; degrades to `qty`/`is_in_stock` where MSI is absent).
+
+**Sanctioned price recipes** (no bespoke action needed — the base actions already cover them):
+
+- Set a base price, scoped to the workflow's store view — `product.set_attribute` writes `price` at the execution's store scope, so a store/website-scoped roll-out touches only that scope: `{"type":"action","action":"product.set_attribute","config":{"attribute_code":"price","value":"19.99"}}` (`price` is not on the set_attribute denylist; only `sku` and `status` are).
+- Clear an expired special price — `product.set_special_price` with `clear` removes the special price and its from/to dates together in one scoped write: `{"type":"action","action":"product.set_special_price","config":{"clear":true}}` (special-price *windows* themselves are a scheduled workflow + relative-date condition, not a trigger).
 
 ## Pricing & promotions
 
@@ -99,6 +119,7 @@ side — flows the engine still does *not* support — is catalogued in
 - Schedule a "release at 09:00 store time" price drop the morning of a product launch.
 - End a promotion and restore regular pricing after exactly 7 business days.
 - Detect a price drop steeper than 30% and revert it unless a merchandiser confirms within 24 hours (`approval` gate with a required timeout).
+- Act on orders that redeemed a specific promotion: condition on the order's `applied_rule_ids` (multiselect, "is one of" the selected cart-price rules) to, say, tag every order that used the "Summer Sale" rule for a post-campaign audit, or suppress a stacking follow-up offer when a VIP rule already applied.
 
 ## Marketing, reviews & post-purchase
 
@@ -112,6 +133,11 @@ side — flows the engine still does *not* support — is catalogued in
 - Ask for a referral after a customer's third successful, non-refunded order.
 - Post-delivery: request an NPS score via webhook to a survey platform.
 - Congratulate customers on a purchase anniversary with a loyalty bonus each year.
+- Win back an opt-out: when a subscriber's status changes to Unsubscribed, post to an ESP win-back webhook — guests and account holders alike (`newsletter.subscription_changed`).
+- Welcome a brand-new newsletter signup the moment they subscribe, even without an account, via `notify.email` on the guest-safe subscription event (`newsletter.subscription_changed`, `from_status` null).
+- Auto-approve trustworthy reviews: on `catalog.product.review_submitted`, when the Trigger Data `rating` is 5 stars and the reviewer's customer subtree shows `orders_count >= 2` (a repeat buyer), run `review.set_status` = Approved — the review is taken from the trigger context, no manual moderation. Closes the auto-moderation loop with `review.status_changed` (REV-T1/REV-A1); the action is idempotent and the engine's chain-depth guard bounds any set-status → status-changed re-trigger.
+- Escalate harsh reviews: on `catalog.product.review_submitted` (or `review.status_changed`) with Trigger Data `rating <= 1`, `notify.email` / `notify.admin` the CX team with the review title, nickname and product — a 1-star alert instead of an auto-action.
+- Nudge a shopper who wishlisted a product but hasn't bought it: the `wishlist.item_added` trigger (entity = catalog_product, `customer_id` in the payload) starts a flow that waits a day, then emails a reminder — gated on the customer still not having purchased, expressible today as a customer-root condition over the sales pack's order-history aggregates (via fan-out to the wishlisting customer) or, for the volume-based variant, the `wishlist_items_count` aggregate ("has 3+ saved items but no recent order"). Rapid re-adds collapse to one run through the engine's per-entity debounce window.
 
 ## Notifications & internal alerts
 

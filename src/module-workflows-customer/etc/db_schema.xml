@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- Yearly dedupe watermark for BirthdayDetector (CUS-T3): one row per
+         customer per birthday year, so customer.birthday_upcoming fires at most
+         once per birthday. Clones the abandoned/stock flag-table treatment. -->
+    <table name="mageos_workflow_birthday_flag" resource="default" engine="innodb"
+           comment="Customers already notified of an upcoming birthday by BirthdayDetector - one row per birthday year">
+        <column xsi:type="int" name="customer_id" unsigned="true" nullable="false" identity="false"
+                comment="Customer entity ID (customer_entity.entity_id)"/>
+        <column xsi:type="smallint" name="birth_year" unsigned="true" nullable="false" identity="false"
+                comment="Calendar year the notified birthday falls in"/>
+        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="When this customer was flagged for this birthday year"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="customer_id"/>
+            <column name="birth_year"/>
+        </constraint>
+    </table>
+
+</schema>

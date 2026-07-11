@@ -1,6 +1,6 @@
 {
     "name": "mage-os/workflows-scheduler",
-    "description": "Mage-OS Workflow Engine: scheduled (cron + query) triggers and abandoned-cart detection",
+    "description": "Mage-OS Workflow Engine scheduled-trigger infrastructure: cron entry, the entity-agnostic QueryRunner and ConditionToSearchCriteria, and the schedule-state table (domain packs contribute their per-entity QueryRunner maps)",
     "type": "magento2-module",
     "license": "OSL-3.0",
     "require": {
@@ -8,16 +8,8 @@
         "magento/framework": ">=103.0.4",
         "magento/module-store": "*",
         "magento/module-cron": "*",
-        "magento/module-quote": "*",
-        "magento/module-sales": "*",
-        "magento/module-customer": "*",
-        "magento/module-catalog": "*",
-        "magento/module-catalog-inventory": "*",
         "mage-os/workflows": "*",
         "dragonmantank/cron-expression": "^3.3"
-    },
-    "suggest": {
-        "mage-os/workflows-triggers-core": "Publishes quote.abandoned as a real async event via EventPublisher; without it, AbandonedCartDetector only logs a debug message"
     },
     "autoload": {
         "files": ["registration.php"],

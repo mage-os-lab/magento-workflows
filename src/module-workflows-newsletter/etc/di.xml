@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Newsletter domain pack (domain-packs S5). -->
+
+    <!-- customer.newsletter action (relocated from actions-core, code unchanged). -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsNewsletter\Action\Customer\Newsletter</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Anonymize-unsubscribe plugin: reintroduces the newsletter unsubscription
+         that customer.anonymize performed inline before the split, without
+         workflows-customer depending on Magento\Newsletter (placement rule 5). -->
+    <type name="MageOS\WorkflowsCustomer\Action\Customer\Anonymize">
+        <plugin name="mageos_workflows_newsletter_anonymize_unsubscribe"
+                type="MageOS\WorkflowsNewsletter\Plugin\AnonymizeUnsubscribePlugin"/>
+    </type>
+
+    <!-- SUB-C1: newsletter_subscriber condition root — the pack's ONE new
+         entity root (guests subscribe without a customer account). -->
+    <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
+        <arguments>
+            <argument name="combines" xsi:type="array">
+                <item name="newsletter_subscriber" xsi:type="string">MageOS\WorkflowsNewsletter\Model\Rule\Condition\Subscriber\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- SUB-C1: phase-2 hydrator for newsletter_subscriber. Loads by
+         subscriber id through SubscriberFactory (no repository interface
+         exists) — see SubscriberHydrator's KNOWN LIMITATION docblock (no
+         scheduler QueryRunner map, so schedule-type subscriber workflows are
+         unsupported in v1). -->
+    <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
+        <arguments>
+            <argument name="hydrators" xsi:type="array">
+                <item name="newsletter_subscriber" xsi:type="object">MageOS\WorkflowsNewsletter\Model\Rule\Hydrator\SubscriberHydrator</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- SUB-C1: register newsletter_subscriber in the workflow entity-type
+         catalogue so the root appears in the admin entity picker and the
+         GET /V1/workflows/meta/entity-types REST list. The catalogue is a
+         DI array on the engine's EntityTypeMetadataProvider (authoritative in
+         core, hardcoded there with the other roots incl. review); a pack adds
+         its entity type by appending here — the domain-pack-consistent way to
+         extend a hardcoded engine enumeration without touching the engine. -->
+    <type name="MageOS\Workflows\Model\Webapi\EntityTypeMetadataProvider">
+        <arguments>
+            <argument name="entityTypes" xsi:type="array">
+                <item name="newsletter_subscriber" xsi:type="string">Newsletter Subscriber</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- CUS-C1: contribute newsletter_status / is_newsletter_subscribed to the
+         CUSTOMER root via the aggregate pool (E2) — "…and is subscribed" as a
+         customer-root guard with zero changes to workflows-customer. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="array">
+                    <item name="newsletter_status" xsi:type="object">MageOS\WorkflowsNewsletter\Model\Rule\Hydrator\NewsletterStatusAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+</config>

@@ -5,8 +5,15 @@
  *
  * Notifier pool: registers WorkflowNotifier under the name "workflow" in the
  * async-events NotifierFactory. The pool argument is `notifierClasses` and its
- * entries are resolved to NotifierInterface instances (xsi:type="object"),
- * verified against mage-os/mageos-async-events >= 4.0.
+ * entries are resolved NotifierInterface *instances* (xsi:type="object", not
+ * class-name strings) — verified against mage-os/mageos-async-events @ b249976
+ * (Service/AsyncEvent/NotifierFactory.php:14,25 takes `array $notifierClasses`
+ * and returns `$notifierClasses[$type]` only if it `instanceof NotifierInterface`;
+ * upstream etc/di.xml registers the built-in "http" => HttpNotifier the same way).
+ * The pool KEY is the subscription's `metadata` value: EventDispatcher resolves
+ * the notifier via `$notifierFactory->create($asyncEvent->getMetadata())`
+ * (Service/AsyncEvent/EventDispatcher.php:64,66), so SubscriptionManager stamps
+ * metadata = "workflow" to route deliveries here.
  *
  * No wiring is required for the core module's workflow_triggers.xml reader
  * quartet (MageOS\Workflows\Model\Trigger\Config\*): Reader, SchemaLocator

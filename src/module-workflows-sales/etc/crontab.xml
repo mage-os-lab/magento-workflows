@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- The scheduler's canonical "query trigger" (docs/05-triggers.md,
+             footnote 1); relocated from mage-os/workflows-scheduler with the
+             AbandonedCartDetector (domain-packs S1). -->
+        <job name="mageos_workflows_abandoned_carts" instance="MageOS\WorkflowsSales\Model\AbandonedCartDetector" method="execute">
+            <schedule>*/10 * * * *</schedule>
+        </job>
+    </group>
+</config>

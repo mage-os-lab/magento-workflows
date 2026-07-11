@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Customer domain pack (domain-packs S2). Every registration here relocated
+         verbatim from the engine / actions-core / scheduler packages: same
+         codes/keys, only the class FQCNs move into MageOS\WorkflowsCustomer. -->
+
+    <!-- Condition root: the customer combine (relocated from the engine). -->
+    <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
+        <arguments>
+            <argument name="combines" xsi:type="array">
+                <item name="customer" xsi:type="string">MageOS\WorkflowsCustomer\Model\Rule\Condition\Customer\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Phase-2 hydrator for customer (relocated from the engine). -->
+    <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
+        <arguments>
+            <argument name="hydrators" xsi:type="array">
+                <item name="customer" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Hydrator\CustomerHydrator</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- customer.* relations (relocated from the engine): they appear in the UI
+         on the customer source entity, so they live with customer. -->
+    <type name="MageOS\Workflows\Model\Relation\RelationPool">
+        <arguments>
+            <argument name="relations" xsi:type="array">
+                <item name="customer.open_orders" xsi:type="object">MageOS\WorkflowsCustomer\Model\Relation\Resolver\CustomerOpenOrders</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Birthday aggregates on the customer root (CUS-C4), contributed through
+         the aggregate pool ALONGSIDE the sales pack's order-history provider.
+         The pool keys entity_type => provider[], so registering another item
+         under "customer" merges with (does not replace) sales' entry. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="array">
+                    <item name="birthday" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Hydrator\CustomerBirthdayAggregateProvider</item>
+                    <!-- Default billing/shipping address leaves (CUS-C2). -->
+                    <item name="addresses" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Hydrator\CustomerDefaultAddressAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- RelatedEntity child-condition option for the customer target (relocated
+         from the engine). The customer leaf classes are reused from the
+         customer condition subtree. -->
+    <type name="MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine">
+        <arguments>
+            <argument name="targetChildConditions" xsi:type="array">
+                <item name="customer" xsi:type="object">MageOS\WorkflowsCustomer\Model\Rule\Condition\Customer\Attribute</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Option source: customer groups (relocated from the engine); it lives
+         with its consumer (customer.assign_group). -->
+    <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="customer_groups" xsi:type="object">MageOS\WorkflowsCustomer\Model\Option\CustomerGroupOptionSource</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Customer actions (relocated from actions-core). Action codes unchanged.
+         customer.newsletter and the anonymize-unsubscribe plugin live in
+         mage-os/workflows-newsletter (domain-packs S5). -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <!-- Customer -->
+                <item name="customer.assign_group" xsi:type="object">MageOS\WorkflowsCustomer\Action\Customer\AssignGroup</item>
+                <item name="customer.set_attribute" xsi:type="object">MageOS\WorkflowsCustomer\Action\Customer\SetAttribute</item>
+                <item name="customer.anonymize" xsi:type="object">MageOS\WorkflowsCustomer\Action\Customer\Anonymize</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Deny-by-default attribute list for customer.set_attribute
+         (docs/10-security.md, deferred privilege escalation; relocated from
+         actions-core). Third parties may EXTEND this via di.xml array merge;
+         removing shipped entries is a deliberate, visible act. -->
+    <type name="MageOS\WorkflowsCustomer\Action\Customer\SetAttribute">
+        <arguments>
+            <argument name="deniedAttributes" xsi:type="array">
+                <item name="password_hash" xsi:type="string">password_hash</item>
+                <item name="rp_token" xsi:type="string">rp_token</item>
+                <item name="rp_token_created_at" xsi:type="string">rp_token_created_at</item>
+                <item name="is_active" xsi:type="string">is_active</item>
+                <item name="group_id" xsi:type="string">group_id</item>
+                <item name="website_id" xsi:type="string">website_id</item>
+                <item name="store_id" xsi:type="string">store_id</item>
+                <item name="confirmation" xsi:type="string">confirmation</item>
+                <item name="email" xsi:type="string">email</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Scheduler QueryRunner entity map: customer (relocated from the
+         scheduler). QueryRunner itself stays in mage-os/workflows-scheduler;
+         only its repository/DTO map entries for this entity type move here. -->
+    <type name="MageOS\WorkflowsScheduler\Model\QueryRunner">
+        <arguments>
+            <argument name="repositories" xsi:type="array">
+                <item name="customer" xsi:type="object">Magento\Customer\Api\CustomerRepositoryInterface</item>
+            </argument>
+            <argument name="dtoInterfaces" xsi:type="array">
+                <item name="customer" xsi:type="string">Magento\Customer\Api\Data\CustomerInterface</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

@@ -1,39 +1,27 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Gap-fill async event definitions not covered by
- * mage-os/mageos-common-async-events. The service class/method hydrates the
- * delivered payload from the id in the published data; publisher-supplied
- * extra keys (from_status/to_status, from_group_id/to_group_id, review_*)
- * ride along in the message.
+ * Gap-fill async event definitions have all moved to the domain packs that
+ * own their entity and publisher:
+ *   - sales.order.status_changed, quote.abandoned -> mage-os/workflows-sales
+ *     (domain-packs S1)
+ *   - customer.group_changed -> mage-os/workflows-customer (domain-packs S2)
+ *   - inventory.stock_threshold_crossed -> mage-os/workflows-inventory
+ *     (domain-packs S4)
+ *   - catalog.product.review_submitted -> mage-os/workflows-review
+ *     (domain-packs S5)
  *
- * Publishers: Observer\OrderStatusChangeObserver,
- * Observer\CustomerGroupChangeObserver, Observer\ReviewSubmittedObserver
- * (this module); inventory.stock_threshold_crossed and quote.abandoned are
- * published by the scheduler package (mage-os/workflows-scheduler) — they
- * are declared here so trigger metadata is never dangling.
+ * This module now declares no async events of its own; the file is retained
+ * as an empty-but-valid config so third parties still see the schema binding
+ * and the honesty check no longer attributes catalog/review references here.
  *
- * Node name assumption: mageos-async-events' async_events.xsd uses
- * <async_event name="..."><service class="..." method="..."/></async_event>
- * (Aligent lineage). If your version's schema uses <event name="...">,
- * rename the nodes here — this file is the only place they appear.
+ * Node shape verified against mage-os/mageos-async-events @ b249976
+ * (etc/async_events.xsd): a required <async_event name="..."> (name pattern
+ * [a-zA-Z0-9._-]+, unique) wraps a required <service class="..." method="..."/>
+ * (both attributes required) plus an OPTIONAL <resources><resource>…</resource>
+ * </resources> block (the ACL gate AsyncEventRepository::save() enforces when
+ * $checkResources is true). Same shape mageos-common-async-events ships.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
-    <async_event name="sales.order.status_changed">
-        <service class="Magento\Sales\Api\OrderRepositoryInterface" method="get"/>
-    </async_event>
-    <async_event name="customer.group_changed">
-        <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
-    </async_event>
-    <async_event name="catalog.product.review_submitted">
-        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
-    </async_event>
-    <async_event name="inventory.stock_threshold_crossed">
-        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
-    </async_event>
-    <async_event name="quote.abandoned">
-        <service class="Magento\Quote\Api\CartRepositoryInterface" method="get"/>
-    </async_event>
-</config>
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd"/>

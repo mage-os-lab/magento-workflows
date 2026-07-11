@@ -9,10 +9,23 @@
     "extra": {
         "packages": [
             "src/module-workflows",
-            "src/module-workflows-admin-ui",
             "src/module-workflows-actions-core",
+            "src/module-workflows-admin-extension",
+            "src/module-workflows-admin-ui",
+            "src/module-workflows-approvals",
+            "src/module-workflows-canvas",
+            "src/module-workflows-customer",
+            "src/module-workflows-catalog",
+            "src/module-workflows-import-suppression",
+            "src/module-workflows-inventory",
+            "src/module-workflows-newsletter",
+            "src/module-workflows-review",
+            "src/module-workflows-sales",
+            "src/module-workflows-scheduler",
+            "src/module-workflows-templates",
             "src/module-workflows-triggers-core",
-            "src/module-workflows-scheduler"
+            "src/module-workflows-wishlist",
+            "src/metapackage-workflows-suite"
         ]
     }
 }

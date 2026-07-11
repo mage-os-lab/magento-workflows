@@ -7,7 +7,7 @@ use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
 use Magento\TestFramework\Helper\Bootstrap;
 use MageOS\Workflows\Api\ActionResultInterface;
-use MageOS\WorkflowsActionsCore\Action\Order\CreateShipment;
+use MageOS\WorkflowsSales\Action\Order\CreateShipment;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 
 /**

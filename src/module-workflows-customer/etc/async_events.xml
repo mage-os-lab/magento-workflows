@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Customer async-event definition (relocated from
+ * mage-os/workflows-triggers-core, domain-packs S2). The service class/method
+ * hydrates the delivered payload from the id in the published data;
+ * publisher-supplied extra keys (from_group_id/to_group_id) ride along.
+ *
+ * Publishers: Observer\CustomerGroupChangeObserver (this module) publishes
+ * customer.group_changed; Model\BirthdayDetector (this module) publishes
+ * customer.birthday_upcoming; Observer\CustomerAddressChangeObserver (this
+ * module) publishes customer.address_changed.
+ *
+ * customer.address_changed is a GAP-FILL declaration made under the documented
+ * VER-1 reconciliation (July 2026, audited against mageos-common-async-events):
+ * upstream declares customer.address.created / customer.address.updated
+ * (address-entity payload via AsyncCustomerAddressManagement::getById) but NO
+ * delete event. This module's customer.address_changed deliberately coexists:
+ * different event name (no declaration collision), CUSTOMER-entity payload
+ * (conditions author against the owner), and unified coverage including
+ * change_type=deleted, which upstream cannot express. customer.deleted does
+ * not exist upstream either — CUS-T1 remains a genuine (Tier-3, snapshot-only)
+ * gap. Upstream also offers customer.login, deliberately not surfaced here
+ * (behavioral trigger, through-line 1).
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
+    <async_event name="customer.group_changed">
+        <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
+    </async_event>
+    <async_event name="customer.birthday_upcoming">
+        <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
+    </async_event>
+    <async_event name="customer.address_changed">
+        <service class="Magento\Customer\Api\CustomerRepositoryInterface" method="getById"/>
+    </async_event>
+</config>

@@ -6,10 +6,9 @@
             <scheduler>
                 <!-- Per-run match cap for schedule-type workflows (docs/05-triggers.md#scheduled-triggers-workflows-scheduler) -->
                 <match_cap>5000</match_cap>
-                <!-- AbandonedCartDetector: quotes idle at least this many hours are candidates -->
-                <abandoned_hours>4</abandoned_hours>
-                <!-- StockThresholdDetector: fire when qty is at or below this value; 0 or empty disables the detector -->
-                <stock_threshold>5</stock_threshold>
+                <!-- abandoned_hours moved with AbandonedCartDetector to mage-os/workflows-sales (domain-packs S1) -->
+                <!-- stock_threshold moved with StockThresholdDetector to mage-os/workflows-inventory (domain-packs S4) -->
+
             </scheduler>
         </mageos_workflows>
     </default>

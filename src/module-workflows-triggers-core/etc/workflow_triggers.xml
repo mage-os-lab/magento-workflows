@@ -1,35 +1,19 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Trigger metadata for the standard event coverage. The sales/customer
- * "created/updated" events are declared by mage-os/mageos-common-async-events;
- * the *_changed / review / stock gap-fill events are declared and published
- * by this module (etc/async_events.xml); quote.abandoned is published by
- * mage-os/workflows-scheduler (declared here so the metadata and event
- * definition stay together).
+ * Trigger metadata has all moved to the domain packs that own each entity:
+ *   - the Sales group and the Cart group (quote.abandoned) ->
+ *     mage-os/workflows-sales (domain-packs S1)
+ *   - the Customer group -> mage-os/workflows-customer (domain-packs S2)
+ *   - inventory.stock_threshold_crossed -> mage-os/workflows-inventory
+ *     (domain-packs S4)
+ *   - catalog.product.review_submitted -> mage-os/workflows-review
+ *     (domain-packs S5)
+ *
+ * This module now declares no trigger metadata of its own; the file is
+ * retained as an empty-but-valid config (trigger minOccurs=0) so the schema
+ * binding stays visible.
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
-    <!-- Sales -->
-    <trigger event="sales.order.created" entity="sales_order" label="Order Created" group="Sales"/>
-    <trigger event="sales.order.updated" entity="sales_order" label="Order Updated" group="Sales"/>
-    <trigger event="sales.order.status_changed" entity="sales_order" label="Order Status Changed" group="Sales"/>
-    <trigger event="sales.invoice.created" entity="sales_order" label="Invoice Created" group="Sales"/>
-    <trigger event="sales.shipment.created" entity="sales_order" label="Shipment Created" group="Sales"/>
-    <trigger event="sales.creditmemo.created" entity="sales_order" label="Credit Memo Created" group="Sales"/>
-
-    <!-- Customer -->
-    <trigger event="customer.created" entity="customer" label="Customer Created" group="Customer"/>
-    <trigger event="customer.updated" entity="customer" label="Customer Updated" group="Customer"/>
-    <trigger event="customer.group_changed" entity="customer" label="Customer Group Changed" group="Customer"/>
-
-    <!-- Catalog -->
-    <trigger event="catalog.product.review_submitted" entity="catalog_product"
-             label="Product Review Submitted" group="Catalog"/>
-    <trigger event="inventory.stock_threshold_crossed" entity="catalog_product"
-             label="Stock Threshold Crossed" group="Catalog"/>
-
-    <!-- Cart -->
-    <trigger event="quote.abandoned" entity="quote" label="Cart Abandoned" group="Cart"/>
-</triggers>
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd"/>

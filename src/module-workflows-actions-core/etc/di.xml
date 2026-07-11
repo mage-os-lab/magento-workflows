@@ -6,28 +6,15 @@
     <type name="MageOS\Workflows\Model\Action\ActionPool">
         <arguments>
             <argument name="actions" xsi:type="array">
-                <!-- Sales -->
-                <item name="order.add_comment" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\AddComment</item>
-                <item name="order.change_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\ChangeStatus</item>
-                <item name="order.hold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Hold</item>
-                <item name="order.unhold" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Unhold</item>
-                <item name="order.create_invoice" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateInvoice</item>
-                <item name="order.create_shipment" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateShipment</item>
-                <item name="order.create_creditmemo" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\CreateCreditmemo</item>
-                <item name="order.cancel" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Order\Cancel</item>
-                <!-- Customer -->
-                <item name="customer.assign_group" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\AssignGroup</item>
-                <item name="customer.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute</item>
-                <item name="customer.newsletter" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Newsletter</item>
-                <item name="customer.anonymize" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Customer\Anonymize</item>
-                <!-- Catalog -->
-                <item name="product.set_attribute" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetAttribute</item>
-                <item name="product.set_status" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStatus</item>
-                <item name="product.set_stock" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetStock</item>
-                <item name="product.set_categories" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetCategories</item>
-                <item name="product.set_special_price" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Product\SetSpecialPrice</item>
-                <!-- Marketing -->
-                <item name="marketing.generate_coupon" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Marketing\GenerateCoupon</item>
+                <!-- Sales (order.*) moved to mage-os/workflows-sales (domain-packs S1). -->
+                <!-- Customer: assign_group / set_attribute / anonymize moved to
+                     mage-os/workflows-customer (domain-packs S2); customer.newsletter
+                     moved to mage-os/workflows-newsletter (domain-packs S5). -->
+                <!-- Catalog: product.set_attribute / set_status / set_categories /
+                     set_special_price moved to mage-os/workflows-catalog
+                     (domain-packs S3); product.set_stock to
+                     mage-os/workflows-inventory (domain-packs S4). -->
+                <!-- Marketing (marketing.generate_coupon) moved to mage-os/workflows-sales (domain-packs S1). -->
                 <!-- Notify -->
                 <item name="notify.email" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Email</item>
                 <item name="notify.webhook" xsi:type="object">MageOS\WorkflowsActionsCore\Action\Notify\Webhook</item>
@@ -40,29 +27,8 @@
 
     <!-- Deny-by-default attribute lists (docs/10-security.md, deferred privilege
          escalation). Third parties may EXTEND these via di.xml array merge;
-         removing shipped entries is a deliberate, visible act. -->
-    <type name="MageOS\WorkflowsActionsCore\Action\Customer\SetAttribute">
-        <arguments>
-            <argument name="deniedAttributes" xsi:type="array">
-                <item name="password_hash" xsi:type="string">password_hash</item>
-                <item name="rp_token" xsi:type="string">rp_token</item>
-                <item name="rp_token_created_at" xsi:type="string">rp_token_created_at</item>
-                <item name="is_active" xsi:type="string">is_active</item>
-                <item name="group_id" xsi:type="string">group_id</item>
-                <item name="website_id" xsi:type="string">website_id</item>
-                <item name="store_id" xsi:type="string">store_id</item>
-                <item name="confirmation" xsi:type="string">confirmation</item>
-                <item name="email" xsi:type="string">email</item>
-            </argument>
-        </arguments>
-    </type>
-    <type name="MageOS\WorkflowsActionsCore\Action\Product\SetAttribute">
-        <arguments>
-            <argument name="deniedAttributes" xsi:type="array">
-                <!-- sku is product identity; status is owned by product.set_status -->
-                <item name="sku" xsi:type="string">sku</item>
-                <item name="status" xsi:type="string">status</item>
-            </argument>
-        </arguments>
-    </type>
+         removing shipped entries is a deliberate, visible act. The customer
+         set_attribute denylist moved with its action to mage-os/workflows-customer
+         (domain-packs S2); the product set_attribute denylist to
+         mage-os/workflows-catalog (domain-packs S3). -->
 </config>

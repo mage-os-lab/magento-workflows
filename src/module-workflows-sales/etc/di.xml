@@ -1,0 +1,121 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Sales domain pack (domain-packs S1). Every registration here relocated
+         verbatim from the engine / actions-core / scheduler packages: same
+         codes/keys, only the class FQCNs move into MageOS\WorkflowsSales. -->
+
+    <!-- Condition roots: order + quote combines (relocated from the engine). -->
+    <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
+        <arguments>
+            <argument name="combines" xsi:type="array">
+                <item name="sales_order" xsi:type="string">MageOS\WorkflowsSales\Model\Rule\Condition\Order\Combine</item>
+                <item name="quote" xsi:type="string">MageOS\WorkflowsSales\Model\Rule\Condition\Quote\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Phase-2 hydrators for order + quote (relocated from the engine). -->
+    <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
+        <arguments>
+            <argument name="hydrators" xsi:type="array">
+                <item name="sales_order" xsi:type="object">MageOS\WorkflowsSales\Model\Rule\Hydrator\OrderHydrator</item>
+                <item name="quote" xsi:type="object">MageOS\WorkflowsSales\Model\Rule\Hydrator\QuoteHydrator</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Order-history aggregates contributed to the customer root via the
+         aggregate pool (E2): the queried data (sales_order) lives in this pack,
+         so the provider registration does too. -->
+    <type name="MageOS\Workflows\Model\Rule\AggregateProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="array">
+                    <item name="order_history" xsi:type="object">MageOS\WorkflowsSales\Model\Rule\Hydrator\CustomerAggregateProvider</item>
+                </item>
+                <!-- Order lifecycle-flag aggregates on the order root (ORD-C1):
+                     the queried data (the order model's own guards + document
+                     counts) lives in this pack, so the provider registration
+                     does too. -->
+                <item name="sales_order" xsi:type="array">
+                    <item name="lifecycle" xsi:type="object">MageOS\WorkflowsSales\Model\Rule\Hydrator\OrderLifecycleAggregateProvider</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- order.* / quote.* relations (relocated from the engine): they appear in
+         the UI on the order/quote source entity, so they live with sales. -->
+    <type name="MageOS\Workflows\Model\Relation\RelationPool">
+        <arguments>
+            <argument name="relations" xsi:type="array">
+                <item name="order.customer" xsi:type="object">MageOS\WorkflowsSales\Model\Relation\Resolver\OrderCustomer</item>
+                <item name="order.customer_by_email" xsi:type="object">MageOS\WorkflowsSales\Model\Relation\Resolver\OrderCustomerByEmail</item>
+                <item name="quote.customer_by_email" xsi:type="object">MageOS\WorkflowsSales\Model\Relation\Resolver\QuoteCustomerByEmail</item>
+                <item name="order.orders_by_email" xsi:type="object">MageOS\WorkflowsSales\Model\Relation\Resolver\OrderOrdersByEmail</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- RelatedEntity child-condition option for the sales_order target
+         (relocated from the engine). The customer entry stays in the engine
+         until domain-packs S2. -->
+    <type name="MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine">
+        <arguments>
+            <argument name="targetChildConditions" xsi:type="array">
+                <item name="sales_order" xsi:type="object">MageOS\WorkflowsSales\Model\Rule\Condition\Order\Attribute</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Option sources: order statuses + cart price rules (relocated from the
+         engine); they live with their consumers (order.change_status /
+         marketing.generate_coupon). -->
+    <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="order_statuses" xsi:type="object">MageOS\WorkflowsSales\Model\Option\OrderStatusOptionSource</item>
+                <item name="cart_price_rules" xsi:type="object">MageOS\WorkflowsSales\Model\Option\CartPriceRuleOptionSource</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Order + coupon actions (relocated from actions-core). Action codes
+         unchanged. -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <!-- Sales -->
+                <item name="order.add_comment" xsi:type="object">MageOS\WorkflowsSales\Action\Order\AddComment</item>
+                <item name="order.change_status" xsi:type="object">MageOS\WorkflowsSales\Action\Order\ChangeStatus</item>
+                <item name="order.hold" xsi:type="object">MageOS\WorkflowsSales\Action\Order\Hold</item>
+                <item name="order.unhold" xsi:type="object">MageOS\WorkflowsSales\Action\Order\Unhold</item>
+                <item name="order.create_invoice" xsi:type="object">MageOS\WorkflowsSales\Action\Order\CreateInvoice</item>
+                <item name="order.create_shipment" xsi:type="object">MageOS\WorkflowsSales\Action\Order\CreateShipment</item>
+                <item name="order.create_creditmemo" xsi:type="object">MageOS\WorkflowsSales\Action\Order\CreateCreditmemo</item>
+                <item name="order.add_tracking" xsi:type="object">MageOS\WorkflowsSales\Action\Order\AddTracking</item>
+                <item name="order.send_email" xsi:type="object">MageOS\WorkflowsSales\Action\Order\SendEmail</item>
+                <item name="order.cancel" xsi:type="object">MageOS\WorkflowsSales\Action\Order\Cancel</item>
+                <!-- Marketing -->
+                <item name="marketing.generate_coupon" xsi:type="object">MageOS\WorkflowsSales\Action\Marketing\GenerateCoupon</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Scheduler QueryRunner entity map: sales_order + quote (relocated from
+         the scheduler). QueryRunner itself stays in mage-os/workflows-scheduler;
+         only its repository/DTO map entries for these entity types move here. -->
+    <type name="MageOS\WorkflowsScheduler\Model\QueryRunner">
+        <arguments>
+            <argument name="repositories" xsi:type="array">
+                <item name="sales_order" xsi:type="object">Magento\Sales\Api\OrderRepositoryInterface</item>
+                <item name="quote" xsi:type="object">Magento\Quote\Api\CartRepositoryInterface</item>
+            </argument>
+            <argument name="dtoInterfaces" xsi:type="array">
+                <item name="sales_order" xsi:type="string">Magento\Sales\Api\Data\OrderInterface</item>
+                <item name="quote" xsi:type="string">Magento\Quote\Api\Data\CartInterface</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

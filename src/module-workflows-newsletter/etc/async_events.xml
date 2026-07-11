@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Newsletter async-event definition (SUB-T1). Unlike the order/customer/product
+ * events, whose service class is a core Api repository (OrderRepositoryInterface,
+ * CustomerRepositoryInterface, ...), the newsletter subscriber has NO repository
+ * interface — so this pack ships its own hydrating service. The service method
+ * hydrates the delivered payload from the id in the published data
+ * (subscriberId => SubscriberHydrationService::getById, matched by parameter
+ * name); publisher-supplied extra keys (from_status/to_status/labels/email/...)
+ * ride along in the message.
+ *
+ * Publisher: Observer\SubscriptionChangeObserver (this module) publishes
+ * newsletter.subscription_changed.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
+    <async_event name="newsletter.subscription_changed">
+        <service class="MageOS\WorkflowsNewsletter\Model\Rule\Hydrator\SubscriberHydrationService"
+                 method="getById"/>
+    </async_event>
+</config>

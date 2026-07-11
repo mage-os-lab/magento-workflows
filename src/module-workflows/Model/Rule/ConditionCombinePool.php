@@ -14,11 +14,12 @@ use Magento\Rule\Model\Condition\Combine;
  */
 class ConditionCombinePool
 {
+    // All four built-in roots are contributed via di.xml by their domain packs
+    // (sales_order/quote: mage-os/workflows-sales, S1; customer:
+    // mage-os/workflows-customer, S2; catalog_product: mage-os/workflows-catalog,
+    // S3) — nothing is defaulted here because the classes live outside this
+    // package. The const remains as the extension seam contract.
     private const DEFAULT_COMBINES = [
-        HydrationProviderInterface::TYPE_ORDER => Condition\Order\Combine::class,
-        HydrationProviderInterface::TYPE_CUSTOMER => Condition\Customer\Combine::class,
-        HydrationProviderInterface::TYPE_PRODUCT => Condition\Product\Combine::class,
-        HydrationProviderInterface::TYPE_QUOTE => Condition\Quote\Combine::class,
     ];
 
     /**
@@ -39,6 +40,17 @@ class ConditionCombinePool
         array $combines = []
     ) {
         $this->combines = array_merge(self::DEFAULT_COMBINES, $combines);
+    }
+
+    /**
+     * Combine class name for the entity type, null when no domain pack has
+     * registered one — the non-throwing lookup consumers use to OFFER a
+     * cross-entity subtree only when the owning pack is installed (e.g. the
+     * sales pack's Order/Quote combines offering the Customer subtree).
+     */
+    public function getCombineClass(string $entityType): ?string
+    {
+        return $this->combines[$entityType] ?? null;
     }
 
     /**

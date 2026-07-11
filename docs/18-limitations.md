@@ -9,7 +9,10 @@ This is reference material for future analysis, scoping, and roadmap input — n
 backlog commitment. Many entries trace to explicit v1 non-goals ([01 — Overview
 §Non-goals](01-overview.md#non-goals-for-v1)) or already-deferred scope ([13 — Delivery
 Plan](13-delivery-plan.md), [16 — Capability Roadmap](16-capability-roadmap.md)); those
-are noted so this doubles as a gap-to-roadmap cross-reference.
+are noted so this doubles as a gap-to-roadmap cross-reference. The entity-coverage subset of
+these gaps (through-line 3 and the action-library list) is analyzed in depth — per core entity,
+with an agent-sized implementation backlog — in
+[discovery/core-coverage.md](discovery/core-coverage.md).
 
 > **Revised July 2026.** A capability wave since the first draft — the wave 1–5 roadmap
 > ([16](16-capability-roadmap.md)) plus the follow-on discovery-track build

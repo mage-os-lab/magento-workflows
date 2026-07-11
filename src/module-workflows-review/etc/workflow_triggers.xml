@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Review trigger metadata (relocated from mage-os/workflows-triggers-core,
+ * domain-packs S5). catalog.product.review_submitted is declared and published
+ * by this module (etc/async_events.xml, Observer\ReviewSubmittedObserver).
+ * review.status_changed (REV-T1) is declared and published by this module too
+ * (Observer\ReviewStatusChangedObserver); both ride the reviewed product
+ * (entity = catalog_product) so conditions evaluate the product.
+ */
+-->
+<triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
+    <!-- Catalog -->
+    <trigger event="catalog.product.review_submitted" entity="catalog_product"
+             label="Product Review Submitted" group="Catalog"/>
+    <trigger event="review.status_changed" entity="catalog_product"
+             label="Review Status Changed" group="Catalog"/>
+</triggers>

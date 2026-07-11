@@ -26,14 +26,26 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
  * All repository writes run inside OwnershipBypassRegistry::bypass() so
  * SubscriptionOwnershipPlugin lets them through.
  *
- * Async-events API assumptions (centralized in this class):
- * - AsyncEventRepositoryInterface::getList(SearchCriteriaInterface) returns
- *   SearchResults of AsyncEventInterface; ::save(AsyncEventInterface, bool
- *   $checkResources) persists — we pass $checkResources = false because these
- *   system-owned subscriptions are not authored by an ACL-bearing API user.
- * - AsyncEventInterface exposes get/setSubscriptionId, get/setEventName,
- *   get/setRecipientUrl, get/setVerificationToken, get/setMetadata,
- *   get/setStatus (active = true/1).
+ * Async-events API (verified against mage-os/mageos-async-events @ b249976):
+ * - Api/AsyncEventRepositoryInterface.php: getList(SearchCriteriaInterface):
+ *   AsyncEventSearchResultsInterface, get(int): AsyncEventDisplayInterface, and
+ *   save(AsyncEventInterface, bool $checkResources = true): AsyncEventDisplayInterface.
+ *   We pass $checkResources = false because these system-owned subscriptions are
+ *   not authored by an ACL-bearing API user (validateResources() would otherwise
+ *   assert the current session's permissions — AsyncEventRepository.php:73-77).
+ * - Api/Data/AsyncEventInterface.php exposes get/setSubscriptionId, get/setEventName,
+ *   get/setRecipientUrl, get/setVerificationToken, get/setMetadata, get/setStatus
+ *   (status is a bool; active = true, mapped to the `status` int column, filtered
+ *   as `status = 1` by EventDispatcher). recipient_url/event_name/metadata/status
+ *   are real `async_event_subscriber` columns (etc/db_schema.xml).
+ * - CAUTION (upstream behavior, AsyncEventRepository.php:85-99): save() of an
+ *   EXISTING row (subscription_id set) reloads the persisted entity and applies
+ *   ONLY status and metadata; a changed event_name/recipient_url/verification_token
+ *   is silently DROPPED. This class is safe today because a workflow's recipient
+ *   is derived from its immutable id and we always re-set status before save;
+ *   the one exposed gap is re-pointing a bound workflow's trigger_ref, which will
+ *   not update the subscription's event_name on a real install (see the maintainer
+ *   note in docs/14-risks.md) — reactivation and metadata sync are unaffected.
  */
 class SubscriptionManager
 {

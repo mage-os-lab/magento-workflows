@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for order status changes (relocated from
+         mage-os/workflows-triggers-core). Publishes sales.order.status_changed.
+         VER-1 (July 2026): the paid-transition publisher that used to ride this
+         event was removed — sales.order.paid is published upstream by
+         mageos-common-async-events' SalesOrderSaveAfterObserver. -->
+    <event name="sales_order_save_after">
+        <observer name="mageos_workflows_triggers_order_status_changed"
+                  instance="MageOS\WorkflowsSales\Observer\OrderStatusChangeObserver"/>
+    </event>
+    <!-- Gap-fill publisher for order comments (ORD-T2): the status-history model
+         is an AbstractModel; its save dispatches
+         'sales_order_status_history_save_after'. Publishes
+         sales.order.comment_added (hydrating the parent order) only for rows
+         carrying real comment text — status-only rows ride sales.order.status_changed. -->
+    <event name="sales_order_status_history_save_after">
+        <observer name="mageos_workflows_triggers_order_comment_added"
+                  instance="MageOS\WorkflowsSales\Observer\OrderCommentAddedObserver"/>
+    </event>
+    <!-- Gap-fill publisher for shipment tracking (DOC-T2): the shipment-track
+         model is an AbstractModel; its save dispatches
+         'sales_order_shipment_track_save_after'. Publishes
+         sales.shipment.tracking_added, hydrating the parent order. -->
+    <event name="sales_order_shipment_track_save_after">
+        <observer name="mageos_workflows_triggers_shipment_tracking_added"
+                  instance="MageOS\WorkflowsSales\Observer\ShipmentTrackingAddedObserver"/>
+    </event>
+</config>

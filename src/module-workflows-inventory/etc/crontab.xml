@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Query trigger for the inventory.stock_threshold_crossed async event
+             (declared in this module's etc/async_events.xml); relocated from
+             mage-os/workflows-scheduler with the StockThresholdDetector
+             (domain-packs S4). Job name unchanged. -->
+        <job name="mageos_workflows_stock_threshold" instance="MageOS\WorkflowsInventory\Model\StockThresholdDetector" method="execute">
+            <schedule>*/10 * * * *</schedule>
+        </job>
+    </group>
+</config>

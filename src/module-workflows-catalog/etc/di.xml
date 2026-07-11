@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Catalog domain pack (domain-packs S3). Every registration here relocated
+         verbatim from the engine / actions-core / scheduler packages: same
+         codes/keys, only the class FQCNs move into MageOS\WorkflowsCatalog. -->
+
+    <!-- Condition root: catalog_product combine (relocated from the engine). -->
+    <!-- Leaf registration: lets other packs (sales' Order\ItemsFound) offer
+         product-attribute child conditions without compile-referencing this
+         pack — resolved by entity type through the engine's ConditionLeafPool. -->
+    <type name="MageOS\Workflows\Model\Rule\ConditionLeafPool">
+        <arguments>
+            <argument name="leaves" xsi:type="array">
+                <item name="catalog_product" xsi:type="string">MageOS\WorkflowsCatalog\Model\Rule\Condition\Product\Attribute</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="MageOS\Workflows\Model\Rule\ConditionCombinePool">
+        <arguments>
+            <argument name="combines" xsi:type="array">
+                <item name="catalog_product" xsi:type="string">MageOS\WorkflowsCatalog\Model\Rule\Condition\Product\Combine</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Phase-2 hydrator for catalog_product (relocated from the engine). -->
+    <type name="MageOS\Workflows\Model\Rule\HydrationProvider">
+        <arguments>
+            <argument name="hydrators" xsi:type="array">
+                <item name="catalog_product" xsi:type="object">MageOS\WorkflowsCatalog\Model\Rule\Hydrator\ProductHydrator</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Catalog actions (relocated from actions-core). Action codes unchanged.
+         product.set_stock stays in actions-core until domain-packs S4. -->
+    <type name="MageOS\Workflows\Model\Action\ActionPool">
+        <arguments>
+            <argument name="actions" xsi:type="array">
+                <!-- Catalog -->
+                <item name="product.set_attribute" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetAttribute</item>
+                <item name="product.set_status" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetStatus</item>
+                <item name="product.set_categories" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetCategories</item>
+                <item name="product.set_special_price" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetSpecialPrice</item>
+                <item name="product.assign_websites" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\AssignWebsites</item>
+                <item name="product.set_product_links" xsi:type="object">MageOS\WorkflowsCatalog\Action\Product\SetProductLinks</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Bounded website option source (PRD-C3/PRD-A1): website id => name. -->
+    <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
+        <arguments>
+            <argument name="sources" xsi:type="array">
+                <item name="websites" xsi:type="object">MageOS\WorkflowsCatalog\Model\Option\WebsiteOptionSource</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Deny-by-default attribute list for product.set_attribute (relocated from
+         actions-core, FQCN unchanged in intent). Third parties may EXTEND this
+         via di.xml array merge; removing shipped entries is a deliberate act. -->
+    <type name="MageOS\WorkflowsCatalog\Action\Product\SetAttribute">
+        <arguments>
+            <argument name="deniedAttributes" xsi:type="array">
+                <!-- sku is product identity; status is owned by product.set_status -->
+                <item name="sku" xsi:type="string">sku</item>
+                <item name="status" xsi:type="string">status</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Scheduler QueryRunner entity map: catalog_product (relocated from the
+         scheduler). QueryRunner itself stays in mage-os/workflows-scheduler;
+         only its repository/DTO map entries for this entity type move here. -->
+    <type name="MageOS\WorkflowsScheduler\Model\QueryRunner">
+        <arguments>
+            <argument name="repositories" xsi:type="array">
+                <item name="catalog_product" xsi:type="object">Magento\Catalog\Api\ProductRepositoryInterface</item>
+            </argument>
+            <argument name="dtoInterfaces" xsi:type="array">
+                <item name="catalog_product" xsi:type="string">Magento\Catalog\Api\Data\ProductInterface</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

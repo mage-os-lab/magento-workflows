@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Customer trigger metadata (relocated from mage-os/workflows-triggers-core,
+ * domain-packs S2). The customer "created/updated" events are declared by
+ * mage-os/mageos-common-async-events; customer.group_changed,
+ * customer.birthday_upcoming and customer.address_changed are declared by this
+ * module (etc/async_events.xml). customer.address_changed rides the CUS-T2
+ * gap-fill under the VER-1 reconciliation (July 2026, audited against mageos-common-async-events):
+ * upstream declares customer.address.created / customer.address.updated
+ * (address-entity payload via AsyncCustomerAddressManagement::getById) but NO
+ * delete event. This module's customer.address_changed deliberately coexists:
+ * different event name (no declaration collision), CUSTOMER-entity payload
+ * (conditions author against the owner), and unified coverage including
+ * change_type=deleted, which upstream cannot express. customer.deleted does
+ * not exist upstream either — CUS-T1 remains a genuine (Tier-3, snapshot-only)
+ * gap. Upstream also offers customer.login, deliberately not surfaced here
+ * (behavioral trigger, through-line 1).
+ */
+-->
+<triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
+    <!-- Customer -->
+    <trigger event="customer.created" entity="customer" label="Customer Created" group="Customer"/>
+    <trigger event="customer.updated" entity="customer" label="Customer Updated" group="Customer"/>
+    <trigger event="customer.group_changed" entity="customer" label="Customer Group Changed" group="Customer"/>
+    <trigger event="customer.birthday_upcoming" entity="customer" label="Customer Birthday Upcoming" group="Customer"/>
+    <trigger event="customer.address_changed" entity="customer" label="Customer Address Changed" group="Customer"/>
+</triggers>

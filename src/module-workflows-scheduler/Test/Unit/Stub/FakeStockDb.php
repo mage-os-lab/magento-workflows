@@ -56,12 +56,19 @@ class FakeStockDb implements AdapterInterface
     }
 
     /**
-     * Candidate query: main table is the stock-item table.
+     * fetchAll serves both detector queries, distinguished by main table:
+     *   - candidate (crossed) query: main table is the stock-item table;
+     *   - recovery (back-in-stock) query: main table is the flag table -
+     *     flagged products whose qty is back above the threshold, returned with
+     *     the recovered qty + sku for the inventory.back_in_stock payload.
      */
     public function fetchAll($select, $bind = [], $fetchMode = null)
     {
         if (!$select instanceof FakeSelect) {
             throw new \BadMethodCallException('expected a FakeSelect');
+        }
+        if (str_contains($select->mainTableName(), 'stock_flag')) {
+            return $this->recoveredRows($select);
         }
         $comparison = $select->whereComparison('qty');
         if ($comparison === null) {
@@ -97,6 +104,39 @@ class FakeStockDb implements AdapterInterface
             if ($select->limitCount !== null && count($rows) >= $select->limitCount) {
                 break;
             }
+        }
+        return $rows;
+    }
+
+    /**
+     * Recovery (back-in-stock) rows: flagged products whose qty compares
+     * against the bound threshold with the operator the detector emitted
+     * ("si.qty > ?"), returned as product_id + recovered qty + sku.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function recoveredRows(FakeSelect $select): array
+    {
+        $comparison = $select->whereComparison('qty');
+        if ($comparison === null) {
+            throw new \BadMethodCallException('recovery query is expected to bind a qty comparison');
+        }
+        [$operator, $threshold] = $comparison;
+
+        $rows = [];
+        foreach (array_keys($this->flags) as $productId) {
+            if (!isset($this->stock[$productId])) {
+                continue;
+            }
+            $item = $this->stock[$productId];
+            if (!self::compare((float) $item['qty'], $operator, (float) $threshold)) {
+                continue;
+            }
+            $rows[] = [
+                'product_id' => $productId,
+                'qty' => $item['qty'],
+                'sku' => $item['sku'],
+            ];
         }
         return $rows;
     }

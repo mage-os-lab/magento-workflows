@@ -8,7 +8,7 @@ use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Config as OrderConfig;
 use Magento\TestFramework\Helper\Bootstrap;
 use MageOS\Workflows\Api\ActionResultInterface;
-use MageOS\WorkflowsActionsCore\Action\Order\ChangeStatus;
+use MageOS\WorkflowsSales\Action\Order\ChangeStatus;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 
 /**

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Wishlist async-event definition (WSH-T1). The delivered payload hydrates the
+ * added product from the id in the published data (entity = catalog_product,
+ * exactly as the review pack's catalog.product.review_submitted does — the
+ * conditions author against the product; the wishlisting customer is context).
+ * Publisher-supplied extra keys (customer_id/wishlist_id/item_id/qty/store_id/sku)
+ * ride along in the message.
+ *
+ * Publisher: Observer\WishlistItemAddedObserver (this module) publishes
+ * wishlist.item_added, hydrating the added product via
+ * ProductRepositoryInterface::getById.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
+    <async_event name="wishlist.item_added">
+        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
+    </async_event>
+</config>

@@ -15,15 +15,7 @@
         </constraint>
     </table>
 
-    <table name="mageos_workflow_abandoned_flag" resource="default" engine="innodb"
-           comment="Quotes already flagged as abandoned by AbandonedCartDetector - prevents re-detection">
-        <column xsi:type="int" name="quote_id" unsigned="true" nullable="false" identity="false"
-                comment="Quote entity ID (quote.entity_id)"/>
-        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
-                comment="When this quote was flagged as abandoned"/>
-        <constraint xsi:type="primary" referenceId="PRIMARY">
-            <column name="quote_id"/>
-        </constraint>
-    </table>
+    <!-- mageos_workflow_abandoned_flag moved to mage-os/workflows-sales with the
+         AbandonedCartDetector (domain-packs S1). -->
 
 </schema>

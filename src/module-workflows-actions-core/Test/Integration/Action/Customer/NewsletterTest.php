@@ -6,8 +6,8 @@ namespace MageOS\WorkflowsActionsCore\Test\Integration\Action\Customer;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Newsletter\Model\Subscriber;
 use Magento\Newsletter\Model\SubscriberFactory;
-use MageOS\WorkflowsActionsCore\Action\Customer\Newsletter;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
+use MageOS\WorkflowsNewsletter\Action\Customer\Newsletter;
 
 /**
  * Plan #20 (docs/20-integration-test-plan.md §5) — customer.newsletter mutates

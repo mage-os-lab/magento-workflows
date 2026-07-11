@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Gap-fill async-event publisher for product reviews (relocated from
+         mage-os/workflows-triggers-core, domain-packs S5). Publishes
+         catalog.product.review_submitted once a review becomes approved. -->
+    <event name="review_save_after">
+        <observer name="mageos_workflows_triggers_review_submitted"
+                  instance="MageOS\WorkflowsReview\Observer\ReviewSubmittedObserver"/>
+        <!-- REV-T1: sibling observer on the same seam, publishes
+             review.status_changed on a moderation transition (from/to). See the
+             ReviewStatusChangedObserver docblock for the submitted-vs-changed
+             boundary and the REV-A1 loop guard. -->
+        <observer name="mageos_workflows_triggers_review_status_changed"
+                  instance="MageOS\WorkflowsReview\Observer\ReviewStatusChangedObserver"/>
+    </event>
+</config>

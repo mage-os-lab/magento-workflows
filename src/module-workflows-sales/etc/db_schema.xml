@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- Relocated from mage-os/workflows-scheduler (domain-packs S1). Same table
+         name: declarative schema treats same-name redeclaration in another
+         module as continuity - no drop/recreate. -->
+    <table name="mageos_workflow_abandoned_flag" resource="default" engine="innodb"
+           comment="Quotes already flagged as abandoned by AbandonedCartDetector - prevents re-detection">
+        <column xsi:type="int" name="quote_id" unsigned="true" nullable="false" identity="false"
+                comment="Quote entity ID (quote.entity_id)"/>
+        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="When this quote was flagged as abandoned"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="quote_id"/>
+        </constraint>
+    </table>
+
+</schema>

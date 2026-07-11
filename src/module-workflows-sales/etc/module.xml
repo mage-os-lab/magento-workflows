@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
+    <module name="MageOS_WorkflowsSales">
+        <sequence>
+            <module name="MageOS_Workflows"/>
+            <module name="MageOS_WorkflowsTriggersCore"/>
+            <module name="MageOS_WorkflowsScheduler"/>
+            <module name="Magento_Sales"/>
+        </sequence>
+    </module>
+</config>

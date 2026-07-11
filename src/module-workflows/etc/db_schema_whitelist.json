@@ -170,16 +170,6 @@
             "MAGEOS_WORKFLOW_SECRET_KEY": true
         }
     },
-    "mageos_workflow_stock_flag": {
-        "column": {
-            "product_id": true,
-            "qty_at_flag": true,
-            "flagged_at": true
-        },
-        "constraint": {
-            "PRIMARY": true
-        }
-    },
     "mageos_workflow_template_install": {
         "column": {
             "install_id": true,

@@ -191,17 +191,8 @@
                     referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
     </table>
 
-    <table name="mageos_workflow_stock_flag" resource="default" engine="innodb"
-           comment="Mage-OS Workflow Stock Threshold Flags (hysteresis for the crossing detector)">
-        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="Product ID"/>
-        <column xsi:type="decimal" name="qty_at_flag" scale="4" precision="12" nullable="false" default="0"
-                comment="Quantity When Flagged"/>
-        <column xsi:type="timestamp" name="flagged_at" on_update="false" nullable="false"
-                default="CURRENT_TIMESTAMP" comment="Flagged At"/>
-        <constraint xsi:type="primary" referenceId="PRIMARY">
-            <column name="product_id"/>
-        </constraint>
-    </table>
+    <!-- mageos_workflow_stock_flag moved to mage-os/workflows-inventory with the
+         StockThresholdDetector (domain-packs S4). -->
 
     <table name="mageos_workflow_batch" resource="default" engine="innodb"
            comment="Mage-OS Workflow Batches (event-window accumulation, 05 B2)">

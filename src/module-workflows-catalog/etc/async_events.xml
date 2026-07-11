@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Catalog product-lifecycle async-event definitions (PRD-T1/T2/T3). The
+ * service class/method hydrates the delivered payload from the id in the
+ * published data (productId => ProductRepositoryInterface::getById);
+ * publisher-supplied extra keys (sku/type_id/from_price/to_price/
+ * from_status/to_status/store_id) ride along in the message.
+ *
+ * Publisher: Observer\ProductSaveObserver (this module) publishes all four
+ * off 'catalog_product_save_after'.
+ *
+ * VER-1 reconciliation (July 2026): catalog.product.created/updated are
+ * declared and published by mageos-common-async-events — the gap-fill
+ * declarations that used to live here were removed; only the transition
+ * events with no upstream equivalent (price_changed, status_changed) remain.
+ /
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_AsyncEvents:etc/async_events.xsd">
+    <async_event name="catalog.product.price_changed">
+        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
+    </async_event>
+    <async_event name="catalog.product.status_changed">
+        <service class="Magento\Catalog\Api\ProductRepositoryInterface" method="getById"/>
+    </async_event>
+</config>
