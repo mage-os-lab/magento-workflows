@@ -16,8 +16,14 @@ interface ApprovalRepositoryInterface
 {
     /**
      * @throws NoSuchEntityException when no task carries the uuid
+     * @param string $uuid
+     * @return \MageOS\WorkflowsApprovals\Api\Data\ApprovalInterface
      */
     public function getByUuid(string $uuid): ApprovalInterface;
 
+    /**
+     * @param \Magento\Framework\Api\SearchCriteriaInterface $searchCriteria
+     * @return \MageOS\WorkflowsApprovals\Api\Data\ApprovalSearchResultsInterface
+     */
     public function getList(SearchCriteriaInterface $searchCriteria): ApprovalSearchResultsInterface;
 }

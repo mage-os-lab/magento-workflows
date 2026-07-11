@@ -25,7 +25,7 @@
             },
             "invite": {
                 "type": "action",
-                "action": "notify.send_email",
+                "action": "notify.email",
                 "config": {
                     "template_id": "guest_registration_invite"
                 },

@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+
+use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\TestFramework\Helper\Bootstrap;
+use MageOS\Workflows\Api\WorkflowRepositoryInterface;
+
+$objectManager = Bootstrap::getObjectManager();
+$repository = $objectManager->get(WorkflowRepositoryInterface::class);
+$searchCriteria = $objectManager->create(SearchCriteriaBuilder::class)
+    ->addFilter('name', 'Execution seed workflow')
+    ->create();
+
+// Deleting the workflow cascades its executions and steps (FK onDelete CASCADE).
+foreach ($repository->getList($searchCriteria)->getItems() as $workflow) {
+    $repository->delete($workflow);
+}

@@ -6,7 +6,7 @@
            comment="Per-workflow last-run bookkeeping for schedule-type workflows - double-fire guard and watermark">
         <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" identity="false"
                 comment="Workflow ID (mageos_workflow.workflow_id)"/>
-        <column xsi:type="timestamp" name="last_run_at" on_update="false" nullable="true" default="null"
+        <column xsi:type="timestamp" name="last_run_at" on_update="false" nullable="true"
                 comment="UTC timestamp (minute precision) this workflow last fired - avoids double-fires within the same minute"/>
         <column xsi:type="varchar" name="last_run_watermark" nullable="true" length="32"
                 comment="High-water mark (created_at for sales_order, updated_at otherwise) of the last entity dispatched"/>

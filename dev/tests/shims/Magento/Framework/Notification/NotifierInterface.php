@@ -12,13 +12,13 @@ interface NotifierInterface
 {
     public function add($severity, $title, $description, $url = '', $isInternal = true);
 
-    public function addCritical($title, $description, $url = '');
+    public function addCritical($title, $description, $url = '', $isInternal = true);
 
-    public function addMajor($title, $description, $url = '');
+    public function addMajor($title, $description, $url = '', $isInternal = true);
 
-    public function addMinor($title, $description, $url = '');
+    public function addMinor($title, $description, $url = '', $isInternal = true);
 
-    public function addNotice($title, $description, $url = '');
+    public function addNotice($title, $description, $url = '', $isInternal = true);
 
     public function remove($notificationId);
 

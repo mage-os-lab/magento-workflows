@@ -86,7 +86,13 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
         try {
             $codes = $this->couponGenerator->generateCodes([
                 'rule_id' => $ruleId,
-                'quantity' => 1,
+                // Must be 'qty', not 'quantity': CouponGenerator::convertCouponSpecData()
+                // sources the spec's quantity FROM the legacy 'qty' key
+                // (keyMap ['quantity' => 'qty']). Passing 'quantity' here leaves 'qty'
+                // unset, so the spec quantity resolves to null and CouponManagementService
+                // fails validateData() with a bare InputException ("One or more input
+                // exceptions have occurred").
+                'qty' => 1,
                 'length' => self::CODE_LENGTH,
                 'format' => self::CODE_FORMAT,
             ]);

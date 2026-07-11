@@ -301,4 +301,62 @@
             </argument>
         </arguments>
     </type>
+
+    <!-- Console commands are constructed EAGERLY on every bin/magento
+         invocation, including setup:install/setup:upgrade against an empty
+         database (Setup\Model\ObjectManagerProvider::createCliCommands).
+         Every heavyweight command dependency must therefore be a Proxy so
+         no constructor in the graph touches the DB at CLI bootstrap: the
+         customer resource model deep in the dispatcher/dry-run graph loads
+         EAV config on construction, which queries eav_entity_type and
+         aborts setup:install on a fresh database (surfaced by the
+         integration-test lane's test-framework install). -->
+    <type name="MageOS\Workflows\Console\Command\ExportCommand">
+        <arguments>
+            <argument name="workflowRepository" xsi:type="object">MageOS\Workflows\Api\WorkflowRepositoryInterface\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\ImportCommand">
+        <arguments>
+            <argument name="workflowImporter" xsi:type="object">MageOS\Workflows\Model\Import\WorkflowImporter\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\RunCommand">
+        <arguments>
+            <argument name="dispatcher" xsi:type="object">MageOS\Workflows\Api\DispatcherInterface\Proxy</argument>
+            <argument name="dryRunService" xsi:type="object">MageOS\Workflows\Model\DryRun\DryRunService\Proxy</argument>
+            <argument name="workflowRepository" xsi:type="object">MageOS\Workflows\Api\WorkflowRepositoryInterface\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\HealthCommand">
+        <arguments>
+            <argument name="healthCheck" xsi:type="object">MageOS\Workflows\Model\Health\HealthCheck\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\TemplateListCommand">
+        <arguments>
+            <argument name="templateSource" xsi:type="object">MageOS\Workflows\Model\Template\TemplateSourceInterface\Proxy</argument>
+            <argument name="compatibilityChecker" xsi:type="object">MageOS\Workflows\Model\Template\CompatibilityChecker\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\TemplateInstallCommand">
+        <arguments>
+            <argument name="templateInstaller" xsi:type="object">MageOS\Workflows\Model\Template\TemplateInstaller\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\SecretSetCommand">
+        <arguments>
+            <argument name="secretsProvider" xsi:type="object">MageOS\Workflows\Model\Variable\SecretsProviderInterface\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\SecretListCommand">
+        <arguments>
+            <argument name="secretsProvider" xsi:type="object">MageOS\Workflows\Model\Variable\SecretsProviderInterface\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="MageOS\Workflows\Console\Command\SecretDeleteCommand">
+        <arguments>
+            <argument name="secretsProvider" xsi:type="object">MageOS\Workflows\Model\Variable\SecretsProviderInterface\Proxy</argument>
+        </arguments>
+    </type>
 </config>

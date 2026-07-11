@@ -47,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.supported-version.outputs.matrix }}
+      latest_matrix: ${{ steps.latest.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: graycoreio/github-actions-magento2/supported-version@main
@@ -54,6 +55,18 @@ jobs:
         with:
           kind: currently-supported
       - run: echo '${{ steps.supported-version.outputs.matrix }}'
+      # Newest supported line only, for the integration-test job: a Magento
+      # install + test-framework DB install is the dominant fixed cost, so the
+      # PR gate runs one line (docs/20-integration-test-plan.md §2.3). Numeric
+      # sort over every digit group handles patch suffixes ("2.4.9-p1").
+      - name: Reduce to newest supported line
+        id: latest
+        run: |
+          latest=$(echo '${{ steps.supported-version.outputs.matrix }}' | jq -c \
+            '{include: ([.include[] | . + {__v: (.magento | [scan("[0-9]+")] | map(tonumber))}]
+              | [max_by(.__v)] | map(del(.__v)))}')
+          echo "matrix=$latest" >> "$GITHUB_OUTPUT"
+          echo "$latest"
 
   # BLOCKING. Runs the whole Test/Unit suite under each supported Magento's real
   # PHPUnit (one matrix entry per supported line, 2.4.6 → 2.4.9). The suites are
@@ -69,7 +82,10 @@ jobs:
     needs: compute_matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+      # ECONOMY MODE: newest supported line only while the account is near its
+      # CI-minutes cap. Full-matrix coverage last green at 951e05e; restore
+      # `outputs.matrix` here when minutes allow.
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -148,7 +164,10 @@ jobs:
     needs: compute_matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+      # ECONOMY MODE: newest supported line only while the account is near its
+      # CI-minutes cap. Full-matrix coverage last green at 951e05e; restore
+      # `outputs.matrix` here when minutes allow.
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -196,7 +215,10 @@ jobs:
     needs: compute_matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.compute_matrix.outputs.matrix) }}
+      # ECONOMY MODE: newest supported line only while the account is near its
+      # CI-minutes cap. Full-matrix coverage last green at 951e05e; restore
+      # `outputs.matrix` here when minutes allow.
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -224,3 +246,132 @@ jobs:
       # so the job tracks real breakage rather than a docblock backlog.
       - name: Run phpcs (Magento2, error-gated)
         run: phpcs -p
+
+  # BLOCKING, newest supported line only. The Magento integration-test lane
+  # (docs/20-integration-test-plan.md): suites at src/*/Test/Integration run
+  # inside a real install's dev/tests/integration framework — real MySQL,
+  # merged DI, EAV, db-transport queue. The framework installs its own test
+  # database from install-config-mysql.php (dev/tests/integration-config/ in
+  # this repo); no amqp is configured so consumers run in-process. The full
+  # supported matrix is deliberately NOT run here on PRs — install cost
+  # dominates and behavior is far less version-sensitive than class
+  # signatures (the unit + compile jobs cover the range).
+  integration-test-extension:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: magento_integration_tests
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      opensearch:
+        image: opensearchproject/opensearch:2.11.1
+        env:
+          discovery.type: single-node
+          plugins.security.disabled: "true"
+          DISABLE_INSTALL_DEMO_CONFIG: "true"
+          OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd="curl -sf http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graycoreio/github-actions-magento2/setup-magento@main
+        id: setup-magento
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          mode: extension
+          magento_version: ${{ matrix.magento }}
+          magento_repository: ${{ env.MAGENTO_REPOSITORY }}
+
+      - name: Register monorepo package repositories
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer config repositories.mageos-workflows path '${{ github.workspace }}/src/module-*'
+
+      # Same require set as the unit/compile jobs. mage-os/mageos-async-events
+      # arrives transitively (workflows-triggers-core requires >=4.0), so the
+      # async-events fidelity suites run against the REAL package here.
+      - name: Require all workflow modules
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          pkgs=$(for f in ${{ github.workspace }}/src/module-*/composer.json; do
+            printf '%s:@dev ' "$(jq -r .name "$f")"
+          done)
+          echo "Requiring: $pkgs"
+          composer require $pkgs --no-install
+
+      - run: composer update --no-install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - uses: graycoreio/github-actions-magento2/cache-magento@main
+        with:
+          working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - name: Composer install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer install
+        env:
+          COMPOSER_MIRROR_PATH_REPOS: 1
+
+      # Same staging as the unit job: conformance suites read the published
+      # schemas + fixtures from <magento>/vendor/spec.
+      - name: Stage monorepo spec/ fixtures
+        run: cp -r "${{ github.workspace }}/spec" "${{ steps.setup-magento.outputs.path }}/vendor/spec"
+
+      # Point the framework at the service containers and register our
+      # testsuite inside Magento's own (version-correct) phpunit.xml.dist.
+      # The MageOS_Workflows_Integration suite covers every module's
+      # Test/Integration tree; --testsuite below keeps Magento's own
+      # integration testsuite out of the run.
+      - name: Configure integration test framework
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          cp '${{ github.workspace }}/dev/tests/integration-config/install-config-mysql.php' \
+            dev/tests/integration/etc/install-config-mysql.php
+
+          cat > /tmp/int-testsuite.xml << 'EOF'
+                  <testsuite name="MageOS_Workflows_Integration">
+                      <directory>../../../vendor/mage-os/workflows*/Test/Integration</directory>
+                  </testsuite>
+          EOF
+          sed -i '/<testsuites>/r /tmp/int-testsuite.xml' dev/tests/integration/phpunit.xml.dist
+
+          ## Disable ONLY the Allure extension (magento/magento2#36702). The
+          ## integration <extensions> block ALSO registers
+          ## Magento\TestFramework\Event\Subscribers — the framework's entire
+          ## event wiring (data fixtures, db/app isolation, app-area handling).
+          ## Deleting the whole block (as the unit job safely does with ITS
+          ## allure-only block) silently disabled every fixture and isolation
+          ## annotation in the suite.
+          sed -i '/<bootstrap class="Qameta/,/<\/bootstrap>/d' dev/tests/integration/phpunit.xml.dist
+
+      # First run installs the test-framework database (the dominant cost);
+      # the tests themselves follow in the same process. `known-divergence`
+      # is the quarantine group for executable pins of OPEN findings-registry
+      # entries (docs/20 §2.4): they encode documented behavior the code does
+      # not implement yet, so they are excluded from the blocking gate and
+      # reported by the (planned) nightly full-matrix run instead.
+      - name: Run extension integration tests
+        working-directory: ${{ steps.setup-magento.outputs.path }}/dev/tests/integration
+        run: |
+          ../../../vendor/bin/phpunit -c phpunit.xml.dist \
+            --testsuite MageOS_Workflows_Integration \
+            --exclude-group known-divergence

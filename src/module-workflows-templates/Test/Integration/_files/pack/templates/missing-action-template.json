@@ -1,0 +1,38 @@
+{
+    "format": "mageos-workflow-template/1",
+    "template": {
+        "code": "missing-action-template",
+        "title": "Fixture: requires an unavailable action",
+        "description": "Integration-test-only fixture (Test/Integration/Model/TemplateInstallTest) proving CompatibilityChecker refuses a template whose requires.actions references a code no installed action package provides.",
+        "category": "Test fixture",
+        "version": "1.0.0",
+        "requires": {
+            "schema": 1,
+            "triggers": [],
+            "actions": ["nonexistent.connector_action"],
+            "modules": [],
+            "edition": "any"
+        },
+        "parameters": []
+    },
+    "workflow": {
+        "name": "Fixture: requires an unavailable action",
+        "entity_type": "sales_order",
+        "trigger_type": "manual",
+        "trigger_ref": "manual",
+        "conditions_serialized": null,
+        "definition": {
+            "schema": 1,
+            "entry": "s1",
+            "steps": {
+                "s1": {
+                    "type": "action",
+                    "action": "nonexistent.connector_action",
+                    "config": {},
+                    "next": null
+                }
+            }
+        },
+        "loop_guard_depth": 1
+    }
+}

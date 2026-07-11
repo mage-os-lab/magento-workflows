@@ -27,6 +27,22 @@ export interface ValidateRequest {
   entityType?: string;
 }
 
+/**
+ * Build the live-validation request for a definition snapshot. The workflow's
+ * ROOT condition tree rides along from the bootstrap (Mount::getConfigJson
+ * ships it as workflow.conditionsSerialized; the canvas never edits it and
+ * saveClient round-trips it verbatim on save), so root-condition findings
+ * surface during canvas editing exactly as DefinitionValidationInterface
+ * reports them at save time. Null/absent stays null — Data/Validate normalizes
+ * ''/absent to null before delegating.
+ */
+export function buildValidateRequest(config: MountConfig, definition: string): ValidateRequest {
+  return {
+    definition,
+    conditionsSerialized: config.workflow?.conditionsSerialized ?? null,
+  };
+}
+
 /** POST the definition to the validate proxy. Form-encoded, same-origin, form key. */
 export async function postValidate(
   config: MountConfig,

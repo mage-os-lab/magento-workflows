@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework-message-queue:etc/topology.xsd">
-    <exchange name="magento" type="topic" connection="amqp">
+    <!-- Default transport is the DB queue so a plain install works with no broker;
+         deployments with RabbitMQ remap these topics to amqp via env.php queue config. -->
+    <exchange name="magento" type="topic" connection="db">
         <binding id="mageosWorkflowExecuteBinding"
                  topic="mageos.workflow.execute"
                  destinationType="queue"
