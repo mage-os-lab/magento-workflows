@@ -11,27 +11,20 @@ use MageOS\WorkflowsTriggersCore\Service\EventPublisher;
 use Psr\Log\LoggerInterface;
 
 /**
- * Gap-fill publisher for the product-lifecycle async events, declared in
- * etc/async_events.xml and metadata'd in etc/workflow_triggers.xml. ONE
- * observer on 'catalog_product_save_after' distinguishes creation from update
- * and, for existing products, additionally emits the finer-grained price and
- * status transition events (PRD-T1/T2/T3 share this observer family — one
- * save is the single source of truth for all four events, so orig-vs-new is
- * read once).
+ * Gap-fill publisher for the product price/status transition async events,
+ * declared in etc/async_events.xml and metadata'd in etc/workflow_triggers.xml
+ * (PRD-T2/T3). ONE observer on 'catalog_product_save_after' emits the
+ * finer-grained transition events for existing products; orig-vs-new is read
+ * once.
  *
  * Emission rules from a single save:
- *   - NEW product (isObjectNew / no original entity_id): publish
- *     catalog.product.created and nothing else — creation subsumes the
- *     price/status "transitions" (there is no prior value to transition from),
- *     mirroring OrderStatusChangeObserver excluding brand-new orders.
- *   - EXISTING product: publish catalog.product.updated when the save actually
- *     changed data (hasDataChanges() true); a no-op re-save (hasDataChanges()
- *     false — cheaply detectable on the model) does NOT fire updated, so
- *     action re-saves and idempotent re-persists don't generate update noise.
- *     Independently, catalog.product.price_changed fires when orig `price` !=
- *     new `price`, and catalog.product.status_changed fires when orig `status`
- *     != new `status`. These carry their own orig-vs-new guards, so they never
- *     fire on a no-op save regardless of the hasDataChanges() gate.
+ *   - NEW product (no original entity_id): publish NOTHING — creation is
+ *     upstream's catalog.product.created, and there is no prior value to
+ *     transition from.
+ *   - EXISTING product: catalog.product.price_changed fires when orig `price`
+ *     != new `price`, and catalog.product.status_changed fires when orig
+ *     `status` != new `status`. Both carry their own orig-vs-new guards, so
+ *     they never fire on a no-op save.
  *
  * Scoped saves: the payload reports the save's own store scope
  * ($product->getStoreId()) as store_id. A website/store-scoped price or status
@@ -57,19 +50,20 @@ use Psr\Log\LoggerInterface;
  * fire-once-per-batch feature (docs/07-actions.md "Bulk-operation
  * suppression"). Publishing failures are logged and never break the save.
  *
- * UPSTREAM ASSUMPTION (VER-1 audit blocked — upstream repo not accessible):
- * these declarations assume `mageos-common-async-events` does NOT declare
- * catalog.product.created / catalog.product.updated (its coverage is
- * sales/customer documents). If upstream later declares these events, our
- * gap-fill declarations (etc/async_events.xml + this observer's created/updated
- * publishes) COLLIDE and ours should be dropped in favor of upstream's
- * metadata-only trigger entries; price_changed/status_changed have no upstream
- * equivalent and stay.
+ * VER-1 reconciliation (July 2026, audited against mageos-common-async-events):
+ * upstream DOES declare and publish catalog.product.created and
+ * catalog.product.updated (ProductSaveAfterObserver on
+ * 'catalog_product_save_commit_after'), so this observer's created/updated
+ * publishes and declarations were removed — those two triggers are now
+ * metadata-only over the upstream events. Upstream quirk worth knowing:
+ * upstream fires BOTH created and updated for a brand-new product (its
+ * updated check is hasDataChanges() with no created-exclusion), so "Product
+ * Updated" workflows also run at creation; guard with a condition when that
+ * matters. price_changed/status_changed have no upstream equivalent and stay
+ * gap-filled here.
  */
 class ProductSaveObserver implements ObserverInterface
 {
-    public const EVENT_CREATED = 'catalog.product.created';
-    public const EVENT_UPDATED = 'catalog.product.updated';
     public const EVENT_PRICE_CHANGED = 'catalog.product.price_changed';
     public const EVENT_STATUS_CHANGED = 'catalog.product.status_changed';
 
@@ -94,26 +88,8 @@ class ProductSaveObserver implements ObserverInterface
         $sku = (string) $product->getSku();
 
         if ($this->isNew($product)) {
-            // Creation subsumes the price/status transitions.
-            $this->safePublish(self::EVENT_CREATED, [
-                // 'productId' hydrates via ProductRepositoryInterface::getById($productId)
-                'productId' => $productId,
-                'entity_id' => $productId,
-                'sku' => $sku,
-                'type_id' => (string) $product->getTypeId(),
-                'store_id' => $storeId,
-            ], $productId);
+            // Creation is upstream's catalog.product.created; nothing to do here.
             return;
-        }
-
-        if ($product->hasDataChanges()) {
-            $this->safePublish(self::EVENT_UPDATED, [
-                'productId' => $productId,
-                'entity_id' => $productId,
-                'sku' => $sku,
-                'type_id' => (string) $product->getTypeId(),
-                'store_id' => $storeId,
-            ], $productId);
         }
 
         $this->maybePublishPriceChanged($product, $productId, $sku, $storeId);

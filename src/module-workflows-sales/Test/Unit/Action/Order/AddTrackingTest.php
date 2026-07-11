@@ -128,6 +128,11 @@ class AddTrackingTest extends TestCase
                 $this->lastSaved = $entity;
                 return $entity;
             }
+            // Full ShipmentRepositoryInterface surface (unused here).
+            public function create() { throw new \BadMethodCallException(__METHOD__); }
+            public function get($id) { throw new \BadMethodCallException(__METHOD__); }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($entity) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 
@@ -137,13 +142,19 @@ class AddTrackingTest extends TestCase
             public function __construct(private readonly ?Order $order)
             {
             }
-            public function get(int $orderId)
+            // NB: real OrderRepositoryInterface::get($id) is UNTYPED — a typed
+            // int param would narrow it (contravariance violation → fatal).
+            public function get($orderId)
             {
                 if ($this->order === null) {
                     throw new NoSuchEntityException(__('No such order %1', $orderId));
                 }
                 return $this->order;
             }
+            public function getList($searchCriteria) { throw new \BadMethodCallException(__METHOD__); }
+            public function save($entity) { throw new \BadMethodCallException(__METHOD__); }
+            public function delete($entity) { throw new \BadMethodCallException(__METHOD__); }
+            public function deleteById($id) { throw new \BadMethodCallException(__METHOD__); }
         };
     }
 

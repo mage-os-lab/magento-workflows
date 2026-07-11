@@ -216,12 +216,30 @@ new triggers must also state their loop-guard/debounce interaction in the class 
 > **Deviations:** DOC-C2 (order→document relations) was *skipped honestly* — leaf-less
 > relation targets lack an engine contract and bare EXISTS duplicates the ORD-C1 counts; a
 > future `creditmemo_count` aggregate is the clean substitute. CUS-C4 was pulled forward from
-> Tier 3. **Blocked, needs `mage-os/mageos-common-async-events` added to the session:** VER-1
-> (upstream declaration audit), CUS-T1 (`customer.deleted` — collision risk until audited),
-> and DOC-C1's upstream-payload half. PRD-T1's and CUS-T2's upstream assumptions are
-> documented in their packs' async_events.xml headers for reconciliation when VER-1 runs.
-> **Tier 3 remains demand-driven** (PRD-T4 snapshot-only deleted triggers, tier prices,
-> password-reset action, coupon deactivation, category/CMS ops triggers).
+> Tier 3.
+>
+> **VER-1 executed (July 2026)** against the real `mageos-common-async-events` source. Findings
+> and reconciliation: upstream declares 22 events including `sales.order.paid`,
+> `sales.invoice.paid` and `catalog.product.created/updated` — our Tier-1/2 gap-fill
+> publishers and declarations for those four **collided and were removed** (triggers are now
+> metadata-only over upstream; note upstream `invoice.paid` delivers the *invoice* payload, and
+> upstream fires both `created` and `updated` for new products). Four free metadata-only
+> triggers were added over upstream events previously listed as expressible-only: **order
+> shipped / held / unheld / canceled** (upstream "updated" = state transitions only).
+> `customer.address.created/updated` exist upstream (address payload, no delete) — our
+> `customer.address_changed` coexists deliberately (customer entity, unified `change_type`
+> incl. delete). `customer.deleted` does **not** exist upstream → CUS-T1 is a genuine Tier-3
+> gap needing the snapshot-only pattern (with PRD-T4). DOC-C1 resolved: upstream document
+> events hydrate the full document via Invoice/Shipment/Creditmemo repositories, so
+> document-field Trigger Data conditions are valid. `customer.login` and CMS page/block
+> created/updated exist upstream — login stays excluded (through-line 1); CMS still needs the
+> entity-root decision (CMS-T1). **Upstream bug found:** `SalesOrderSaveAfterObserver`
+> publishes a typo'd `sales.unholdedcreated` instead of the declared `sales.order.unholded`,
+> so the Order Unheld trigger is inert until fixed upstream (PR-worthy; Order Status Changed
+> covers unhold meanwhile).
+>
+> **Tier 3 remains demand-driven** (PRD-T4 + CUS-T1 snapshot-only deleted triggers, tier
+> prices, password-reset action, coupon deactivation, category/CMS ops triggers).
 
 ### Tier 0 — verify first (blocks scoping of several items)
 

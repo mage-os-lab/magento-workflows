@@ -5,16 +5,19 @@ namespace Magento\Sales\Api;
 
 /**
  * Standalone-runner shim for Magento\Sales\Api\ShipmentRepositoryInterface.
- * Minimal marker (mirrors the OrderRepositoryInterface shim style) so
- * order.add_tracking's constructor type-hint and test doubles resolve without a
- * full Magento install. Only save() is exercised by the action; a test double
- * may add the remaining CRUD methods.
+ * Mirrors the FULL real interface (5 methods) so a partial double is caught
+ * here, not only under real Magento. Only save() is exercised by
+ * order.add_tracking.
  */
 interface ShipmentRepositoryInterface
 {
-    /**
-     * @param mixed $entity
-     * @return mixed
-     */
+    public function create();
+
+    public function get($id);
+
+    public function getList($searchCriteria);
+
+    public function delete($entity);
+
     public function save($entity);
 }

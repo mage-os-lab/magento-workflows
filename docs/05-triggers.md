@@ -4,18 +4,22 @@ Three trigger types share one dispatch path: **event** (async-events notifier), 
 
 ## Event triggers — ride the async-events notifier seam
 
-`mageos-async-events` delivers events to destinations via **notifiers** resolved from subscription `metadata` (`http`, `event_bridge`, ...). We add one:
+`mageos-async-events` delivers events to destinations via **notifiers** resolved from subscription `metadata` (upstream ships `http`; the pool is a DI array keyed by the metadata value). We add one under the key `workflow`:
 
 ```php
+// Verified against mage-os/mageos-async-events @ b249976
+// (Service/AsyncEvent/NotifierInterface.php). The subscription is the real
+// AsyncEventInterface (not AsyncEventDisplayInterface) and the event is a
+// CloudEventImmutable; the return narrows ResultInterface to NotifierResult.
 class WorkflowNotifier implements NotifierInterface   // metadata: "workflow"
 {
-    public function notify(AsyncEventDisplayInterface $event, array $data): ResultInterface
+    public function notify(AsyncEventInterface $asyncEvent, CloudEventImmutable $event): NotifierResult
     {
-        // The workflow id is derived from the subscription's recipient_url
-        // ("workflow:<id>"; wait resumes use "workflow:<id>:wait:<event>").
-        // $data = resolved service-class output (already the hydrated DTO, e.g. OrderInterface as array)
+        // Workflow id rides in the recipient marker "workflow:<id>" (there is no
+        // arbitrary subscription-data bag on AsyncEventInterface); the trigger
+        // snapshot is the CloudEvent payload $event->getData().
         return $this->dispatcher->dispatch(
-            $this->workflowIdFromRecipient($event), $data
+            $this->extractWorkflowId($asyncEvent), $event->getData()
         );
     }
 }

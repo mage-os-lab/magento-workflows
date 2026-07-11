@@ -13,8 +13,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Pins the product-lifecycle emission contract (PRD-T1/T2/T3): a single
- * catalog_product_save_after distinguishes creation (fires created, nothing
- * else) from update (fires updated only when data changed), and independently
+ * catalog_product_save_after publishes nothing for new products (created/
+ * updated are upstream events, VER-1) and independently
  * emits price_changed / status_changed on an orig-vs-new base-price / status
  * transition — reporting the save's own store scope. No-op re-saves stay
  * silent; publish failures are logged, never rethrown into the save.
@@ -39,7 +39,7 @@ class ProductSaveObserverTest extends TestCase
         );
     }
 
-    public function testNewProductFiresCreatedOnly(): void
+    public function testNewProductPublishesNothing(): void
     {
         $publisher = new RecordingEventPublisher();
         $observer = new ProductSaveObserver($publisher, new RecordingLogger());
@@ -54,16 +54,10 @@ class ProductSaveObserverTest extends TestCase
         );
         $observer->execute($this->observerEvent($product));
 
-        $this->assertSame(['catalog.product.created'], $publisher->eventNames());
-        $data = $publisher->published[0]['data'];
-        $this->assertSame(7, $data['productId']);
-        $this->assertSame(7, $data['entity_id']);
-        $this->assertSame('NEW-1', $data['sku']);
-        $this->assertSame('configurable', $data['type_id']);
-        $this->assertSame(3, $data['store_id']);
+        $this->assertSame([], $publisher->eventNames());
     }
 
-    public function testExistingProductWithChangesFiresUpdated(): void
+    public function testExistingProductWithNonTransitionChangesIsSilent(): void
     {
         $publisher = new RecordingEventPublisher();
         $observer = new ProductSaveObserver($publisher, new RecordingLogger());
@@ -72,8 +66,7 @@ class ProductSaveObserverTest extends TestCase
             $this->existing(['price' => 10.0, 'status' => 1], ['price' => 10.0, 'status' => 1])
         ));
 
-        $this->assertSame(['catalog.product.updated'], $publisher->eventNames());
-        $this->assertSame('HAT-1', $publisher->published[0]['data']['sku']);
+        $this->assertSame([], $publisher->eventNames());
     }
 
     public function testNoOpSaveIsSilent(): void
@@ -89,7 +82,7 @@ class ProductSaveObserverTest extends TestCase
         $this->assertCount(0, $publisher->published);
     }
 
-    public function testPriceChangeFiresPriceChangedAlongsideUpdated(): void
+    public function testPriceChangeFiresPriceChanged(): void
     {
         $publisher = new RecordingEventPublisher();
         $observer = new ProductSaveObserver($publisher, new RecordingLogger());
@@ -99,7 +92,7 @@ class ProductSaveObserverTest extends TestCase
         ));
 
         $this->assertSame(
-            ['catalog.product.updated', 'catalog.product.price_changed'],
+            ['catalog.product.price_changed'],
             $publisher->eventNames()
         );
         $priceEvent = $publisher->only('catalog.product.price_changed')[0]['data'];
@@ -147,7 +140,6 @@ class ProductSaveObserverTest extends TestCase
 
         $this->assertSame(
             [
-                'catalog.product.updated',
                 'catalog.product.price_changed',
                 'catalog.product.status_changed',
             ],
@@ -185,17 +177,17 @@ class ProductSaveObserverTest extends TestCase
 
     public function testPublishFailureIsLoggedAndDoesNotBreakSave(): void
     {
-        $publisher = new RecordingEventPublisher(throwsFor: ProductSaveObserver::EVENT_UPDATED);
+        $publisher = new RecordingEventPublisher(throwsFor: ProductSaveObserver::EVENT_PRICE_CHANGED);
         $logger = new RecordingLogger();
         $observer = new ProductSaveObserver($publisher, $logger);
 
-        // updated publish throws; price_changed must still fire afterward.
+        // price_changed publish throws; status_changed must still fire afterward.
         $observer->execute($this->observerEvent(
-            $this->existing(['price' => 8.0, 'status' => 1], ['price' => 10.0, 'status' => 1])
+            $this->existing(['price' => 8.0, 'status' => 2], ['price' => 10.0, 'status' => 1])
         ));
 
         $this->assertStringContainsString('error:', $logger->allMessages());
-        $this->assertStringContainsString('catalog.product.updated', $logger->allMessages());
-        $this->assertCount(1, $publisher->only('catalog.product.price_changed'));
+        $this->assertStringContainsString('catalog.product.price_changed', $logger->allMessages());
+        $this->assertCount(1, $publisher->only('catalog.product.status_changed'));
     }
 }

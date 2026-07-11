@@ -178,8 +178,11 @@ class AsyncEventsFidelityTest extends TestCase
     }
 
     /**
-     * EventPublisher's single async-events assumption: EventDispatcher exposes
-     * dispatch(string, array).
+     * EventPublisher's single async-events seam: the real EventDispatcher
+     * exposes dispatch(string $eventName, mixed $output, int $storeId = 0)
+     * (verified against mageos-async-events @ b249976), so our two-arg
+     * dispatch($eventName, $data) call is signature-valid. See the seam
+     * divergence note in the EventPublisher docblock / docs/14-risks.md.
      */
     public function testEventDispatcherExposesDispatch(): void
     {
@@ -189,9 +192,11 @@ class AsyncEventsFidelityTest extends TestCase
             class_exists($dispatcherType),
             'EventPublisher depends on the real async-events EventDispatcher'
         );
-        $this->assertTrue(
-            method_exists($dispatcherType, 'dispatch'),
-            'EventPublisher::publish delegates to EventDispatcher::dispatch(string, array)'
+        $dispatch = new \ReflectionMethod($dispatcherType, 'dispatch');
+        $this->assertGreaterThanOrEqual(
+            2,
+            $dispatch->getNumberOfParameters(),
+            'EventPublisher::publish delegates to EventDispatcher::dispatch(string $eventName, mixed $output, ...)'
         );
     }
 

@@ -253,6 +253,11 @@ class CreateCreditmemoPartialTest extends TestCase
     private function argumentsFactory(): CreditmemoCreationArgumentsInterfaceFactory
     {
         return new class extends CreditmemoCreationArgumentsInterfaceFactory {
+            // Bypass the generated factory's DI constructor (ObjectManager) so
+            // the double is instantiable under real Magento.
+            public function __construct()
+            {
+            }
             public function create(array $data = [])
             {
                 return new class implements CreditmemoCreationArgumentsInterface {
@@ -266,6 +271,13 @@ class CreateCreditmemoPartialTest extends TestCase
                     {
                         return $this->adjustmentPositive;
                     }
+                    // Full CreditmemoCreationArgumentsInterface surface (unused here).
+                    public function getShippingAmount() { throw new \BadMethodCallException(__METHOD__); }
+                    public function setShippingAmount($amount) { throw new \BadMethodCallException(__METHOD__); }
+                    public function getAdjustmentNegative() { throw new \BadMethodCallException(__METHOD__); }
+                    public function setAdjustmentNegative($amount) { throw new \BadMethodCallException(__METHOD__); }
+                    public function getExtensionAttributes() { throw new \BadMethodCallException(__METHOD__); }
+                    public function setExtensionAttributes($extensionAttributes) { throw new \BadMethodCallException(__METHOD__); }
                 };
             }
         };

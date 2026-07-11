@@ -3,8 +3,17 @@
 /**
  * Sales + Cart trigger metadata (relocated from mage-os/workflows-triggers-core,
  * domain-packs S1). The sales "created/updated" events are declared by
- * mage-os/mageos-common-async-events; sales.order.status_changed and
- * quote.abandoned are declared by this module (etc/async_events.xml).
+ * mage-os/mageos-common-async-events, as are paid / invoice.paid / shipped /
+ * holded / unholded / cancelled (VER-1 audit, July 2026); status_changed,
+ * comment_added, tracking_added and quote.abandoned are declared by this
+ * module (etc/async_events.xml). Upstream semantics worth knowing:
+ * "updated" fires on STATE transitions (not every save); "paid" is the
+ * base_total_due-reaches-zero transition (zero-total orders count as paid at
+ * creation); invoice.paid delivers the INVOICE payload (like
+ * invoice.created). Upstream bug (reported): the unholded observer publishes
+ * a typo'd event name ("sales.unholdedcreated"), so the Order Unheld trigger
+ * is inert until mageos-common-async-events fixes it — Order Status Changed
+ * covers unhold meanwhile.
  */
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -14,6 +23,10 @@
     <trigger event="sales.order.updated" entity="sales_order" label="Order Updated" group="Sales"/>
     <trigger event="sales.order.status_changed" entity="sales_order" label="Order Status Changed" group="Sales"/>
     <trigger event="sales.order.paid" entity="sales_order" label="Order Paid" group="Sales"/>
+    <trigger event="sales.order.shipped" entity="sales_order" label="Order Shipped" group="Sales"/>
+    <trigger event="sales.order.holded" entity="sales_order" label="Order Held" group="Sales"/>
+    <trigger event="sales.order.unholded" entity="sales_order" label="Order Unheld" group="Sales"/>
+    <trigger event="sales.order.cancelled" entity="sales_order" label="Order Canceled" group="Sales"/>
     <trigger event="sales.invoice.created" entity="sales_order" label="Invoice Created" group="Sales"/>
     <trigger event="sales.invoice.paid" entity="sales_order" label="Invoice Paid" group="Sales"/>
     <trigger event="sales.order.comment_added" entity="sales_order" label="Order Comment Added" group="Sales"/>

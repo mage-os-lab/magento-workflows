@@ -15,9 +15,12 @@
  * as an empty-but-valid config so third parties still see the schema binding
  * and the honesty check no longer attributes catalog/review references here.
  *
- * Node name assumption: mageos-async-events' async_events.xsd uses
- * <async_event name="..."><service class="..." method="..."/></async_event>
- * (Aligent lineage).
+ * Node shape verified against mage-os/mageos-async-events @ b249976
+ * (etc/async_events.xsd): a required <async_event name="..."> (name pattern
+ * [a-zA-Z0-9._-]+, unique) wraps a required <service class="..." method="..."/>
+ * (both attributes required) plus an OPTIONAL <resources><resource>…</resource>
+ * </resources> block (the ACL gate AsyncEventRepository::save() enforces when
+ * $checkResources is true). Same shape mageos-common-async-events ships.
  */
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

@@ -131,7 +131,7 @@ class CustomerErasureScrubPluginTest extends TestCase
             {
             }
 
-            public function getById(int $customerId)
+            public function getById($customerId)
             {
                 $this->log[] = 'getById';
                 if ($this->customer === null) {
@@ -140,9 +140,29 @@ class CustomerErasureScrubPluginTest extends TestCase
                 return $this->customer;
             }
 
-            public function save($customer)
+            public function save($customer, $passwordHash = null)
             {
                 throw new \LogicException('save() is not part of the erasure flow');
+            }
+
+            public function get($email, $websiteId = null)
+            {
+                throw new \LogicException('get() is not part of the erasure flow');
+            }
+
+            public function getList($searchCriteria)
+            {
+                throw new \LogicException('getList() is not part of the erasure flow');
+            }
+
+            public function delete($customer)
+            {
+                throw new \LogicException('the plugin wraps delete(); the fake never receives it');
+            }
+
+            public function deleteById($customerId)
+            {
+                throw new \LogicException('the plugin wraps deleteById(); the fake never receives it');
             }
         };
     }

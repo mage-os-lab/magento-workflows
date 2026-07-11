@@ -16,7 +16,7 @@ use Magento\Newsletter\Model\Subscriber;
  * constants (SUBSCRIBED=1, NOT_ACTIVE=2, UNSUBSCRIBED=3, UNCONFIRMED=4);
  * labels match the store-admin newsletter grid vocabulary.
  */
-final class SubscriberStatus
+class SubscriberStatus
 {
     /**
      * Status code => raw (untranslated) label. __()-wrapped by consumers that

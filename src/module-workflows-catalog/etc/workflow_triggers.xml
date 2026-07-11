@@ -9,7 +9,8 @@
 -->
 <triggers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:noNamespaceSchemaLocation="urn:magento:module:MageOS_Workflows:etc/workflow_triggers.xsd">
-    <!-- Catalog -->
+    <!-- Catalog. created/updated are upstream events (mageos-common-async-events);
+         note upstream fires BOTH created and updated for a brand-new product. -->
     <trigger event="catalog.product.created" entity="catalog_product"
              label="Product Created" group="Catalog"/>
     <trigger event="catalog.product.updated" entity="catalog_product"

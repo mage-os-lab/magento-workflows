@@ -107,11 +107,24 @@ class AttributeTest extends TestCase
     private function attribute(?AggregateProviderPool $pool = null): Attribute
     {
         return new Attribute(
-            new Context(),
+            // Every one of these Magento parents has a required DI constructor;
+            // bypass it (empty __construct) so the double is instantiable under
+            // real Magento, exactly as the proven condition tests do.
+            new class extends Context {
+                public function __construct()
+                {
+                }
+            },
             $this->throwingProductAttributeCollectionFactory(),
             new class extends EavConfig {
+                public function __construct()
+                {
+                }
             },
             new class extends AttributeSetCollectionFactory {
+                public function __construct()
+                {
+                }
             },
             $pool ?? $this->poolWithStockProvider(),
             $this->websiteRepository()
@@ -192,6 +205,10 @@ class AttributeTest extends TestCase
     private function throwingProductAttributeCollectionFactory(): ProductAttributeCollectionFactory
     {
         return new class extends ProductAttributeCollectionFactory {
+            // Bypass the generated factory's DI constructor (ObjectManager).
+            public function __construct()
+            {
+            }
             public function create()
             {
                 throw new \RuntimeException('no attribute collection under the standalone runner');
