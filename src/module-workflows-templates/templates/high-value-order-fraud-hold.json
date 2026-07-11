@@ -7,7 +7,7 @@
         "category": "Fraud & risk",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["sales.order.created"],
             "actions": ["order.add_comment", "order.hold", "notify.webhook", "notify.admin"],
             "modules": [],
@@ -26,7 +26,7 @@
         "trigger_ref": "sales.order.created",
         "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"grand_total\",\"operator\":\">=\",\"value\":\"%param.value_threshold%\"}]}",
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "flag_comment",
             "steps": {
                 "flag_comment": {

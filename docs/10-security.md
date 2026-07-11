@@ -17,7 +17,7 @@ The webhook action ships **hardened, not hardenable**:
 - **HTTPS only by default** (HTTP behind a config flag with warning).
 - **DNS pinning:** resolve DNS *then* connect to the resolved IP (defeats rebinding).
 - **Private-range denial:** reject private/link-local/loopback ranges (RFC1918, 169.254.0.0/16, ::1, cloud metadata endpoints) unless the host is on an explicit admin-configured allowlist — the same posture Shopify Flow takes.
-- **Redirect re-validation:** deny redirects across the private-range boundary (Guzzle `on_redirect` re-validation).
+- **Redirect re-validation + per-hop pinning:** deny redirects across the private-range boundary (Guzzle `on_redirect` re-validation), and pin each redirect hop's connection to the IP that passed validation — the rebinding window stays closed on every hop, not just the first request.
 - **Response caps:** 256KB body, JSON depth ≤ 10; parse failures capture `{parse_error: true}` rather than raw bytes.
 - **Explicit trust boundary:** captured responses are attacker-influenceable data. They are usable in branch conditions and variable interpolation but **never as action identifiers** (no `{{ steps.x.response.action_code }}` resolving which action runs), **never in attribute codes**, and always type-coerced at the condition comparator. Documented in the SDK: action configs interpolate *values*, never *structure*.
 - **Optional response JSON Schema per step** — mismatch = step failure, keeping garbage out of downstream branches.
@@ -39,7 +39,7 @@ The webhook action ships **hardened, not hardenable**:
 
 ## Subscription ownership
 
-The hidden async-events subscriptions created for event triggers carry an `owner=workflow:<id>` marker; the async-events admin UI and REST API **refuse mutation of owned subscriptions**, preventing an out-of-band edit from redirecting a workflow's event stream.
+The hidden async-events subscriptions created for event triggers are owned via their **recipient URL**: `workflow:<id>` (and `workflow:<id>:wait:<event>` for wait resumes) is both the dispatch routing key and the ownership marker — there is no separate owner field. `SubscriptionOwnershipPlugin` **refuses mutation of owned subscriptions** (checking both the incoming and the persisted recipient), preventing an out-of-band edit via the async-events admin UI or REST API from redirecting a workflow's event stream. Pinned by `SubscriptionOwnershipPluginTest`.
 
 ## PII containment
 
@@ -47,7 +47,7 @@ Execution `context` holds entity snapshots (names, emails, addresses). Three con
 
 1. **TTL pruning cron** — default 90 days, configurable down to hours.
 2. **Field-level redaction config** applied before ES indexing — index metadata + IDs by default, full payload opt-in.
-3. **GDPR erasure hook** into `CustomerRepository::delete` / erasure flows that scrubs matching execution contexts.
+3. **GDPR erasure hook** into `CustomerRepository::delete` / `deleteById` (`CustomerErasureScrubPlugin` in `mage-os/workflows-customer`, backed by `ExecutionPiiScrubber`): after a successful deletion, executions rooted on the deleted customer (workflow `entity_type=customer`, matching `entity_id`) have their context trigger snapshot and step outputs replaced wholesale with a `{"gdpr_redacted": true}` marker, and executions of *any* entity type whose context carries the customer's email (order/quote snapshots' `customer_email`, address `email` fields) get targeted redaction — every email occurrence plus the person-field siblings of each match (name parts, dob, taxvat, telephone, street, ...). Execution rows themselves survive as the audit trail (status, timestamps, workflow id, step keys); step-row result JSON and error text are scrubbed the same way. Known limits: snapshots carrying the customer's PII *without* their email anywhere in the same context cannot be attributed safely, and aggregation batch items are not scrubbed — both fall to TTL pruning (#1). Pinned by `ExecutionPiiScrubberTest` / `CustomerErasureScrubPluginTest`.
 
 ## Manual mass-run
 

@@ -7,7 +7,7 @@
         "category": "Marketing & reviews",
         "version": "1.0.0",
         "requires": {
-            "schema": 3,
+            "schema": 4,
             "triggers": ["catalog.product.review_submitted"],
             "actions": ["marketing.generate_coupon", "notify.email", "notify.admin"],
             "modules": [],
@@ -25,7 +25,7 @@
         "trigger_ref": "catalog.product.review_submitted",
         "conditions_serialized": null,
         "definition": {
-            "schema": 3,
+            "schema": 4,
             "entry": "route",
             "steps": {
                 "route": {

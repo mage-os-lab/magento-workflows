@@ -7,7 +7,7 @@
         "category": "Compliance & data",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "actions": ["customer.newsletter", "customer.anonymize"],
             "modules": [],
             "edition": "any"
@@ -20,7 +20,7 @@
         "trigger_ref": "manual",
         "conditions_serialized": null,
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "unsubscribe_first",
             "steps": {
                 "unsubscribe_first": {

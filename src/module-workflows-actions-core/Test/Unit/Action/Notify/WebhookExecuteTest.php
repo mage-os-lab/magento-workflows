@@ -224,8 +224,8 @@ class WebhookExecuteTest extends TestCase
         $this->assertCount(1, $client->requests);
     }
 
-    // -- docs/10: redirect destinations are re-validated; a private-range
-    //    target aborts the transfer -------------------------------------------
+    // -- docs/10: redirect destinations are re-validated AND pinned to the
+    //    validated IP; a private-range target aborts the transfer -------------
 
     public function testRedirectToPrivateRangeTargetIsAbortedTerminally(): void
     {
@@ -278,6 +278,55 @@ class WebhookExecuteTest extends TestCase
 
         $this->assertTrue($result->isSuccess());
         $this->assertSame(['ok' => true], $result->getOutput()['response']);
+        // The validated hop was also pinned into the resolve map (alongside
+        // the original destination's pin), so the hop connects to the exact
+        // address that passed the private-range check.
+        $this->assertSame(
+            ['93.184.216.34:443:93.184.216.34', '8.8.4.4:443:8.8.4.4'],
+            $client->requests[0]['options']['curl'][CURLOPT_RESOLVE]
+        );
+    }
+
+    public function testRedirectHopConnectionIsPinnedToTheIpValidatedForTheHop(): void
+    {
+        // Rebinding scenario the pin must close: the redirect target is a
+        // HOSTNAME, so validation resolves it once — a rebinding DNS server
+        // could otherwise hand curl a different (private) address at connect
+        // time. "localhost" (allowlisted, resolved via /etc/hosts) stands in
+        // for that hostname without depending on external DNS.
+        $mapAtHopConnectTime = new \ArrayObject();
+        $client = new FakeHttpClient(
+            static function (string $method, string $uri, array $options) use ($mapAtHopConnectTime) {
+                $onRedirect = $options[RequestOptions::ALLOW_REDIRECTS]['on_redirect'];
+                $onRedirect(new FakeRequest(), new FakeResponse(302), new FakeUri('localhost'));
+                // $options here is the value copy the transport captured
+                // BEFORE the redirect fired — the same copy curl reads when
+                // preparing the next hop. The pin appended by on_redirect
+                // must be visible through it, or the hop connects unpinned.
+                foreach ($options['curl'][CURLOPT_RESOLVE] as $entry) {
+                    $mapAtHopConnectTime[] = $entry;
+                }
+                return new FakeResponse(200, '{"ok":true}');
+            }
+        );
+        $webhook = $this->webhook($client, [
+            Webhook::CONFIG_PRIVATE_HOST_ALLOWLIST => 'localhost',
+        ]);
+
+        $result = $webhook->execute($this->ctx(), ['url' => 'https://93.184.216.34/hook']);
+
+        $this->assertTrue($result->isSuccess());
+        $entries = $mapAtHopConnectTime->getArrayCopy();
+        $this->assertCount(2, $entries, 'original pin plus one pin per redirect hop');
+        $this->assertSame('93.184.216.34:443:93.184.216.34', $entries[0]);
+        // Pinned to the exact address the validation lookup returned; a second
+        // connect-time lookup can no longer resolve the host somewhere else.
+        $this->assertSame('localhost:443:', substr((string)$entries[1], 0, strlen('localhost:443:')));
+        $pinnedIp = substr((string)$entries[1], strlen('localhost:443:'));
+        $this->assertTrue(
+            filter_var($pinnedIp, FILTER_VALIDATE_IP) !== false,
+            'hop pin must carry the validated IP'
+        );
     }
 
     public function testRedirectsOnlyPermitHttpsWithoutTheInsecureOptIn(): void

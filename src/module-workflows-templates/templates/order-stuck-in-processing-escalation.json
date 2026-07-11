@@ -7,7 +7,7 @@
         "category": "Operations",
         "version": "1.0.0",
         "requires": {
-            "schema": 2,
+            "schema": 4,
             "triggers": ["sales.order.status_changed"],
             "actions": ["notify.admin", "order.add_comment"],
             "modules": [],
@@ -25,7 +25,7 @@
         "trigger_ref": "sales.order.status_changed",
         "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\TriggerData\",\"attribute\":\"to_status\",\"operator\":\"==\",\"value\":\"processing\"}",
         "definition": {
-            "schema": 2,
+            "schema": 4,
             "entry": "watch_for_change",
             "steps": {
                 "watch_for_change": {

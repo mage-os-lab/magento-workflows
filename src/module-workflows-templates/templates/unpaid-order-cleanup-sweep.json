@@ -7,7 +7,7 @@
         "category": "Operations",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "actions": ["order.cancel", "order.add_comment"],
             "modules": [],
             "edition": "any"
@@ -23,7 +23,7 @@
         "trigger_ref": "0 * * * *",
         "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Combine\",\"aggregator\":\"all\",\"value\":\"1\",\"conditions\":[{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"status\",\"operator\":\"==\",\"value\":\"pending\"},{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\Order\\\\Attribute\",\"attribute\":\"created_at\",\"operator\":\"<=\",\"value\":\"-%param.stale_hours% hours\"}]}",
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "cancel_stale",
             "steps": {
                 "cancel_stale": {

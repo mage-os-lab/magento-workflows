@@ -7,7 +7,7 @@
         "category": "Customer lifecycle",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["customer.created"],
             "actions": ["notify.email", "marketing.generate_coupon"],
             "modules": [],
@@ -25,7 +25,7 @@
         "trigger_ref": "customer.created",
         "conditions_serialized": null,
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "welcome_email",
             "steps": {
                 "welcome_email": {

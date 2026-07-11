@@ -7,7 +7,7 @@
         "category": "Cart recovery",
         "version": "1.0.0",
         "requires": {
-            "schema": 2,
+            "schema": 4,
             "triggers": ["quote.abandoned"],
             "actions": ["notify.email", "marketing.generate_coupon"],
             "modules": [],
@@ -26,7 +26,7 @@
         "trigger_ref": "quote.abandoned",
         "conditions_serialized": null,
         "definition": {
-            "schema": 2,
+            "schema": 4,
             "entry": "check_value",
             "steps": {
                 "check_value": {

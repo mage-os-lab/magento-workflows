@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 class DefinitionV2Test extends TestCase
 {
-    public function testSchemaTwoAcceptedAndReturned(): void
+    public function testSchemaTwoAcceptedAndNormalized(): void
     {
         $definition = Definition::fromArray([
             'schema' => 2,
@@ -18,10 +18,10 @@ class DefinitionV2Test extends TestCase
             ],
         ]);
 
-        $this->assertSame(2, $definition->getSchemaVersion());
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
     }
 
-    public function testSchemaOneStillAccepted(): void
+    public function testSchemaOneAcceptedAndNormalized(): void
     {
         $definition = Definition::fromArray([
             'schema' => 1,
@@ -31,7 +31,8 @@ class DefinitionV2Test extends TestCase
             ],
         ]);
 
-        $this->assertSame(1, $definition->getSchemaVersion());
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->toArray()['schema']);
     }
 
     public function testUnsupportedFutureSchemaRejected(): void
@@ -75,12 +76,12 @@ class DefinitionV2Test extends TestCase
         $this->assertSame(Definition::STEP_WAIT, $step['type']);
     }
 
-    public function testWaitStepRejectedUnderSchema1(): void
+    public function testWaitStepAcceptedUnderLegacySchema1(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('wait steps require definition schema 2');
-
-        Definition::fromArray([
+        // Step types are no longer version-gated: a legacy schema number is
+        // normalized to the current version on parse, so every step type is
+        // legal under any accepted schema number.
+        $definition = Definition::fromArray([
             'schema' => 1,
             'entry' => 's1',
             'steps' => [
@@ -97,6 +98,9 @@ class DefinitionV2Test extends TestCase
                 's3' => ['type' => Definition::STEP_STOP],
             ],
         ]);
+
+        $this->assertSame(Definition::STEP_WAIT, $definition->getStep('s1')['type']);
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
     }
 
     public function testWaitMissingConfigEvent(): void
@@ -217,12 +221,9 @@ class DefinitionV2Test extends TestCase
         ]);
     }
 
-    public function testDelayBusinessDaysUnderSchema1Rejected(): void
+    public function testDelayBusinessDaysAcceptedUnderLegacySchema1(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('business_days / at require definition schema 2');
-
-        Definition::fromArray([
+        $definition = Definition::fromArray([
             'schema' => 1,
             'entry' => 's1',
             'steps' => [
@@ -235,14 +236,13 @@ class DefinitionV2Test extends TestCase
                 ],
             ],
         ]);
+
+        $this->assertTrue($definition->hasStep('s1'));
     }
 
-    public function testDelayAtUnderSchema1Rejected(): void
+    public function testDelayAtAcceptedUnderLegacySchema1(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('business_days / at require definition schema 2');
-
-        Definition::fromArray([
+        $definition = Definition::fromArray([
             'schema' => 1,
             'entry' => 's1',
             'steps' => [
@@ -255,6 +255,8 @@ class DefinitionV2Test extends TestCase
                 ],
             ],
         ]);
+
+        $this->assertTrue($definition->hasStep('s1'));
     }
 
     public function testDelayBusinessDaysValidUnderSchema2(): void
@@ -419,7 +421,7 @@ class DefinitionV2Test extends TestCase
         $this->assertCount(0, $events);
     }
 
-    public function testToArrayPreservesSchema2(): void
+    public function testToArrayNormalizesLegacySchema2(): void
     {
         $original = [
             'schema' => 2,
@@ -442,7 +444,7 @@ class DefinitionV2Test extends TestCase
         $definition = Definition::fromArray($original);
         $asArray = $definition->toArray();
 
-        $this->assertSame(2, $asArray['schema']);
+        $this->assertSame(Definition::SCHEMA_VERSION, $asArray['schema']);
     }
 
     public function testRoundTripSchema2ViaFromArrayToArray(): void
@@ -477,7 +479,7 @@ class DefinitionV2Test extends TestCase
         $definition = Definition::fromArray($original);
         $roundTripped = Definition::fromArray($definition->toArray());
 
-        $this->assertSame(2, $roundTripped->getSchemaVersion());
+        $this->assertSame(Definition::SCHEMA_VERSION, $roundTripped->getSchemaVersion());
         $this->assertCount(4, $roundTripped->getSteps());
         $this->assertSame('s1', $roundTripped->getEntryKey());
     }

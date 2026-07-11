@@ -7,7 +7,7 @@
         "category": "B2B",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["sales.invoice.created"],
             "actions": ["notify.email"],
             "modules": [],
@@ -24,7 +24,7 @@
         "trigger_ref": "sales.invoice.created",
         "conditions_serialized": null,
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "wait_before_reminder",
             "steps": {
                 "wait_before_reminder": {

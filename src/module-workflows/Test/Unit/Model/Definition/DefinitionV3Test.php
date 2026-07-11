@@ -34,7 +34,7 @@ class DefinitionV3Test extends TestCase
         ], $overrides);
     }
 
-    public function testSchemaThreeAcceptedAndReturned(): void
+    public function testSchemaThreeAcceptedAndNormalized(): void
     {
         $definition = Definition::fromArray([
             'schema' => 3,
@@ -42,7 +42,7 @@ class DefinitionV3Test extends TestCase
             'steps' => ['s1' => ['type' => Definition::STEP_STOP]],
         ]);
 
-        $this->assertSame(3, $definition->getSchemaVersion());
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
     }
 
     public function testSwitchStepValidUnderSchema3(): void
@@ -54,12 +54,14 @@ class DefinitionV3Test extends TestCase
         $this->assertCount(2, $step['cases']);
     }
 
-    public function testSwitchStepRejectedUnderSchema2(): void
+    public function testSwitchStepAcceptedUnderLegacySchema2(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('switch steps require definition schema 3');
+        // Legacy schema numbers normalize to the current version on parse;
+        // step types are no longer version-gated.
+        $definition = Definition::fromArray($this->switchDefinition(['schema' => 2]));
 
-        Definition::fromArray($this->switchDefinition(['schema' => 2]));
+        $this->assertSame(Definition::STEP_SWITCH, $definition->getStep('route')['type']);
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
     }
 
     public function testSwitchWithoutCasesRejected(): void

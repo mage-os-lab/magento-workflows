@@ -7,7 +7,7 @@
         "category": "Orders & fulfillment",
         "version": "1.0.0",
         "requires": {
-            "schema": 1,
+            "schema": 4,
             "triggers": ["sales.creditmemo.created"],
             "actions": ["notify.email"],
             "modules": [],
@@ -24,7 +24,7 @@
         "trigger_ref": "sales.creditmemo.created",
         "conditions_serialized": null,
         "definition": {
-            "schema": 1,
+            "schema": 4,
             "entry": "wait_before_followup",
             "steps": {
                 "wait_before_followup": {

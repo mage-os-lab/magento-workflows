@@ -104,6 +104,15 @@
         </arguments>
     </type>
 
+    <!-- GDPR erasure hook (docs/10-security.md "PII containment" #3): deleting
+         a customer through the repository scrubs their PII out of persisted
+         workflow execution contexts and step results. Scope and limits are
+         documented on ExecutionPiiScrubber. -->
+    <type name="Magento\Customer\Api\CustomerRepositoryInterface">
+        <plugin name="mageos_workflows_customer_erasure_scrub"
+                type="MageOS\WorkflowsCustomer\Plugin\CustomerErasureScrubPlugin"/>
+    </type>
+
     <!-- Scheduler QueryRunner entity map: customer (relocated from the
          scheduler). QueryRunner itself stays in mage-os/workflows-scheduler;
          only its repository/DTO map entries for this entity type move here. -->

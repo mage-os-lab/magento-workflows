@@ -49,12 +49,14 @@ class DefinitionV4Test extends TestCase
         $this->assertSame(Definition::STEP_APPROVAL, $definition->getStep('gate')['type']);
     }
 
-    public function testApprovalStepRejectedUnderSchema3(): void
+    public function testApprovalStepAcceptedUnderLegacySchema3(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('approval steps require definition schema 4');
+        // Legacy schema numbers normalize to the current version on parse;
+        // step types are no longer version-gated.
+        $definition = Definition::fromArray($this->approvalDefinition(['schema' => 3]));
 
-        Definition::fromArray($this->approvalDefinition(['schema' => 3]));
+        $this->assertSame(Definition::STEP_APPROVAL, $definition->getStep('gate')['type']);
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
     }
 
     public function testMissingTitleRejected(): void

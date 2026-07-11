@@ -10,7 +10,7 @@
         "magento/module-rule": "*",
         "magento/module-config": "*",
         "magento/module-email": "*",
-        "mage-os/mageos-async-events": ">=4.0"
+        "mage-os/mageos-async-events": "^4.0"
     },
     "suggest": {
         "mage-os/mageos-async-events-admin-ui": "Raw async-event subscription debugging UI",
