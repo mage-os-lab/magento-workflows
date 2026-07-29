@@ -21,6 +21,16 @@
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
                     <item name="update_url" xsi:type="url" path="mui/index/render"/>
+                    <!-- REQUIRED. Magento_Ui/js/grid/data-storage caches fetched records in a
+                         map keyed by record[indexField], and its default indexField is
+                         'entity_id'. No row here has an entity_id, so without this every
+                         record keys to `undefined`, they collapse into a single slot, and
+                         the grid paints the LAST record of the response into every row —
+                         correct row count, correct totalRecords, identical rows. It also
+                         governs which ids massactions and selections submit. -->
+                    <item name="storageConfig" xsi:type="array">
+                        <item name="indexField" xsi:type="string">workflow_id</item>
+                    </item>
                 </item>
             </argument>
         </argument>

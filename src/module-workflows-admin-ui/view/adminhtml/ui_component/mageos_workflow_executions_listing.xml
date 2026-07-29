@@ -21,6 +21,12 @@
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
                     <item name="update_url" xsi:type="url" path="mui/index/render"/>
+                    <!-- REQUIRED — see mageos_workflows_listing.xml: data-storage keys its
+                         record cache by record[indexField] and defaults to 'entity_id',
+                         which no row here has, collapsing every record into one slot. -->
+                    <item name="storageConfig" xsi:type="array">
+                        <item name="indexField" xsi:type="string">execution_id</item>
+                    </item>
                     <!-- Lets the workflow edit form embed this listing pre-filtered to one
                          workflow ("*" = take from request; absent on the standalone page). -->
                     <item name="filter_url_params" xsi:type="array">
