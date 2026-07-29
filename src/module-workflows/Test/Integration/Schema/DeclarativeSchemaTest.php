@@ -79,6 +79,33 @@ class DeclarativeSchemaTest extends TestCase
     }
 
     /**
+     * JSON payloads are declared mediumtext, never xsi:type="json".
+     *
+     * MariaDB implements JSON as an alias for LONGTEXT, so the declarative-schema
+     * differ builds the declared column as Dto\Columns\Blob and the introspected one
+     * as Dto\Columns\Text; Comparator::compare() compares get_class() first, so a
+     * json column reports a modify_column that setup:upgrade can never clear. See
+     * docs/15-operations.md "Declarative schema and JSON columns".
+     */
+    public function testNoColumnIsDeclaredWithTheJsonType(): void
+    {
+        $moduleDir = Bootstrap::getObjectManager()
+            ->get(ComponentRegistrar::class)
+            ->getPath(ComponentRegistrar::MODULE, 'MageOS_Workflows');
+        $this->assertNotNull($moduleDir, 'MageOS_Workflows module dir not registered');
+
+        $schemaXml = (string)file_get_contents($moduleDir . '/etc/db_schema.xml');
+        preg_match_all('/<column[^>]*xsi:type="json"[^>]*name="([^"]+)"/', $schemaXml, $matches);
+
+        $this->assertSame(
+            [],
+            $matches[1],
+            'db_schema.xml declares xsi:type="json" column(s) — use mediumtext instead, '
+            . 'json never compares equal on MariaDB and leaves setup:db:status permanently dirty'
+        );
+    }
+
+    /**
      * @magentoDbIsolation enabled
      */
     public function testDeletingWorkflowCascadesWebsiteLinksRevisionsAndExecutions(): void

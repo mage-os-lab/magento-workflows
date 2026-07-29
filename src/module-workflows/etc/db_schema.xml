@@ -1,6 +1,20 @@
 <?xml version="1.0"?>
 <schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <!--
+        JSON payload columns are declared `mediumtext`, never `xsi:type="json"`.
+
+        MariaDB implements JSON as an alias for LONGTEXT plus an automatic
+        CHECK (json_valid(col)) constraint, so `information_schema.COLUMNS.DATA_TYPE`
+        reads back `longtext`. Magento's declarative-schema differ instantiates the
+        declared column through Dto\Factories\Json (-> Dto\Columns\Blob) and the
+        introspected one through Dto\Factories\LongText (-> Dto\Columns\Text), and
+        Comparator::compare() starts with get_class($first) === get_class($second).
+        Blob !== Text, so a `json` column can never compare equal on MariaDB: every
+        `setup:db:status` reports a modify_column that `setup:upgrade` cannot clear.
+        `mediumtext` maps to Dto\Columns\Text on both sides and round-trips cleanly.
+        See issue #25.
+    -->
     <table name="mageos_workflow" resource="default" engine="innodb" comment="Mage-OS Workflow Definitions">
         <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" identity="true"
                 comment="Workflow ID"/>
@@ -15,14 +29,14 @@
                 comment="Entity Type (sales_order, customer, catalog_product, ...)"/>
         <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
                 comment="Serialized Rule Condition Tree"/>
-        <column xsi:type="json" name="definition" nullable="false" comment="Step Graph Definition JSON"/>
-        <column xsi:type="json" name="aggregation" nullable="true"
+        <column xsi:type="mediumtext" name="definition" nullable="false" comment="Step Graph Definition JSON"/>
+        <column xsi:type="mediumtext" name="aggregation" nullable="true"
                 comment="Batch Aggregation Config JSON (05); null = per-entity workflow, non-null = aggregated"/>
         <column xsi:type="int" name="version" unsigned="true" nullable="false" default="1"
                 comment="Definition Version"/>
         <column xsi:type="smallint" name="loop_guard_depth" unsigned="true" nullable="false" default="1"
                 comment="Loop Guard Depth"/>
-        <column xsi:type="json" name="fan_out" nullable="true"
+        <column xsi:type="mediumtext" name="fan_out" nullable="true"
                 comment="Trigger-Level Fan-Out Config JSON {relation, cap}; null = no fan-out (F1)"/>
         <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
                 comment="Created At"/>
@@ -62,7 +76,7 @@
                 comment="Revision ID"/>
         <column xsi:type="int" name="workflow_id" unsigned="true" nullable="false" comment="Workflow ID"/>
         <column xsi:type="int" name="version" unsigned="true" nullable="false" comment="Archived Definition Version"/>
-        <column xsi:type="json" name="definition" nullable="false" comment="Archived Step Graph Definition JSON"/>
+        <column xsi:type="mediumtext" name="definition" nullable="false" comment="Archived Step Graph Definition JSON"/>
         <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
                 comment="Archived Serialized Rule Condition Tree"/>
         <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
@@ -98,7 +112,7 @@
                 comment="Trigger Type That Dispatched This Execution (event|schedule|manual); null on legacy rows"/>
         <column xsi:type="varchar" name="mode" length="16" nullable="false" default="live"
                 comment="Execution Mode (live|dry_run) — dry-run feature marker only, NOT a side-effect predicate"/>
-        <column xsi:type="json" name="context" nullable="true"
+        <column xsi:type="mediumtext" name="context" nullable="true"
                 comment="Context Variable Bag JSON (trigger snapshot + step outputs)"/>
         <column xsi:type="smallint" name="chain_depth" unsigned="true" nullable="false" default="0"
                 comment="Chain Depth (loop guard)"/>
@@ -145,7 +159,7 @@
         <column xsi:type="varchar" name="step_key" length="64" nullable="false" comment="Step Key"/>
         <column xsi:type="varchar" name="status" length="16" nullable="false"
                 comment="Status (pending|running|waiting|complete|failed|skipped)"/>
-        <column xsi:type="json" name="result" nullable="true" comment="Action Output JSON"/>
+        <column xsi:type="mediumtext" name="result" nullable="true" comment="Action Output JSON"/>
         <column xsi:type="text" name="error" nullable="true" comment="Error Message"/>
         <column xsi:type="timestamp" name="resume_at" on_update="false" nullable="true"
                 comment="Resume At (delay steps)"/>
@@ -239,7 +253,7 @@
                 comment="Batch Item ID"/>
         <column xsi:type="bigint" name="batch_id" unsigned="true" nullable="false" comment="Batch ID"/>
         <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" comment="Subject Entity ID"/>
-        <column xsi:type="json" name="snapshot" nullable="true"
+        <column xsi:type="mediumtext" name="snapshot" nullable="true"
                 comment="Projected, Capped Entity Snapshot JSON"/>
         <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false"
                 default="CURRENT_TIMESTAMP" comment="Created At"/>
@@ -283,7 +297,7 @@
                 comment="Installed Template Code"/>
         <column xsi:type="varchar" name="template_version" length="64" nullable="false"
                 comment="Installed Template Version (fork-on-install; no upgrade path in v1)"/>
-        <column xsi:type="json" name="parameters" nullable="true"
+        <column xsi:type="mediumtext" name="parameters" nullable="true"
                 comment="Parameter Values Snapshot JSON (never secret values; secret params record key names only)"/>
         <column xsi:type="varchar" name="installed_by" length="128" nullable="false" default="system"
                 comment="Installer (admin username, or 'system' for CLI/patch)"/>
