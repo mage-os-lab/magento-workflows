@@ -1,0 +1,64 @@
+# PHPStan configuration for the Mage-OS Workflow Engine monorepo.
+#
+# WHERE THIS RUNS
+# ---------------
+# Static analysis of a Magento module needs the Magento framework's symbols, so
+# this config is only useful when a real Magento install is available. The
+# `static-analysis` job in .github/workflows/check-extension.yml installs one
+# (newest supported line) exactly like the unit/compile jobs, then writes a tiny
+# overlay config that points PHPStan at it:
+#
+#     includes:
+#         - phpstan.neon.dist
+#     parameters:
+#         magento:
+#             magentoRoot: /path/to/magento
+#         bootstrapFiles:
+#             - /path/to/magento/vendor/autoload.php
+#
+#     vendor/bin/phpstan analyse -c phpstan-ci.neon
+#
+# PHPStan is always run from THIS directory (the monorepo root) against `src/`,
+# not against the copies Composer installs under
+# <magento>/vendor/mage-os/workflows*. That keeps reported paths — and therefore
+# every entry in phpstan-baseline.neon — stable and repo-relative.
+#
+# To reproduce locally: install any supported Magento, `composer install` here,
+# write the overlay above, and run the same command.
+includes:
+    # ObjectManager/factory/proxy/extension-attribute awareness. Without this the
+    # generated `*Factory`, `*\Proxy` and `*Extension(Interface)` classes that
+    # Magento only materialises during setup:di:compile would be reported as
+    # unknown types across most of this codebase.
+    - vendor/bitexpert/phpstan-magento/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    # Level 6 = the tier issue #8 asked for: unknown/wrong types, dead code and
+    # missing return types, without the level 7+ strictness cliff.
+    level: 6
+
+    paths:
+        - src
+
+    excludePaths:
+        analyseAndScan:
+            # Test doubles are deliberately loose (partial interfaces, widened
+            # params); they are covered by phpunit, not by phpstan. Mirrors the
+            # exclusions in phpcs.xml.dist.
+            - src/*/Test/*
+            # Built JS/CSS bundles and the canvas TypeScript app: no PHP, and
+            # the TS side already has `tsc` typecheck in canvas.yml.
+            - src/*/view/*/web/js/dist/*
+            - src/*/app/*
+
+    # bitexpert/phpstan-magento also ships four opinionated architecture rules.
+    # They are orthogonal to the type-level analysis this issue is about and
+    # would bloat the initial baseline, so they start off; turn them on in a
+    # follow-up once the type baseline is burned down.
+    magento:
+        checkCollectionViaFactory: false
+        checkServiceContracts: false
+        checkResourceModelsUsedDirectly: false
+    extdn:
+        setTemplateDisallowedForBlockClasses: false
