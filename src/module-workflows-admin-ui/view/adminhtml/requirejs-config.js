@@ -8,7 +8,8 @@
 var config = {
     map: {
         '*': {
-            mageosWorkflowsConditions: 'MageOS_WorkflowsAdminUi/js/conditions-slideout'
+            mageosWorkflowsConditions: 'MageOS_WorkflowsAdminUi/js/conditions-slideout',
+            mageosWorkflowsDefinitionPreview: 'MageOS_WorkflowsAdminUi/js/definition-preview'
         }
     }
 };

@@ -6,14 +6,24 @@
  * Server-renders the saved definition on load; the "Refresh preview" button
  * re-runs the F2 pipeline over the unsaved textarea content (implementation
  * plan 01, stage 3). No live-keystroke JS.
+ *
+ * MUST NOT contain an inline script tag. This panel reaches the form through a
+ * ui_component htmlContent node, so this rendered HTML is serialized as a JSON
+ * string inside the form's text/x-magento-init element — an inline closing
+ * script tag here terminates that outer tag at parse time, and the whole form
+ * silently fails to initialize (full-page mask, no fields, no console error).
+ * The behaviour lives in the mageosWorkflowsDefinitionPreview RequireJS module,
+ * booted declaratively below; peer convention: conditions_editor.phtml.
  */
 $result = $block->getInitialResult();
 $initialText = $result !== null
     ? $result->getPlainLanguage()
     : (string) __('Save the workflow, or use "Refresh preview" below, to see a plain-language summary of this definition.');
 $initialMessages = $result !== null ? $result->getMessages() : [];
+$mageInit = $block->escapeHtmlAttr('{"mageosWorkflowsDefinitionPreview": {}}');
 ?>
 <div class="mageos-workflows-definition-preview"
+     data-mage-init='<?= /* @noEscape */ $mageInit ?>'
      data-refresh-url="<?= $block->escapeUrl($block->getRefreshUrl()) ?>"
      data-form-key="<?= $block->escapeHtmlAttr($block->getFormKey()) ?>">
     <div class="admin__field">
@@ -49,69 +59,3 @@ $initialMessages = $result !== null ? $result->getMessages() : [];
         </div>
     </div>
 </div>
-<script>
-require(['jquery', 'mage/translate'], function ($) {
-    'use strict';
-
-    var $root = $('.mageos-workflows-definition-preview'),
-        labels = {
-            error: $.mage.__('Error'),
-            warning: $.mage.__('Warning'),
-            step: $.mage.__('step'),
-            failed: $.mage.__('The preview could not be generated for this definition.')
-        };
-
-    function fieldValue(name) {
-        var $el = $('[name="' + name + '"]');
-        return $el.length ? ($el.val() || '') : '';
-    }
-
-    function renderMessages(messages) {
-        var $container = $root.find('.mageos-workflows-preview-messages').empty();
-
-        (messages || []).forEach(function (msg) {
-            var isError = msg.severity === 'error',
-                cls = isError ? 'message-error error' : 'message-warning warning',
-                label = isError ? labels.error : labels.warning,
-                anchor = msg.step_key ? ' — ' + labels.step + ' "' + msg.step_key + '"' : '',
-                $msg = $('<div/>', {'class': 'message ' + cls}),
-                $span = $('<span/>');
-
-            $span.append($('<strong/>').text(label + anchor + ':'));
-            $span.append(document.createTextNode(' ' + (msg.message || '')));
-            $msg.append($span);
-            $container.append($msg);
-        });
-    }
-
-    $(document).on('click', '#mageos-workflows-preview-refresh', function () {
-        $.ajax({
-            url: $root.data('refresh-url'),
-            type: 'POST',
-            dataType: 'json',
-            showLoader: true,
-            data: {
-                form_key: $root.data('form-key'),
-                definition: fieldValue('definition'),
-                conditions_serialized: fieldValue('conditions_serialized'),
-                trigger_type: fieldValue('trigger_type'),
-                trigger_ref: fieldValue('trigger_ref'),
-                entity_type: fieldValue('entity_type')
-            }
-        }).done(function (response) {
-            if (!response || !response.success) {
-                $root.find('.mageos-workflows-preview-text').text(
-                    (response && response.error) || labels.failed
-                );
-                renderMessages([]);
-                return;
-            }
-            $root.find('.mageos-workflows-preview-text').text(response.plain_language || '');
-            renderMessages(response.messages);
-        }).fail(function () {
-            $root.find('.mageos-workflows-preview-text').text(labels.failed);
-            renderMessages([]);
-        });
-    });
-});
-</script>
