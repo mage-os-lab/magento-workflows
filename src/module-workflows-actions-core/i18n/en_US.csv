@@ -22,3 +22,4 @@
 "Webhook returned HTTP %1","Webhook returned HTTP %1"
 "Webhook URLs must use HTTPS","Webhook URLs must use HTTPS"
 "Webhook URLs must use HTTPS (plain HTTP requires both the step flag and the global config opt-in)","Webhook URLs must use HTTPS (plain HTTP requires both the step flag and the global config opt-in)"
+"Workflow Ad-hoc Email","Workflow Ad-hoc Email"
