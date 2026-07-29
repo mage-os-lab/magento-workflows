@@ -46,8 +46,11 @@ class ApprovalAclTest extends TestCase
 
     public function testDefaultGridFilterIsStatusOpen(): void
     {
+        // Nested under _query on purpose: as a bare route param the nested array
+        // is dropped by Magento\Framework\Url (is_scalar guard), the redirect
+        // target arrives without filters_modifier, and Index::execute() loops.
         $this->assertSame(
-            ['filters_modifier' => ['status' => ['condition_type' => 'eq', 'value' => 'open']]],
+            ['_query' => ['filters_modifier' => ['status' => ['condition_type' => 'eq', 'value' => 'open']]]],
             Index::defaultFilterParams()
         );
     }

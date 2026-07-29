@@ -1,26 +1,14 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <!-- Grid data source: independent SearchResult scan over the raw table,
-         same convention as admin-ui's own grid virtualTypes. -->
-    <virtualType name="MageOS\WorkflowsApprovals\Model\ResourceModel\Approval\Grid\Collection"
-                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
-        <arguments>
-            <argument name="mainTable" xsi:type="string">mageos_workflow_approval</argument>
-            <argument name="resourceModel" xsi:type="string">MageOS\WorkflowsApprovals\Model\ResourceModel\Approval</argument>
-        </arguments>
-    </virtualType>
-
-    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
-        <arguments>
-            <argument name="collections" xsi:type="array">
-                <item name="mageos_workflow_approvals_listing_data_source" xsi:type="string">MageOS\WorkflowsApprovals\Model\ResourceModel\Approval\Grid\Collection</item>
-            </argument>
-        </arguments>
-    </type>
+    <!-- The grid data source and the entity deep-link map are declared in the module's
+         global etc/di.xml, NOT here: area DI is layered onto global config with a
+         shallow array_replace(), so an array argument declared in this scope replaces
+         the global one wholesale instead of merging into it. See etc/di.xml. -->
 
     <!-- Mass actions operate on the full domain collection, same convention as
-         admin-ui's Workflow MassEnable/MassDisable. -->
+         admin-ui's Workflow MassEnable/MassDisable. Scalar object arguments,
+         safe to bind per-area. -->
     <type name="MageOS\WorkflowsApprovals\Controller\Adminhtml\Approval\MassApprove">
         <arguments>
             <argument name="collectionFactory" xsi:type="object">MageOS\WorkflowsApprovals\Model\ResourceModel\Approval\CollectionFactory</argument>
@@ -29,42 +17,6 @@
     <type name="MageOS\WorkflowsApprovals\Controller\Adminhtml\Approval\MassReject">
         <arguments>
             <argument name="collectionFactory" xsi:type="object">MageOS\WorkflowsApprovals\Model\ResourceModel\Approval\CollectionFactory</argument>
-        </arguments>
-    </type>
-
-    <!-- Entity deep-link map (docs/discovery/approval-gate.md §6 grid + decision
-         view): the DI-registered extensibility surface, same convention as
-         MageOS\WorkflowsAdminExtension\ViewModel\GridStrip's $gridHandleMap — a
-         third party widens coverage with one entry, no code change. Covers the
-         native entity types the admin-extension grid strip already lists. -->
-    <type name="MageOS\WorkflowsApprovals\Model\EntityUrlResolver">
-        <arguments>
-            <argument name="entityRouteMap" xsi:type="array">
-                <item name="sales_order" xsi:type="array">
-                    <item name="route" xsi:type="string">sales/order/view</item>
-                    <item name="param" xsi:type="string">order_id</item>
-                </item>
-                <item name="customer" xsi:type="array">
-                    <item name="route" xsi:type="string">customer/index/edit</item>
-                    <item name="param" xsi:type="string">id</item>
-                </item>
-                <item name="catalog_product" xsi:type="array">
-                    <item name="route" xsi:type="string">catalog/product/edit</item>
-                    <item name="param" xsi:type="string">id</item>
-                </item>
-                <item name="invoice" xsi:type="array">
-                    <item name="route" xsi:type="string">sales/order_invoice/view</item>
-                    <item name="param" xsi:type="string">invoice_id</item>
-                </item>
-                <item name="shipment" xsi:type="array">
-                    <item name="route" xsi:type="string">sales/order_shipment/view</item>
-                    <item name="param" xsi:type="string">shipment_id</item>
-                </item>
-                <item name="creditmemo" xsi:type="array">
-                    <item name="route" xsi:type="string">sales/order_creditmemo/view</item>
-                    <item name="param" xsi:type="string">creditmemo_id</item>
-                </item>
-            </argument>
         </arguments>
     </type>
 </config>

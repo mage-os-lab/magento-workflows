@@ -55,6 +55,71 @@
         </arguments>
     </type>
 
+    <!-- Grid data source: independent SearchResult scan over the raw table,
+         same convention as admin-ui's own grid virtualTypes.
+
+         MUST live in global etc/di.xml, never etc/adminhtml/di.xml. Area DI config is
+         layered onto the global config by Magento\Framework\ObjectManager\Config\Config
+         using array_replace() — a SHALLOW replace keyed by argument name. An area-scope
+         `collections` argument therefore replaces the whole global map rather than
+         merging into it, unregistering every core grid (customer_listing_data_source,
+         sales_order_grid_data_source, ...) and breaking the native admin grids with
+         "Not registered handle <name>". Core registers these globally for this reason. -->
+    <virtualType name="MageOS\WorkflowsApprovals\Model\ResourceModel\Approval\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">mageos_workflow_approval</argument>
+            <argument name="resourceModel" xsi:type="string">MageOS\WorkflowsApprovals\Model\ResourceModel\Approval</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="mageos_workflow_approvals_listing_data_source" xsi:type="string">MageOS\WorkflowsApprovals\Model\ResourceModel\Approval\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Entity deep-link map (docs/discovery/approval-gate.md §6 grid + decision
+         view): the DI-registered extensibility surface, same convention as
+         MageOS\WorkflowsAdminExtension\ViewModel\GridStrip's $gridHandleMap — a
+         third party widens coverage with one entry, no code change. Covers the
+         native entity types the admin-extension grid strip already lists.
+         Global scope for the same array_replace reason as above: a third party
+         declaring routes in global di.xml must not be wiped by an area-scope
+         declaration here. -->
+    <type name="MageOS\WorkflowsApprovals\Model\EntityUrlResolver">
+        <arguments>
+            <argument name="entityRouteMap" xsi:type="array">
+                <item name="sales_order" xsi:type="array">
+                    <item name="route" xsi:type="string">sales/order/view</item>
+                    <item name="param" xsi:type="string">order_id</item>
+                </item>
+                <item name="customer" xsi:type="array">
+                    <item name="route" xsi:type="string">customer/index/edit</item>
+                    <item name="param" xsi:type="string">id</item>
+                </item>
+                <item name="catalog_product" xsi:type="array">
+                    <item name="route" xsi:type="string">catalog/product/edit</item>
+                    <item name="param" xsi:type="string">id</item>
+                </item>
+                <item name="invoice" xsi:type="array">
+                    <item name="route" xsi:type="string">sales/order_invoice/view</item>
+                    <item name="param" xsi:type="string">invoice_id</item>
+                </item>
+                <item name="shipment" xsi:type="array">
+                    <item name="route" xsi:type="string">sales/order_shipment/view</item>
+                    <item name="param" xsi:type="string">shipment_id</item>
+                </item>
+                <item name="creditmemo" xsi:type="array">
+                    <item name="route" xsi:type="string">sales/order_creditmemo/view</item>
+                    <item name="param" xsi:type="string">creditmemo_id</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Park notification (§6): the gate owns this because only the gate knows
          the task uuid (createTask's return value). An `around` plugin on the
          INTERFACE (not the concrete ApprovalTaskManager) so any future

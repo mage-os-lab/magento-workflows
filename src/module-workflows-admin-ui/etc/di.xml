@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Grid data sources: independent SearchResult scans over the raw tables, decoupled
+         from the (potentially heavier / joined) domain collections used elsewhere.
+
+         MUST live in global etc/di.xml, never etc/adminhtml/di.xml. Area DI config is
+         layered onto the global config by Magento\Framework\ObjectManager\Config\Config,
+         which merges with array_replace() — a SHALLOW replace keyed by argument name. An
+         area-scope `collections` argument therefore does not merge item-by-item with the
+         global one; it replaces the whole map, silently unregistering every core grid
+         (customer_listing_data_source, sales_order_grid_data_source, ...) and breaking the
+         native admin grids with "Not registered handle <name>" from
+         View/Element/UiComponent/DataProvider/CollectionFactory. Core registers these
+         globally for exactly this reason (see Magento_Customer, Magento_Sales etc/di.xml). -->
+    <virtualType name="MageOS\WorkflowsAdminUi\Model\ResourceModel\Workflow\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">mageos_workflow</argument>
+            <argument name="resourceModel" xsi:type="string">MageOS\Workflows\Model\ResourceModel\Workflow</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="MageOS\WorkflowsAdminUi\Model\ResourceModel\WorkflowExecution\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">mageos_workflow_execution</argument>
+            <argument name="resourceModel" xsi:type="string">MageOS\Workflows\Model\ResourceModel\WorkflowExecution</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="mageos_workflows_listing_data_source" xsi:type="string">MageOS\WorkflowsAdminUi\Model\ResourceModel\Workflow\Grid\Collection</item>
+                <item name="mageos_workflow_executions_listing_data_source" xsi:type="string">MageOS\WorkflowsAdminUi\Model\ResourceModel\WorkflowExecution\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Dry-run entity picker (03): per-entity-type recent-entity providers.
+         New entity types append their own provider here. Global scope for the same
+         array_replace reason as above — an extension declaring its provider in global
+         di.xml would otherwise be wiped by an area-scope declaration here. -->
+    <type name="MageOS\Workflows\Model\DryRun\RecentEntityProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="sales_order" xsi:type="object">MageOS\WorkflowsAdminUi\Model\DryRun\OrderRecentEntityProvider</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

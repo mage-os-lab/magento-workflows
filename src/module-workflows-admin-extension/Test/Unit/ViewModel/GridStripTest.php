@@ -133,7 +133,8 @@ class GridStripTest extends TestCase
 
         $call = $url->calls[0];
         $this->assertSame('mageos_workflows/workflow/index', $call['route']);
-        $modifier = $call['params']['filters_modifier']['entity_type'];
+        // Must be under _query — a nested route param is dropped by Magento\Framework\Url.
+        $modifier = $call['params']['_query']['filters_modifier']['entity_type'];
         $this->assertSame('eq', $modifier['condition_type']);
         $this->assertSame('sales_order', $modifier['value']);
     }

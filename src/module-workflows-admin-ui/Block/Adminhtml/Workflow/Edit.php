@@ -3,31 +3,96 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow;
 
-use Magento\Backend\Block\Widget\Form\Container;
+use Magento\Backend\Block\Widget\Container;
+use Magento\Backend\Block\Widget\Context;
+use Magento\Framework\Module\Manager;
 
+/**
+ * Button toolbar + header for the workflow edit page. Deliberately NOT
+ * Widget\Form\Container — that base class synthesizes a legacy
+ * "{blockGroup}\Block\{controller}\{mode}\Form" child by convention, and this
+ * page renders the mageos_workflows_form uiComponent instead; the phantom
+ * class made the whole page throw "Invalid block type" on a real install.
+ * Same reasoning (and same fix) as Workflow\Index, which hit the Grid\Container
+ * variant of the identical trap.
+ *
+ * Because plain Widget\Container adds no buttons of its own, the standard
+ * back / reset / delete / save set that Widget\Form\Container::_construct()
+ * used to contribute is reproduced explicitly below, with the same labels,
+ * classes, sort orders and onclick/data-attribute payloads.
+ */
 class Edit extends Container
 {
+    private Manager $moduleManager;
+
+    public function __construct(
+        Context $context,
+        Manager $moduleManager,
+        array $data = []
+    ) {
+        // Assigned before parent::__construct(): AbstractBlock's constructor
+        // calls _construct(), which reads this property.
+        $this->moduleManager = $moduleManager;
+        parent::__construct($context, $data);
+    }
+
     protected function _construct(): void
     {
-        $this->_objectId = 'workflow_id';
-        $this->_blockGroup = 'MageOS_WorkflowsAdminUi';
-        $this->_controller = 'adminhtml_workflow';
         parent::_construct();
 
-        $this->buttonList->update('save', 'label', __('Save Workflow'));
+        $this->addButton(
+            'back',
+            [
+                'label' => __('Back'),
+                'onclick' => sprintf("setLocation('%s')", $this->getUrl('*/*/')),
+                'class' => 'back',
+            ],
+            -1
+        );
+        $this->addButton(
+            'reset',
+            [
+                'label' => __('Reset'),
+                'onclick' => 'setLocation(window.location.href)',
+                'class' => 'reset',
+            ],
+            -1
+        );
+        $this->addButton(
+            'save',
+            [
+                'label' => __('Save Workflow'),
+                'class' => 'save primary',
+                'data_attribute' => [
+                    'mage-init' => ['button' => ['event' => 'save', 'target' => '#edit_form']],
+                ],
+            ],
+            1
+        );
 
-        if (!$this->getWorkflowId()) {
-            $this->buttonList->remove('delete');
-        } elseif ($this->_authorization->isAllowed('MageOS_Workflows::manual_run')) {
-            $this->buttonList->add(
-                'run_now',
+        if ($this->getWorkflowId()) {
+            $confirmMessage = $this->escapeJs($this->escapeHtml(__('Are you sure you want to do this?')));
+            $deleteUrl = $this->getUrl('*/*/delete', ['workflow_id' => $this->getWorkflowId()]);
+            $this->addButton(
+                'delete',
                 [
-                    'label' => __('Run Now'),
-                    'class' => 'action-secondary',
-                    'onclick' => $this->getRunNowOnclick(),
-                    'sort_order' => 30,
+                    'label' => __('Delete'),
+                    'class' => 'delete',
+                    'onclick' => sprintf("deleteConfirm('%s', '%s', {data: {}})", $confirmMessage, $deleteUrl),
                 ]
             );
+
+            if ($this->_authorization->isAllowed('MageOS_Workflows::manual_run')) {
+                $this->buttonList->add(
+                    'run_now',
+                    [
+                        'label' => __('Run Now'),
+                        'class' => 'action-secondary',
+                        'onclick' => $this->getRunNowOnclick(),
+                        'sort_order' => 30,
+                    ]
+                );
+            }
         }
 
         if ($this->_authorization->isAllowed('MageOS_Workflows::dry_run')) {
@@ -47,7 +112,7 @@ class Edit extends Container
         // Managers reach the ::manage editor controller; ::view-only admins get
         // the read-only viewer (both render the same mount, the React app and
         // the write controllers gate editing on ::manage independently).
-        if ($this->getWorkflowId() && $this->_moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
+        if ($this->getWorkflowId() && $this->moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
             $canvasRoute = $this->_authorization->isAllowed('MageOS_Workflows::manage')
                 ? 'mageos_workflows_canvas/canvas/edit'
                 : 'mageos_workflows_canvas/canvas/view';

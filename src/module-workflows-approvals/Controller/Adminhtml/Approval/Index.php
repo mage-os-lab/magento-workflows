@@ -50,13 +50,24 @@ class Index extends Action implements HttpGetActionInterface
     }
 
     /**
+     * The modifier MUST travel as a query string (`_query`), not as a plain route
+     * param. Magento\Framework\Url::_getRoutePath() builds route params into
+     * `key/value/` path segments and skips any value failing `is_scalar()`, so a
+     * nested `filters_modifier` array handed over as a route param is silently
+     * dropped from the generated URL. The redirect target then arrives with
+     * filters_modifier still null, execute() redirects again, and the page loops
+     * forever. `_query` is unset from the route params by Url::createUrl() and
+     * serialized with http_build_query(), which handles nesting correctly.
+     *
      * @return array<string, mixed>
      */
     public static function defaultFilterParams(): array
     {
         return [
-            'filters_modifier' => [
-                'status' => ['condition_type' => 'eq', 'value' => ApprovalInterface::STATUS_OPEN],
+            '_query' => [
+                'filters_modifier' => [
+                    'status' => ['condition_type' => 'eq', 'value' => ApprovalInterface::STATUS_OPEN],
+                ],
             ],
         ];
     }

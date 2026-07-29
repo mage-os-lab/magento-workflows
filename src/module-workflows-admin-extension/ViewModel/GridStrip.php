@@ -98,11 +98,19 @@ class GridStrip implements ArgumentInterface
      */
     public function getViewUrl(string $entityType): string
     {
+        // `_query`, not a bare route param: Magento\Framework\Url::_getRoutePath()
+        // skips non-scalar route param values (is_scalar() guard) when building
+        // `key/value/` path segments, so a nested filters_modifier array passed
+        // as a route param is silently dropped and the deep link lands on an
+        // unfiltered grid. `_query` is serialized with http_build_query(), which
+        // preserves nesting.
         return $this->urlBuilder->getUrl(
             'mageos_workflows/workflow/index',
             [
-                'filters_modifier' => [
-                    'entity_type' => ['condition_type' => 'eq', 'value' => $entityType],
+                '_query' => [
+                    'filters_modifier' => [
+                        'entity_type' => ['condition_type' => 'eq', 'value' => $entityType],
+                    ],
                 ],
             ]
         );
