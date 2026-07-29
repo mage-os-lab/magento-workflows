@@ -60,11 +60,11 @@ jobs:
       - name: CSP gate — no eval / new Function in the bundle
         run: |
           set -e
-          if grep -nE '[^a-zA-Z0-9_.]eval\(|new +Function' ../web/js/dist/canvas.js; then
+          if grep -nE '[^a-zA-Z0-9_.]eval\(|new +Function' ../view/adminhtml/web/js/dist/canvas.js; then
             echo "::error::eval/new Function found in built bundle (CSP violation)"
             exit 1
           fi
           echo "No eval / new Function in the bundle."
 
       - name: Drift check — committed dist matches a fresh build
-        run: git diff --exit-code ../web/js/dist
+        run: git diff --exit-code ../view/adminhtml/web/js/dist

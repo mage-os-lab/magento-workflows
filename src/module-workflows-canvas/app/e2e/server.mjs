@@ -1,5 +1,6 @@
 // Minimal static file server for the Playwright smoke. Rooted at the canvas
-// MODULE directory so both /app/e2e/fixtures/* and the built /web/js/dist/*
+// MODULE directory so both /app/e2e/fixtures/* and the built
+// /view/adminhtml/web/js/dist/*
 // bundle are reachable by absolute path from the mock admin page. POSTs to the
 // mock save/validate endpoints are answered 200 so the smoke can assert on the
 // intercepted request (via page.route) without a running Magento.

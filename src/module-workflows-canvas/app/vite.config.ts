@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
 /**
- * Builds a single self-contained IIFE bundle to ../web/js/dist/canvas.js.
+ * Builds a single self-contained IIFE bundle to
+ * ../view/adminhtml/web/js/dist/canvas.js.
+ *
+ * The output MUST live under view/<area>/web/ — a module-root web/ directory is
+ * not a static-file location in Magento, so getViewFileUrl() /
+ * setup:static-content:deploy cannot resolve anything there (issue #26).
  *
  * CSP posture (docs/discovery/canvas.md §3): no CDN, no runtime fetch to any
  * third-party host, no inline script. React + @xyflow/react + elkjs are all
@@ -17,7 +22,7 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   build: {
-    outDir: resolve(__dirname, '../web/js/dist'),
+    outDir: resolve(__dirname, '../view/adminhtml/web/js/dist'),
     emptyOutDir: true,
     target: 'es2019',
     minify: 'esbuild',

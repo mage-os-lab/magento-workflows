@@ -2,7 +2,7 @@
   "name": "@mageos/workflows-canvas-app",
   "private": true,
   "version": "0.1.0",
-  "description": "React Flow visual canvas for Mage-OS Workflows. Built to ../web/js/dist/canvas.js (IIFE). Not executed by Magento tooling.",
+  "description": "React Flow visual canvas for Mage-OS Workflows. Built to ../view/adminhtml/web/js/dist/canvas.js (IIFE). Not executed by Magento tooling.",
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",

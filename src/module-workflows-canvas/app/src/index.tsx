@@ -9,7 +9,7 @@ import { MOUNT_SELECTOR, readMountConfig } from './mountConfig';
 /**
  * IIFE entry. Finds the CSP-safe mount div, reads its data-config, and mounts
  * React. No inline script, no eval — this file is bundled to a single
- * self-contained web/js/dist/canvas.js.
+ * self-contained view/adminhtml/web/js/dist/canvas.js.
  */
 function mount(): void {
   const el = document.querySelector(MOUNT_SELECTOR);

@@ -20,7 +20,9 @@ src/module-workflows-canvas/
       confirms this channel. ADMIN_RESOURCE: MageOS_Workflows::view for the read-only viewer
       controller, ::manage for the editor controller; no new menu node — entry links live on the
       workflow grid/form and execution view
-  web/js/dist/canvas.js                built IIFE bundle, committed per release tag
+  view/adminhtml/web/js/dist/canvas.js built IIFE bundle, committed per release tag (must live
+                                       under view/<area>/web/ — a module-root web/ is not a
+                                       static-file location in Magento)
   app/                                 the npm workspace (TS + React 18 + @xyflow/react + elkjs,
                                        Vite build, vitest) — never executed by Magento tooling
 ```
@@ -28,7 +30,8 @@ src/module-workflows-canvas/
 Toolchain rules: no CDN/runtime fetches; pinned majors; the npm lockfile lives in this module
 only. CI: a **new** `.github/workflows/canvas.yml` (the existing `lint.yml` has no Node at all)
 — setup-node, `npm ci && npm run build` in `app/`, then
-`git diff --exit-code src/module-workflows-canvas/web/js/dist` (drift = failing check), plus the
+`git diff --exit-code src/module-workflows-canvas/view/adminhtml/web/js/dist` (drift = failing
+check), plus the
 vitest run; the Playwright smoke gets its browser-install step here too.
 
 ## Components

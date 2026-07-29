@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Canvas smoke — mock admin mount</title>
-  <link rel="stylesheet" href="/web/js/dist/canvas.css" />
+  <link rel="stylesheet" href="/view/adminhtml/web/js/dist/canvas.css" />
 </head>
 <body>
   <!--
@@ -17,6 +17,6 @@
     data-role="mageos-workflows-canvas"
     data-config='{"workflowId":5,"executionId":null,"knownSchemaVersion":3,"grants":{"manage":true,"dryRun":false},"endpoints":{"executionSteps":"/__steps","dryRun":"/__dry","validate":"/__validate","options":"/__options","save":"/__save"},"formKey":"test-form-key","workflow":{"id":5,"name":"Smoke Workflow","status":2,"entityType":"sales_order","triggerType":"event","triggerRef":"sales.order.created","conditionsSerialized":null,"loopGuardDepth":1,"websiteIds":[],"fanOutRelation":"","fanOutCap":"","definition":{"schema":3,"entry":"s1","steps":{"s1":{"type":"action","action":"order.add_comment","config":{},"next":null}},"ui":{"nodes":{"s1":{"x":120,"y":80}}}}},"actions":{"order.add_comment":{"label":"Add Comment","group":"Sales"}},"actionsMeta":[{"code":"order.add_comment","label":"Add Comment","group":"Sales","applicableEntities":["sales_order"],"configForm":[],"aclResource":null}],"triggers":[],"secrets":[]}'
   ></div>
-  <script src="/web/js/dist/canvas.js"></script>
+  <script src="/view/adminhtml/web/js/dist/canvas.js"></script>
 </body>
 </html>
