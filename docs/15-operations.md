@@ -351,7 +351,9 @@ To recover:
 ## First 10 minutes after install
 
 1. `bin/magento setup:upgrade` — creates the module's tables and registers its cron jobs
-   with Magento's schedule generator.
+   with Magento's schedule generator. `bin/magento setup:db:status` should report the
+   schema as up to date immediately afterwards; if it reports pending `modify_column`
+   changes on any of the suite's tables, see "Declarative schema and JSON columns" below.
 2. Confirm Magento cron is actually scheduled at the OS level (not just that
    `crontab.xml` exists) — `crontab -l` for the web user should show the Magento-managed
    entry.
@@ -369,3 +371,33 @@ To recover:
 6. Open the workflow grid in the admin UI — if anything above was missed, the health
    notice block will say so directly on that page from now on; on a fully healthy
    install it renders nothing.
+
+## Declarative schema and JSON columns
+
+Every column in the suite that stores a JSON payload is declared `mediumtext`, never
+`xsi:type="json"`. This is deliberate and should stay that way.
+
+MariaDB implements `JSON` as an alias for `LONGTEXT` plus an automatic
+`CHECK (json_valid(col))` constraint, so `information_schema.COLUMNS.DATA_TYPE` reads
+back `longtext`. Magento's declarative-schema differ builds the *declared* column via
+`Dto\Factories\Json` (which yields a `Dto\Columns\Blob`) and the *introspected* column
+via `Dto\Factories\LongText` (which yields a `Dto\Columns\Text`), and
+`Setup\Declaration\Schema\Comparator::compare()` begins with
+`get_class($first) === get_class($second)`. `Blob` never equals `Text`, so on MariaDB a
+`json` column can never compare equal no matter what its `nullable`, `default` or
+`comment` attributes are. The result is a permanent `modify_column` entry in
+`bin/magento setup:db:status` that `setup:upgrade` re-applies but can never clear,
+because the `ALTER ... MODIFY ... JSON` it emits produces a `longtext` column again.
+
+`mediumtext` resolves to `Dto\Columns\Text` on both the declared and the introspected
+side, so it round-trips cleanly on MariaDB *and* MySQL 8. 16 MB is far above any
+payload this suite writes.
+
+If you are upgrading from a build that still declared these columns as `json`, the first
+`setup:upgrade` after the change emits one `ALTER TABLE ... MODIFY ... mediumtext` per
+affected column. That is expected, runs once, and converts the column in place — no data
+is lost (MariaDB was already storing the value as text; MySQL 8 renders the JSON document
+to its text form). On MariaDB the `json_valid()` check constraint that came with the JSON
+alias is dropped along with the old column definition. Plan for a table rebuild on
+`mageos_workflow_execution_step` and `mageos_workflow_batch_item` if those tables are
+large.
