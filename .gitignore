@@ -4,4 +4,6 @@ composer.lock
 .vscode/
 *.swp
 .DS_Store
-/.claude/
+# Local agent state stays untracked; the checked-in agent skills do not.
+/.claude/*
+!/.claude/skills/
