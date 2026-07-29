@@ -102,8 +102,12 @@ There is no agent-specific code path, and deliberately so. A generated definitio
   per-action-group gates (`::action_sales`, `::action_customer`, …) apply unchanged, so an
   agent operating under a token that cannot author a cancel-order step cannot generate its
   way around that ([10 §Deferred privilege escalation](10-security.md#deferred-privilege-escalation-the-core-threat-model));
-- is subject to the same **execution-time scope re-check** — a workflow whose author lost
-  website scope gets suspended, not silently escalated;
+- will be subject to the same **execution-time scope re-check** when that control lands — the
+  design (a workflow whose author lost website scope gets suspended, not silently escalated)
+  is not yet implemented; see [#14](https://github.com/rhoerr/magento-workflows/issues/14)
+  and the status note in [10 §Deferred privilege escalation](10-security.md#deferred-privilege-escalation-the-core-threat-model).
+  Until it lands, this applies equally to human- and agent-authored workflows — neither gets
+  the re-check, so neither is disadvantaged, but the containment is the ACL at save time;
 - carries the same **import re-authorization** semantics: agent-generated JSON handed to
   `workflow:import` is untrusted input like any other
   ([10 §Import is untrusted input](10-security.md#import-is-untrusted-input)).
