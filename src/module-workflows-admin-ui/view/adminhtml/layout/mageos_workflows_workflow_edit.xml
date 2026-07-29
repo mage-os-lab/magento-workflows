@@ -3,7 +3,13 @@
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceContainer name="content">
-            <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit" name="mageos_workflows_workflow_edit"/>
+            <!-- No container block: the toolbar buttons are declared in
+                 mageos_workflows_form.xml's <settings><buttons> so that
+                 Magento\Ui\Component\Control\Container renders them with the ids
+                 Magento_Ui/js/form/adapter binds ('#save', '#reset'), and the page
+                 heading comes from the Edit controller's title->prepend(). A
+                 Widget\Form\Container here contributed idless buttons that the form
+                 never bound, and synthesized a phantom Edit\Form child block. -->
             <uiComponent name="mageos_workflows_form"/>
             <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\History" name="mageos_workflows_workflow_history"
                    template="MageOS_WorkflowsAdminUi::workflow/history.phtml" after="mageos_workflows_form"/>

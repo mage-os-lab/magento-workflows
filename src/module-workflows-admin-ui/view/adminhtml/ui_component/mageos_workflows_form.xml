@@ -8,6 +8,21 @@
         <item name="label" xsi:type="string" translate="true">General Information</item>
     </argument>
     <settings>
+        <!-- Toolbar buttons belong to the uiComponent, not to a Widget\Form\Container
+             block. Magento_Ui/js/form/adapter binds the form's save/reset handlers to
+             the literal selectors '#save' and '#reset' (Magento_Ui/js/form/adapter/buttons),
+             and Magento\Ui\Component\Control\Container is what emits those ids. The
+             previous container-block Save carried no id and targeted '#edit_form' — a
+             legacy adminhtml form id a uiComponent form never renders — so clicking it
+             did nothing at all. -->
+        <buttons>
+            <button name="back" class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit\BackButton"/>
+            <button name="delete" class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit\DeleteButton"/>
+            <button name="dry_run" class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit\DryRunButton"/>
+            <button name="run_now" class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit\RunNowButton"/>
+            <button name="visual_editor" class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit\VisualEditorButton"/>
+            <button name="save" class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit\SaveButton"/>
+        </buttons>
         <namespace>mageos_workflows_form</namespace>
         <dataScope>data</dataScope>
         <deps>
@@ -24,6 +39,13 @@
         <argument name="data" xsi:type="array">
             <item name="js_config" xsi:type="array">
                 <item name="component" xsi:type="string">Magento_Ui/js/form/provider</item>
+            </item>
+            <!-- Without this the form has nowhere to POST — the provider's client
+                 submits to config.submit_url. Declared in the argument/config style
+                 (identical config key to <settings><submitUrl>, and the style this
+                 dataSource already uses; cf. update_url in the executions listing). -->
+            <item name="config" xsi:type="array">
+                <item name="submit_url" xsi:type="url" path="mageos_workflows/workflow/save"/>
             </item>
         </argument>
     </dataSource>
@@ -233,7 +255,12 @@
                     <imports>false</imports>
                 </dataLinks>
                 <externalProvider>mageos_workflow_executions_listing.mageos_workflow_executions_listing_data_source</externalProvider>
-                <selectionsProvider>mageos_workflow_executions_listing.mageos_workflow_executions_listing.mageos_workflow_executions_columns.ids</selectionsProvider>
+                <!-- No <selectionsProvider>: the executions listing is read-only and
+                     declares no selectionsColumn, so the old pointer at
+                     ...mageos_workflow_executions_columns.ids named a component that
+                     never registers. insert-listing.js null-checks it rather than
+                     throwing, so it was dead config rather than a hang — but it would
+                     silently swallow any future massaction wiring. -->
                 <autoRender>true</autoRender>
                 <dataScope>workflow_executions</dataScope>
                 <ns>mageos_workflow_executions_listing</ns>
