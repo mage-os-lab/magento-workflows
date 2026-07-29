@@ -31,6 +31,7 @@ import {
 } from '../graphOps';
 import { canUndo, canRedo, initHistory, push, redo, undo, type History } from '../history';
 import { submitSave } from '../saveClient';
+import { armUnloadGuard, fingerprintDefinition, isDirty } from '../unsavedGuard';
 import {
   buildValidateRequest,
   debounce,
@@ -56,13 +57,42 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const [history, setHistory] = useState<History<Graph>>(() => initHistory(initialGraph));
   const graph = history.present;
 
-  const [layoutDirty, setLayoutDirty] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [pinned, setPinned] = useState<PinnedMessages>({ byNode: {}, document: [], hasErrors: false });
   const [status, setStatus] = useState<string>('');
   const [conditionStep, setConditionStep] = useState<string | null>(null);
 
   const readOnly = graph.readOnly;
+
+  // Serialize a graph exactly as a save would. One helper for both the save
+  // payload and the dirty comparison, so the two can never disagree about what
+  // "the current definition" is. Positions are always written: a bootstrapped
+  // or auto-laid-out layout must survive a save, not only a manual drag.
+  const definitionOf = useCallback(
+    (g: Graph) =>
+      toDefinition(g, {
+        positions: positionsOf(g),
+        existingUi: config.workflow?.definition?.ui,
+      }),
+    [config],
+  );
+  const definition = useMemo(() => definitionOf(graph), [definitionOf, graph]);
+
+  // ---- unsaved-changes guard (issue #18) ---------------------------------
+  // Refs rather than state: submitSave navigates away in the same tick it is
+  // called, so the guard must be disarmed synchronously on save — a state
+  // transition (and the effect cleanup it would schedule) lands too late.
+  const savedFingerprint = useRef<string | null>(null);
+  const dirty = useRef(false);
+  if (savedFingerprint.current === null) {
+    savedFingerprint.current = fingerprintDefinition(definition);
+  }
+
+  useEffect(() => {
+    dirty.current = isDirty(savedFingerprint.current ?? '', fingerprintDefinition(definition));
+  }, [definition]);
+
+  useEffect(() => armUnloadGuard(() => dirty.current), []);
 
   // Auto-layout once when the definition ships no ui block.
   useEffect(() => {
@@ -76,6 +106,10 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           ...h,
           present: moveAll(h.present, positions),
         }));
+        // A machine-generated first layout is not a user edit: re-baseline it
+        // (before the state lands, so the dirty effect sees it) or merely
+        // OPENING an un-laid-out workflow would arm the guard.
+        savedFingerprint.current = fingerprintDefinition(definitionOf(moveAll(graph, positions)));
       });
       return () => {
         cancelled = true;
@@ -153,12 +187,13 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         onRedo={() => setHistory((h) => redo(h))}
         onSave={() => {
           setStatus('Saving…');
-          const positions = layoutDirty ? positionsOf(graph) : undefined;
-          const def = toDefinition(graph, {
-            positions: positions ?? positionsOf(graph),
-            existingUi: config.workflow?.definition?.ui,
-          });
-          submitSave(config, def);
+          // Disarm first: the save IS a navigation (a real hidden-form POST),
+          // so a still-armed guard would prompt on the way out. The page is
+          // replaced by the controller's response either way, so there is no
+          // in-page state left to protect once the form is submitted.
+          savedFingerprint.current = fingerprintDefinition(definition);
+          dirty.current = false;
+          submitSave(config, definition);
         }}
       />
 
@@ -178,10 +213,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           readOnly={readOnly}
           onSelect={setSelected}
           onCommit={commit}
-          onMove={(id, position) => {
-            setLayoutDirty(true);
-            commit(moveNode(graph, id, position));
-          }}
+          onMove={(id, position) => commit(moveNode(graph, id, position))}
         />
 
         {selectedNode && (
