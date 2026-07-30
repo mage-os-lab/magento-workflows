@@ -47,8 +47,11 @@ export function buildSavePayload(config: MountConfig, definition: Definition): S
   push('loop_guard_depth', String(w?.loopGuardDepth ?? 1));
   push('fan_out_relation', w?.fanOutRelation ?? '');
   push('fan_out_cap', w?.fanOutCap ?? '');
-  // conditions_serialized is preserved verbatim; the slide-out (Stage 5) is the
-  // only thing that changes it, and it writes it back into workflow meta.
+  // The workflow's ROOT condition tree. The editor's "Workflow conditions"
+  // toolbar entry opens the shared condition slide-out bound to this field and
+  // writes the applied (server-normalized) tree back into workflow meta, so
+  // whatever is in the bootstrap — edited or untouched — is what posts here.
+  // '' is the classic form's own spelling of "no root conditions".
   push('conditions_serialized', w?.conditionsSerialized ?? '');
 
   // Website scope is a multiselect: one repeated key per id, matching the

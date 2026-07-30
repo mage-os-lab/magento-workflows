@@ -29,6 +29,13 @@ import {
   moveNode,
   positionsOf,
 } from '../graphOps';
+import {
+  applyTargetConditions,
+  readRevalidate,
+  readTargetConditions,
+  supportsRevalidate,
+  type ConditionTarget,
+} from '../conditionTarget';
 import { canUndo, canRedo, initHistory, push, redo, undo, type History } from '../history';
 import { submitSave } from '../saveClient';
 import { armUnloadGuard, fingerprintDefinition, isDirty } from '../unsavedGuard';
@@ -60,7 +67,21 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null);
   const [pinned, setPinned] = useState<PinnedMessages>({ byNode: {}, document: [], hasErrors: false });
   const [status, setStatus] = useState<string>('');
-  const [conditionStep, setConditionStep] = useState<string | null>(null);
+  const [conditionTarget, setConditionTarget] = useState<ConditionTarget | null>(null);
+
+  // The workflow ROOT condition tree. It is not part of the definition (it is
+  // its own workflow column), so it lives beside the graph history and is
+  // folded back into the config that saveClient/validateClient read — those two
+  // keep reading it from workflow meta, edited or not.
+  const [rootConditions, setRootConditions] = useState<string | null>(
+    config.workflow?.conditionsSerialized ?? null,
+  );
+  const effectiveConfig = useMemo<MountConfig>(() => {
+    if (!config.workflow || config.workflow.conditionsSerialized === rootConditions) {
+      return config;
+    }
+    return { ...config, workflow: { ...config.workflow, conditionsSerialized: rootConditions } };
+  }, [config, rootConditions]);
 
   const readOnly = graph.readOnly;
 
@@ -84,13 +105,19 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   // transition (and the effect cleanup it would schedule) lands too late.
   const savedFingerprint = useRef<string | null>(null);
   const dirty = useRef(false);
+  // The root condition tree is saved alongside the definition, so an edit to it
+  // alone must still arm the guard.
+  const fingerprintNow = useMemo(
+    () => `${fingerprintDefinition(definition)}|${rootConditions ?? ''}`,
+    [definition, rootConditions],
+  );
   if (savedFingerprint.current === null) {
-    savedFingerprint.current = fingerprintDefinition(definition);
+    savedFingerprint.current = fingerprintNow;
   }
 
   useEffect(() => {
-    dirty.current = isDirty(savedFingerprint.current ?? '', fingerprintDefinition(definition));
-  }, [definition]);
+    dirty.current = isDirty(savedFingerprint.current ?? '', fingerprintNow);
+  }, [fingerprintNow]);
 
   useEffect(() => armUnloadGuard(() => dirty.current), []);
 
@@ -109,7 +136,9 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         // A machine-generated first layout is not a user edit: re-baseline it
         // (before the state lands, so the dirty effect sees it) or merely
         // OPENING an un-laid-out workflow would arm the guard.
-        savedFingerprint.current = fingerprintDefinition(definitionOf(moveAll(graph, positions)));
+        savedFingerprint.current = `${fingerprintDefinition(definitionOf(moveAll(graph, positions)))}|${
+          config.workflow?.conditionsSerialized ?? ''
+        }`;
       });
       return () => {
         cancelled = true;
@@ -143,8 +172,9 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
       return;
     }
     const def = JSON.stringify(toDefinition(graph, { positions: positionsOf(graph) }));
-    runValidate(config, def);
-  }, [graph, config, readOnly, runValidate]);
+    // effectiveConfig, so an edited ROOT tree is what gets live-validated.
+    runValidate(effectiveConfig, def);
+  }, [graph, effectiveConfig, readOnly, runValidate]);
 
   // ---- keyboard undo/redo ------------------------------------------------
   useEffect(() => {
@@ -183,17 +213,19 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         hasErrors={pinned.hasErrors}
         status={status}
         readOnly={readOnly}
+        rootConditionsSet={rootConditions !== null && rootConditions.trim() !== ''}
         onUndo={() => setHistory((h) => undo(h))}
         onRedo={() => setHistory((h) => redo(h))}
+        onEditRootConditions={() => setConditionTarget({ scope: 'workflow' })}
         onSave={() => {
           setStatus('Saving…');
           // Disarm first: the save IS a navigation (a real hidden-form POST),
           // so a still-armed guard would prompt on the way out. The page is
           // replaced by the controller's response either way, so there is no
           // in-page state left to protect once the form is submitted.
-          savedFingerprint.current = fingerprintDefinition(definition);
+          savedFingerprint.current = fingerprintNow;
           dirty.current = false;
-          submitSave(config, definition);
+          submitSave(effectiveConfig, definition);
         }}
       />
 
@@ -227,7 +259,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
               commit(deleteNode(graph, stepKey));
               setSelected(null);
             }}
-            onEditConditions={(stepKey) => setConditionStep(stepKey)}
+            onEditConditions={(target) => setConditionTarget(target)}
           />
         )}
       </div>
@@ -251,18 +283,44 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         selected={selected}
       />
 
-      {conditionStep && (
+      {conditionTarget && (
         <ConditionSlideOut
-          step={graph.nodes.find((n) => n.id === conditionStep)?.data.step ?? null}
-          stepKey={conditionStep}
-          onApply={(stepKey, conditionsSerialized) => {
-            const node = graph.nodes.find((n) => n.id === stepKey);
-            if (node) {
-              commit(replaceStep(graph, stepKey, { ...node.data.step, conditions_serialized: conditionsSerialized }));
+          target={conditionTarget}
+          config={effectiveConfig}
+          readOnly={readOnly}
+          value={
+            conditionTarget.scope === 'workflow'
+              ? rootConditions
+              : readTargetConditions(stepOf(graph, conditionTarget.stepKey), conditionTarget)
+          }
+          revalidateEntity={
+            conditionTarget.scope === 'workflow'
+              ? null
+              : supportsRevalidate(stepOf(graph, conditionTarget.stepKey))
+                ? readRevalidate(stepOf(graph, conditionTarget.stepKey))
+                : null
+          }
+          onApply={(target, conditionsSerialized, revalidateEntity, notice) => {
+            if (target.scope === 'workflow') {
+              // Not part of the definition: it rides to the server through
+              // saveClient's conditions_serialized field (workflow meta).
+              setRootConditions(conditionsSerialized);
+            } else {
+              const step = stepOf(graph, target.stepKey);
+              if (step) {
+                commit(
+                  replaceStep(
+                    graph,
+                    target.stepKey,
+                    applyTargetConditions(step, target, conditionsSerialized, revalidateEntity),
+                  ),
+                );
+              }
             }
-            setConditionStep(null);
+            setStatus(notice ?? '');
+            setConditionTarget(null);
           }}
-          onClose={() => setConditionStep(null)}
+          onClose={() => setConditionTarget(null)}
         />
       )}
     </div>
@@ -405,8 +463,10 @@ function Toolbar({
   hasErrors,
   status,
   readOnly,
+  rootConditionsSet,
   onUndo,
   onRedo,
+  onEditRootConditions,
   onSave,
 }: {
   config: MountConfig;
@@ -415,8 +475,10 @@ function Toolbar({
   hasErrors: boolean;
   status: string;
   readOnly: boolean;
+  rootConditionsSet: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onEditRootConditions: () => void;
   onSave: () => void;
 }): JSX.Element {
   return (
@@ -427,6 +489,18 @@ function Toolbar({
       </button>
       <button type="button" onClick={onRedo} disabled={!redoable || readOnly}>
         Redo
+      </button>
+      {/* The workflow-level gate ("does this workflow run at all?"), edited in
+          the same slide-out as a step's tree. The badge is the set/unset
+          indicator — root conditions are otherwise invisible on the canvas. */}
+      <button
+        type="button"
+        className="wf-canvas__root-conditions"
+        onClick={onEditRootConditions}
+        disabled={readOnly}
+      >
+        Workflow conditions
+        <span className="wf-canvas__badge">{rootConditionsSet ? 'Set' : 'Not set'}</span>
       </button>
       <button type="button" className="wf-canvas__save" onClick={onSave} disabled={readOnly}>
         Save
@@ -451,6 +525,10 @@ function addFromPayload(
 ): Graph {
   const type = payload.type as StepType;
   return addNode(graph, blankStep(type, payload.action), position, config);
+}
+
+function stepOf(graph: Graph, stepKey: string): StepNode | null {
+  return graph.nodes.find((n) => n.id === stepKey)?.data.step ?? null;
 }
 
 function replaceStep(graph: Graph, stepKey: string, step: StepNode): Graph {

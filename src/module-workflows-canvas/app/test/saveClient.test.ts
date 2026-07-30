@@ -23,6 +23,8 @@ function config(overrides: Partial<MountConfig> = {}): MountConfig {
       dryRun: '/dry',
       validate: '/validate',
       options: '/options',
+      conditionMeta: '/conditionMeta',
+      conditions: '/conditions',
       save: '/admin/mageos_workflows/workflow/save',
     },
     formKey: 'FKEY',

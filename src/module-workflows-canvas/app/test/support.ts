@@ -13,6 +13,8 @@ export function makeConfig(overrides: Partial<MountConfig> = {}): MountConfig {
       dryRun: '/dry',
       validate: '/validate',
       options: '/options',
+      conditionMeta: '/conditionMeta',
+      conditions: '/conditions',
       save: '/save',
     },
     formKey: 'FKEY',

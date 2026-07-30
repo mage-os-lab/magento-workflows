@@ -37,6 +37,8 @@ export function readMountConfig(el: Element | null): MountConfig | null {
       dryRun: String(c.endpoints?.dryRun ?? ''),
       validate: String(c.endpoints?.validate ?? ''),
       options: String(c.endpoints?.options ?? ''),
+      conditionMeta: String(c.endpoints?.conditionMeta ?? ''),
+      conditions: String(c.endpoints?.conditions ?? ''),
       save: String(c.endpoints?.save ?? ''),
     },
     formKey: String(c.formKey ?? ''),

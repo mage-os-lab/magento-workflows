@@ -200,6 +200,21 @@ export interface MountConfig {
     validate: string;
     /** Same-origin admin JSON option-source proxy (admin-ui Data/Options). */
     options: string;
+    /**
+     * Same-origin admin JSON condition-metadata provider (admin-ui
+     * Data/ConditionMeta, ::view, GET ?entity_type=&node_type=). Describes ONE
+     * condition node type at a time — kind, add-child menu, attributes and
+     * their operators/value elements — so the condition builder is driven by
+     * the server's real condition classes rather than a client-side copy.
+     */
+    conditionMeta: string;
+    /**
+     * The EXISTING shared condition apply/validate endpoint
+     * (mageos_workflows/workflow/conditions, ::manage, POST + form key). It
+     * shape-checks a serialized tree through the same pipeline a save runs and
+     * echoes the normalized tree back.
+     */
+    conditions: string;
     /** The EXISTING admin Save controller (mageos_workflows/workflow/save). */
     save: string;
   };

@@ -8,6 +8,7 @@ import {
   type NormalizedField,
 } from '../configPanel';
 import { actionByCode } from '../palette';
+import type { ConditionTarget } from '../conditionTarget';
 import { buildVariablePaths } from '../variablePicker';
 
 /**
@@ -28,7 +29,14 @@ interface Props {
   readOnly: boolean;
   onChange: (stepKey: string, step: StepNode) => void;
   onDelete: (stepKey: string) => void;
-  onEditConditions: (stepKey: string) => void;
+  /**
+   * Open the condition slide-out on a TARGET, not a bare step key: a branch's
+   * own tree is `{scope:'step', stepKey}`, while a switch case's tree is
+   * `{scope:'case', stepKey, caseIndex, caseKey}` (a switch step must never be
+   * given a step-level tree — see conditionTarget/mapping). The editor resolves
+   * the current value and routes the applied tree back to that exact home.
+   */
+  onEditConditions: (target: ConditionTarget) => void;
 }
 
 export function ConfigPanel({
@@ -69,11 +77,44 @@ export function ConfigPanel({
         <p className="wf-panel__summary">{action ? action.label : String(step.action ?? '')}</p>
       )}
 
-      {(step.type === 'branch' || step.type === 'switch') && (
+      {step.type === 'branch' && (
         <div className="wf-panel__conditions">
-          <button type="button" disabled={readOnly} onClick={() => onEditConditions(node.id)}>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => onEditConditions({ scope: 'step', stepKey: node.id })}
+          >
             Edit conditions…
           </button>
+        </div>
+      )}
+
+      {/* A switch step has no tree of its own: each case carries one. Only the
+          per-case entry points into the slide-out live here — the case LIST
+          editor (add / rename / remove / reorder, keeping `case:<key>` edges
+          consistent) is a separate follow-up and owns this panel. */}
+      {step.type === 'switch' && (
+        <div className="wf-panel__conditions">
+          {(Array.isArray(step.cases) ? step.cases : []).map((c, index) => (
+            <button
+              key={`${c.key}-${index}`}
+              type="button"
+              disabled={readOnly}
+              onClick={() =>
+                onEditConditions({
+                  scope: 'case',
+                  stepKey: node.id,
+                  caseIndex: index,
+                  caseKey: c.key,
+                })
+              }
+            >
+              {`Edit conditions: ${c.key}…`}
+            </button>
+          ))}
+          {(step.cases?.length ?? 0) === 0 && (
+            <p className="wf-field__notice">This switch has no cases yet.</p>
+          )}
         </div>
       )}
 

@@ -27,7 +27,7 @@ function config(def: Definition, knownSchemaVersion = 3): MountConfig {
     executionId: null,
     knownSchemaVersion,
     grants: { manage: true, dryRun: true },
-    endpoints: { executionSteps: '/steps', dryRun: '/dryrun', validate: '/validate', options: '/options', save: '/save' },
+    endpoints: { executionSteps: '/steps', dryRun: '/dryrun', validate: '/validate', options: '/options', conditionMeta: '/conditionMeta', conditions: '/conditions', save: '/save' },
     formKey: 'k',
     workflow: null,
     actions,

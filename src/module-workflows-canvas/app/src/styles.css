@@ -346,3 +346,155 @@
   color: #c62828;
   font-size: 12px;
 }
+
+.wf-slideout__json-toggle {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.wf-slideout__json-toggle summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.wf-slideout__warning {
+  color: #8d6e00;
+  font-size: 12px;
+}
+
+.wf-slideout__message-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.wf-slideout__message-list .wf-msg {
+  display: block;
+  font-size: 11px;
+  padding: 3px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+}
+
+.wf-slideout__message-list .wf-msg--error {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.wf-slideout__message-list .wf-msg--warning {
+  background: #fff8e1;
+  color: #8d6e00;
+}
+
+.wf-slideout__foot {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.wf-slideout__revalidate {
+  margin: 0;
+}
+
+.wf-slideout__buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.wf-canvas__root-conditions .wf-canvas__badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #eceff1;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+/* ---- Condition tree builder ------------------------------------------- */
+.wf-cond {
+  font-size: 12px;
+}
+
+.wf-cond__loading,
+.wf-cond__empty p {
+  color: #757575;
+  margin: 4px 0;
+}
+
+.wf-cond__tree,
+.wf-cond__children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wf-cond__children {
+  margin-left: 14px;
+  padding-left: 8px;
+  border-left: 1px solid #e0e0e0;
+}
+
+.wf-cond__node {
+  margin: 3px 0;
+}
+
+.wf-cond__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.wf-cond__sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wf-cond__select,
+.wf-cond__value,
+.wf-cond__path,
+.wf-cond__add-select {
+  font-size: 12px;
+  max-width: 100%;
+}
+
+.wf-cond__value-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wf-cond__hint {
+  color: #757575;
+  font-size: 11px;
+}
+
+.wf-cond__remove {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.wf-cond__raw {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 4px;
+  background: #f5f5f5;
+  font-family: monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.wf-cond__add {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.wf-cond__clear {
+  margin-top: 8px;
+}
