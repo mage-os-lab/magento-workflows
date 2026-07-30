@@ -33,4 +33,14 @@ interface OptionSourceInterface
      * @return array<int, array{value: string, label: string}>
      */
     public function fetch(?string $query = null): array;
+
+    /**
+     * Whether an option with exactly this value exists. Unlike {@see fetch()},
+     * which filters by substring and caps its result, the match is exact and
+     * the search spans the FULL option list — a value beyond the cap still
+     * resolves. Used for install-time existence validation of entity-typed
+     * template parameters, so it may load the whole collection: callers are
+     * one-shot admin/CLI actions, never per-request runtime paths.
+     */
+    public function hasValue(string $value): bool;
 }

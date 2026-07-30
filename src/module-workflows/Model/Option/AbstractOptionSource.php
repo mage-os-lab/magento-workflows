@@ -32,6 +32,20 @@ abstract class AbstractOptionSource implements OptionSourceInterface
     }
 
     /**
+     * @inheritDoc
+     */
+    public function hasValue(string $value): bool
+    {
+        foreach ($this->loadOptions() as $option) {
+            // Source values are already string-cast on load, so compare strictly.
+            if (($option['value'] ?? null) === $value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Case-insensitive substring filter over value + label, then cap. Pure.
      *
      * @param array<int, array{value: string, label: string}> $options

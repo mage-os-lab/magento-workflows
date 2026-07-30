@@ -81,6 +81,22 @@
         </arguments>
     </type>
 
+    <!-- entity:* aliases for the sales sources: rules are searched, statuses
+         are a bounded list. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="salesrule" xsi:type="array">
+                    <item name="source" xsi:type="string">cart_price_rules</item>
+                </item>
+                <item name="order_status" xsi:type="array">
+                    <item name="source" xsi:type="string">order_statuses</item>
+                    <item name="bounded" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Order + coupon actions (relocated from actions-core). Action codes
          unchanged. -->
     <type name="MageOS\Workflows\Model\Action\ActionPool">

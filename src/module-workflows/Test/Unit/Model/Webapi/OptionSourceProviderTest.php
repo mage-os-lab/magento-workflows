@@ -34,6 +34,16 @@ class OptionSourceProviderTest extends TestCase
                 $this->lastQuery[] = $query;
                 return $this->options;
             }
+
+            public function hasValue(string $value): bool
+            {
+                foreach ($this->options as $option) {
+                    if (($option['value'] ?? null) === $value) {
+                        return true;
+                    }
+                }
+                return false;
+            }
         };
     }
 
