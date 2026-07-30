@@ -75,7 +75,9 @@ class View extends AbstractDetail
 
         $values = $this->previewValues();
         try {
-            $workflow = $this->parameterEngine->apply($workflow, $this->getParameters(), $values);
+            // Typed validation off: the preview feeds `<Label>` placeholders for
+            // parameters with no default, which no typed check would accept.
+            $workflow = $this->parameterEngine->apply($workflow, $this->getParameters(), $values, false);
         } catch (\Throwable $e) {
             // keep the un-substituted body
         }

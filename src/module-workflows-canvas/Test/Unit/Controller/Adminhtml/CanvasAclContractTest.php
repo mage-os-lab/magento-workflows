@@ -9,7 +9,6 @@ use MageOS\WorkflowsCanvas\Controller\Adminhtml\Canvas\Edit;
 use MageOS\WorkflowsCanvas\Controller\Adminhtml\Canvas\View;
 use MageOS\WorkflowsCanvas\Controller\Adminhtml\Data\DryRun;
 use MageOS\WorkflowsCanvas\Controller\Adminhtml\Data\ExecutionSteps;
-use MageOS\WorkflowsCanvas\Controller\Adminhtml\Data\Options;
 use MageOS\WorkflowsCanvas\Controller\Adminhtml\Data\Validate;
 use PHPUnit\Framework\TestCase;
 
@@ -22,12 +21,17 @@ use PHPUnit\Framework\TestCase;
  * posts through. Controllers have a heavy Action\Context constructor, so the
  * ADMIN_RESOURCE constant + implemented HTTP interface are asserted by
  * reflection on the class, not an instance.
+ *
+ * The option-source feed is NOT listed here: the canvas config panel and the
+ * template install form consume the same endpoint, so it lives in admin-ui
+ * (mageos_workflows/data/options) and its contract is pinned by that module's
+ * OptionsAclContractTest.
  */
 class CanvasAclContractTest extends TestCase
 {
     public function testViewerAndReadDataAreGatedByView(): void
     {
-        foreach ([View::class, ExecutionSteps::class, Options::class] as $controller) {
+        foreach ([View::class, ExecutionSteps::class] as $controller) {
             $this->assertSame(
                 'MageOS_Workflows::view',
                 $controller::ADMIN_RESOURCE,
@@ -58,11 +62,6 @@ class CanvasAclContractTest extends TestCase
             is_a(Validate::class, HttpPostActionInterface::class, true),
             'The validate proxy must be POST so the admin router enforces the form key'
         );
-    }
-
-    public function testOptionsFeedIsGetOnly(): void
-    {
-        $this->assertTrue(is_a(Options::class, HttpGetActionInterface::class, true));
     }
 
     public function testEditorIsGetOnly(): void
