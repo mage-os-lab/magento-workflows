@@ -29,6 +29,11 @@ class OptionSourcePoolTest extends TestCase
                 return [['value' => 'v', 'label' => 'l']];
             }
 
+            public function all(): array
+            {
+                return [['value' => 'v', 'label' => 'l']];
+            }
+
             public function hasValue(string $value): bool
             {
                 return $value === 'v';

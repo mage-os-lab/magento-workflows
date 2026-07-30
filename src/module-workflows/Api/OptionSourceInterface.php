@@ -10,8 +10,8 @@ namespace MageOS\Workflows\Api;
  * code. A `getConfigForm()` select field points at a source two ways:
  *
  *   - bounded lists (order statuses, customer groups): the field may declare
- *     `options_search: {source: "<code>", min_chars: 0}` (or inline `options`),
- *     and this endpoint resolves the whole list on an empty query;
+ *     `options_search: {source: "<code>", min_chars: 0}` (or inline `options`);
+ *     server-side renderers read the full list via {@see all()};
  *   - large lists (cart price rules, email templates): the field declares
  *     `options_search: {source: "<code>", min_chars: 2}`, and the client calls
  *     GET /V1/workflows/meta/options?source=<code>&q=… as the user types.
@@ -33,6 +33,17 @@ interface OptionSourceInterface
      * @return array<int, array{value: string, label: string}>
      */
     public function fetch(?string $query = null): array;
+
+    /**
+     * The FULL option list, unfiltered and uncapped — unlike {@see fetch()},
+     * whose result cap protects the type-ahead endpoints. For server-rendered
+     * bounded selects and existence checks, where truncation would silently
+     * hide valid records. May load the entire collection: callers are one-shot
+     * render/install actions, never per-request runtime paths.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    public function all(): array;
 
     /**
      * Whether an option with exactly this value exists. Unlike {@see fetch()},

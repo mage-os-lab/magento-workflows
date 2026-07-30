@@ -246,6 +246,11 @@ class ParameterEngineTest extends TestCase
 
             public function fetch(?string $query = null): array
             {
+                return $this->all();
+            }
+
+            public function all(): array
+            {
                 return array_map(
                     static fn (string $v): array => ['value' => $v, 'label' => 'Rule ' . $v],
                     $this->values
