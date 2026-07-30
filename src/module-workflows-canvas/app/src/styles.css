@@ -498,3 +498,104 @@
 .wf-cond__clear {
   margin-top: 8px;
 }
+
+/* ---- Config-panel row editors + composites ---------------------------- */
+.wf-field__notice--error {
+  color: #c62828;
+}
+
+.wf-field__toggle {
+  margin-top: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1979c3;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.wf-duration__composite {
+  display: flex;
+  gap: 4px;
+}
+
+.wf-duration__amount {
+  flex: 0 0 70px;
+}
+
+.wf-duration__unit {
+  flex: 1 1 auto;
+}
+
+.wf-field--multi select {
+  min-height: 60px;
+}
+
+.wf-cases__list,
+.wf-rows__list {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+
+.wf-cases__row,
+.wf-rows__row {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.wf-cases__key {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+.wf-cases__state {
+  display: block;
+  color: #757575;
+  font-size: 11px;
+  margin: 2px 0;
+}
+
+.wf-cases__buttons,
+.wf-rows__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.wf-cases__buttons button,
+.wf-rows__controls button {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.wf-rows__controls input[type='text'],
+.wf-rows__controls input[type='email'],
+.wf-rows__controls select {
+  flex: 1 1 80px;
+  min-width: 0;
+}
+
+.wf-rows__key {
+  font-family: monospace;
+}
+
+.wf-rows__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.wf-rows__check input {
+  width: auto;
+}
+
+.wf-cases__add {
+  margin-top: 4px;
+}

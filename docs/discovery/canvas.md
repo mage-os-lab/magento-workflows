@@ -193,6 +193,20 @@ rule-widget forms assume full-page form scaffolding; the spike proves it renders
 a slide-out). E3 remains behind an "edit as JSON" toggle for power users. E2 is the eventual
 modernization path *if* E1's UX proves unacceptable — but it would be its own funded project.
 
+**Outcome:** the E1 spike could not be evidenced in this repo (the rule-widget rendering layer is
+not a dependency and cannot run in CI — see [11 §v2](../11-admin-ui.md#v2-workflows-canvas)), so
+the shipped editor is **E2 on the E1 seam**: a React condition tree builder in the shared
+slide-out, driven entirely by a server metadata feed (`mageos_workflows/data/conditionMeta`,
+backed by `ConditionMetaProvider`) that projects the *existing* rule-model contract —
+`getNewChildSelectOptions()`, `loadAttributeOptions()`, `getInputType()`,
+`getValueSelectOptions()`, operator sets — per node type. The "duplicates the rule widget"
+objection to E2 is answered by that feed: attribute discovery, operator/type semantics, EAV
+options and cross-entity subtrees stay server-side in the condition classes; the client renders
+what it is told and preserves verbatim any node type the server cannot describe. The apply
+round-trip and the serialized-tree contract are unchanged (the same `workflow/conditions`
+endpoint), so a full install that later hosts the stock rule widget still drops into the same
+seam. E3 survives as the documented "Edit as JSON" toggle inside the slide-out.
+
 ## 7. Quality, maintainability, reliability
 
 - **Round-trip fidelity is the reliability contract:** parse → graph model → serialize must be

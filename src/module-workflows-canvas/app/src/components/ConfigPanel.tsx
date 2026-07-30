@@ -1,12 +1,49 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ConfigFieldOption, GraphNode, MountConfig, StepNode } from '../types';
+import type {
+  ApprovalPayloadField,
+  ConfigFieldOption,
+  Graph,
+  GraphNode,
+  MountConfig,
+  StepNode,
+  TriggerMeta,
+} from '../types';
 import {
+  eventOptionGroups,
+  isCataloguedEvent,
+  isValidEventName,
+  isValidTimeOfDay,
+  labelForValue,
+  multiSelectOptions,
   normalizeConfigForm,
+  optionsWithSelected,
+  parseMultiValue,
   readValue,
+  SEARCH_DEBOUNCE_MS,
+  serializeMultiValue,
   shouldSearch,
   writeValue,
   type NormalizedField,
 } from '../configPanel';
+import {
+  DURATION_UNITS,
+  composeDuration,
+  isIsoDuration,
+  splitDuration,
+  type DurationUnit,
+} from '../duration';
+import {
+  blankPayloadField,
+  notifyEmailError,
+  payloadFieldError,
+  payloadTypeOptions,
+  readNotifyEmails,
+  readPayloadFields,
+  serializeNotifyEmails,
+  serializePayloadFields,
+} from '../approvalFields';
+import { moveItem, removeAt, replaceAt } from '../listEdit';
+import { addCase, casesOf, moveCase, removeCase, renameCase } from '../switchCases';
 import { actionByCode } from '../palette';
 import type { ConditionTarget } from '../conditionTarget';
 import { buildVariablePaths } from '../variablePicker';
@@ -16,18 +53,38 @@ import { buildVariablePaths } from '../variablePicker';
  * metadata (F6). Every value is rendered into a form control — never eval'd,
  * never innerHTML. Option selects resolve the F6 union: inline lists render
  * statically, options_search fields hit the same-origin meta/options proxy as
- * the user types (min_chars-gated). The variable picker lists context paths +
- * upstream step outputs + secret NAMES (values never leave the server).
+ * the user types (min_chars-gated, debounced). The variable picker lists context
+ * paths + upstream step outputs + secret NAMES (values never leave the server).
+ *
+ * Every control here writes a value the SERVER reads back verbatim, so each one
+ * is pinned to its server-side assertion:
+ *   duration/timeout -> Definition::assertDuration (ISO-8601), through the
+ *                       amount+unit composite with a raw-ISO escape hatch;
+ *   wait event       -> /^[a-z0-9_.\-]{1,128}$/, offered from the bootstrapped
+ *                       trigger catalogue with a free-entry escape hatch;
+ *   delay at         -> "HH:MM" 24-hour, business_days -> boolean;
+ *   multiselect      -> the comma-separated string the runtime explodes
+ *                       (AssignWebsites::parseWebsiteIds);
+ *   approval lists   -> {key,label,type,required?} rows / email rows;
+ *   switch cases     -> /^[a-zA-Z0-9_\-]{1,64}$/, unique, non-empty list.
  *
  * The panel edits an immutable copy of the step and hands the result up via
- * onChange; the parent commits it to the graph (and the undo history).
+ * onChange; the parent commits it to the graph (and the undo history). Switch
+ * case edits go up through onGraphChange instead, because a case owns an edge.
  */
 interface Props {
   node: GraphNode;
   config: MountConfig;
-  graph: import('../types').Graph;
+  graph: Graph;
   readOnly: boolean;
   onChange: (stepKey: string, step: StepNode) => void;
+  /**
+   * Commit a whole-graph edit. Switch case add/remove/rename/reorder is a graph
+   * op, not a step op: the case key IS the `case:<key>` edge handle, so a rename
+   * has to re-point the edge in the same commit or the case's target would be
+   * dropped on the next save (mapping re-points case targets by key).
+   */
+  onGraphChange: (graph: Graph) => void;
   onDelete: (stepKey: string) => void;
   /**
    * Open the condition slide-out on a TARGET, not a bare step key: a branch's
@@ -45,6 +102,7 @@ export function ConfigPanel({
   graph,
   readOnly,
   onChange,
+  onGraphChange,
   onDelete,
   onEditConditions,
 }: Props): JSX.Element {
@@ -89,33 +147,16 @@ export function ConfigPanel({
         </div>
       )}
 
-      {/* A switch step has no tree of its own: each case carries one. Only the
-          per-case entry points into the slide-out live here — the case LIST
-          editor (add / rename / remove / reorder, keeping `case:<key>` edges
-          consistent) is a separate follow-up and owns this panel. */}
       {step.type === 'switch' && (
-        <div className="wf-panel__conditions">
-          {(Array.isArray(step.cases) ? step.cases : []).map((c, index) => (
-            <button
-              key={`${c.key}-${index}`}
-              type="button"
-              disabled={readOnly}
-              onClick={() =>
-                onEditConditions({
-                  scope: 'case',
-                  stepKey: node.id,
-                  caseIndex: index,
-                  caseKey: c.key,
-                })
-              }
-            >
-              {`Edit conditions: ${c.key}…`}
-            </button>
-          ))}
-          {(step.cases?.length ?? 0) === 0 && (
-            <p className="wf-field__notice">This switch has no cases yet.</p>
-          )}
-        </div>
+        <SwitchCasesEditor
+          stepKey={node.id}
+          step={step}
+          graph={graph}
+          actions={config.actions}
+          readOnly={readOnly}
+          onGraphChange={onGraphChange}
+          onEditConditions={onEditConditions}
+        />
       )}
 
       <div className="wf-panel__fields">
@@ -133,12 +174,7 @@ export function ConfigPanel({
           <DelayFields step={step} readOnly={readOnly} onChange={set} />
         )}
         {step.type === 'wait' && (
-          <TextField
-            label="Event name"
-            value={String((step.config as Record<string, unknown>)?.event ?? '')}
-            readOnly={readOnly}
-            onChange={(v) => set('event', v)}
-          />
+          <WaitFields step={step} triggers={config.triggers} readOnly={readOnly} onChange={set} />
         )}
         {step.type === 'approval' && (
           <ApprovalFields step={step} readOnly={readOnly} onChange={set} />
@@ -167,6 +203,174 @@ export function ConfigPanel({
   );
 }
 
+/**
+ * The switch step's case list. A switch has no tree of its own — each case
+ * carries one — so this is both the case manager (add / rename / remove /
+ * reorder) and the per-case entry point into the condition slide-out.
+ *
+ * Order is semantics here: cases are first-match-wins, so "move up" moves a
+ * case earlier in evaluation. Every mutation goes through switchCases, which
+ * keeps the `case:<key>` edges consistent; this component only renders and
+ * reports the refused ones.
+ */
+function SwitchCasesEditor({
+  stepKey,
+  step,
+  graph,
+  actions,
+  readOnly,
+  onGraphChange,
+  onEditConditions,
+}: {
+  stepKey: string;
+  step: StepNode;
+  graph: Graph;
+  actions: MountConfig['actions'];
+  readOnly: boolean;
+  onGraphChange: (graph: Graph) => void;
+  onEditConditions: (target: ConditionTarget) => void;
+}): JSX.Element {
+  const [error, setError] = useState('');
+  const cases = casesOf(step);
+
+  const apply = (result: { graph: Graph; error: string | null }): void => {
+    setError(result.error ?? '');
+    if (result.error === null) {
+      onGraphChange(result.graph);
+    }
+  };
+
+  return (
+    <div className="wf-panel__conditions wf-cases">
+      <span className="wf-field__label" id={`${stepKey}-cases-label`}>
+        Cases (first match wins)
+      </span>
+      <ul className="wf-cases__list" aria-labelledby={`${stepKey}-cases-label`}>
+        {cases.map((c, index) => {
+          const caseKey = String(c.key ?? '');
+          return (
+            // Keyed by POSITION on purpose: keying by case key would remount the
+            // row on every keystroke of a rename and steal the caret.
+            <li className="wf-cases__row" key={index}>
+              <CaseKeyInput
+                caseKey={caseKey}
+                index={index}
+                readOnly={readOnly}
+                onRename={(raw) => apply(renameCase(graph, stepKey, index, raw, actions))}
+              />
+              <span className="wf-cases__state">
+                {typeof c.conditions_serialized === 'string' && c.conditions_serialized.trim() !== ''
+                  ? 'Conditions set'
+                  : 'Always matches'}
+              </span>
+              <div className="wf-cases__buttons">
+                <button
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() =>
+                    onEditConditions({ scope: 'case', stepKey, caseIndex: index, caseKey })
+                  }
+                >
+                  Edit conditions…
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move case "${caseKey}" earlier`}
+                  disabled={readOnly || index === 0}
+                  onClick={() => apply(moveCase(graph, stepKey, index, -1, actions))}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move case "${caseKey}" later`}
+                  disabled={readOnly || index === cases.length - 1}
+                  onClick={() => apply(moveCase(graph, stepKey, index, 1, actions))}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remove case "${caseKey}"`}
+                  disabled={readOnly || cases.length === 1}
+                  onClick={() => apply(removeCase(graph, stepKey, index, actions))}
+                >
+                  ×
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {cases.length === 0 && (
+        <p className="wf-field__notice">
+          This switch has no cases yet — it cannot be saved until it has one.
+        </p>
+      )}
+      <button
+        type="button"
+        className="wf-cases__add"
+        disabled={readOnly}
+        onClick={() => apply(addCase(graph, stepKey, actions))}
+      >
+        Add case
+      </button>
+      {error && (
+        <span className="wf-field__notice wf-field__notice--error" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One case's key input. It commits on EVERY keystroke (so nothing is held in an
+ * uncommitted buffer), through renameCase, which sanitizes the input to the
+ * server's grammar and refuses an emptied or duplicate key. The local draft
+ * exists only so a momentarily-refused key stays on screen instead of snapping
+ * back to the committed one mid-edit; it re-syncs whenever the committed key
+ * changes underneath it.
+ */
+function CaseKeyInput({
+  caseKey,
+  index,
+  readOnly,
+  onRename,
+}: {
+  caseKey: string;
+  index: number;
+  readOnly: boolean;
+  onRename: (raw: string) => void;
+}): JSX.Element {
+  const [draft, setDraft] = useState(caseKey);
+
+  useEffect(() => {
+    setDraft(caseKey);
+  }, [caseKey]);
+
+  return (
+    <input
+      type="text"
+      className="wf-cases__key"
+      aria-label={`Case ${index + 1} key`}
+      value={draft}
+      disabled={readOnly}
+      spellCheck={false}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onRename(e.target.value);
+      }}
+    />
+  );
+}
+
+/**
+ * Delay config: the ISO-8601 duration the engine adds, plus the two optional
+ * calendar modifiers the server accepts (Definition::assertDelayExtras) —
+ * business_days (day components count Mon-Fri in the store timezone) and `at`
+ * (roll forward to the next occurrence of a store-local HH:MM).
+ */
 function DelayFields({
   step,
   readOnly,
@@ -177,24 +381,160 @@ function DelayFields({
   onChange: (name: string, value: unknown) => void;
 }): JSX.Element {
   const config = (step.config ?? {}) as Record<string, unknown>;
+  const at = String(config.at ?? '');
   return (
-    <TextField
-      label="Duration (ISO-8601, e.g. PT1H)"
-      value={String(config.duration ?? '')}
-      readOnly={readOnly}
-      onChange={(v) => onChange('duration', v)}
-    />
+    <>
+      <DurationField
+        label="Duration *"
+        value={String(config.duration ?? '')}
+        readOnly={readOnly}
+        onChange={(v) => onChange('duration', v)}
+      />
+      <label className="wf-field wf-field--bool">
+        <input
+          type="checkbox"
+          checked={Boolean(config.business_days)}
+          disabled={readOnly}
+          onChange={(e) => onChange('business_days', e.target.checked)}
+        />
+        Count business days only (Mon–Fri, store timezone)
+      </label>
+      <TextField
+        label="Run at (store-local HH:MM)"
+        value={at}
+        notice="Optional. After the duration, roll forward to the next occurrence of this time."
+        readOnly={readOnly}
+        onChange={(v) => onChange('at', v)}
+      />
+      {at !== '' && !isValidTimeOfDay(at) && (
+        <span className="wf-field__notice wf-field__notice--error" role="alert">
+          Use 24-hour HH:MM, e.g. 09:30.
+        </span>
+      )}
+    </>
   );
 }
 
 /**
- * Approval gate config (schema 4). Same fidelity as the wait/switch panels
- * above: plain fields for the scalar config (title/instructions/timeout/
- * assignee_role/allow_bulk), and — for the two array-shaped fields
- * (payload_fields, notify_emails) — the same "edit as JSON" fallback already
- * established for structured config in this codebase (ConditionSlideOut's
- * condition-tree textarea), rather than a bespoke per-row array editor. The
- * server re-validates everything on save (Definition::assertApprovalStep).
+ * Wait config: the trigger event to park on and the REQUIRED timeout. Both are
+ * mandatory server-side (`waitStep.config` requires event + timeout), which is
+ * why the timeout is here at all — a wait step authored without it could never
+ * be saved.
+ */
+function WaitFields({
+  step,
+  triggers,
+  readOnly,
+  onChange,
+}: {
+  step: StepNode;
+  triggers: TriggerMeta[];
+  readOnly: boolean;
+  onChange: (name: string, value: unknown) => void;
+}): JSX.Element {
+  const config = (step.config ?? {}) as Record<string, unknown>;
+  return (
+    <>
+      <EventField
+        value={String(config.event ?? '')}
+        triggers={triggers}
+        readOnly={readOnly}
+        onChange={(v) => onChange('event', v)}
+      />
+      <DurationField
+        label="Timeout *"
+        value={String(config.timeout ?? '')}
+        notice="Required. The on-timeout path fires when the event has not arrived by then."
+        readOnly={readOnly}
+        onChange={(v) => onChange('timeout', v)}
+      />
+    </>
+  );
+}
+
+/**
+ * The wait step's event name: a grouped select over the bootstrapped trigger
+ * catalogue (config.triggers, from Mount.php), with a free-entry escape hatch
+ * for an event this install has not registered — a third-party module's event,
+ * or one declared by a module that is not enabled here. The server validates
+ * the name either way.
+ */
+function EventField({
+  value,
+  triggers,
+  readOnly,
+  onChange,
+}: {
+  value: string;
+  triggers: TriggerMeta[];
+  readOnly: boolean;
+  onChange: (value: string) => void;
+}): JSX.Element {
+  const groups = eventOptionGroups(triggers);
+  const catalogued = isCataloguedEvent(triggers, value);
+  const [manual, setManual] = useState(
+    () => groups.length === 0 || (value !== '' && !catalogued),
+  );
+  const free = manual || groups.length === 0;
+
+  return (
+    <div className="wf-field">
+      <span className="wf-field__label" id="wf-wait-event-label">
+        Event name *
+      </span>
+      {free ? (
+        <input
+          type="text"
+          aria-labelledby="wf-wait-event-label"
+          value={value}
+          disabled={readOnly}
+          spellCheck={false}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <select
+          aria-labelledby="wf-wait-event-label"
+          value={value}
+          disabled={readOnly}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">— select —</option>
+          {groups.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      )}
+      {groups.length > 0 && (
+        <button
+          type="button"
+          className="wf-field__toggle"
+          disabled={readOnly}
+          onClick={() => setManual(!manual)}
+        >
+          {free ? 'Choose a registered event instead' : 'Enter an event name instead'}
+        </button>
+      )}
+      {value !== '' && !isValidEventName(value) && (
+        <span className="wf-field__notice wf-field__notice--error" role="alert">
+          Use lower-case letters, numbers, “.”, “_” or “-” (max 128 characters).
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Approval gate config (schema 4): the scalar fields, plus real row editors for
+ * the two list-shaped ones. Both list editors commit through
+ * approvalFields on every row change — the JSON textarea they replace committed
+ * only on blur and only when the text happened to parse, which silently kept
+ * saving the previous value.
  */
 function ApprovalFields({
   step,
@@ -222,9 +562,10 @@ function ApprovalFields({
           onChange={(e) => onChange('instructions', e.target.value)}
         />
       </label>
-      <TextField
-        label="Timeout (ISO-8601, e.g. P3D) *"
+      <DurationField
+        label="Timeout *"
         value={String(config.timeout ?? '')}
+        notice="Required. No indefinite parks — the on-timeout path fires when nobody decides."
         readOnly={readOnly}
         onChange={(v) => onChange('timeout', v)}
       />
@@ -243,87 +584,334 @@ function ApprovalFields({
         />
         Allow bulk decisions
       </label>
-      <JsonArrayField
-        label="Payload fields (JSON array, e.g. [{&quot;key&quot;:&quot;amount&quot;,&quot;label&quot;:&quot;Amount&quot;,&quot;type&quot;:&quot;number&quot;}])"
-        value={config.payload_fields}
+      <PayloadFieldsEditor
+        rows={readPayloadFields(config.payload_fields)}
         readOnly={readOnly}
-        onChange={(v) => onChange('payload_fields', v)}
+        onChange={(rows) => onChange('payload_fields', serializePayloadFields(rows))}
       />
-      <JsonArrayField
-        label="Notify emails (JSON array of strings)"
-        value={config.notify_emails}
+      <NotifyEmailsEditor
+        rows={readNotifyEmails(config.notify_emails)}
         readOnly={readOnly}
-        onChange={(v) => onChange('notify_emails', v)}
+        onChange={(rows) => onChange('notify_emails', serializeNotifyEmails(rows))}
       />
     </>
   );
 }
 
 /**
- * A JSON-array-backed field: local text buffer, committed on blur only when
- * it parses as valid JSON array (or is empty, which clears the config key via
- * writeValue's undefined convention). Invalid JSON is left uncommitted with an
- * inline notice — the same buffer/apply shape as ConditionSlideOut, just
- * inline instead of in a slide-out (these fields are short, optional lists).
+ * payload_fields as structured rows — {key, label, type, required} — which is
+ * the shape the server declares (approvalStep.config.payload_fields.items,
+ * additionalProperties:false). Row order is the order the decider sees, so it is
+ * reorderable. An incomplete row is still committed, with its problem shown
+ * inline: withholding it is what the old textarea did, and that was the bug.
  */
-function JsonArrayField({
+function PayloadFieldsEditor({
+  rows,
+  readOnly,
+  onChange,
+}: {
+  rows: ApprovalPayloadField[];
+  readOnly: boolean;
+  onChange: (rows: ApprovalPayloadField[]) => void;
+}): JSX.Element {
+  const update = (index: number, patch: Partial<ApprovalPayloadField>): void => {
+    onChange(replaceAt(rows, index, { ...rows[index], ...patch }));
+  };
+
+  return (
+    <div className="wf-field wf-rows">
+      <span className="wf-field__label" id="wf-payload-fields-label">
+        Payload fields
+      </span>
+      <span className="wf-field__notice">
+        Values the decider fills in. Each key is exposed to later steps.
+      </span>
+      <ul className="wf-rows__list" aria-labelledby="wf-payload-fields-label">
+        {rows.map((row, index) => {
+          const error = payloadFieldError(rows, index);
+          return (
+            <li className="wf-rows__row" key={index}>
+              <div className="wf-rows__controls">
+                <input
+                  type="text"
+                  className="wf-rows__key"
+                  aria-label={`Payload field ${index + 1} key`}
+                  placeholder="key"
+                  value={String(row.key ?? '')}
+                  disabled={readOnly}
+                  spellCheck={false}
+                  onChange={(e) => update(index, { key: e.target.value })}
+                />
+                <input
+                  type="text"
+                  aria-label={`Payload field ${index + 1} label`}
+                  placeholder="Label"
+                  value={String(row.label ?? '')}
+                  disabled={readOnly}
+                  onChange={(e) => update(index, { label: e.target.value })}
+                />
+                <select
+                  aria-label={`Payload field ${index + 1} type`}
+                  value={String(row.type ?? 'string')}
+                  disabled={readOnly}
+                  onChange={(e) =>
+                    update(index, { type: e.target.value as ApprovalPayloadField['type'] })
+                  }
+                >
+                  {payloadTypeOptions(row.type).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="wf-rows__check">
+                  <input
+                    type="checkbox"
+                    checked={row.required === true}
+                    disabled={readOnly}
+                    onChange={(e) => update(index, { required: e.target.checked })}
+                  />
+                  Required
+                </label>
+                <button
+                  type="button"
+                  aria-label={`Move payload field ${index + 1} up`}
+                  disabled={readOnly || index === 0}
+                  onClick={() => onChange(moveItem(rows, index, -1))}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move payload field ${index + 1} down`}
+                  disabled={readOnly || index === rows.length - 1}
+                  onClick={() => onChange(moveItem(rows, index, 1))}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remove payload field ${index + 1}`}
+                  disabled={readOnly}
+                  onClick={() => onChange(removeAt(rows, index))}
+                >
+                  ×
+                </button>
+              </div>
+              {error && (
+                <span className="wf-field__notice wf-field__notice--error" role="alert">
+                  {error}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        disabled={readOnly}
+        onClick={() => onChange([...rows, blankPayloadField(rows)])}
+      >
+        Add payload field
+      </button>
+    </div>
+  );
+}
+
+/**
+ * notify_emails as one input per recipient, format-checked inline. The server
+ * only requires non-empty strings, so a refused-looking address is a warning,
+ * not a block — the row is committed either way.
+ */
+function NotifyEmailsEditor({
+  rows,
+  readOnly,
+  onChange,
+}: {
+  rows: string[];
+  readOnly: boolean;
+  onChange: (rows: string[]) => void;
+}): JSX.Element {
+  return (
+    <div className="wf-field wf-rows">
+      <span className="wf-field__label" id="wf-notify-emails-label">
+        Notify emails
+      </span>
+      <ul className="wf-rows__list" aria-labelledby="wf-notify-emails-label">
+        {rows.map((row, index) => {
+          const error = notifyEmailError(row);
+          return (
+            <li className="wf-rows__row" key={index}>
+              <div className="wf-rows__controls">
+                <input
+                  type="email"
+                  aria-label={`Notify email ${index + 1}`}
+                  placeholder="name@example.com"
+                  value={row}
+                  disabled={readOnly}
+                  spellCheck={false}
+                  onChange={(e) => onChange(replaceAt(rows, index, e.target.value))}
+                />
+                <button
+                  type="button"
+                  aria-label={`Remove notify email ${index + 1}`}
+                  disabled={readOnly}
+                  onClick={() => onChange(removeAt(rows, index))}
+                >
+                  ×
+                </button>
+              </div>
+              {error && (
+                <span className="wf-field__notice wf-field__notice--error" role="alert">
+                  {error}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <button type="button" disabled={readOnly} onClick={() => onChange([...rows, ''])}>
+        Add recipient
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A duration field: an amount + unit composite over the ISO-8601 value the
+ * server actually validates, with the raw-ISO escape hatch the install form's
+ * `param-duration.js` peer established.
+ *
+ * The stored value is the single source of truth and is never re-encoded: a
+ * value the composite cannot represent exactly (a compound interval such as
+ * P1DT12H, weeks, seconds) opens straight into the ISO input and round-trips
+ * verbatim. A half-typed amount composes to nothing and so leaves the stored
+ * value alone — the same rule as the install form, so a stray keystroke can
+ * never blank a duration the operator already had.
+ */
+function DurationField({
   label,
   value,
+  notice,
   readOnly,
   onChange,
 }: {
   label: string;
-  value: unknown;
+  value: string;
+  notice?: string;
   readOnly: boolean;
-  onChange: (value: unknown) => void;
+  onChange: (value: string) => void;
 }): JSX.Element {
-  const [text, setText] = useState(() => (value === undefined ? '' : JSON.stringify(value, null, 2)));
-  const [error, setError] = useState('');
+  const parts = splitDuration(value);
+  const [manual, setManual] = useState(() => value !== '' && parts === null);
+  const [amount, setAmount] = useState(() => (parts ? String(parts.amount) : ''));
+  const [unit, setUnit] = useState<DurationUnit>(() => parts?.unit ?? 'hours');
 
+  // Re-sync the composite from the stored value (undo/redo, a re-selected node,
+  // a value edited through the ISO input) without clobbering a half-typed
+  // amount, which has no representable value to sync from.
   useEffect(() => {
-    setText(value === undefined ? '' : JSON.stringify(value, null, 2));
-    setError('');
+    const split = splitDuration(value);
+    if (split) {
+      setAmount(String(split.amount));
+      setUnit(split.unit);
+    }
   }, [value]);
 
-  const commit = (raw: string): void => {
-    const trimmed = raw.trim();
-    if (trimmed === '') {
-      setError('');
-      onChange(undefined);
-      return;
+  // A stored value the composite cannot represent PINS the field to the ISO
+  // input: there is no amount/unit pair to switch back to, so the picker is not
+  // offered until the value becomes representable again.
+  const pinnedToIso = value !== '' && parts === null;
+  const iso = manual || pinnedToIso;
+
+  const compose = (nextAmount: string, nextUnit: DurationUnit): void => {
+    const composed = composeDuration(nextAmount, nextUnit);
+    if (composed !== null) {
+      onChange(composed);
     }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch {
-      setError('Not valid JSON.');
-      return;
-    }
-    if (!Array.isArray(parsed)) {
-      setError('Must be a JSON array.');
-      return;
-    }
-    setError('');
-    onChange(parsed);
   };
 
   return (
-    <label className="wf-field">
+    <div className="wf-field wf-duration">
       <span className="wf-field__label">{label}</span>
-      <textarea
-        value={text}
-        disabled={readOnly}
-        spellCheck={false}
-        rows={4}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={(e) => commit(e.target.value)}
-      />
-      {error && (
-        <span className="wf-field__notice" role="alert">
-          {error}
+      {iso ? (
+        <input
+          type="text"
+          className="wf-duration__iso"
+          aria-label={label}
+          placeholder="ISO-8601, e.g. PT1H"
+          value={value}
+          disabled={readOnly}
+          spellCheck={false}
+          onChange={(e) => {
+            // Sticky: once the ISO input is in use it stays the control, so the
+            // field cannot flip to the composite mid-keystroke the moment the
+            // typed text happens to be representable.
+            setManual(true);
+            onChange(e.target.value);
+          }}
+        />
+      ) : (
+        <div className="wf-duration__composite">
+          <input
+            type="number"
+            className="wf-duration__amount"
+            min={1}
+            step={1}
+            aria-label={`${label} amount`}
+            value={amount}
+            disabled={readOnly}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              compose(e.target.value, unit);
+            }}
+          />
+          <select
+            className="wf-duration__unit"
+            aria-label={`${label} unit`}
+            value={unit}
+            disabled={readOnly}
+            onChange={(e) => {
+              const next = e.target.value as DurationUnit;
+              setUnit(next);
+              compose(amount, next);
+            }}
+          >
+            {DURATION_UNITS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {!pinnedToIso && (
+        <button
+          type="button"
+          className="wf-field__toggle"
+          disabled={readOnly}
+          onClick={() => setManual(!iso)}
+        >
+          {iso ? 'Use the duration picker' : 'Enter an ISO-8601 duration instead'}
+        </button>
+      )}
+      {pinnedToIso && isIsoDuration(value) && (
+        <span className="wf-field__notice">
+          This duration mixes units, so it is edited as ISO-8601.
         </span>
       )}
-    </label>
+      {notice && <span className="wf-field__notice">{notice}</span>}
+      {value === '' && (
+        <span className="wf-field__notice wf-field__notice--error" role="alert">
+          A duration is required.
+        </span>
+      )}
+      {value !== '' && !isIsoDuration(value) && (
+        <span className="wf-field__notice wf-field__notice--error" role="alert">
+          Not an ISO-8601 duration (e.g. PT30M, PT2H, P3D).
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -340,6 +928,22 @@ function ConfigFieldControl({
   readOnly: boolean;
   onChange: (value: unknown) => void;
 }): JSX.Element {
+  // Multiselect first: an option-bearing multiselect is still a multiselect, and
+  // falling through to the inline branch is what limited AssignWebsites to a
+  // single website.
+  if (field.type === 'multiselect' && field.inlineOptions.length > 0) {
+    return (
+      <MultiSelectField
+        label={field.label}
+        options={field.inlineOptions}
+        value={value}
+        required={field.required}
+        notice={field.notice}
+        readOnly={readOnly}
+        onChange={onChange}
+      />
+    );
+  }
   if (field.optionMode === 'inline') {
     return (
       <SelectField
@@ -473,9 +1077,64 @@ function SelectField({
 }
 
 /**
+ * A real multiselect (F6 `type: multiselect`). The stored value is the
+ * COMMA-SEPARATED string the runtime parses — AssignWebsites explodes on ","
+ * and trims — so the control serializes to exactly that, and an emptied
+ * selection removes the config key (writeValue's '' convention).
+ */
+function MultiSelectField({
+  label,
+  options,
+  value,
+  required,
+  notice,
+  readOnly,
+  onChange,
+}: {
+  label: string;
+  options: ConfigFieldOption[];
+  value: unknown;
+  required?: boolean;
+  notice?: string | null;
+  readOnly: boolean;
+  onChange: (value: unknown) => void;
+}): JSX.Element {
+  const selected = parseMultiValue(value);
+  const rendered = multiSelectOptions(options, selected);
+  return (
+    <label className="wf-field wf-field--multi">
+      <span className="wf-field__label">{label}{required ? ' *' : ''}</span>
+      <select
+        multiple
+        size={Math.min(8, Math.max(3, rendered.length))}
+        value={selected}
+        disabled={readOnly}
+        onChange={(e) =>
+          onChange(serializeMultiValue(Array.from(e.target.selectedOptions).map((o) => o.value)))
+        }
+      >
+        {rendered.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <span className="wf-field__notice">Hold Ctrl (⌘ on macOS) to select more than one.</span>
+      {notice && <span className="wf-field__notice">{notice}</span>}
+    </label>
+  );
+}
+
+/**
  * A search-typed select (F6 options_search): fetches from the same-origin
- * meta/options proxy once the query reaches min_chars. Debouncing is trivial
- * here (fetch on change ≥ threshold); the endpoint caps results.
+ * meta/options proxy once the query reaches min_chars, debounced by
+ * SEARCH_DEBOUNCE_MS so a fast typist costs one request rather than one per
+ * character (the install form's search widget uses the same 250ms).
+ *
+ * The persisted value is always rendered as a REAL option, never as the empty
+ * placeholder: with the value sitting on `value=""`, re-picking the item the
+ * field already showed cleared it. Its label is remembered from whichever fetch
+ * first resolved it, so a restored value reads as a name rather than a bare id.
  */
 function SearchSelectField({
   field,
@@ -491,24 +1150,66 @@ function SearchSelectField({
   onChange: (value: string) => void;
 }): JSX.Element {
   const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [options, setOptions] = useState<ConfigFieldOption[]>([]);
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const source = field.searchSource;
+  const endpoint = config.endpoints.options;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Resolve a label for the PERSISTED value up front, by querying the proxy for
+  // the value itself — the same trick the install form plays server-side
+  // (Install::currentValueLabel calls the source's fetch($value)). Without it a
+  // restored record reads as a bare id until the operator happens to type a
+  // query that includes it. A source that cannot resolve it simply leaves the id
+  // showing; the effect does not retry.
+  useEffect(() => {
+    if (!source || value === '' || selectedLabel !== null) {
+      return;
+    }
+    let cancelled = false;
+    const url = `${endpoint}?source=${encodeURIComponent(source)}&q=${encodeURIComponent(value)}`;
+    fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : { options: [] }))
+      .then((body: { options?: ConfigFieldOption[] }) => {
+        const resolved = labelForValue(body.options ?? [], value);
+        if (!cancelled && resolved !== null) {
+          setSelectedLabel(resolved);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [value, selectedLabel, source, endpoint]);
 
   useEffect(() => {
     if (!field.searchSource) {
       return;
     }
-    if (!shouldSearch(field, query)) {
+    if (!shouldSearch(field, debounced)) {
       return;
     }
     let cancelled = false;
     setLoading(true);
-    const url = `${config.endpoints.options}?source=${encodeURIComponent(field.searchSource)}&q=${encodeURIComponent(query)}`;
+    const url = `${config.endpoints.options}?source=${encodeURIComponent(field.searchSource)}&q=${encodeURIComponent(debounced)}`;
     fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then((r) => (r.ok ? r.json() : { options: [] }))
       .then((body: { options?: ConfigFieldOption[] }) => {
         if (!cancelled) {
-          setOptions(body.options ?? []);
+          const fetched = body.options ?? [];
+          setOptions(fetched);
+          // Remember the label for the persisted value the first time a fetch
+          // resolves it, so it survives the next (narrower) query.
+          const resolved = labelForValue(fetched, value);
+          if (resolved !== null) {
+            setSelectedLabel(resolved);
+          }
         }
       })
       .catch(() => {
@@ -524,22 +1225,32 @@ function SearchSelectField({
     return () => {
       cancelled = true;
     };
-  }, [query, field, config.endpoints.options]);
+  }, [debounced, field, value, config.endpoints.options]);
+
+  const rendered = optionsWithSelected(options, value, selectedLabel);
 
   return (
     <div className="wf-field wf-field--search">
-      <span className="wf-field__label">{field.label}{field.required ? ' *' : ''}</span>
+      <span className="wf-field__label" id={`wf-search-${field.name}`}>
+        {field.label}{field.required ? ' *' : ''}
+      </span>
       <input
         type="text"
+        aria-label={`Search ${field.label}`}
         placeholder={`Search (min ${field.minChars} chars)…`}
         value={query}
         disabled={readOnly}
         onChange={(e) => setQuery(e.target.value)}
       />
       {loading && <span className="wf-field__notice">Searching…</span>}
-      <select value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{value ? value : '— select —'}</option>
-        {options.map((o) => (
+      <select
+        aria-labelledby={`wf-search-${field.name}`}
+        value={value}
+        disabled={readOnly}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">— select —</option>
+        {rendered.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>

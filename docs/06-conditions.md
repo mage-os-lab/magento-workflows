@@ -101,3 +101,19 @@ After a delay, the world has moved. Each branch/switch step carries `revalidate_
 | `false` | Evaluate against the frozen trigger snapshot | "Log what it looked like at order time" |
 
 Exposed as a checkbox; **the executor defaults to `true` for every branch/switch step**, not only those following a delay — snapshots can be stale for other reasons (queue lag, redelivery), so fresh-by-default is the safer posture and post-delay staleness is just the motivating case (pinned by `ExecutorWalkTest` / `ConditionEvaluatorTest`). The form assembler applies that default (a branch row whose preceding row is a `delay` gets `revalidate_entity: true` unless the row sets it explicitly); a post-delay `branch`/`switch` left at `false` raises the `GRAPH_POST_DELAY_STALE` warning in the save-time validation pipeline ([Execution Model §Static graph validation](08-execution-model.md#static-graph-validation)) — non-blocking, but usually a mistake. `switch` carries one shared `revalidate_entity` for the whole step: one hydration, N case evaluations. An `approval` gate ([Execution Model §Approval steps](08-execution-model.md#approval-steps-schema-4)) can park for days awaiting a decision, so the same staleness hazard — and the same `GRAPH_POST_DELAY_STALE` warning — applies to a `revalidate_entity: false` branch/switch directly after one.
+
+## Condition editing UI
+
+The canvas edits condition trees in a shared slide-out whose primary editor is a
+**metadata-driven tree builder** (docs/11-admin-ui.md §v2). The server is the single authority:
+`ConditionMetaProvider` (core) projects each condition class's existing rule-model contract —
+`getNewChildSelectOptions()`, `loadAttributeOptions()`, `getInputType()`,
+`getValueSelectOptions()`, operator sets, `RelationPool` relations, aggregate attributes — into
+a per-node-type JSON feed at `mageos_workflows/data/conditionMeta` (`::view`). A condition class
+registered through `ConditionCombinePool`/`ConditionLeafPool` therefore appears in the builder
+with no client change; a node type the provider cannot describe renders read-only and its JSON
+round-trips verbatim. Apply posts through the shared `workflow/conditions` endpoint (`::manage`)
+and stores the echoed normalized tree, so the save-time pipeline sees exactly what the builder
+wrote. The canvas reaches all three homes of a tree: branch steps, individual switch cases
+(`cases[].conditions_serialized`), and the workflow root; the step's shared `revalidate_entity`
+flag is edited in the same slide-out. Raw JSON editing remains behind the "Edit as JSON" toggle.

@@ -250,11 +250,19 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
 
         {selectedNode && (
           <ConfigPanel
+            // Keyed by step: the panel holds per-field UI state (a duration's
+            // composite-vs-ISO mode, a search field's query, a case key draft),
+            // and none of that should follow the selection to another step.
+            key={selectedNode.id}
             node={selectedNode}
             config={config}
             graph={graph}
             readOnly={readOnly}
             onChange={(stepKey, step) => commit(replaceStep(graph, stepKey, step))}
+            // Switch case edits arrive as a whole graph: a case key is an edge
+            // handle, so the panel's case ops (switchCases) rewrite nodes AND
+            // edges together and hand the result straight to the history.
+            onGraphChange={commit}
             onDelete={(stepKey) => {
               commit(deleteNode(graph, stepKey));
               setSelected(null);
