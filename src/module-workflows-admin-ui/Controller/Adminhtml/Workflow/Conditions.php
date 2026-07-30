@@ -32,8 +32,14 @@ class Conditions extends Action implements HttpPostActionInterface
 {
     public const ADMIN_RESOURCE = 'MageOS_Workflows::manage';
 
-    /** A trivial valid definition so structural checks pass and only the conditions shape is judged. */
-    private const PROBE_DEFINITION = '{"schema":3,"entry":"s1","steps":{"s1":{"type":"stop"}}}';
+    /**
+     * A trivial valid definition so structural checks pass and only the
+     * conditions shape is judged. Declares the CURRENT schema
+     * (Definition::SCHEMA_VERSION) — a probe pinned to a legacy version would
+     * be silently normalized upward on parse and, once 3 leaves the accepted
+     * input list, would fail the very structural check it exists to satisfy.
+     */
+    private const PROBE_DEFINITION = '{"schema":4,"entry":"s1","steps":{"s1":{"type":"stop"}}}';
 
     public function __construct(
         Action\Context $context,

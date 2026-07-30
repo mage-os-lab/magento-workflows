@@ -90,6 +90,18 @@ class Mount extends Template
                 // admin-ui, whose install form uses the same feed — one route,
                 // not a per-surface copy of the same delegation.
                 'options' => $this->getUrl('mageos_workflows/data/options'),
+                // Same-origin admin JSON condition-metadata feed (::view), also
+                // owned by admin-ui: the condition builder is metadata-driven,
+                // so the server's condition classes (and any third-party class
+                // registered in their DI pools) stay the single authority over
+                // what the tree editor can offer.
+                'conditionMeta' => $this->getUrl('mageos_workflows/data/conditionMeta'),
+                // The EXISTING shared condition apply target (::manage, form
+                // key) the classic form's slide-out already posts to: the canvas
+                // slide-out posts the serialized tree here and commits the
+                // normalized tree the controller echoes back (E1 seam,
+                // docs/11-admin-ui.md).
+                'conditions' => $this->getUrl('mageos_workflows/workflow/conditions'),
                 // The EXISTING admin Save controller — the canvas has no save
                 // path of its own (docs/discovery/canvas.md §4).
                 'save' => $this->getUrl('mageos_workflows/workflow/save'),

@@ -67,6 +67,42 @@ class Combine extends AbstractCondition
     }
 
     /**
+     * Core combine aggregator hash (ALL / ANY), verbatim
+     *
+     * @return $this
+     */
+    public function loadAggregatorOptions()
+    {
+        $this->setAggregatorOption(['all' => __('ALL'), 'any' => __('ANY')]);
+        return $this;
+    }
+
+    /**
+     * Core projection of the aggregator hash into a select option list
+     *
+     * @return array<int, array{value: string, label: mixed}>
+     */
+    public function getAggregatorSelectOptions()
+    {
+        $options = [];
+        foreach ((array)$this->getAggregatorOption() as $key => $label) {
+            $options[] = ['value' => $key, 'label' => $label];
+        }
+        return $options;
+    }
+
+    /**
+     * A combine validates its children against TRUE / FALSE, verbatim from core
+     *
+     * @return $this
+     */
+    public function loadValueOptions()
+    {
+        $this->setValueOption([1 => __('TRUE'), 0 => __('FALSE')]);
+        return $this;
+    }
+
+    /**
      * @return array
      */
     public function asArray(array $arrAttributes = [])

@@ -4,9 +4,13 @@
  * @var \Magento\Framework\Escaper $escaper
  *
  * The condition slide-out trigger. Booted with data-mage-init (declarative,
- * CSP-safe — no inline script); all config travels in data-* attributes. The
- * textarea (the "edit as JSON" fallback) stays visible above this in the
- * fieldset.
+ * CSP-safe — no inline script); the STATIC config (apply endpoint, form key,
+ * edited field) travels in data-* attributes. The trigger context the slide-out
+ * posts for validation (trigger_type / trigger_ref / entity_type) is deliberately
+ * NOT emitted here: those three are editable in this very form, so the widget
+ * reads them from the live fields at apply time and a mid-edit trigger change is
+ * honored (peer convention: definition-preview.js). The textarea (the "edit as
+ * JSON" fallback) stays visible above this in the fieldset.
  */
 $escaper = $escaper ?? $block->getEscaper();
 $config = $escaper->escapeHtmlAttr('{"mageosWorkflowsConditions": {}}');
