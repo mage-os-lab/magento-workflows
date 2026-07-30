@@ -13,7 +13,7 @@
             "edition": "any"
         },
         "parameters": [
-            {"key": "stale_hours", "label": "Hours unpaid before cancelling", "type": "string", "default": "72"}
+            {"key": "stale_hours", "label": "Hours unpaid before cancelling", "type": "number", "min": 1, "step": 1, "default": "72", "note": "Pending orders older than this are cancelled outright and stamped with an auto-cancellation comment. The sweep runs hourly, so an order can sit up to an hour past the cutoff before it is picked up."}
         ]
     },
     "workflow": {

@@ -15,7 +15,7 @@
         },
         "parameters": [
             {"key": "coupon_rule_id", "label": "Cart price rule for the follow-up coupon", "type": "entity:salesrule", "required": true},
-            {"key": "min_cart_total", "label": "Minimum cart total to bother reminding", "type": "string", "default": "50"},
+            {"key": "min_cart_total", "label": "Minimum cart total to bother reminding", "type": "number", "min": 0, "default": "50"},
             {"key": "reminder_delay", "label": "Wait before the coupon follow-up", "type": "duration", "default": "P1D"}
         ]
     },
