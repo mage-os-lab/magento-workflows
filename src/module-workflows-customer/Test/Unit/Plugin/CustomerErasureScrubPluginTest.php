@@ -30,7 +30,7 @@ class CustomerErasureScrubPluginTest extends TestCase
         $result = $plugin->afterDelete(
             $this->repository(null),
             true,
-            new FakeDeletedCustomer(42, 'john.doe@example.com')
+            $this->customer(42, 'john.doe@example.com')
         );
 
         $this->assertTrue($result);
@@ -42,7 +42,7 @@ class CustomerErasureScrubPluginTest extends TestCase
         $scrubber = new RecordingScrubber();
         $plugin = new CustomerErasureScrubPlugin($scrubber, new NullLogger());
 
-        $plugin->afterDelete($this->repository(null), false, new FakeDeletedCustomer(42, 'a@b.test'));
+        $plugin->afterDelete($this->repository(null), false, $this->customer(42, 'a@b.test'));
 
         $this->assertSame([], $scrubber->calls);
     }
@@ -51,7 +51,7 @@ class CustomerErasureScrubPluginTest extends TestCase
     {
         $scrubber = new RecordingScrubber();
         $plugin = new CustomerErasureScrubPlugin($scrubber, new NullLogger());
-        $repository = $this->repository(new FakeDeletedCustomer(42, 'john.doe@example.com'));
+        $repository = $this->repository($this->customer(42, 'john.doe@example.com'));
 
         $log = [];
         $result = $plugin->aroundDeleteById(
@@ -113,7 +113,7 @@ class CustomerErasureScrubPluginTest extends TestCase
         $result = $plugin->afterDelete(
             $this->repository(null),
             true,
-            new FakeDeletedCustomer(42, 'john.doe@example.com')
+            $this->customer(42, 'john.doe@example.com')
         );
 
         $this->assertTrue($result, 'The deletion already committed; the scrub failure must not mask it');
@@ -121,13 +121,28 @@ class CustomerErasureScrubPluginTest extends TestCase
         $this->assertStringContainsString('customer 42', $logger->errors[0]);
     }
 
-    private function repository(?FakeDeletedCustomer $customer): CustomerRepositoryInterface
+    /**
+     * A deleted-customer stand-in carrying only what the plugin reads. A
+     * configured mock rather than a hand-rolled implements-the-interface fake:
+     * the real 2.4.x CustomerInterface declares ~46 methods (and grows), so a
+     * literal implementation fatals against a full Magento install while
+     * passing against the slim test shim.
+     */
+    private function customer(int $id, string $email): CustomerInterface
+    {
+        $customer = $this->createMock(CustomerInterface::class);
+        $customer->method('getId')->willReturn($id);
+        $customer->method('getEmail')->willReturn($email);
+        return $customer;
+    }
+
+    private function repository(?CustomerInterface $customer): CustomerRepositoryInterface
     {
         return new class ($customer) implements CustomerRepositoryInterface {
             /** @var string[] */
             public array $log = [];
 
-            public function __construct(public ?FakeDeletedCustomer $customer)
+            public function __construct(public ?CustomerInterface $customer)
             {
             }
 
@@ -165,25 +180,6 @@ class CustomerErasureScrubPluginTest extends TestCase
                 throw new \LogicException('the plugin wraps deleteById(); the fake never receives it');
             }
         };
-    }
-}
-
-class FakeDeletedCustomer implements CustomerInterface
-{
-    public function __construct(
-        private readonly int $id,
-        private readonly string $email
-    ) {
-    }
-
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    public function getEmail()
-    {
-        return $this->email;
     }
 }
 
