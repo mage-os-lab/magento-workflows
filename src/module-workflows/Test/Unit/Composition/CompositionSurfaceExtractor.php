@@ -40,9 +40,12 @@ final class CompositionSurfaceExtractor
     private const AGGREGATE_POOL = ['MageOS\\Workflows\\Model\\Rule\\AggregateProviderPool', 'providers'];
 
     /**
+     * @param string[] $packageDirs absolute package roots to scan; pass
+     *        PackageLocator::packageDirs() so the scan works both in the
+     *        monorepo and in a vendor/mage-os install (see PackageLocator).
      * @return array<string, array<string, string>> section => (key => value), each section ksorted
      */
-    public static function extract(string $repoRoot): array
+    public static function extract(array $packageDirs): array
     {
         $surface = [
             'actions' => [],
@@ -56,7 +59,7 @@ final class CompositionSurfaceExtractor
             'observers' => [],
         ];
 
-        foreach (self::etcXmlFiles($repoRoot) as $file) {
+        foreach (self::etcXmlFiles($packageDirs) as $file) {
             $dom = self::load($file);
             if ($dom === null || $dom->documentElement === null) {
                 continue;
@@ -80,12 +83,13 @@ final class CompositionSurfaceExtractor
     }
 
     /**
-     * @return string[] absolute paths to every etc/*.xml under every src/module-*
+     * @param string[] $packageDirs
+     * @return string[] absolute paths to every etc/*.xml under every package
      */
-    private static function etcXmlFiles(string $repoRoot): array
+    private static function etcXmlFiles(array $packageDirs): array
     {
         $files = [];
-        foreach (glob($repoRoot . '/src/module-*', GLOB_ONLYDIR) ?: [] as $moduleDir) {
+        foreach ($packageDirs as $moduleDir) {
             $etcDir = $moduleDir . '/etc';
             if (!is_dir($etcDir)) {
                 continue;

@@ -5,7 +5,6 @@ namespace MageOS\WorkflowsCustomer\Test\Unit\Plugin;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\CustomerInterface;
-use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\NoSuchEntityException;
 use MageOS\WorkflowsCustomer\Model\ExecutionPiiScrubber;
 use MageOS\WorkflowsCustomer\Plugin\CustomerErasureScrubPlugin;
@@ -450,7 +449,15 @@ class RecordingScrubber extends ExecutionPiiScrubber
 
     public function __construct()
     {
-        parent::__construct(new ResourceConnection(), new NullLogger());
+        // Deliberately NO parent::__construct(): ExecutionPiiScrubber takes a
+        // real Magento\Framework\App\ResourceConnection, and on a full install
+        // that class needs three DI collaborators
+        // (ConfigInterface/ConnectionFactoryInterface/DeploymentConfig) — `new
+        // ResourceConnection()` is an ArgumentCountError there, and only the
+        // standalone runner's shim tolerates it. Bypassing the parent
+        // constructor is safe because scrubForCustomer() below is the only
+        // method this double is ever asked for and it never reads the parent's
+        // (therefore uninitialized) properties.
     }
 
     public function scrubForCustomer(int $customerId, string $email): void

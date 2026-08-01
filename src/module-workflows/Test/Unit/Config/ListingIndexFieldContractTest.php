@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Test\Unit\Config;
 
+use MageOS\Workflows\Test\Unit\PackageLocator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -24,22 +25,22 @@ use PHPUnit\Framework\TestCase;
  */
 class ListingIndexFieldContractTest extends TestCase
 {
-    private function srcRoot(): string
-    {
-        return dirname(__DIR__, 4);
-    }
-
     /**
+     * Discovery goes through PackageLocator so the listings are found in BOTH
+     * layouts — <repo>/src/module-* and, in CI's real Magento install,
+     * <magento>/vendor/mage-os/workflows* — and an empty package scan throws
+     * rather than passing this contract vacuously.
+     *
      * @return string[]
      */
     private function listingFiles(): array
     {
-        return glob($this->srcRoot() . '/module-*/view/adminhtml/ui_component/*_listing.xml') ?: [];
+        return PackageLocator::globInPackages('view/adminhtml/ui_component/*_listing.xml');
     }
 
     private function relative(string $path): string
     {
-        return str_replace(dirname($this->srcRoot()) . '/', '', $path);
+        return PackageLocator::relative($path);
     }
 
     /**

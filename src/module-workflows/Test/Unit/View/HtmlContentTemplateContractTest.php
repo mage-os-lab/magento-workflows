@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Test\Unit\View;
 
+use MageOS\Workflows\Test\Unit\PackageLocator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -29,35 +30,24 @@ use PHPUnit\Framework\TestCase;
  */
 class HtmlContentTemplateContractTest extends TestCase
 {
-    private function srcRoot(): string
-    {
-        return dirname(__DIR__, 4);
-    }
-
     private function relative(string $path): string
     {
-        return str_replace(dirname($this->srcRoot()) . '/', '', $path);
+        return PackageLocator::relative($path);
     }
 
     /**
-     * Magento module name => absolute module directory, read from etc/module.xml.
+     * Magento module name => absolute module directory.
+     *
+     * Discovery goes through PackageLocator, so the sibling packages resolve in
+     * BOTH layouts — <repo>/src/module-* and, in CI's real Magento install,
+     * <magento>/vendor/mage-os/workflows* — and an empty scan throws instead of
+     * quietly reducing every guard below to a no-op.
      *
      * @return array<string, string>
      */
     private function moduleDirectories(): array
     {
-        $dirs = [];
-        foreach (glob($this->srcRoot() . '/module-*/etc/module.xml') ?: [] as $file) {
-            $xml = simplexml_load_file($file);
-            if ($xml === false || !isset($xml->module)) {
-                continue;
-            }
-            $name = (string) $xml->module['name'];
-            if ($name !== '') {
-                $dirs[$name] = dirname(dirname($file));
-            }
-        }
-        return $dirs;
+        return PackageLocator::packageRoots();
     }
 
     /**
@@ -68,7 +58,7 @@ class HtmlContentTemplateContractTest extends TestCase
     private function htmlContentBlocks(): array
     {
         $blocks = [];
-        foreach (glob($this->srcRoot() . '/module-*/view/*/ui_component/*.xml') ?: [] as $file) {
+        foreach (PackageLocator::globInPackages('view/*/ui_component/*.xml') as $file) {
             $xml = simplexml_load_file($file);
             if ($xml === false) {
                 continue;

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsNewsletter\Test\Unit\Model\Rule\Hydrator;
 
+use Magento\Framework\DataObject;
 use Magento\Framework\DataObjectFactory;
 use Magento\Newsletter\Model\Subscriber;
 use MageOS\WorkflowsNewsletter\Model\Rule\Hydrator\SubscriberHydrationService;
@@ -22,6 +23,34 @@ class SubscriberHydratorTest extends TestCase
     private function service(Subscriber $subscriber): SubscriberHydrationService
     {
         return new SubscriberHydrationService(new FakeSubscriberFactory($subscriber));
+    }
+
+    /**
+     * Magento\Framework\DataObjectFactory has no source file — it is a GENERATED
+     * factory. Under the unit-test framework of a real install it is produced by
+     * Magento\Framework\TestFramework\Unit\Autoloader\FactoryGenerator, which
+     * emits `public function create(array $data = []) {}` — an EMPTY body, so
+     * `new DataObjectFactory()` succeeds and create() silently returns null,
+     * and the hydrator hands back null for a subscriber that exists. Only the
+     * standalone runner's shim really builds the DataObject.
+     *
+     * So the factory is a test double here, mirroring the generated factory's
+     * create(['data' => [...]]) contract, and the assertions below hold in both
+     * worlds.
+     */
+    private function dataObjectFactory(): DataObjectFactory
+    {
+        return new class extends DataObjectFactory {
+            /**
+             * @param array<string, mixed> $data
+             */
+            public function create(array $data = []): DataObject
+            {
+                $values = $data['data'] ?? [];
+
+                return new DataObject(is_array($values) ? $values : []);
+            }
+        };
     }
 
     public function testGetByIdBuildsFlatSnapshotForAccountHolder(): void
@@ -79,7 +108,7 @@ class SubscriberHydratorTest extends TestCase
             'store_id' => 1,
             'customer_id' => 7,
         ]);
-        $hydrator = new SubscriberHydrator($this->service($subscriber), new DataObjectFactory());
+        $hydrator = new SubscriberHydrator($this->service($subscriber), $this->dataObjectFactory());
 
         $entity = $hydrator->hydrate(42);
 
@@ -92,7 +121,7 @@ class SubscriberHydratorTest extends TestCase
     public function testHydratorReturnsNullWhenSubscriberMissing(): void
     {
         $subscriber = new FakeSubscriber(['subscriber_id' => 0]);
-        $hydrator = new SubscriberHydrator($this->service($subscriber), new DataObjectFactory());
+        $hydrator = new SubscriberHydrator($this->service($subscriber), $this->dataObjectFactory());
 
         $this->assertNull($hydrator->hydrate(999));
     }

@@ -165,6 +165,27 @@ abstract class AbstractCondition extends DataObject
     }
 
     /**
+     * Verbatim from Magento\Rule\Model\Condition\AbstractCondition.
+     *
+     * Present so a test double can replay it. The REAL constructor runs
+     * `loadAttributeOptions()->loadOperatorOptions()->loadValueOptions()`, and
+     * the real getOperatorSelectOptions() then iterates the `operator_option`
+     * data this populates. A double that bypasses the constructor (the suite's
+     * convention, since the real constructor demands a live rule Context) must
+     * therefore call this itself, or the real getOperatorSelectOptions()
+     * foreaches over null — a fatal on an install that this shim's own
+     * self-contained getOperatorSelectOptions() would never surface.
+     *
+     * @return $this
+     */
+    public function loadOperatorOptions()
+    {
+        $this->setOperatorOption($this->getDefaultOperatorOptions());
+        $this->setOperatorByInputType($this->getDefaultOperatorInputByType());
+        return $this;
+    }
+
+    /**
      * Core default: an empty value-option hash (subclasses that offer a fixed
      * value select — the combines' TRUE/FALSE, FOUND/NOT FOUND, EXISTS/NOT
      * EXISTS — override this)
@@ -207,8 +228,8 @@ abstract class AbstractCondition extends DataObject
                 'string' => ['==', '!=', '>=', '>', '<=', '<', '{}', '!{}', '()', '!()'],
                 'numeric' => ['==', '!=', '>=', '>', '<=', '<', '()', '!()'],
                 'date' => ['==', '>=', '<='],
-                'select' => ['==', '!='],
-                'boolean' => ['==', '!='],
+                'select' => ['==', '!=', '<=>'],
+                'boolean' => ['==', '!=', '<=>'],
                 'multiselect' => ['{}', '!{}', '()', '!()'],
                 'grid' => ['()', '!()'],
                 'category' => ['==', '!=', '{}', '!{}', '()', '!()'],
@@ -237,6 +258,7 @@ abstract class AbstractCondition extends DataObject
                 '!{}' => __('does not contain'),
                 '()' => __('is one of'),
                 '!()' => __('is not one of'),
+                '<=>' => __('is undefined'),
             ];
         }
         return $this->defaultOperatorOptions;

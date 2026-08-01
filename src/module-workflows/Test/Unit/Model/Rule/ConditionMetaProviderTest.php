@@ -51,8 +51,17 @@ class ConditionMetaProviderTest extends TestCase
             MetaFixtureProductLeaf::class => static fn (): object => new MetaFixtureProductLeaf(),
             MetaFixtureCustomerLeaf::class => static fn (): object => new MetaFixtureCustomerLeaf(),
             MetaFixtureUnreachableLeaf::class => static fn (): object => new MetaFixtureUnreachableLeaf(),
-            TriggerData::class => static fn (): object => (new \ReflectionClass(TriggerData::class))
-                ->newInstanceWithoutConstructor(),
+            // Reflection-constructed for the same reason the fixtures above
+            // bypass their constructors (TriggerData's takes a live rule
+            // Context), then given the two constructor effects the meta walk
+            // reads: its own type, and the option data the real
+            // getOperatorSelectOptions() iterates.
+            TriggerData::class => static function (): object {
+                $node = (new \ReflectionClass(TriggerData::class))->newInstanceWithoutConstructor();
+                $node->setType(TriggerData::class);
+                $node->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
+                return $node;
+            },
             RelatedEntityCombine::class => fn (): object => $this->relatedEntityCombine(),
             // A class whose DI wiring is broken: the walk must survive it.
             MetaFixtureBrokenCombine::class => static function (): object {
@@ -206,8 +215,10 @@ class ConditionMetaProviderTest extends TestCase
     {
         $attributes = $this->meta(MetaFixtureLeaf::class)['attributes'];
 
-        // Core's operator sets per input type, projected verbatim.
-        $this->assertSame(['==', '!='], array_column($attributes['status']['operators'], 'value'));
+        // Core's operator sets per input type, projected verbatim — including
+        // core's '<=>' ("is undefined") on select/boolean, which the widget
+        // offers alongside is/is not.
+        $this->assertSame(['==', '!=', '<=>'], array_column($attributes['status']['operators'], 'value'));
         $this->assertSame(
             ['==', '!=', '>=', '<=', '>', '<', '()', '!()'],
             array_column($attributes['grand_total']['operators'], 'value')
@@ -450,9 +461,14 @@ final class MetaFixtureRootCombine extends Combine
 {
     // Bypass the parent constructor: the real AbstractCondition/Combine
     // require a live Context on a full install (peer convention: construct
-    // conditions without their constructor).
+    // conditions without their constructor). The option-loading trio the real
+    // constructor runs is replayed by hand — it needs no Context, and the real
+    // getOperatorSelectOptions()/getValueSelectOptions() read exactly the data
+    // it populates (skip it and the real one foreaches over a null
+    // `operator_option`, which is a fatal on an install).
     public function __construct()
     {
+        $this->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
     }
 
     /**
@@ -487,9 +503,14 @@ final class MetaFixtureItemsCombine extends Combine
 {
     // Bypass the parent constructor: the real AbstractCondition/Combine
     // require a live Context on a full install (peer convention: construct
-    // conditions without their constructor).
+    // conditions without their constructor). The option-loading trio the real
+    // constructor runs is replayed by hand — it needs no Context, and the real
+    // getOperatorSelectOptions()/getValueSelectOptions() read exactly the data
+    // it populates (skip it and the real one foreaches over a null
+    // `operator_option`, which is a fatal on an install).
     public function __construct()
     {
+        $this->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
     }
 
     /**
@@ -523,9 +544,14 @@ final class MetaFixtureLeaf extends AbstractCondition
 {
     // Bypass the parent constructor: the real AbstractCondition/Combine
     // require a live Context on a full install (peer convention: construct
-    // conditions without their constructor).
+    // conditions without their constructor). The option-loading trio the real
+    // constructor runs is replayed by hand — it needs no Context, and the real
+    // getOperatorSelectOptions()/getValueSelectOptions() read exactly the data
+    // it populates (skip it and the real one foreaches over a null
+    // `operator_option`, which is a fatal on an install).
     public function __construct()
     {
+        $this->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
     }
 
     /**
@@ -602,9 +628,14 @@ final class MetaFixtureProductLeaf extends AbstractCondition
 {
     // Bypass the parent constructor: the real AbstractCondition/Combine
     // require a live Context on a full install (peer convention: construct
-    // conditions without their constructor).
+    // conditions without their constructor). The option-loading trio the real
+    // constructor runs is replayed by hand — it needs no Context, and the real
+    // getOperatorSelectOptions()/getValueSelectOptions() read exactly the data
+    // it populates (skip it and the real one foreaches over a null
+    // `operator_option`, which is a fatal on an install).
     public function __construct()
     {
+        $this->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
     }
 
     /**
@@ -629,9 +660,14 @@ final class MetaFixtureCustomerLeaf extends AbstractCondition
 {
     // Bypass the parent constructor: the real AbstractCondition/Combine
     // require a live Context on a full install (peer convention: construct
-    // conditions without their constructor).
+    // conditions without their constructor). The option-loading trio the real
+    // constructor runs is replayed by hand — it needs no Context, and the real
+    // getOperatorSelectOptions()/getValueSelectOptions() read exactly the data
+    // it populates (skip it and the real one foreaches over a null
+    // `operator_option`, which is a fatal on an install).
     public function __construct()
     {
+        $this->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
     }
 
     /**
@@ -656,9 +692,14 @@ final class MetaFixtureUnreachableLeaf extends AbstractCondition
 {
     // Bypass the parent constructor: the real AbstractCondition/Combine
     // require a live Context on a full install (peer convention: construct
-    // conditions without their constructor).
+    // conditions without their constructor). The option-loading trio the real
+    // constructor runs is replayed by hand — it needs no Context, and the real
+    // getOperatorSelectOptions()/getValueSelectOptions() read exactly the data
+    // it populates (skip it and the real one foreaches over a null
+    // `operator_option`, which is a fatal on an install).
     public function __construct()
     {
+        $this->loadAttributeOptions()->loadOperatorOptions()->loadValueOptions();
     }
 
     public function validate(DataObject $model)

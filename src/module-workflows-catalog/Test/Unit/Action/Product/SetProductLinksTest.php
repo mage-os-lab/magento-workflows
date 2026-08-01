@@ -145,7 +145,102 @@ class SetProductLinksTest extends TestCase
      */
     private function actionWith(object $mgmt, array $knownSkus): SetProductLinks
     {
-        return new SetProductLinks($this->productRepo($knownSkus), $mgmt, new ProductLinkInterfaceFactory());
+        return new SetProductLinks($this->productRepo($knownSkus), $mgmt, $this->linkFactory());
+    }
+
+    /**
+     * ProductLinkInterfaceFactory has no source file on a real install — it is a
+     * GENERATED factory, and the unit-test framework generates it with
+     * Magento\Framework\TestFramework\Unit\Autoloader\FactoryGenerator, whose
+     * create(array $data = []) has an EMPTY body. So `new
+     * ProductLinkInterfaceFactory()` constructs fine and every create() hands
+     * back NULL there ("Call to a member function setSku() on null"), while the
+     * standalone runner's shim quietly returns a working data bag.
+     *
+     * Hence an explicit double. Its link objects implement the FULL real
+     * ProductLinkInterface — including the linked-product-type and
+     * extension-attribute pairs the action never touches — because a partial
+     * implementation is a fatal on a real install; the extension-attribute
+     * parameter type is repeated verbatim from the real interface, which is all
+     * PHP compares (the generated ProductLinkExtensionInterface is never loaded).
+     */
+    private function linkFactory(): ProductLinkInterfaceFactory
+    {
+        return new class extends ProductLinkInterfaceFactory {
+            public function create(array $data = []): ProductLinkInterface
+            {
+                return new class implements ProductLinkInterface {
+                    /** @var array<string, mixed> */
+                    private array $data = [];
+
+                    public function getSku()
+                    {
+                        return $this->data['sku'] ?? null;
+                    }
+
+                    public function setSku($sku)
+                    {
+                        $this->data['sku'] = $sku;
+                        return $this;
+                    }
+
+                    public function getLinkType()
+                    {
+                        return $this->data['link_type'] ?? null;
+                    }
+
+                    public function setLinkType($linkType)
+                    {
+                        $this->data['link_type'] = $linkType;
+                        return $this;
+                    }
+
+                    public function getLinkedProductSku()
+                    {
+                        return $this->data['linked_product_sku'] ?? null;
+                    }
+
+                    public function setLinkedProductSku($linkedProductSku)
+                    {
+                        $this->data['linked_product_sku'] = $linkedProductSku;
+                        return $this;
+                    }
+
+                    public function getLinkedProductType()
+                    {
+                        return $this->data['linked_product_type'] ?? null;
+                    }
+
+                    public function setLinkedProductType($linkedProductType)
+                    {
+                        $this->data['linked_product_type'] = $linkedProductType;
+                        return $this;
+                    }
+
+                    public function getPosition()
+                    {
+                        return $this->data['position'] ?? null;
+                    }
+
+                    public function setPosition($position)
+                    {
+                        $this->data['position'] = $position;
+                        return $this;
+                    }
+
+                    public function getExtensionAttributes()
+                    {
+                        return null;
+                    }
+
+                    public function setExtensionAttributes(
+                        \Magento\Catalog\Api\Data\ProductLinkExtensionInterface $extensionAttributes
+                    ) {
+                        return $this;
+                    }
+                };
+            }
+        };
     }
 
     /**
@@ -153,7 +248,7 @@ class SetProductLinksTest extends TestCase
      */
     private function linkMgmt(array $linksByType): object
     {
-        return new class ($linksByType, new ProductLinkInterfaceFactory()) implements ProductLinkManagementInterface {
+        return new class ($linksByType, $this->linkFactory()) implements ProductLinkManagementInterface {
             public int $setCalls = 0;
             public ?string $lastSku = null;
             /** @var ProductLinkInterface[] */
