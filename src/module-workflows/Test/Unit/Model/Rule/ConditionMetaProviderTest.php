@@ -7,7 +7,6 @@ use Magento\Framework\DataObject;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Rule\Model\Condition\AbstractCondition;
 use Magento\Rule\Model\Condition\Combine;
-use Magento\Rule\Model\Condition\Context;
 use MageOS\Workflows\Api\RelationInterface;
 use MageOS\Workflows\Model\Relation\RelationPool;
 use MageOS\Workflows\Model\Rule\Condition\RelatedEntity\Combine as RelatedEntityCombine;
@@ -52,7 +51,8 @@ class ConditionMetaProviderTest extends TestCase
             MetaFixtureProductLeaf::class => static fn (): object => new MetaFixtureProductLeaf(),
             MetaFixtureCustomerLeaf::class => static fn (): object => new MetaFixtureCustomerLeaf(),
             MetaFixtureUnreachableLeaf::class => static fn (): object => new MetaFixtureUnreachableLeaf(),
-            TriggerData::class => static fn (): object => new TriggerData(new Context()),
+            TriggerData::class => static fn (): object => (new \ReflectionClass(TriggerData::class))
+                ->newInstanceWithoutConstructor(),
             RelatedEntityCombine::class => fn (): object => $this->relatedEntityCombine(),
             // A class whose DI wiring is broken: the walk must survive it.
             MetaFixtureBrokenCombine::class => static function (): object {
@@ -448,9 +448,11 @@ final class MetaFixtureLogger implements LoggerInterface
  */
 final class MetaFixtureRootCombine extends Combine
 {
+    // Bypass the parent constructor: the real AbstractCondition/Combine
+    // require a live Context on a full install (peer convention: construct
+    // conditions without their constructor).
     public function __construct()
     {
-        parent::__construct(null, []);
     }
 
     /**
@@ -483,9 +485,11 @@ final class MetaFixtureRootCombine extends Combine
  */
 final class MetaFixtureItemsCombine extends Combine
 {
+    // Bypass the parent constructor: the real AbstractCondition/Combine
+    // require a live Context on a full install (peer convention: construct
+    // conditions without their constructor).
     public function __construct()
     {
-        parent::__construct(null, []);
     }
 
     /**
@@ -517,9 +521,11 @@ final class MetaFixtureItemsCombine extends Combine
  */
 final class MetaFixtureLeaf extends AbstractCondition
 {
+    // Bypass the parent constructor: the real AbstractCondition/Combine
+    // require a live Context on a full install (peer convention: construct
+    // conditions without their constructor).
     public function __construct()
     {
-        parent::__construct(null, []);
     }
 
     /**
@@ -594,9 +600,11 @@ final class MetaFixtureLeaf extends AbstractCondition
  */
 final class MetaFixtureProductLeaf extends AbstractCondition
 {
+    // Bypass the parent constructor: the real AbstractCondition/Combine
+    // require a live Context on a full install (peer convention: construct
+    // conditions without their constructor).
     public function __construct()
     {
-        parent::__construct(null, []);
     }
 
     /**
@@ -619,9 +627,11 @@ final class MetaFixtureProductLeaf extends AbstractCondition
  */
 final class MetaFixtureCustomerLeaf extends AbstractCondition
 {
+    // Bypass the parent constructor: the real AbstractCondition/Combine
+    // require a live Context on a full install (peer convention: construct
+    // conditions without their constructor).
     public function __construct()
     {
-        parent::__construct(null, []);
     }
 
     /**
@@ -644,9 +654,11 @@ final class MetaFixtureCustomerLeaf extends AbstractCondition
  */
 final class MetaFixtureUnreachableLeaf extends AbstractCondition
 {
+    // Bypass the parent constructor: the real AbstractCondition/Combine
+    // require a live Context on a full install (peer convention: construct
+    // conditions without their constructor).
     public function __construct()
     {
-        parent::__construct(null, []);
     }
 
     public function validate(DataObject $model)
