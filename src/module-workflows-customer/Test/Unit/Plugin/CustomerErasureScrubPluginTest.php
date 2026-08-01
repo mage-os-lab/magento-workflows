@@ -122,18 +122,16 @@ class CustomerErasureScrubPluginTest extends TestCase
     }
 
     /**
-     * A deleted-customer stand-in carrying only what the plugin reads. A
-     * configured mock rather than a hand-rolled implements-the-interface fake:
-     * the real 2.4.x CustomerInterface declares ~46 methods (and grows), so a
-     * literal implementation fatals against a full Magento install while
-     * passing against the slim test shim.
+     * A deleted-customer stand-in. The plugin reads only id and email, but the
+     * fake must implement the FULL real CustomerInterface surface: the
+     * standalone shim declares just the two getters, while a real install
+     * declares ~48 methods and fatals on a partial implementation. The
+     * standalone runner's TestCase has no mock generator, so the fake is a
+     * literal class (extra public methods are harmless against the shim).
      */
     private function customer(int $id, string $email): CustomerInterface
     {
-        $customer = $this->createMock(CustomerInterface::class);
-        $customer->method('getId')->willReturn($id);
-        $customer->method('getEmail')->willReturn($email);
-        return $customer;
+        return new FakeDeletedCustomer($id, $email);
     }
 
     private function repository(?CustomerInterface $customer): CustomerRepositoryInterface
@@ -181,6 +179,266 @@ class CustomerErasureScrubPluginTest extends TestCase
             }
         };
     }
+}
+
+/**
+ * Implements the complete real 2.4.x CustomerInterface (including the
+ * custom-attribute methods it inherits), untyped signatures matching core's
+ * published API, so loading it never fatals on a full install. Only getId()
+ * and getEmail() carry data — everything else is inert.
+ *
+ * phpcs:disable Magento2.Annotation -- inert stubs, documented above.
+ */
+class FakeDeletedCustomer implements CustomerInterface
+{
+    public function __construct(
+        private readonly int $id,
+        private readonly string $email
+    ) {
+    }
+
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    public function getEmail()
+    {
+        return $this->email;
+    }
+
+    // @codingStandardsIgnoreStart -- inert interface-completeness stubs.
+    public function setId($id)
+    {
+        return $this;
+    }
+
+    public function getGroupId()
+    {
+        return null;
+    }
+
+    public function setGroupId($groupId)
+    {
+        return $this;
+    }
+
+    public function getDefaultBilling()
+    {
+        return null;
+    }
+
+    public function setDefaultBilling($defaultBilling)
+    {
+        return $this;
+    }
+
+    public function getDefaultShipping()
+    {
+        return null;
+    }
+
+    public function setDefaultShipping($defaultShipping)
+    {
+        return $this;
+    }
+
+    public function getConfirmation()
+    {
+        return null;
+    }
+
+    public function setConfirmation($confirmation)
+    {
+        return $this;
+    }
+
+    public function getCreatedAt()
+    {
+        return null;
+    }
+
+    public function setCreatedAt($createdAt)
+    {
+        return $this;
+    }
+
+    public function getUpdatedAt()
+    {
+        return null;
+    }
+
+    public function setUpdatedAt($updatedAt)
+    {
+        return $this;
+    }
+
+    public function getCreatedIn()
+    {
+        return null;
+    }
+
+    public function setCreatedIn($createdIn)
+    {
+        return $this;
+    }
+
+    public function getDob()
+    {
+        return null;
+    }
+
+    public function setDob($dob)
+    {
+        return $this;
+    }
+
+    public function setEmail($email)
+    {
+        return $this;
+    }
+
+    public function getFirstname()
+    {
+        return null;
+    }
+
+    public function setFirstname($firstname)
+    {
+        return $this;
+    }
+
+    public function getLastname()
+    {
+        return null;
+    }
+
+    public function setLastname($lastname)
+    {
+        return $this;
+    }
+
+    public function getMiddlename()
+    {
+        return null;
+    }
+
+    public function setMiddlename($middlename)
+    {
+        return $this;
+    }
+
+    public function getPrefix()
+    {
+        return null;
+    }
+
+    public function setPrefix($prefix)
+    {
+        return $this;
+    }
+
+    public function getSuffix()
+    {
+        return null;
+    }
+
+    public function setSuffix($suffix)
+    {
+        return $this;
+    }
+
+    public function getGender()
+    {
+        return null;
+    }
+
+    public function setGender($gender)
+    {
+        return $this;
+    }
+
+    public function getStoreId()
+    {
+        return null;
+    }
+
+    public function setStoreId($storeId)
+    {
+        return $this;
+    }
+
+    public function getTaxvat()
+    {
+        return null;
+    }
+
+    public function setTaxvat($taxvat)
+    {
+        return $this;
+    }
+
+    public function getWebsiteId()
+    {
+        return null;
+    }
+
+    public function setWebsiteId($websiteId)
+    {
+        return $this;
+    }
+
+    public function getAddresses()
+    {
+        return null;
+    }
+
+    public function setAddresses(?array $addresses = null)
+    {
+        return $this;
+    }
+
+    public function getDisableAutoGroupChange()
+    {
+        return null;
+    }
+
+    public function setDisableAutoGroupChange($disableAutoGroupChange)
+    {
+        return $this;
+    }
+
+    public function getExtensionAttributes()
+    {
+        return null;
+    }
+
+    public function setExtensionAttributes(
+        \Magento\Customer\Api\Data\CustomerExtensionInterface $extensionAttributes
+    ) {
+        return $this;
+    }
+
+    public function getCustomAttribute($attributeCode)
+    {
+        return null;
+    }
+
+    public function setCustomAttribute($attributeCode, $attributeValue)
+    {
+        return $this;
+    }
+
+    public function getCustomAttributes()
+    {
+        return [];
+    }
+
+    public function setCustomAttributes(array $attributes)
+    {
+        return $this;
+    }
+    // @codingStandardsIgnoreEnd
 }
 
 class RecordingScrubber extends ExecutionPiiScrubber
