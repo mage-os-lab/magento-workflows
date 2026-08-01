@@ -214,8 +214,14 @@ final class PackageLocator
             ? (string) constant(self::REGISTRAR_CLASS . '::MODULE')
             : 'module';
 
+        // getPaths() is an INSTANCE method on the real registrar (the
+        // registrations themselves live in a static array, so a fresh
+        // instance sees everything composer autoload has registered).
+        $registrarClass = self::REGISTRAR_CLASS;
+        $registrar = new $registrarClass();
+
         $paths = [];
-        foreach ((array) call_user_func([self::REGISTRAR_CLASS, 'getPaths'], $type) as $name => $path) {
+        foreach ((array) $registrar->getPaths($type) as $name => $path) {
             if (is_string($name) && is_string($path) && str_starts_with($name, self::MODULE_PREFIX)) {
                 $paths[$name] = $path;
             }
