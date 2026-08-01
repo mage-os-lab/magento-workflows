@@ -62,10 +62,10 @@ define([
                     cls = isError ? 'message-error error' : 'message-warning warning',
                     label = isError ? labels.error : labels.warning,
                     anchor = msg.step_key ? ' — ' + labels.step + ' "' + msg.step_key + '"' : '',
-                    $msg = $('<div/>', {'class': 'message ' + cls}),
-                    $span = $('<span/>');
+                    $msg = $('<div></div>', {'class': 'message ' + cls}),
+                    $span = $('<span></span>');
 
-                $span.append($('<strong/>').text(label + anchor + ':'));
+                $span.append($('<strong></strong>').text(label + anchor + ':'));
                 $span.append(document.createTextNode(' ' + (msg.message || '')));
                 $msg.append($span);
                 $container.append($msg);

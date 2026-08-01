@@ -62,11 +62,11 @@ define([
                 'value': value,
                 'aria-label': labels.amount
             }),
-            $unit = $('<select/>', {
+            $unit = $('<select></select>', {
                 'class': 'admin__control-select mageos-param-duration__unit',
                 'aria-label': labels.unit
             }),
-            $toggle = $('<button/>', {
+            $toggle = $('<button></button>', {
                 'type': 'button',
                 'class': 'action-secondary mageos-param-duration__iso'
             });
