@@ -11,7 +11,7 @@ namespace Magento\Catalog\Model\ResourceModel\Product\Attribute;
  */
 class CollectionFactory
 {
-    public function create()
+    public function create(array $data = [])
     {
         return null;
     }
