@@ -51,7 +51,7 @@ Execution `context` holds entity snapshots (names, emails, addresses). Three con
 
 ## Manual mass-run
 
-**Current scope: single-entity manual runs only.** Every manual-run surface that ships today takes exactly one entity ID: the workflow edit page's "Run Now" button (`RunNowButton` prompts for one ID) into `WorkflowsAdminUi\Controller\Adminhtml\Workflow\Run`, which rejects a missing or non-numeric `entity_id`, and the `workflow:run --entity-id` CLI command. There is no grid mass-action, no REST run route, and no other multi-entity manual dispatch path — so there is no mass surface to cap or preview yet.
+**Current scope: single-entity manual runs only.** Every manual-run surface that ships today takes exactly one entity ID: the workflow edit page's "Run Now" button (`RunNowButton` opens the `RunNowModal` picker, which asks for one ID) into `WorkflowsAdminUi\Controller\Adminhtml\Workflow\Run`, which rejects a missing or non-numeric `entity_id`, and the `workflow:run --entity-id` CLI command. There is no grid mass-action, no REST run route, and no other multi-entity manual dispatch path — so there is no mass surface to cap or preview yet.
 
 What exists of the controls below: the **dedicated ACL resource** `MageOS_Workflows::manual_run` gates both the button and the controller (and is deliberately not implied by `::dry_run`). The cap is *configured* — `mageos_workflows/guards/manual_run_cap`, default 1000, exposed under Guards — but has no consumer while manual runs are one entity at a time; it currently serves as the vocabulary the approvals addon's mass-decide cap borrows.
 

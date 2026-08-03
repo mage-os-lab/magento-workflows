@@ -13,6 +13,10 @@
             <uiComponent name="mageos_workflows_form"/>
             <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\History" name="mageos_workflows_workflow_history"
                    template="MageOS_WorkflowsAdminUi::workflow/history.phtml" after="mageos_workflows_form"/>
+            <!-- Hidden container the toolbar's Run Now button opens as a modal;
+                 renders nothing without a saved workflow and the manual-run ACL. -->
+            <block class="MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\RunNowModal" name="mageos_workflows_run_now_modal"
+                   template="MageOS_WorkflowsAdminUi::workflow/run-now-modal.phtml" after="mageos_workflows_workflow_history"/>
         </referenceContainer>
     </body>
 </page>
