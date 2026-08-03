@@ -274,3 +274,17 @@ is independent.
    view rather than an unusable canvas.
 4. Release artifact policy — committed `dist/` vs composer-packaged build artifacts vs
    packagist-side build. Leaning committed dist per tag (Magento-ecosystem norm, auditable).
+
+## 10. Post-ship outcomes (follow-up pass on PR #35's out-of-scope list)
+
+- **Canvas-first creation shipped.** `canvas/edit` with no `workflow_id` mounts a blank
+  workflow plus a `workflowOptions` option catalogue; a "Workflow settings" slide-out edits
+  the general fields, and the save posts `back=canvas` so creation round-trips through the
+  existing Save controller (still no bespoke endpoint) and back into the canvas.
+- **Canvas i18n shipped.** All UI literals go through `t()` backed by a server-injected
+  phrase map built from `__()` calls (`Model/I18n/PhraseCatalog.php`); the i18n collector
+  scans TS `t('...')` literals and CI gates catalog drift. This resolves the "hardcoded
+  English" caveat noted in the Phase B delivery.
+- **Config-panel gaps closed.** Multi search-select for `multiselect` + `options_search`;
+  option sources wired for email template / cart price rule / attribute-code / carrier
+  fields; the dry-run overlay accepts an optional entity id.
