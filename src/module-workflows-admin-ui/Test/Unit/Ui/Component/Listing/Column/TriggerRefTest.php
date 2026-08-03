@@ -104,7 +104,6 @@ class TriggerRefTest extends TestCase
             }
         };
         $property = new \ReflectionProperty(TriggerRef::class, 'triggerRegistry');
-        $property->setAccessible(true);
         $property->setValue($column, $registry);
         $column->setData('name', 'trigger_ref');
 

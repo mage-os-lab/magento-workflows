@@ -104,7 +104,6 @@ class ExecutionEntityTest extends TestCase
             }
         };
         $property = new \ReflectionProperty(ExecutionEntity::class, 'entityTypeSource');
-        $property->setAccessible(true);
         $property->setValue($column, $this->entityTypeSource());
         $column->setData('name', 'entity_id');
 

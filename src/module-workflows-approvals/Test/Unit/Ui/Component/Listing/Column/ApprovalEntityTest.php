@@ -76,7 +76,6 @@ class ApprovalEntityTest extends TestCase
             }
         };
         $property = new \ReflectionProperty(ApprovalEntity::class, 'entityTypeSource');
-        $property->setAccessible(true);
         $property->setValue($column, new EntityType($provider));
         $column->setData('name', 'entity_id');
 

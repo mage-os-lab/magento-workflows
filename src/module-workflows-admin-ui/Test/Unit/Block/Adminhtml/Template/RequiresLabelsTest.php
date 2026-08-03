@@ -92,7 +92,6 @@ class RequiresLabelsTest extends TestCase
 
         foreach ($dependencies as $name => $value) {
             $property = new \ReflectionProperty(View::class, $name);
-            $property->setAccessible(true);
             $property->setValue($block, $value);
         }
 
