@@ -17,7 +17,7 @@ use Magento\Framework\Data\OptionSourceInterface;
  * entity type whose pack was uninstalled — renders as the raw code rather than an
  * empty cell, so the admin can still see (and search for) what is stored.
  */
-final class OptionLabel
+class OptionLabel
 {
     /**
      * @param OptionSourceInterface $source the option source owning the code set
