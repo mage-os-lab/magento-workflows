@@ -6,10 +6,12 @@ namespace MageOS\WorkflowsCanvas\Block\Adminhtml\Canvas;
 use Magento\Backend\Block\Template;
 use Magento\Backend\Block\Template\Context;
 use Magento\Framework\AuthorizationInterface;
+use Magento\Framework\Data\OptionSourceInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Module\Manager as ModuleManager;
 use MageOS\Workflows\Api\ActionMetadataProviderInterface;
 use MageOS\Workflows\Api\Data\ActionMetadataItemInterface;
+use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\SecretMetadataProviderInterface;
 use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
@@ -54,6 +56,14 @@ class Mount extends Template
         // enabled — see the class docblock for why this is a module-presence
         // check rather than a nullable DI seam.
         private readonly ModuleManager $moduleManager,
+        // Option lists for the canvas' workflow-settings panel. Typed to the
+        // framework's OptionSourceInterface and bound in etc/adminhtml/di.xml
+        // to the EXACT sources the classic admin form's selects use, so the two
+        // authoring surfaces can never offer a different set of choices.
+        private readonly OptionSourceInterface $entityTypeSource,
+        private readonly OptionSourceInterface $triggerTypeSource,
+        private readonly OptionSourceInterface $statusSource,
+        private readonly OptionSourceInterface $websiteSource,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -108,6 +118,9 @@ class Mount extends Template
             ],
             'formKey' => $this->getFormKey(),
             'workflow' => null,
+            // Always emitted: editing a saved workflow needs the same lists the
+            // new-workflow settings panel does.
+            'workflowOptions' => $this->workflowOptions(),
             'actions' => $this->actionLabels(),
             // Full palette/config metadata (Phase B). ACL-filtered for display
             // by the provider; the save path re-authorizes every action code.
@@ -138,9 +151,96 @@ class Mount extends Template
                 'fanOutCap' => $this->fanOutField($workflow->getFanOut(), 'cap'),
                 'definition' => $this->decodeDefinition($workflow->getDefinition()),
             ];
+        } elseif ($config['grants']['manage']) {
+            $config['workflow'] = $this->blankWorkflow();
         }
 
         return (string) json_encode($config, JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Canvas-first authoring: with no workflow_id a manager gets a BLANK
+     * workflow document instead of null, which is what flips the React app out
+     * of its read-only empty-viewer fallback (its editable gate is
+     * `workflow.definition !== null`). A ::view-only admin still gets null —
+     * there is nothing to view and nothing they may author.
+     *
+     * Field shapes mirror the loaded-workflow branch exactly, and the values
+     * mirror the admin Save controller's own defaults for an absent field, so
+     * saving an untouched blank stores what the classic "New Workflow" form
+     * would have stored.
+     *
+     * `steps` is a stdClass rather than [], so it JSON-encodes as `{}`: the
+     * definition's steps are a MAP keyed by step id, and an empty PHP array
+     * would emit `[]` and change the document's type on the wire.
+     *
+     * @return array<string, mixed>
+     */
+    private function blankWorkflow(): array
+    {
+        return [
+            'id' => 0,
+            'name' => '',
+            'status' => WorkflowInterface::STATUS_DISABLED,
+            'entityType' => '',
+            'triggerType' => WorkflowInterface::TRIGGER_TYPE_EVENT,
+            'triggerRef' => '',
+            'conditionsSerialized' => null,
+            'loopGuardDepth' => 1,
+            'websiteIds' => [],
+            'fanOutRelation' => '',
+            'fanOutCap' => '',
+            'definition' => [
+                'schema' => Definition::SCHEMA_VERSION,
+                'steps' => new \stdClass(),
+                'entry' => null,
+            ],
+        ];
+    }
+
+    /**
+     * Option lists for the canvas' workflow-settings panel, projected from the
+     * SAME option sources the classic admin form's selects use (bound in
+     * etc/adminhtml/di.xml) — one catalogue, two surfaces.
+     *
+     * Deliberately no trigger_ref list: event refs are already bootstrapped in
+     * `triggers`, and a schedule ref is a free-text cron expression.
+     *
+     * @return array<string, array<int, array{value: string, label: string}>>
+     */
+    private function workflowOptions(): array
+    {
+        return [
+            'entityTypes' => $this->options($this->entityTypeSource),
+            'triggerTypes' => $this->options($this->triggerTypeSource),
+            'statuses' => $this->options($this->statusSource),
+            'websites' => $this->options($this->websiteSource),
+        ];
+    }
+
+    /**
+     * Flatten one option source to {value, label} pairs. Values are stringified
+     * so the client binds them to a <select> without int/string coercion bugs
+     * (status is an int column, entity type a code); nested optgroups — which
+     * none of the bound sources emit — are skipped rather than mangled.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function options(OptionSourceInterface $source): array
+    {
+        $options = [];
+        foreach ($source->toOptionArray() as $option) {
+            if (!is_array($option) || !isset($option['value']) || !is_scalar($option['value'])) {
+                continue;
+            }
+            $label = $option['label'] ?? '';
+            $options[] = [
+                'value' => (string) $option['value'],
+                // Labels are Phrase objects from __(), hence Stringable.
+                'label' => is_scalar($label) || $label instanceof \Stringable ? (string) $label : '',
+            ];
+        }
+        return $options;
     }
 
     private function loadWorkflow(int $workflowId): ?\MageOS\Workflows\Api\Data\WorkflowInterface

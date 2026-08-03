@@ -9,6 +9,9 @@
             <module name="MageOS_Workflows"/>
             <module name="MageOS_WorkflowsAdminUi"/>
             <module name="Magento_Backend"/>
+            <!-- Only for the stock website option source the mount config
+                 reuses from the classic form (etc/adminhtml/di.xml). -->
+            <module name="Magento_Config"/>
         </sequence>
     </module>
 </config>

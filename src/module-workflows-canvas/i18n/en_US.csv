@@ -3,6 +3,7 @@
 "Missing execution_id","Missing execution_id"
 "Missing source","Missing source"
 "Missing workflow_id","Missing workflow_id"
+"New Workflow (Visual Editor)","New Workflow (Visual Editor)"
 "The definition could not be validated.","The definition could not be validated."
 "The visual canvas requires JavaScript. The classic form and JSON editor remain fully supported without it.","The visual canvas requires JavaScript. The classic form and JSON editor remain fully supported without it."
 "Workflow Canvas","Workflow Canvas"

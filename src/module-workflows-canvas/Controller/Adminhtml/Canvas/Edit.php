@@ -19,6 +19,10 @@ use Magento\Framework\View\Result\PageFactory;
  *
  * Entry links: "Edit in visual editor" on the workflow grid/form for managers;
  * ::view-only admins get the viewer URL instead.
+ *
+ * Also the canvas-first CREATE surface: with no workflow_id the mount block
+ * bootstraps a blank workflow for managers and the page authors a brand-new
+ * one, which the admin Save controller persists (back=canvas returns here).
  */
 class Edit extends Action implements HttpGetActionInterface
 {
@@ -36,7 +40,11 @@ class Edit extends Action implements HttpGetActionInterface
         /** @var Page $resultPage */
         $resultPage = $this->resultPageFactory->create();
         $resultPage->setActiveMenu('MageOS_Workflows::workflows');
-        $resultPage->getConfig()->getTitle()->prepend(__('Workflow Visual Editor'));
+        $resultPage->getConfig()->getTitle()->prepend(
+            (int) $this->getRequest()->getParam('workflow_id') > 0
+                ? __('Workflow Visual Editor')
+                : __('New Workflow (Visual Editor)')
+        );
         return $resultPage;
     }
 }
