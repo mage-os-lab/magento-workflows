@@ -51,6 +51,16 @@ Trigger metadata for the UI (labels, entity type, payload hints) is declared in 
 
 The `resolver` is the repository-backed hydration entry point used by the condition engine's Phase-2 pass ([Conditions §Two-phase evaluation](06-conditions.md#two-phase-evaluation-the-eav-at-scale-answer)).
 
+### `trigger_ref` is validated at save
+
+`trigger_ref` used to be free text: a typo'd cron expression or an event nobody dispatches saved cleanly and the workflow simply never ran — visible only as a cron-log line, or not at all. Two checks in the [save-time validation pipeline](04-definition-format.md#save-time-validation) now judge it:
+
+- **Missing ref** (event or schedule type, blank `trigger_ref`) — **error**. There is nothing to subscribe to or evaluate.
+- **Unregistered event** (event type, ref absent from `workflow_triggers.xml`) — **warning**, never an error. The registry is UI metadata, not the dispatch authority: a third-party module may publish an event it never declared, and the workflow will still run when it does. The admin just cannot show a label or payload hints.
+- **Unparseable cron** (schedule type) — **error**, quoting the parser's own reason. This check ships in `workflows-scheduler`, which owns the `dragonmantank/cron-expression` dependency, and appends itself to the engine's check pool from its own `di.xml`.
+
+Because these read the trigger columns rather than the definition, the save-validation gate widened accordingly: validation re-runs when the definition, conditions, fan-out clause, **or** `trigger_type` / `trigger_ref` / `entity_type` differ from the stored row. Status-only saves (mass enable/disable) still skip it, so a workflow whose action module was uninstalled can always be turned off. The same findings come back from `POST /V1/workflows/validate` and the canvas/preview validate controllers, which pass the trigger fields into the same pipeline.
+
 ### Trigger-level fan-out
 
 An event trigger can optionally declare a **fan-out** clause (`fan_out` = `{relation, cap}`): one event on the source entity expands, in the notifier, into N ordinary single-entity executions — one per member of a declared relation (e.g. *customer group changed → each of the customer's open orders*). The workflow's entity type is the relation **target**, so its conditions and actions author naturally against each fanned-out entity; the causing event is recorded in each child's `origin` context ([Definition Format §Trigger payload context](04-definition-format.md)). Schedule-type triggers cannot fan out (they already fan out over their match query). See [discovery/fan-out.md](discovery/fan-out.md) and the ops [Fan-out section](15-operations.md#fan-out).

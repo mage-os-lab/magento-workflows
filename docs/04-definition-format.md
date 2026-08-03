@@ -81,6 +81,8 @@ Graph findings (`GraphCheck`, DFS from `entry` over the edge helper):
 | `GRAPH_DEAD_EDGE` | warning | A `branch`/`switch` whose every edge is null (the form assembler can emit this as a last-row branch, so it stays re-savable) |
 | `GRAPH_POST_DELAY_STALE` | warning | A `branch`/`switch` directly after a `delay` **or `approval`** with `revalidate_entity: false` — usually a mistake ([Conditions §Delay semantics](06-conditions.md#delay-semantics)). An approval gate can park for days, so a branch right after it evaluating the frozen trigger snapshot carries the same staleness hazard as a post-delay branch |
 
+Trigger findings (`TRIGGER_REF_MISSING`, `TRIGGER_REF_UNKNOWN_EVENT`, `TRIGGER_REF_INVALID_CRON`) judge the workflow's `trigger_ref` — see [Triggers §`trigger_ref` is validated at save](05-triggers.md#trigger_ref-is-validated-at-save).
+
 The pipeline also rejects unknown/empty action codes, re-authorizes every referenced action against the acting admin's ACL, and validates the condition-tree shape. **Compatibility bar:** `GraphCheck` never turns a currently-savable definition into an unsavable one — a genuine cycle (which the form assembler cannot produce) is the only new error on previously-valid input.
 
 Approval-gate findings (`ApprovalCheck`, over every `approval`-typed step):

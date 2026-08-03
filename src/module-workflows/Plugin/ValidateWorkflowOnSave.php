@@ -24,11 +24,12 @@ use Psr\Log\LoggerInterface;
  * directly — so save-time validation structurally cannot re-judge in-flight
  * executions (the retroactivity trap, docs/discovery/branching.md §2).
  *
- * Required guard: validation runs ONLY when the definition or conditions
- * changed (the repository's isDefinitionChanged idiom). Status-only saves
- * (mass enable/disable) must not re-validate a stored definition, or
- * disabling a workflow whose action module was uninstalled becomes
- * impossible.
+ * Required guard: validation runs ONLY when a validation-relevant field
+ * changed (the repository's isDefinitionChanged idiom) — the definition, the
+ * conditions, the fan-out clause, or the trigger fields (trigger type/ref,
+ * entity type) the trigger and fan-out checks judge. Status-only saves (mass
+ * enable/disable) must still skip, or disabling a workflow whose action
+ * module was uninstalled becomes impossible.
  *
  * REST tightening (deliberate, documented): POST/PUT /V1/workflows
  * previously performed no validation and no per-action ACL. With this
@@ -58,7 +59,7 @@ class ValidateWorkflowOnSave
      */
     public function beforeSave(WorkflowRepositoryInterface $subject, WorkflowInterface $workflow): array
     {
-        if (!$this->definitionOrConditionsChanged($workflow)) {
+        if (!$this->validationRelevantFieldsChanged($workflow)) {
             return [$workflow];
         }
 
@@ -124,9 +125,12 @@ class ValidateWorkflowOnSave
 
     /**
      * The isDefinitionChanged idiom: new workflows always validate; existing
-     * ones only when definition or conditions differ from the stored row.
+     * ones only when a field some check actually judges differs from the
+     * stored row. Everything else — status, name, sort order, store scope —
+     * skips the pipeline, which is what keeps mass enable/disable working on
+     * a workflow whose definition no longer validates.
      */
-    private function definitionOrConditionsChanged(WorkflowInterface $workflow): bool
+    private function validationRelevantFieldsChanged(WorkflowInterface $workflow): bool
     {
         $workflowId = $workflow->getWorkflowId();
         if (!$workflowId) {
@@ -141,7 +145,14 @@ class ValidateWorkflowOnSave
             || ($prior->getConditionsSerialized() ?? '') !== ($workflow->getConditionsSerialized() ?? '')
             // A fan-out clause change (relation/cap) must re-run the alignment
             // check even when the definition is untouched.
-            || ($prior->getFanOut() ?? '') !== ($workflow->getFanOut() ?? '');
+            || ($prior->getFanOut() ?? '') !== ($workflow->getFanOut() ?? '')
+            // Re-pointing the trigger (type, ref, or entity type) without
+            // touching the definition is exactly how a workflow acquires an
+            // unparseable cron expression or an event nobody dispatches: the
+            // trigger, fan-out and relation checks all read these fields.
+            || ($prior->getTriggerType() ?? '') !== ($workflow->getTriggerType() ?? '')
+            || ($prior->getTriggerRef() ?? '') !== ($workflow->getTriggerRef() ?? '')
+            || ($prior->getEntityType() ?? '') !== ($workflow->getEntityType() ?? '');
     }
 
     /**
