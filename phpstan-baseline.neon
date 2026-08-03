@@ -1,0 +1,13 @@
+# PHPStan baseline for pre-existing findings (issue #8).
+#
+# INTENTIONALLY EMPTY. A real baseline can only be generated against a real
+# Magento install, which the `static-analysis` job in
+# .github/workflows/check-extension.yml provides — nothing was invented here.
+#
+# To populate it: open any PR (or run the workflow manually), download the
+# `phpstan-baseline` artifact from the `static-analysis` job, commit its
+# contents over this file, and drop the `continue-on-error: true` from the
+# "Run PHPStan" step so the job becomes blocking. From that point on new code
+# has to be clean and the baseline is burned down in follow-ups.
+parameters:
+    ignoreErrors: []
