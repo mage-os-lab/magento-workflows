@@ -150,9 +150,9 @@ class ValidateWorkflowOnSave
             // touching the definition is exactly how a workflow acquires an
             // unparseable cron expression or an event nobody dispatches: the
             // trigger, fan-out and relation checks all read these fields.
-            || ($prior->getTriggerType() ?? '') !== ($workflow->getTriggerType() ?? '')
-            || ($prior->getTriggerRef() ?? '') !== ($workflow->getTriggerRef() ?? '')
-            || ($prior->getEntityType() ?? '') !== ($workflow->getEntityType() ?? '');
+            || $prior->getTriggerType() !== $workflow->getTriggerType()
+            || $prior->getTriggerRef() !== $workflow->getTriggerRef()
+            || $prior->getEntityType() !== $workflow->getEntityType();
     }
 
     /**

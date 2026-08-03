@@ -358,7 +358,10 @@ jobs:
         if: steps.phpstan.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: phpstan-baseline-${{ matrix.magento }}
+          # Artifact names cannot contain / or : (matrix.magento is
+          # "magento/project-community-edition:2.4.9"), so key on the PHP
+          # version, which is unique per matrix cell and filesystem-safe.
+          name: phpstan-baseline-php${{ matrix.php }}
           path: phpstan-baseline.generated.neon
           if-no-files-found: warn
 

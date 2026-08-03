@@ -208,8 +208,9 @@ class CustomerRecentEntityProviderTest extends TestCase
 }
 
 /**
- * Partial CustomerInterface double — the shim carries the accessors the engine
- * reads; getFirstname()/getLastname() ride alongside for the label.
+ * Full-interface CustomerInterface fake — real accessors for the fields the
+ * provider reads, inert stubs for the rest so the class loads against the
+ * complete interface on a real Magento install (mirrors FakeDeletedCustomer).
  */
 class FakeRecentCustomer implements CustomerInterface
 {
@@ -240,4 +241,229 @@ class FakeRecentCustomer implements CustomerInterface
     {
         return $this->lastname;
     }
+
+    // @codingStandardsIgnoreStart -- inert interface-completeness stubs.
+    public function setId($id)
+    {
+        return $this;
+    }
+
+    public function getGroupId()
+    {
+        return null;
+    }
+
+    public function setGroupId($groupId)
+    {
+        return $this;
+    }
+
+    public function getDefaultBilling()
+    {
+        return null;
+    }
+
+    public function setDefaultBilling($defaultBilling)
+    {
+        return $this;
+    }
+
+    public function getDefaultShipping()
+    {
+        return null;
+    }
+
+    public function setDefaultShipping($defaultShipping)
+    {
+        return $this;
+    }
+
+    public function getConfirmation()
+    {
+        return null;
+    }
+
+    public function setConfirmation($confirmation)
+    {
+        return $this;
+    }
+
+    public function getCreatedAt()
+    {
+        return null;
+    }
+
+    public function setCreatedAt($createdAt)
+    {
+        return $this;
+    }
+
+    public function getUpdatedAt()
+    {
+        return null;
+    }
+
+    public function setUpdatedAt($updatedAt)
+    {
+        return $this;
+    }
+
+    public function getCreatedIn()
+    {
+        return null;
+    }
+
+    public function setCreatedIn($createdIn)
+    {
+        return $this;
+    }
+
+    public function getDob()
+    {
+        return null;
+    }
+
+    public function setDob($dob)
+    {
+        return $this;
+    }
+
+    public function setEmail($email)
+    {
+        return $this;
+    }
+
+
+    public function setFirstname($firstname)
+    {
+        return $this;
+    }
+
+
+    public function setLastname($lastname)
+    {
+        return $this;
+    }
+
+    public function getMiddlename()
+    {
+        return null;
+    }
+
+    public function setMiddlename($middlename)
+    {
+        return $this;
+    }
+
+    public function getPrefix()
+    {
+        return null;
+    }
+
+    public function setPrefix($prefix)
+    {
+        return $this;
+    }
+
+    public function getSuffix()
+    {
+        return null;
+    }
+
+    public function setSuffix($suffix)
+    {
+        return $this;
+    }
+
+    public function getGender()
+    {
+        return null;
+    }
+
+    public function setGender($gender)
+    {
+        return $this;
+    }
+
+    public function getStoreId()
+    {
+        return null;
+    }
+
+    public function setStoreId($storeId)
+    {
+        return $this;
+    }
+
+    public function getTaxvat()
+    {
+        return null;
+    }
+
+    public function setTaxvat($taxvat)
+    {
+        return $this;
+    }
+
+    public function getWebsiteId()
+    {
+        return null;
+    }
+
+    public function setWebsiteId($websiteId)
+    {
+        return $this;
+    }
+
+    public function getAddresses()
+    {
+        return null;
+    }
+
+    public function setAddresses(?array $addresses = null)
+    {
+        return $this;
+    }
+
+    public function getDisableAutoGroupChange()
+    {
+        return null;
+    }
+
+    public function setDisableAutoGroupChange($disableAutoGroupChange)
+    {
+        return $this;
+    }
+
+    public function getExtensionAttributes()
+    {
+        return null;
+    }
+
+    public function setExtensionAttributes(
+        \Magento\Customer\Api\Data\CustomerExtensionInterface $extensionAttributes
+    ) {
+        return $this;
+    }
+
+    public function getCustomAttribute($attributeCode)
+    {
+        return null;
+    }
+
+    public function setCustomAttribute($attributeCode, $attributeValue)
+    {
+        return $this;
+    }
+
+    public function getCustomAttributes()
+    {
+        return [];
+    }
+
+    public function setCustomAttributes(array $attributes)
+    {
+        return $this;
+    }
+    // @codingStandardsIgnoreEnd
 }
