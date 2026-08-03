@@ -31,10 +31,14 @@ $compat = $block->getCompatibility();
                     <li><?= $block->escapeHtml(__('Edition: %1', $requires['edition'])) ?></li>
                 <?php endif; ?>
                 <?php foreach ((array) ($requires['triggers'] ?? []) as $trigger): ?>
-                    <li><?= $block->escapeHtml(__('Trigger: %1', $trigger)) ?></li>
+                    <li title="<?= $block->escapeHtmlAttr((string) $trigger) ?>">
+                        <?= $block->escapeHtml(__('Trigger: %1', $block->triggerLabel((string) $trigger))) ?>
+                    </li>
                 <?php endforeach; ?>
                 <?php foreach ((array) ($requires['actions'] ?? []) as $action): ?>
-                    <li><?= $block->escapeHtml(__('Action: %1', $action)) ?></li>
+                    <li title="<?= $block->escapeHtmlAttr((string) $action) ?>">
+                        <?= $block->escapeHtml(__('Action: %1', $block->actionLabel((string) $action))) ?>
+                    </li>
                 <?php endforeach; ?>
                 <?php foreach ((array) ($requires['modules'] ?? []) as $module): ?>
                     <li><?= $block->escapeHtml(__('Module: %1', $module)) ?></li>

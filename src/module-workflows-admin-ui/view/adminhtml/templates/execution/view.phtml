@@ -35,20 +35,20 @@ $execution = $block->getExecution();
                     <td><?= $block->escapeHtml($block->getWorkflowName()) ?> (#<?= $block->escapeHtml((string) $execution->getWorkflowId()) ?>, v<?= $block->escapeHtml((string) $execution->getWorkflowVersion()) ?>)</td>
                 </tr>
                 <tr>
-                    <th><?= $block->escapeHtml(__('Entity ID')) ?></th>
-                    <td><?= $block->escapeHtml((string) $execution->getEntityId()) ?></td>
+                    <th><?= $block->escapeHtml(__('Entity')) ?></th>
+                    <td><?= $block->escapeHtml($block->getEntityLabel()) ?></td>
                 </tr>
                 <tr>
-                    <th><?= $block->escapeHtml(__('Store ID')) ?></th>
-                    <td><?= $block->escapeHtml((string) $execution->getStoreId()) ?></td>
+                    <th><?= $block->escapeHtml(__('Store View')) ?></th>
+                    <td><?= $block->escapeHtml($block->getStoreLabel()) ?></td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Status')) ?></th>
-                    <td><?= $block->escapeHtml($execution->getStatus()) ?></td>
+                    <td><?= $block->escapeHtml($block->getStatusLabel()) ?></td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Trigger Type')) ?></th>
-                    <td><?= $block->escapeHtml($execution->getTriggerType() ?? '—') ?></td>
+                    <td><?= $block->escapeHtml($block->getTriggerTypeLabel() ?: '—') ?></td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Run Mode')) ?></th>
@@ -107,7 +107,7 @@ $execution = $block->getExecution();
                 <?php foreach ($steps as $step): ?>
                     <tr>
                         <td><?= $block->escapeHtml($step->getStepKey()) ?></td>
-                        <td><?= $block->escapeHtml($step->getStatus()) ?></td>
+                        <td><?= $block->escapeHtml($block->getStepStatusLabel($step->getStatus())) ?></td>
                         <td><?= $block->escapeHtml((string) $step->getStartedAt()) ?></td>
                         <td><?= $block->escapeHtml((string) $step->getFinishedAt()) ?></td>
                         <td><?= $block->escapeHtml((string) $step->getResumeAt()) ?></td>
