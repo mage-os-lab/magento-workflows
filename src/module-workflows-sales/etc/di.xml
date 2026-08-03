@@ -134,4 +134,17 @@
             </argument>
         </arguments>
     </type>
+
+    <!-- Dry-run entity picker (03): the quote recent-entity provider (sales_order
+         is registered by the admin-ui pack, which owns that provider). Global
+         scope for the same array_replace reason the admin-ui registration
+         documents — an area-scope declaration would wipe providers other packs
+         declare in global di.xml. -->
+    <type name="MageOS\Workflows\Model\DryRun\RecentEntityProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="quote" xsi:type="object">MageOS\WorkflowsSales\Model\DryRun\QuoteRecentEntityProvider</item>
+            </argument>
+        </arguments>
+    </type>
 </config>

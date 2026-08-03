@@ -142,4 +142,16 @@
             </argument>
         </arguments>
     </type>
+
+    <!-- Dry-run entity picker (03): the customer recent-entity provider. Global
+         scope for the same array_replace reason the admin-ui registration
+         documents — an area-scope declaration would wipe providers other packs
+         declare in global di.xml. -->
+    <type name="MageOS\Workflows\Model\DryRun\RecentEntityProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="object">MageOS\WorkflowsCustomer\Model\DryRun\CustomerRecentEntityProvider</item>
+            </argument>
+        </arguments>
+    </type>
 </config>
