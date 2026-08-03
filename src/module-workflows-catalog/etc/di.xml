@@ -50,11 +50,14 @@
         </arguments>
     </type>
 
-    <!-- Bounded website option source (PRD-C3/PRD-A1): website id => name. -->
+    <!-- Bounded website option source (PRD-C3/PRD-A1): website id => name, and
+         the searchable product-attribute source backing product.set_attribute's
+         attribute_code picker. -->
     <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
         <arguments>
             <argument name="sources" xsi:type="array">
                 <item name="websites" xsi:type="object">MageOS\WorkflowsCatalog\Model\Option\WebsiteOptionSource</item>
+                <item name="product_attributes" xsi:type="object">MageOS\WorkflowsCatalog\Model\Option\ProductAttributeOptionSource</item>
             </argument>
         </arguments>
     </type>
@@ -73,7 +76,9 @@
 
     <!-- Deny-by-default attribute list for product.set_attribute (relocated from
          actions-core, FQCN unchanged in intent). Third parties may EXTEND this
-         via di.xml array merge; removing shipped entries is a deliberate act. -->
+         via di.xml array merge; removing shipped entries is a deliberate act.
+         ProductAttributeOptionSource reads the list back off this action, so the
+         attribute_code picker never offers a code the action would refuse. -->
     <type name="MageOS\WorkflowsCatalog\Action\Product\SetAttribute">
         <arguments>
             <argument name="deniedAttributes" xsi:type="array">

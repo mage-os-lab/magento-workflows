@@ -58,6 +58,9 @@ class GenerateCoupon extends AbstractAction implements SimulateableActionInterfa
                 'type' => 'integer',
                 'required' => true,
                 'notice' => 'The rule must use auto-generated specific coupon codes.',
+                // Potentially large list, so the picker searches as the author
+                // types; min_chars 0 loads the first page up front.
+                'options_search' => ['source' => 'cart_price_rules', 'min_chars' => 0],
             ],
         ];
     }

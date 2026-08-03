@@ -70,8 +70,9 @@ class Email extends AbstractAction implements SimulateableActionInterface, Batch
     public function getConfigForm(): array
     {
         return [
-            ['name' => 'template_id', 'label' => 'Email Template', 'type' => 'text', 'required' => false,
-                'notice' => 'Configure EITHER a template id OR subject + body below, not both.'],
+            ['name' => 'template_id', 'label' => 'Email Template', 'type' => 'select', 'required' => false,
+                'notice' => 'Configure EITHER a template id OR subject + body below, not both.',
+                'options_search' => ['source' => 'email_templates', 'min_chars' => 0]],
             ['name' => 'to', 'label' => 'Recipient Email', 'type' => 'text', 'required' => true,
                 'notice' => 'Interpolate e.g. {{ trigger.customer_email }}.'],
             ['name' => 'subject', 'label' => 'Subject (ad-hoc)', 'type' => 'text', 'required' => false,

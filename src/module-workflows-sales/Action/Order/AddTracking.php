@@ -6,6 +6,7 @@ namespace MageOS\WorkflowsSales\Action\Order;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\ShipmentRepositoryInterface;
 use Magento\Sales\Model\Order\Shipment\TrackFactory;
+use Magento\Shipping\Model\Config as ShippingConfig;
 use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
@@ -31,7 +32,8 @@ class AddTracking extends AbstractOrderAction implements SimulateableActionInter
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         private readonly TrackFactory $trackFactory,
-        private readonly ShipmentRepositoryInterface $shipmentRepository
+        private readonly ShipmentRepositoryInterface $shipmentRepository,
+        private readonly ShippingConfig $shippingConfig
     ) {
         parent::__construct($orderRepository);
     }
@@ -48,8 +50,34 @@ class AddTracking extends AbstractOrderAction implements SimulateableActionInter
 
     public function getConfigForm(): array
     {
+        // Bounded option source (F6): inline the ACTIVE carriers, mirroring
+        // order.change_status. The carrier list is store config, so a broken /
+        // unavailable shipping config degrades to the free-text field rather
+        // than rendering an empty select.
+        $carrier = [
+            'name' => 'carrier_code',
+            'label' => 'Carrier Code',
+            'type' => 'select',
+            'required' => true,
+        ];
+        try {
+            $options = [];
+            foreach ($this->shippingConfig->getActiveCarriers() as $code => $model) {
+                $title = trim((string)$model->getConfigData('title'));
+                $options[] = [
+                    'value' => (string)$code,
+                    'label' => $title !== '' ? $title : (string)$code,
+                ];
+            }
+            if ($options !== []) {
+                $carrier['options'] = $options;
+            }
+        } catch (\Throwable $e) {
+            $carrier['type'] = 'text';
+        }
+
         return [
-            ['name' => 'carrier_code', 'label' => 'Carrier Code', 'type' => 'text', 'required' => true],
+            $carrier,
             ['name' => 'track_number', 'label' => 'Tracking Number', 'type' => 'text', 'required' => true],
             ['name' => 'title', 'label' => 'Title (defaults to carrier)', 'type' => 'text', 'required' => false],
         ];
