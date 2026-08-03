@@ -35,6 +35,11 @@ class OptionSourceProviderTest extends TestCase
                 return $this->options;
             }
 
+            public function all(): array
+            {
+                return $this->options;
+            }
+
             public function hasValue(string $value): bool
             {
                 foreach ($this->options as $option) {

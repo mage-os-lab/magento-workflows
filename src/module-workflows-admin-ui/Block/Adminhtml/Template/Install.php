@@ -24,8 +24,10 @@ use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Template\Install as InstallCont
  *  - `number` / `url` → the typed input, with `min`/`max`/`step` echoed as
  *    HTML attributes (the server re-validates all three paths regardless);
  *  - `options_search` or an `entity:*` type → a source-backed widget: a
- *    BOUNDED entity renders as a plain select filled server-side from
- *    {@see OptionSourcePool}, anything else as a type-ahead picker fed by
+ *    BOUNDED entity renders as a plain select filled server-side with the
+ *    source's FULL list ({@see OptionSourcePool}, uncapped) — unless that list
+ *    tops MAX_BOUNDED_SELECT, in which case the field degrades to the same
+ *    type-ahead picker every search-typed source gets, fed by
  *    mageos_workflows/data/options;
  *  - everything else → text.
  *
@@ -50,6 +52,14 @@ class Install extends AbstractDetail
 
     /** Schema default for `options_search.min_chars`. */
     private const DEFAULT_MIN_CHARS = 2;
+
+    /**
+     * Most rows a server-rendered select will hold. A "bounded" source larger
+     * than this (a store with hundreds of customer groups, a third-party alias
+     * on a big catalogue) renders as the search picker instead — never as a
+     * truncated or unusably long select.
+     */
+    private const MAX_BOUNDED_SELECT = 200;
 
     /**
      * Resolved source per parameter, memoized: widget(), options() and the
@@ -205,7 +215,7 @@ class Install extends AbstractDetail
      * The current duration value split into an amount and a unit the composite
      * control can render. Null for anything the composite cannot represent
      * exactly (no value, a compound interval such as P1DT12H, garbage) — the
-     * field then stays in raw ISO mode, which is the escape hatch.
+     * field then stays a raw ISO input, the same fallback JavaScript-off gets.
      *
      * @param array<string, mixed> $parameter
      * @return array{value: int, unit: string}|null
@@ -356,13 +366,21 @@ class Install extends AbstractDetail
             }
 
             $bounded = $this->entityRegistry->isBounded($alias);
+            $options = $bounded
+                ? $this->normalizeOptions($this->optionSourcePool->get($code)->all())
+                : [];
+            if (count($options) > self::MAX_BOUNDED_SELECT) {
+                // "Bounded" turned out not to be: degrade to the search picker
+                // (min_chars stays 0, so it searches from the first keystroke)
+                // rather than render a truncated or unusably long select.
+                $bounded = false;
+                $options = [];
+            }
             return [
                 'code' => $code,
                 'bounded' => $bounded,
                 'min_chars' => $this->entityRegistry->minChars($alias),
-                'options' => $bounded
-                    ? $this->normalizeOptions($this->optionSourcePool->get($code)->fetch(null))
-                    : [],
+                'options' => $options,
             ];
         } catch (\Throwable $e) {
             return null;

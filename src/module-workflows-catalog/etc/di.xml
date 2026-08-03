@@ -74,6 +74,18 @@
         </arguments>
     </type>
 
+    <!-- entity:website alias for the source above; a bounded list. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="website" xsi:type="array">
+                    <item name="source" xsi:type="string">websites</item>
+                    <item name="bounded" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Deny-by-default attribute list for product.set_attribute (relocated from
          actions-core, FQCN unchanged in intent). Third parties may EXTEND this
          via di.xml array merge; removing shipped entries is a deliberate act.

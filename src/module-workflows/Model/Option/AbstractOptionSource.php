@@ -34,9 +34,17 @@ abstract class AbstractOptionSource implements OptionSourceInterface
     /**
      * @inheritDoc
      */
+    public function all(): array
+    {
+        return array_values($this->loadOptions());
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function hasValue(string $value): bool
     {
-        foreach ($this->loadOptions() as $option) {
+        foreach ($this->all() as $option) {
             // Source values are already string-cast on load, so compare strictly.
             if (($option['value'] ?? null) === $value) {
                 return true;

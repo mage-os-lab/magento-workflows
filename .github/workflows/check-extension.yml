@@ -27,11 +27,15 @@ on:
     paths:
       - 'src/**'
       - 'composer.json'
+      - 'phpstan.neon.dist'
+      - 'phpstan-baseline.neon'
       - '.github/workflows/check-extension.yml'
   pull_request:
     paths:
       - 'src/**'
       - 'composer.json'
+      - 'phpstan.neon.dist'
+      - 'phpstan-baseline.neon'
       - '.github/workflows/check-extension.yml'
   workflow_dispatch:
 
@@ -246,6 +250,117 @@ jobs:
       # so the job tracks real breakage rather than a docblock backlog.
       - name: Run phpcs (Magento2, error-gated)
         run: phpcs -p
+
+  # ADVISORY FOR NOW, BLOCKING ONCE THE BASELINE IS COMMITTED (issue #8).
+  # PHPStan level 6 over the checked-out src/, with a real Magento install
+  # supplying the framework symbols — same install recipe as the unit/compile
+  # jobs, newest supported line only (phpstan findings barely vary by Magento
+  # minor, unlike runtime behavior).
+  #
+  # Two deliberate differences from the sibling jobs:
+  #
+  #  * No COMPOSER_MIRROR_PATH_REPOS, so Composer symlinks src/module-* into
+  #    <magento>/vendor/mage-os/ rather than copying it. Analysis then sees a
+  #    single copy of every class instead of a checked-out original plus a
+  #    vendor duplicate.
+  #  * PHPStan runs from the repo root against `src/` (not against the vendor
+  #    copies), so reported paths — and every phpstan-baseline.neon entry —
+  #    are repo-relative and stable. The Magento install is reachable only via
+  #    the generated overlay config below.
+  #
+  # The baseline shipped in this repo is empty: a truthful one can only be
+  # produced against a real install, i.e. here. Until it is populated the
+  # analysis step is `continue-on-error` and uploads the generated baseline as
+  # an artifact; committing that artifact and deleting the `continue-on-error`
+  # line flips this job blocking.
+  static-analysis:
+    runs-on: ${{ matrix.os }}
+    needs: compute_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.compute_matrix.outputs.latest_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graycoreio/github-actions-magento2/setup-magento@main
+        id: setup-magento
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v${{ matrix.composer }}
+          mode: extension
+          magento_version: ${{ matrix.magento }}
+          magento_repository: ${{ env.MAGENTO_REPOSITORY }}
+
+      - name: Register monorepo package repositories
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer config repositories.mageos-workflows path '${{ github.workspace }}/src/module-*'
+
+      - name: Require all workflow modules
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: |
+          pkgs=$(for f in ${{ github.workspace }}/src/module-*/composer.json; do
+            printf '%s:@dev ' "$(jq -r .name "$f")"
+          done)
+          echo "Requiring: $pkgs"
+          composer require $pkgs --no-install
+
+      - run: composer update --no-install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - uses: graycoreio/github-actions-magento2/cache-magento@main
+        with:
+          working-directory: ${{ steps.setup-magento.outputs.path }}
+
+      - name: Composer install
+        working-directory: ${{ steps.setup-magento.outputs.path }}
+        run: composer install
+
+      # phpstan + bitexpert/phpstan-magento are pinned in this repo's own
+      # require-dev (not the Magento install's) so the analysis toolchain is
+      # versioned here and runnable locally; only framework symbols come from
+      # the install. Magento's composer.json is left untouched.
+      - name: Install analysis toolchain
+        run: composer install --no-interaction --no-progress
+
+      # phpstan.neon.dist is deliberately install-location agnostic; this is the
+      # only place the Magento path is bound. magentoRoot drives the generated
+      # factory/proxy/extension-attribute resolution in bitexpert's extension,
+      # bootstrapFiles gives PHPStan the framework autoloader.
+      - name: Write CI overlay config
+        run: |
+          cat > phpstan-ci.neon <<EOF
+          includes:
+              - phpstan.neon.dist
+          parameters:
+              magento:
+                  magentoRoot: ${{ steps.setup-magento.outputs.path }}
+              bootstrapFiles:
+                  - ${{ steps.setup-magento.outputs.path }}/vendor/autoload.php
+          EOF
+          cat phpstan-ci.neon
+
+      - name: Run PHPStan (level 6)
+        id: phpstan
+        # TODO(#8): delete this line once phpstan-baseline.neon is populated
+        # from the artifact produced below.
+        continue-on-error: true
+        run: vendor/bin/phpstan analyse -c phpstan-ci.neon --no-progress --memory-limit=2G
+
+      # Everything PHPStan reported that is not already in phpstan-baseline.neon,
+      # in directly committable form (paths relative to the repo root).
+      - name: Generate baseline artifact
+        if: steps.phpstan.outcome == 'failure'
+        run: |
+          vendor/bin/phpstan analyse -c phpstan-ci.neon --no-progress --memory-limit=2G \
+            --generate-baseline phpstan-baseline.generated.neon || true
+
+      - name: Upload baseline artifact
+        if: steps.phpstan.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpstan-baseline-${{ matrix.magento }}
+          path: phpstan-baseline.generated.neon
+          if-no-files-found: warn
 
   # BLOCKING, newest supported line only. The Magento integration-test lane
   # (docs/20-integration-test-plan.md): suites at src/*/Test/Integration run

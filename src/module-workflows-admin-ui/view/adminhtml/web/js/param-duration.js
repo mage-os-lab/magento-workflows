@@ -8,9 +8,9 @@
  * an exact amount/unit pair (data-value + data-unit). No pair means the field
  * is in raw ISO mode — an empty value, or a compound interval such as P1DT12H
  * that the composite cannot represent — and this module does nothing at all.
- * The "enter an ISO-8601 duration instead" toggle drops back to that mode
- * permanently for the field: the escape hatch is one-way, so there is never a
- * moment where two controls disagree about the value.
+ * Raw mode is a necessity fallback (no JavaScript, or an unrepresentable
+ * value), not a user-selectable alternative: when the composite renders, it
+ * is the only control.
  *
  * User-facing strings arrive already translated in data-* attributes (the phtml
  * wraps them in __()), so this module needs no mage/translate dependency — one
@@ -45,8 +45,7 @@ define([
                 unit: $root.data('labelUnit') || '',
                 minutes: $root.data('labelMinutes') || '',
                 hours: $root.data('labelHours') || '',
-                days: $root.data('labelDays') || '',
-                isoToggle: $root.data('labelIsoToggle') || ''
+                days: $root.data('labelDays') || ''
             };
 
         if (!$real.length || value === undefined || value === null || !PATTERNS.hasOwnProperty(unit)) {
@@ -65,10 +64,6 @@ define([
             $unit = $('<select></select>', {
                 'class': 'admin__control-select mageos-param-duration__unit',
                 'aria-label': labels.unit
-            }),
-            $toggle = $('<button></button>', {
-                'type': 'button',
-                'class': 'action-secondary mageos-param-duration__iso'
             });
 
         /**
@@ -94,21 +89,12 @@ define([
             $unit.get(0).appendChild(option);
         });
         $unit.val(unit);
-        $toggle.text(labels.isoToggle);
 
         $real.hide();
-        $root.append($amount, $unit, $toggle);
+        $root.append($amount, $unit);
 
         $amount.on('input change', compose);
         $unit.on('change', compose);
-
-        $toggle.on('click', function (event) {
-            event.preventDefault();
-            $amount.remove();
-            $unit.remove();
-            $toggle.remove();
-            $real.show();
-        });
     }
 
     return function (config, element) {

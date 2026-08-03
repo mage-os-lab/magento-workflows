@@ -181,6 +181,38 @@ class InstallWidgetMappingTest extends TestCase
         );
     }
 
+    /**
+     * A bounded select renders from the source's FULL list — fetch()'s 50-row
+     * cap protects the type-ahead endpoints and must not silently hide rows
+     * from a server-rendered select.
+     */
+    public function testBoundedEntityLargerThanTheFetchCapRendersEveryRow(): void
+    {
+        $options = $this->block()->options(['key' => 'g', 'type' => 'entity:big', 'default' => '0']);
+
+        $this->assertCount(60, $options);
+        $this->assertSame('59', $options[59]['value']);
+    }
+
+    /**
+     * A "bounded" alias whose list tops MAX_BOUNDED_SELECT degrades to the
+     * search picker: never a truncated select, never an unusably long one. The
+     * registry keeps min_chars at 0 for bounded aliases, so the degraded
+     * picker searches from the first keystroke.
+     */
+    public function testOversizedBoundedEntityDegradesToTheSearchPicker(): void
+    {
+        $block = $this->block();
+        $parameter = ['key' => 'h', 'type' => 'entity:huge'];
+
+        $this->assertSame('search', $block->widget($parameter));
+        $this->assertSame([], $block->options($parameter));
+
+        $config = $block->searchConfig($parameter);
+        $this->assertSame('huge_bounded', $config['source']);
+        $this->assertSame(0, $config['min_chars']);
+    }
+
     public function testSearchConfigCarriesTheAdminFeedTheSourceAndTheMinChars(): void
     {
         $config = $this->block()->searchConfig([
@@ -241,8 +273,8 @@ class InstallWidgetMappingTest extends TestCase
 
     /**
      * Only the three intervals the composite control can represent EXACTLY
-     * round-trip; everything else leaves the field in raw ISO mode, which is
-     * the escape hatch the duration widget is built around.
+     * round-trip; everything else leaves the field a raw ISO input — the same
+     * fallback a JavaScript-off render gets.
      */
     public function testDurationPartsRoundTripTheRepresentableIntervals(): void
     {
@@ -407,11 +439,17 @@ class InstallWidgetMappingTest extends TestCase
                 'cart_price_rules' => $this->source('cart_price_rules', [
                     ['value' => '7', 'label' => 'Summer sale'],
                 ]),
+                // Bounded, but bigger than fetch()'s 50-row cap: still a select.
+                'big_bounded' => $this->source('big_bounded', $this->rows(60)),
+                // "Bounded", but bigger than the block's select ceiling.
+                'huge_bounded' => $this->source('huge_bounded', $this->rows(201)),
                 'broken' => $this->throwingSource('broken'),
             ]),
             'entityRegistry' => new EntityOptionSourceRegistry([
                 'order_status' => ['source' => 'order_statuses', 'bounded' => true],
                 'salesrule' => ['source' => 'cart_price_rules'],
+                'big' => ['source' => 'big_bounded', 'bounded' => true],
+                'huge' => ['source' => 'huge_bounded', 'bounded' => true],
                 // Registered, but its domain pack contributed no source.
                 'orphan' => ['source' => 'never_registered'],
                 // The same throwing source, bounded (fetched to render a
@@ -425,6 +463,18 @@ class InstallWidgetMappingTest extends TestCase
         }
 
         return $block;
+    }
+
+    /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function rows(int $count): array
+    {
+        $rows = [];
+        for ($i = 0; $i < $count; $i++) {
+            $rows[] = ['value' => (string) $i, 'label' => 'Row ' . $i];
+        }
+        return $rows;
     }
 
     /**
@@ -457,6 +507,11 @@ class InstallWidgetMappingTest extends TestCase
                 ));
             }
 
+            public function all(): array
+            {
+                return $this->options;
+            }
+
             public function hasValue(string $value): bool
             {
                 foreach ($this->options as $option) {
@@ -486,6 +541,11 @@ class InstallWidgetMappingTest extends TestCase
             }
 
             public function fetch(?string $query = null): array
+            {
+                throw new \RuntimeException('the collection is unavailable');
+            }
+
+            public function all(): array
             {
                 throw new \RuntimeException('the collection is unavailable');
             }

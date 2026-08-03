@@ -7,8 +7,9 @@ use MageOS\Workflows\Model\Option\AbstractOptionSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * hasValue(): exact match over the FULL option list, uncapped — unlike fetch(),
- * which filters by substring and caps at 50 rows.
+ * The uncapped accessors: all() returns the full option list and hasValue()
+ * exact-matches over it — unlike fetch(), which filters by substring and caps
+ * at 50 rows to protect the type-ahead endpoints.
  */
 class AbstractOptionSourceHasValueTest extends TestCase
 {
@@ -37,6 +38,15 @@ class AbstractOptionSourceHasValueTest extends TestCase
                 return $this->options;
             }
         };
+    }
+
+    public function testAllReturnsEveryRowWhileFetchStaysCapped(): void
+    {
+        $source = $this->source();
+
+        $this->assertCount(50, $source->fetch());
+        $this->assertCount(120, $source->all());
+        $this->assertSame('119', $source->all()[119]['value']);
     }
 
     public function testFindsValueBeyondTheFetchCap(): void

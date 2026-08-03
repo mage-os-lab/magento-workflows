@@ -1,5 +1,9 @@
 /vendor/
 composer.lock
+# phpstan: CI/local overlay binding the config to a Magento install, and the
+# baseline the CI job regenerates (see phpstan.neon.dist).
+/phpstan-ci.neon
+/phpstan-baseline.generated.neon
 .idea/
 .vscode/
 *.swp

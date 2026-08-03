@@ -79,7 +79,7 @@ just in the browser:
 | `string` | Text input | None (free text) |
 | `number` | Number input (`min`/`max`/`step` applied) | Numeric, and within `min`/`max` when declared |
 | `url` | URL input | `FILTER_VALIDATE_URL` plus an `http`/`https` scheme |
-| `duration` | Composite (days/hours/minutes) with an ISO-8601 escape hatch | Parses as a `\DateInterval` (e.g. `PT4H`, `P3D`) |
+| `duration` | Composite (days/hours/minutes); the raw ISO input remains only as the no-JS / unrepresentable-value fallback | Parses as a `\DateInterval` (e.g. `PT4H`, `P3D`) |
 | `select` | Select over the declared inline `options` | — |
 | `secret` | Pick-or-create secret name (value never stored in the template) | — |
 | `entity:<alias>` | Bounded select or searchable picker, decided by the registry entry | The value must exist in the mapped option source (skipped when that source's pack is not installed) |
@@ -126,6 +126,12 @@ A third-party pack adds its own alias the same way. An alias with no registry
 entry is still schema-valid: the form degrades to a plain text input and the
 existence check is skipped, so a template referencing an uninstalled pack's
 source still installs.
+
+"Bounded" means the install form renders the source's full, uncapped list as a
+plain select. That is a rendering hint, not a promise the form depends on: a
+bounded source that turns out large (over the form's 200-row select ceiling)
+renders as the search picker instead, so mark an alias bounded whenever the
+list is *usually* small and let the form degrade for the outliers.
 
 ## CI fixture test (the honesty mechanism)
 

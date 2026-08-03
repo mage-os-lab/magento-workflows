@@ -84,6 +84,18 @@
         </arguments>
     </type>
 
+    <!-- entity:customer_group alias for the source above; a bounded list. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="customer_group" xsi:type="array">
+                    <item name="source" xsi:type="string">customer_groups</item>
+                    <item name="bounded" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Customer actions (relocated from actions-core). Action codes unchanged.
          customer.newsletter and the anonymize-unsubscribe plugin live in
          mage-os/workflows-newsletter (domain-packs S5). -->
