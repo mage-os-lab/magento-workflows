@@ -16,6 +16,7 @@ use MageOS\Workflows\Api\SecretMetadataProviderInterface;
 use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\WorkflowsCanvas\Block\Adminhtml\Canvas\Mount;
+use MageOS\WorkflowsCanvas\Model\I18n\PhraseCatalog;
 
 /**
  * Shared construction for the Mount block's unit tests (NOT a *Test.php, so the
@@ -167,6 +168,9 @@ final class MountBuilder
             },
             'authorization' => $this->authorization(),
             'moduleManager' => $this->moduleManager(),
+            // The real catalog: it is pure __() lookups, so the tests exercise
+            // the exact phrase map production ships.
+            'phraseCatalog' => new PhraseCatalog(),
         ];
         foreach ($this->options as $argument => $rows) {
             $dependencies[$argument] = $this->optionSource($rows);

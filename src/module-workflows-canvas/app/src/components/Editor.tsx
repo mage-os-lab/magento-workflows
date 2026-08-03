@@ -13,6 +13,7 @@ import {
   type Node,
 } from '@xyflow/react';
 import type { Graph, MountConfig, StepNode } from '../types';
+import { t } from '../i18n';
 import { toDefinition } from '../mapping';
 import { autoLayout, needsLayout } from '../layout';
 import { nodeTypes, type NodeData } from './WorkflowNode';
@@ -218,16 +219,16 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const selectedNode = useMemo(() => graph.nodes.find((n) => n.id === selected) ?? null, [graph, selected]);
 
   return (
-    <div className="wf-canvas wf-canvas--editor" role="application" aria-label="Workflow visual editor">
+    <div className="wf-canvas wf-canvas--editor" role="application" aria-label={t('Workflow visual editor')}>
       {readOnly && (
         <div className="wf-canvas__banner" role="alert">
-          This workflow declares schema {graph.schema}, newer than this canvas understands. Shown
-          read-only — edit it in the JSON editor.
+          {t('This workflow declares schema')} {graph.schema}.{' '}
+          {t('Shown read-only — edit it in the JSON editor.')}
         </div>
       )}
 
       <Toolbar
-        title={meta.name !== '' ? meta.name : 'Workflow'}
+        title={meta.name !== '' ? meta.name : t('Workflow')}
         canUndo={canUndo(history)}
         canRedo={canRedo(history)}
         hasErrors={pinned.hasErrors}
@@ -247,7 +248,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
             setSettingsOpen(true);
             return;
           }
-          setStatus('Saving…');
+          setStatus(t('Saving…'));
           // Disarm first: the save IS a navigation (a real hidden-form POST),
           // so a still-armed guard would prompt on the way out. The page is
           // replaced by the controller's response either way, so there is no
@@ -532,18 +533,18 @@ function Toolbar({
   onSave: () => void;
 }): JSX.Element {
   return (
-    <div className="wf-canvas__toolbar" role="toolbar" aria-label="Editor actions">
+    <div className="wf-canvas__toolbar" role="toolbar" aria-label={t('Editor actions')}>
       <strong className="wf-canvas__title">{title}</strong>
       <button type="button" onClick={onUndo} disabled={!undoable || readOnly}>
-        Undo
+        {t('Undo')}
       </button>
       <button type="button" onClick={onRedo} disabled={!redoable || readOnly}>
-        Redo
+        {t('Redo')}
       </button>
       {/* The general workflow fields (name/status/entity/trigger/websites) —
           the settings slide-out is the canvas' half of the classic form. */}
       <button type="button" onClick={onOpenSettings} disabled={readOnly}>
-        Workflow settings
+        {t('Workflow settings')}
       </button>
       {/* The workflow-level gate ("does this workflow run at all?"), edited in
           the same slide-out as a step's tree. The badge is the set/unset
@@ -554,15 +555,15 @@ function Toolbar({
         onClick={onEditRootConditions}
         disabled={readOnly}
       >
-        Workflow conditions
-        <span className="wf-canvas__badge">{rootConditionsSet ? 'Set' : 'Not set'}</span>
+        {t('Workflow conditions')}
+        <span className="wf-canvas__badge">{rootConditionsSet ? t('Set') : t('Not set')}</span>
       </button>
       <button type="button" className="wf-canvas__save" onClick={onSave} disabled={readOnly}>
-        Save
+        {t('Save')}
       </button>
       {hasErrors && (
         <span className="wf-canvas__error" role="status">
-          Validation errors — see the badged steps.
+          {t('Validation errors — see the badged steps.')}
         </span>
       )}
       {status && <span className="wf-canvas__status">{status}</span>}

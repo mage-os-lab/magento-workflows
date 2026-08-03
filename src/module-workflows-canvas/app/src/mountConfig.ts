@@ -49,6 +49,10 @@ export function readMountConfig(el: Element | null): MountConfig | null {
       statuses: optionList(c.workflowOptions?.statuses),
       websites: optionList(c.workflowOptions?.websites),
     },
+    i18n:
+      c.i18n && typeof c.i18n === 'object' && !Array.isArray(c.i18n)
+        ? (c.i18n as Record<string, string>)
+        : {},
     actions: c.actions ?? {},
     actionsMeta: Array.isArray(c.actionsMeta) ? c.actionsMeta : [],
     triggers: Array.isArray(c.triggers) ? c.triggers : [],

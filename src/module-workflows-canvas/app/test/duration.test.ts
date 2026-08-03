@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DURATION_UNITS,
+  durationUnits,
   composeDuration,
   isCompositeDuration,
   isIsoDuration,
@@ -34,7 +34,7 @@ describe('splitDuration / composeDuration round-trip', () => {
   });
 
   it('offers minutes/hours/days, in the install form order', () => {
-    expect(DURATION_UNITS.map((u) => u.value)).toEqual(['minutes', 'hours', 'days']);
+    expect(durationUnits().map((u) => u.value)).toEqual(['minutes', 'hours', 'days']);
   });
 });
 

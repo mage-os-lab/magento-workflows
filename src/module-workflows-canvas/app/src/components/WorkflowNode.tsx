@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { GraphNode, StepNode } from '../types';
 import { getStepEdges, edgeLabel } from '../edges';
+import { t } from '../i18n';
 
 /**
  * One typed node renderer for every step type. Handles are placed per the edge
@@ -36,16 +37,33 @@ const STATUS_COLORS: Record<string, string> = {
   would_fail: '#c62828',
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  action: 'Action',
-  delay: 'Delay',
-  branch: 'Branch',
-  wait: 'Wait',
-  switch: 'Switch',
-  approval: 'Approval',
-  stop: 'Stop',
-  degraded: 'Unavailable',
-};
+/**
+ * The step-type badge label, resolved through t() at render time (a module
+ * constant would be baked before the phrase map is installed). Unknown types
+ * fall through to the raw machine value.
+ */
+function typeLabel(type: string): string {
+  switch (type) {
+    case 'action':
+      return t('Action');
+    case 'delay':
+      return t('Delay');
+    case 'branch':
+      return t('Branch');
+    case 'wait':
+      return t('Wait');
+    case 'switch':
+      return t('Switch');
+    case 'approval':
+      return t('Approval');
+    case 'stop':
+      return t('Stop');
+    case 'degraded':
+      return t('Unavailable');
+    default:
+      return type;
+  }
+}
 
 export function WorkflowNode({ data }: NodeProps): JSX.Element {
   const d = data as NodeData;
@@ -65,15 +83,15 @@ export function WorkflowNode({ data }: NodeProps): JSX.Element {
       {!d.isEntry && <Handle type="target" position={Position.Top} />}
 
       <div className="wf-node__head">
-        <span className="wf-node__type">{TYPE_LABEL[type] ?? type}</span>
-        {d.isEntry && <span className="wf-node__entry" title="Entry step">start</span>}
+        <span className="wf-node__type">{typeLabel(type)}</span>
+        {d.isEntry && <span className="wf-node__entry" title={t('Entry step')}>{t('start')}</span>}
       </div>
 
       <div className="wf-node__summary">{d.summary}</div>
 
       {d.degraded && (
         <div className="wf-node__degraded">
-          Action code not registered — deletable, not configurable.
+          {t('Action code not registered — deletable, not configurable.')}
         </div>
       )}
 

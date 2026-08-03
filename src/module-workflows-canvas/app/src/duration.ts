@@ -21,6 +21,8 @@
  * Framework-free (no React, no DOM) so every rule here is pinned by vitest.
  */
 
+import { t } from './i18n';
+
 export type DurationUnit = 'minutes' | 'hours' | 'days';
 
 export interface DurationParts {
@@ -35,12 +37,18 @@ const PATTERNS: Record<DurationUnit, string> = {
   days: 'P%dD',
 };
 
-/** The unit select's options, in the install form's order. */
-export const DURATION_UNITS: { value: DurationUnit; label: string }[] = [
-  { value: 'minutes', label: 'minutes' },
-  { value: 'hours', label: 'hours' },
-  { value: 'days', label: 'days' },
-];
+/**
+ * The unit select's options, in the install form's order. A function rather
+ * than a module constant so the labels resolve through t() AFTER the phrase
+ * map is installed at mount; the values are machine codes and stay untouched.
+ */
+export function durationUnits(): { value: DurationUnit; label: string }[] {
+  return [
+    { value: 'minutes', label: t('minutes') },
+    { value: 'hours', label: t('hours') },
+    { value: 'days', label: t('days') },
+  ];
+}
 
 /**
  * The exact ISO-8601 duration grammar the definition schema declares

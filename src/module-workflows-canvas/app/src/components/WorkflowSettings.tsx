@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ConfigFieldOption, TriggerMeta, WorkflowOptions } from '../types';
 import { eventOptionGroups, isCataloguedEvent } from '../configPanel';
+import { t } from '../i18n';
 import { metaSaveError, toggleWebsite, type EditableMeta } from '../workflowMeta';
 
 /**
@@ -59,18 +60,18 @@ export function WorkflowSettings({
   const nameError = metaSaveError(meta);
 
   return (
-    <div className="wf-slideout" role="dialog" aria-modal="true" aria-label="Workflow settings">
+    <div className="wf-slideout" role="dialog" aria-modal="true" aria-label={t('Workflow settings')}>
       <div className="wf-slideout__backdrop" onClick={onClose} />
       <div className="wf-slideout__panel" ref={panelRef} tabIndex={-1}>
         <header className="wf-slideout__head">
-          <h3>Workflow settings</h3>
-          <button type="button" aria-label="Close" onClick={onClose}>
+          <h3>{t('Workflow settings')}</h3>
+          <button type="button" aria-label={t('Close')} onClick={onClose}>
             ×
           </button>
         </header>
 
         <label className="wf-field">
-          <span className="wf-field__label">Name *</span>
+          <span className="wf-field__label">{t('Name')} *</span>
           <input
             type="text"
             value={meta.name}
@@ -85,7 +86,7 @@ export function WorkflowSettings({
         )}
 
         <MetaSelect
-          label="Status"
+          label={t('Status')}
           options={options.statuses}
           value={String(meta.status)}
           readOnly={readOnly}
@@ -93,16 +94,16 @@ export function WorkflowSettings({
         />
 
         <MetaSelect
-          label="Entity type"
+          label={t('Entity type')}
           options={options.entityTypes}
           value={meta.entityType}
-          placeholder="— select —"
+          placeholder={t('— select —')}
           readOnly={readOnly}
           onChange={(v) => set({ entityType: v })}
         />
 
         <MetaSelect
-          label="Trigger type"
+          label={t('Trigger type')}
           options={options.triggerTypes}
           value={meta.triggerType}
           readOnly={readOnly}
@@ -118,7 +119,7 @@ export function WorkflowSettings({
         />
 
         <fieldset className="wf-field wf-settings__websites">
-          <legend className="wf-field__label">Websites</legend>
+          <legend className="wf-field__label">{t('Websites')}</legend>
           {options.websites.map((o) => (
             <label key={o.value} className="wf-field--bool wf-settings__website">
               <input
@@ -137,7 +138,7 @@ export function WorkflowSettings({
         <footer className="wf-slideout__foot">
           <div className="wf-slideout__buttons">
             <button type="button" onClick={onClose}>
-              Done
+              {t('Done')}
             </button>
           </div>
         </footer>
@@ -207,7 +208,7 @@ function TriggerRefField({
   if (triggerType === 'schedule') {
     return (
       <label className="wf-field">
-        <span className="wf-field__label">Schedule (cron)</span>
+        <span className="wf-field__label">{t('Schedule (cron)')}</span>
         <input
           type="text"
           value={value}
@@ -216,7 +217,7 @@ function TriggerRefField({
           onChange={(e) => onChange(e.target.value)}
         />
         <span className="wf-field__notice">
-          A cron expression in the store's timezone, e.g. 0 3 * * * for daily at 03:00.
+          {t("A cron expression in the store's timezone, e.g. 0 3 * * * for daily at 03:00.")}
         </span>
       </label>
     );
@@ -231,7 +232,7 @@ function TriggerRefField({
   return (
     <div className="wf-field">
       <span className="wf-field__label" id="wf-settings-trigger-ref">
-        Trigger event
+        {t('Trigger event')}
       </span>
       {free ? (
         <input
@@ -249,7 +250,7 @@ function TriggerRefField({
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">— select —</option>
+          <option value="">{t('— select —')}</option>
           {groups.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.options.map((o) => (
@@ -268,7 +269,7 @@ function TriggerRefField({
           disabled={readOnly}
           onClick={() => setManual(!manual)}
         >
-          {free ? 'Choose a registered event instead' : 'Enter an event name instead'}
+          {free ? t('Choose a registered event instead') : t('Enter an event name instead')}
         </button>
       )}
     </div>

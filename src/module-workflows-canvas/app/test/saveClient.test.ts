@@ -47,6 +47,7 @@ function config(overrides: Partial<MountConfig> = {}): MountConfig {
     triggers: [],
     secrets: [],
     workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
+    i18n: {},
     approvalsAvailable: false,
     ...overrides,
   };

@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { StepNode, SwitchCase } from './types';
 
 /**
@@ -23,12 +24,12 @@ export type ConditionTarget =
 /** Slide-out heading text for a target. */
 export function targetTitle(target: ConditionTarget): string {
   if (target.scope === 'workflow') {
-    return 'Workflow conditions';
+    return t('Workflow conditions');
   }
   if (target.scope === 'case') {
-    return `Conditions — ${target.stepKey} / case "${target.caseKey}"`;
+    return `${t('Conditions')} — ${target.stepKey} / ${t('case')} "${target.caseKey}"`;
   }
-  return `Conditions — ${target.stepKey}`;
+  return `${t('Conditions')} — ${target.stepKey}`;
 }
 
 /** The tree currently stored at a step-scoped target (null = always run). */

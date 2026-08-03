@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { groupTriggers } from './palette';
 import type { ConfigField, ConfigFieldOption, PaletteAction, StepNode, TriggerMeta } from './types';
 
@@ -180,7 +181,7 @@ export function multiSelectOptions(
   const out = [...options];
   for (const value of selected) {
     if (!out.some((o) => o.value === value)) {
-      out.push({ value, label: `${value} (not offered)` });
+      out.push({ value, label: `${value} ${t('(not offered)')}` });
     }
   }
   return out;

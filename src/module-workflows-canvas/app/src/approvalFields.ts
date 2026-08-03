@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { ApprovalPayloadField, ConfigFieldOption } from './types';
 
 /**
@@ -23,12 +24,18 @@ import type { ApprovalPayloadField, ConfigFieldOption } from './types';
 /** Row key grammar, byte-identical to the server's. */
 export const PAYLOAD_KEY_PATTERN = /^[a-zA-Z0-9_]{1,64}$/;
 
-/** The scalar types a payload field may declare. */
-export const PAYLOAD_TYPES: ConfigFieldOption[] = [
-  { value: 'string', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'boolean', label: 'Yes / No' },
-];
+/**
+ * The scalar types a payload field may declare. A function (not a module
+ * constant) so the labels resolve through t() after the phrase map is
+ * installed at mount; the values are the schema's machine codes.
+ */
+export function payloadTypes(): ConfigFieldOption[] {
+  return [
+    { value: 'string', label: t('Text') },
+    { value: 'number', label: t('Number') },
+    { value: 'boolean', label: t('Yes / No') },
+  ];
+}
 
 /**
  * A conservative address shape: one @, no spaces, a dotted domain. Deliberately
@@ -108,16 +115,16 @@ export function payloadFieldError(
   }
   const key = String(row.key ?? '');
   if (key === '') {
-    return 'A key is required.';
+    return t('A key is required.');
   }
   if (!PAYLOAD_KEY_PATTERN.test(key)) {
-    return 'Use letters, numbers or "_" (max 64 characters).';
+    return t('Use letters, numbers or "_" (max 64 characters).');
   }
   if (rows.some((other, i) => i !== index && String(other.key ?? '') === key)) {
-    return `Key "${key}" is used more than once.`;
+    return `${t('This key is used more than once:')} "${key}"`;
   }
   if (String(row.label ?? '') === '') {
-    return 'A label is required.';
+    return t('A label is required.');
   }
   return null;
 }
@@ -128,10 +135,11 @@ export function payloadFieldError(
  */
 export function payloadTypeOptions(current: unknown): ConfigFieldOption[] {
   const value = String(current ?? '');
-  if (value === '' || PAYLOAD_TYPES.some((o) => o.value === value)) {
-    return PAYLOAD_TYPES;
+  const types = payloadTypes();
+  if (value === '' || types.some((o) => o.value === value)) {
+    return types;
   }
-  return [...PAYLOAD_TYPES, { value, label: `${value} (not offered)` }];
+  return [...types, { value, label: `${value} ${t('(not offered)')}` }];
 }
 
 /** The stored notify_emails, normalized into editable rows. */
@@ -154,10 +162,10 @@ export function serializeNotifyEmails(rows: readonly string[]): string[] | undef
 export function notifyEmailError(email: unknown): string | null {
   const value = String(email ?? '').trim();
   if (value === '') {
-    return 'An email address is required.';
+    return t('An email address is required.');
   }
   if (!EMAIL_PATTERN.test(value)) {
-    return 'That does not look like an email address.';
+    return t('That does not look like an email address.');
   }
   return null;
 }

@@ -169,7 +169,7 @@ describe('renameCase', () => {
   it('refuses a duplicate key, unchanged', () => {
     const before = graph();
     const result = renameCase(before, 'route', 0, 'low', config.actions);
-    expect(result.error).toBe('Case key "low" is already used by this switch.');
+    expect(result.error).toBe('This case key is already used by this switch: "low"');
     expect(result.graph).toBe(before);
   });
 

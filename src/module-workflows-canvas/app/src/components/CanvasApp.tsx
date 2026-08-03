@@ -20,6 +20,7 @@ import {
   type ExecutionStepRow,
   type Overlay,
 } from '../overlay';
+import { t } from '../i18n';
 import { Outline } from './Outline';
 import { Editor } from './Editor';
 
@@ -99,13 +100,13 @@ function Viewer({ config }: Props): JSX.Element {
         const url = `${config.endpoints.executionSteps}?execution_id=${encodeURIComponent(String(executionId))}`;
         const res = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
         if (!res.ok) {
-          throw new Error(`Execution steps request failed (${res.status})`);
+          throw new Error(`${t('Execution steps request failed.')} (${res.status})`);
         }
         const body = (await res.json()) as { steps: ExecutionStepRow[] };
         setOverlay(buildExecutionOverlay(body.steps ?? []));
-        setOverlayLabel(`Execution #${executionId}`);
+        setOverlayLabel(`${t('Execution')} #${executionId}`);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load execution');
+        setError(e instanceof Error ? e.message : t('Failed to load execution.'));
       }
     },
     [config.endpoints.executionSteps],
@@ -130,13 +131,13 @@ function Viewer({ config }: Props): JSX.Element {
         body: form.toString(),
       });
       if (!res.ok) {
-        throw new Error(`Dry-run failed (${res.status})`);
+        throw new Error(`${t('Dry-run failed.')} (${res.status})`);
       }
       const body = (await res.json()) as { steps: DryRunTraceRow[] };
       setOverlay(buildDryRunOverlay(body.steps ?? []));
-      setOverlayLabel('Dry-run preview');
+      setOverlayLabel(t('Dry-run preview'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Dry-run failed');
+      setError(e instanceof Error ? e.message : t('Dry-run failed.'));
     }
   }, [config, dryRunEntityId]);
 
@@ -148,8 +149,7 @@ function Viewer({ config }: Props): JSX.Element {
   if (!definition || !baseGraph) {
     return (
       <div className="wf-canvas__empty">
-        No workflow definition to display. The classic form and JSON editor remain the primary
-        authoring surface.
+        {t('No workflow definition to display. The classic form and JSON editor remain the primary authoring surface.')}
       </div>
     );
   }
@@ -189,40 +189,40 @@ function Viewer({ config }: Props): JSX.Element {
     <div className="wf-canvas">
       {baseGraph.readOnly && (
         <div className="wf-canvas__banner" role="alert">
-          This workflow declares schema {baseGraph.schema}, newer than this canvas understands
-          (schema {config.knownSchemaVersion}). Shown read-only — edit it in the JSON editor.
+          {t('This workflow declares schema')} {baseGraph.schema} ({t('this canvas understands schema')}{' '}
+          {config.knownSchemaVersion}). {t('Shown read-only — edit it in the JSON editor.')}
         </div>
       )}
 
       <div className="wf-canvas__toolbar">
-        <strong className="wf-canvas__title">{config.workflow?.name ?? 'Workflow'}</strong>
+        <strong className="wf-canvas__title">{config.workflow?.name ?? t('Workflow')}</strong>
         {config.executionId && (
           <button type="button" onClick={() => loadExecution(config.executionId as number)}>
-            Reload execution
+            {t('Reload execution')}
           </button>
         )}
         {config.grants.dryRun && config.workflow && (
           <>
             <label className="wf-canvas__dryrun-entity">
-              Entity ID
+              {t('Entity ID')}
               <input
                 type="number"
                 min={1}
-                placeholder="auto"
+                placeholder={t('auto')}
                 value={dryRunEntityId}
                 onChange={(e) => setDryRunEntityId(e.target.value)}
               />
             </label>
             <button type="button" onClick={runDryRun}>
-              Run dry-run overlay
+              {t('Run dry-run overlay')}
             </button>
           </>
         )}
         {overlayLabel && (
           <>
-            <span className="wf-canvas__overlay-label">Overlay: {overlayLabel}</span>
+            <span className="wf-canvas__overlay-label">{t('Overlay:')} {overlayLabel}</span>
             <button type="button" onClick={clearOverlay}>
-              Clear overlay
+              {t('Clear overlay')}
             </button>
           </>
         )}

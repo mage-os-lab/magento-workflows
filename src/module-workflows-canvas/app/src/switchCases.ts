@@ -1,4 +1,5 @@
 import { edgeLabel } from './edges';
+import { t } from './i18n';
 import { inRange, moveItem, removeAt, replaceAt } from './listEdit';
 import { nodeSummary } from './nodeSummary';
 import type { Graph, GraphEdge, MountConfig, StepNode, SwitchCase } from './types';
@@ -85,7 +86,7 @@ export function addCase(
 ): CaseOpResult {
   const step = stepOf(graph, stepKey);
   if (!step || step.type !== 'switch') {
-    return { graph, error: 'Not a switch step.' };
+    return { graph, error: t('Not a switch step.') };
   }
   const cases = casesOf(step);
   return {
@@ -107,14 +108,14 @@ export function removeCase(
 ): CaseOpResult {
   const step = stepOf(graph, stepKey);
   if (!step || step.type !== 'switch') {
-    return { graph, error: 'Not a switch step.' };
+    return { graph, error: t('Not a switch step.') };
   }
   const cases = casesOf(step);
   if (!inRange(cases, index)) {
     return { graph, error: null };
   }
   if (cases.length === 1) {
-    return { graph, error: 'A switch needs at least one case.' };
+    return { graph, error: t('A switch needs at least one case.') };
   }
   const removedKey = String(cases[index]?.key ?? '');
   const next = withCases(graph, stepKey, step, removeAt(cases, index), actions);
@@ -144,7 +145,7 @@ export function renameCase(
 ): CaseOpResult {
   const step = stepOf(graph, stepKey);
   if (!step || step.type !== 'switch') {
-    return { graph, error: 'Not a switch step.' };
+    return { graph, error: t('Not a switch step.') };
   }
   const cases = casesOf(step);
   if (!inRange(cases, index)) {
@@ -152,17 +153,17 @@ export function renameCase(
   }
   const key = sanitizeCaseKey(rawKey);
   if (key === '') {
-    return { graph, error: 'A case key is required.' };
+    return { graph, error: t('A case key is required.') };
   }
   if (!isValidCaseKey(key)) {
-    return { graph, error: 'Use letters, numbers, "_" or "-" (max 64 characters).' };
+    return { graph, error: t('Use letters, numbers, "_" or "-" (max 64 characters).') };
   }
   const previous = String(cases[index]?.key ?? '');
   if (key === previous) {
     return { graph, error: null };
   }
   if (cases.some((c, i) => i !== index && String(c?.key ?? '') === key)) {
-    return { graph, error: `Case key "${key}" is already used by this switch.` };
+    return { graph, error: `${t('This case key is already used by this switch:')} "${key}"` };
   }
 
   // Spread the existing case: its conditions_serialized, its `next` target and
@@ -185,7 +186,7 @@ export function moveCase(
 ): CaseOpResult {
   const step = stepOf(graph, stepKey);
   if (!step || step.type !== 'switch') {
-    return { graph, error: 'Not a switch step.' };
+    return { graph, error: t('Not a switch step.') };
   }
   const cases = casesOf(step);
   const moved = moveItem(cases, index, delta);

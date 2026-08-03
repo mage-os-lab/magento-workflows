@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { MountConfig, ValidationMessage } from './types';
 
 /**
@@ -66,7 +67,7 @@ export async function postValidate(
     body: form.toString(),
   });
   if (!res.ok) {
-    return { success: false, error: `Validation request failed (${res.status})` };
+    return { success: false, error: `${t('Validation request failed.')} (${res.status})` };
   }
   return (await res.json()) as ValidateResponse;
 }

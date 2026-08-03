@@ -4,6 +4,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { CanvasApp } from './components/CanvasApp';
+import { setTranslations } from './i18n';
 import { MOUNT_SELECTOR, readMountConfig } from './mountConfig';
 
 /**
@@ -17,6 +18,9 @@ function mount(): void {
   if (!el || !config) {
     return;
   }
+  // Install the server's phrase map BEFORE anything renders, so every t()
+  // call — components and pure modules alike — resolves translated text.
+  setTranslations(config.i18n);
   createRoot(el as HTMLElement).render(
     <StrictMode>
       <ReactFlowProvider>

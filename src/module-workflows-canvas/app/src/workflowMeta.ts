@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { MountConfig, WorkflowMeta } from './types';
 
 /**
@@ -81,7 +82,7 @@ function metaOf(workflow: WorkflowMeta): string {
  * Returns the message to show, or null when saving may proceed.
  */
 export function metaSaveError(meta: EditableMeta): string | null {
-  return meta.name.trim() === '' ? 'A name is required before saving.' : null;
+  return meta.name.trim() === '' ? t('A name is required before saving.') : null;
 }
 
 /** Toggle one website id in the scope list (kept sorted for a stable payload). */

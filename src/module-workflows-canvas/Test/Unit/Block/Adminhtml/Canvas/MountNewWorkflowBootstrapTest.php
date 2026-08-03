@@ -165,6 +165,23 @@ class MountNewWorkflowBootstrapTest extends TestCase
         );
     }
 
+    /**
+     * The canvas UI phrase map rides in the bootstrap (`i18n`) so the React
+     * bundle renders translated text; in en_US every value equals its key
+     * (identity), which is also the client's per-phrase fallback.
+     */
+    public function testI18nPhraseMapIsEmittedWithIdentityEnglishRows(): void
+    {
+        $config = $this->config(MountBuilder::create()->build()->getConfigJson());
+
+        $this->assertArrayHasKey('i18n', $config);
+        $this->assertTrue(is_array($config['i18n']));
+        $this->assertTrue(count($config['i18n']) > 0, 'The phrase map must not be empty');
+        // A sample phrase round-trips: key present, value the __() rendering.
+        $this->assertArrayHasKey('Workflow settings', $config['i18n']);
+        $this->assertSame('Workflow settings', $config['i18n']['Workflow settings']);
+    }
+
     private function manageJson(): string
     {
         return MountBuilder::create()

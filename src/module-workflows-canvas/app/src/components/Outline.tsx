@@ -1,5 +1,6 @@
 import type { Graph } from '../types';
 import { getStepEdges, edgeLabel } from '../edges';
+import { t } from '../i18n';
 import type { Overlay } from '../overlay';
 
 /**
@@ -25,8 +26,8 @@ export function Outline({
   selected?: string | null;
 }): JSX.Element {
   return (
-    <section className="wf-outline" aria-label="Workflow outline">
-      <h3 className="wf-outline__title">Outline</h3>
+    <section className="wf-outline" aria-label={t('Workflow outline')}>
+      <h3 className="wf-outline__title">{t('Outline')}</h3>
       <ol className="wf-outline__list">
         {graph.nodes.map((n) => {
           const status = overlay.nodeStatus[n.id];
@@ -46,16 +47,16 @@ export function Outline({
           return (
             <li key={n.id} className="wf-outline__item">
               {keyNode}
-              {n.data.isEntry && <span className="wf-outline__entry"> (entry)</span>}
+              {n.data.isEntry && <span className="wf-outline__entry"> ({t('entry')})</span>}
               {': '}
               <span className="wf-outline__summary">{n.data.summary}</span>
               {status && <span className="wf-outline__status"> — {status}</span>}
-              {n.data.degraded && <span className="wf-outline__degraded"> — unavailable action</span>}
+              {n.data.degraded && <span className="wf-outline__degraded"> — {t('unavailable action')}</span>}
               {edges.length > 0 && (
                 <ul className="wf-outline__edges">
                   {edges.map(([name, target]) => (
                     <li key={name}>
-                      {edgeLabel(name) || 'next'} → {target}
+                      {edgeLabel(name) || t('next')} → {target}
                     </li>
                   ))}
                 </ul>

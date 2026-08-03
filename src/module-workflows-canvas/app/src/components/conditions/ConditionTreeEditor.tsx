@@ -8,6 +8,7 @@ import {
   splitTypeSpec,
   updateNode,
 } from '../../conditionTree';
+import { t } from '../../i18n';
 import { ConditionNodeRow, type TreeHandlers } from './ConditionNodeRow';
 
 /**
@@ -61,24 +62,23 @@ export function ConditionTreeEditor({
     <div className="wf-cond">
       {loading && (
         <p className="wf-cond__loading" role="status">
-          Loading condition metadata…
+          {t('Loading condition metadata…')}
         </p>
       )}
 
       {root === null ? (
         <div className="wf-cond__empty">
-          <p>No conditions — this always runs.</p>
+          <p>{t('No conditions — this always runs.')}</p>
           <button
             type="button"
             disabled={readOnly || rootType === null}
             onClick={() => onChange(() => emptyTree(rootType ?? ''))}
           >
-            Add conditions
+            {t('Add conditions')}
           </button>
           {rootType === null && !loading && (
             <p className="wf-cond__hint">
-              The condition metadata for this workflow&apos;s entity type is unavailable, so the
-              builder cannot start a tree. Use “Edit as JSON” below.
+              {t("The condition metadata for this workflow's entity type is unavailable, so the builder cannot start a tree. Use “Edit as JSON” below.")}
             </p>
           )}
         </div>
@@ -93,7 +93,7 @@ export function ConditionTreeEditor({
             disabled={readOnly}
             onClick={() => onChange(() => null)}
           >
-            Remove all conditions
+            {t('Remove all conditions')}
           </button>
         </>
       )}

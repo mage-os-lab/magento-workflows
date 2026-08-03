@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { MountConfig, StepNode } from './types';
 
 /**
@@ -18,28 +19,30 @@ export function nodeSummary(
     case 'action': {
       const code = String(step.action ?? '');
       const known = actions[code];
-      return known ? known.label : code || 'Action';
+      return known ? known.label : code || t('Action');
     }
     case 'delay':
-      return `Wait ${humanizeDuration(String(step.config?.duration ?? ''))}`;
+      return `${t('Wait')} ${humanizeDuration(String(step.config?.duration ?? ''))}`;
     case 'branch':
-      return 'Condition';
+      return t('Condition');
     case 'wait': {
       const event = String(step.config?.event ?? '');
-      return event ? `Wait for "${event}"` : 'Wait for event';
+      return event ? `${t('Wait for')} "${event}"` : t('Wait for event');
     }
     case 'switch': {
       const count = (step.cases ?? []).length;
-      return `Switch (${count} ${count === 1 ? 'case' : 'cases'})`;
+      return `${t('Switch')} (${count} ${count === 1 ? t('case') : t('cases')})`;
     }
     case 'approval': {
       const timeout = String(step.config?.timeout ?? '');
-      return timeout ? `Approval gate (up to ${humanizeDuration(timeout)})` : 'Approval gate';
+      return timeout
+        ? `${t('Approval gate')} (${t('up to')} ${humanizeDuration(timeout)})`
+        : t('Approval gate');
     }
     case 'stop':
-      return 'Stop';
+      return t('Stop');
     default:
-      return 'Unknown step';
+      return t('Unknown step');
   }
 }
 
@@ -56,19 +59,21 @@ export function isDegraded(step: StepNode, actions: MountConfig['actions']): boo
 export function humanizeDuration(iso: string): string {
   const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(iso);
   if (!m) {
-    return iso || 'a while';
+    return iso || t('a while');
   }
   const [, d, h, min, s] = m;
   const parts: string[] = [];
-  const push = (n: string | undefined, unit: string) => {
+  const push = (n: string | undefined, singular: string, plural: string) => {
     if (n) {
       const v = Number(n);
-      parts.push(`${v} ${unit}${v === 1 ? '' : 's'}`);
+      parts.push(`${v} ${v === 1 ? singular : plural}`);
     }
   };
-  push(d, 'day');
-  push(h, 'hour');
-  push(min, 'minute');
-  push(s, 'second');
-  return parts.length ? parts.join(' ') : 'a moment';
+  // Singular/plural as whole phrases (not an appended "s") so each is one
+  // translatable catalog row.
+  push(d, t('day'), t('days'));
+  push(h, t('hour'), t('hours'));
+  push(min, t('minute'), t('minutes'));
+  push(s, t('second'), t('seconds'));
+  return parts.length ? parts.join(' ') : t('a moment');
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MountConfig } from '../types';
+import { t } from '../i18n';
 import type { ConditionNode, NodeMeta } from '../conditionTree';
 import {
   collectNodeTypes,
@@ -231,7 +232,7 @@ export function ConditionSlideOut({
       <div className="wf-slideout__panel" ref={panelRef} tabIndex={-1}>
         <header className="wf-slideout__head">
           <h3>{title}</h3>
-          <button type="button" aria-label="Close" onClick={onClose}>
+          <button type="button" aria-label={t('Close')} onClick={onClose}>
             ×
           </button>
         </header>
@@ -256,9 +257,9 @@ export function ConditionSlideOut({
           open={showJson}
           onToggle={(e) => setShowJson((e.currentTarget as HTMLDetailsElement).open)}
         >
-          <summary>Edit as JSON</summary>
+          <summary>{t('Edit as JSON')}</summary>
           <label className="wf-field">
-            <span className="wf-field__label">Condition tree (JSON)</span>
+            <span className="wf-field__label">{t('Condition tree (JSON)')}</span>
             <textarea
               className="wf-slideout__json"
               value={jsonText}
@@ -289,7 +290,7 @@ export function ConditionSlideOut({
             </ul>
           )}
           {result?.outcome === 'invalid' && result.messages.length === 0 && !result.error && (
-            <p className="wf-slideout__error">The server rejected this condition tree.</p>
+            <p className="wf-slideout__error">{t('The server rejected this condition tree.')}</p>
           )}
         </div>
 
@@ -302,17 +303,15 @@ export function ConditionSlideOut({
                 disabled={readOnly}
                 onChange={(e) => setRevalidate(e.target.checked)}
               />
-              Re-validate entity before evaluating
+              {t('Re-validate entity before evaluating')}
               <span className="wf-field__notice">
-                On by default: the entity is re-hydrated fresh so a stale snapshot (after a delay,
-                queue lag or redelivery) cannot decide the branch. Turn it off to evaluate the
-                frozen trigger snapshot instead.
+                {t('On by default: the entity is re-hydrated fresh so a stale snapshot (after a delay, queue lag or redelivery) cannot decide the branch. Turn it off to evaluate the frozen trigger snapshot instead.')}
               </span>
             </label>
           )}
           <div className="wf-slideout__buttons">
             <button type="button" onClick={onClose}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="button"
@@ -320,7 +319,7 @@ export function ConditionSlideOut({
               disabled={readOnly || applying || jsonError !== null}
               onClick={apply}
             >
-              {applying ? 'Validating…' : 'Apply'}
+              {applying ? t('Validating…') : t('Apply')}
             </button>
           </div>
         </footer>

@@ -28,6 +28,8 @@
  * node model reasons about them (kind, operator/attribute defaults).
  */
 
+import { t } from './i18n';
+
 /** One `{value,label}` option as the metadata endpoint serves it. */
 export interface MetaOption {
   value: string;
@@ -119,58 +121,75 @@ export interface ParsedTree {
   error: string | null;
 }
 
+// The fallback label tables below are FUNCTIONS rather than module constants
+// so their labels resolve through t() after the phrase map is installed at
+// mount; the option VALUES are the server's machine codes and never change.
+
 /** Fallback aggregators when metadata is unavailable (core rule semantics). */
-export const FALLBACK_AGGREGATORS: MetaOption[] = [
-  { value: 'all', label: 'ALL' },
-  { value: 'any', label: 'ANY' },
-];
+export function fallbackAggregators(): MetaOption[] {
+  return [
+    { value: 'all', label: t('ALL') },
+    { value: 'any', label: t('ANY') },
+  ];
+}
 
 /** TRUE/FALSE combine value select (core rule widget wording). */
-export const COMBINE_VALUE_OPTIONS: MetaOption[] = [
-  { value: '1', label: 'TRUE' },
-  { value: '0', label: 'FALSE' },
-];
+export function combineValueOptions(): MetaOption[] {
+  return [
+    { value: '1', label: t('TRUE') },
+    { value: '0', label: t('FALSE') },
+  ];
+}
 
 /** RelatedEntity\Combine::EXISTS / ::NOT_EXISTS. */
-export const EXISTS_OPTIONS: MetaOption[] = [
-  { value: '1', label: 'EXISTS' },
-  { value: '0', label: 'NOT EXISTS' },
-];
+export function existsOptions(): MetaOption[] {
+  return [
+    { value: '1', label: t('EXISTS') },
+    { value: '0', label: t('NOT EXISTS') },
+  ];
+}
 
 /** RelatedEntity\Combine::MATCH_ANY / MATCH_ALL / MATCH_NONE. */
-export const MATCH_MODE_OPTIONS: MetaOption[] = [
-  { value: 'any', label: 'ANY of them matches' },
-  { value: 'all', label: 'ALL of them match' },
-  { value: 'none', label: 'NONE of them matches' },
-];
+export function matchModeOptions(): MetaOption[] {
+  return [
+    { value: 'any', label: t('ANY of them matches') },
+    { value: 'all', label: t('ALL of them match') },
+    { value: 'none', label: t('NONE of them matches') },
+  ];
+}
 
 /**
  * Core AbstractCondition::getDefaultOperatorOptions() wording, used ONLY when
  * an attribute has no server metadata (unknown/third-party attribute) so the
  * operator still renders as a labelled select instead of a bare code.
  */
-export const FALLBACK_OPERATORS: MetaOption[] = [
-  { value: '==', label: 'is' },
-  { value: '!=', label: 'is not' },
-  { value: '>=', label: 'equals or greater than' },
-  { value: '>', label: 'greater than' },
-  { value: '<=', label: 'equals or less than' },
-  { value: '<', label: 'less than' },
-  { value: '{}', label: 'contains' },
-  { value: '!{}', label: 'does not contain' },
-  { value: '()', label: 'is one of' },
-  { value: '!()', label: 'is not one of' },
-];
+export function fallbackOperators(): MetaOption[] {
+  return [
+    { value: '==', label: t('is') },
+    { value: '!=', label: t('is not') },
+    { value: '>=', label: t('equals or greater than') },
+    { value: '>', label: t('greater than') },
+    { value: '<=', label: t('equals or less than') },
+    { value: '<', label: t('less than') },
+    { value: '{}', label: t('contains') },
+    { value: '!{}', label: t('does not contain') },
+    { value: '()', label: t('is one of') },
+    { value: '!()', label: t('is not one of') },
+  ];
+}
 
 /** Yes/No select for boolean-input leaves. */
-export const BOOLEAN_VALUE_OPTIONS: MetaOption[] = [
-  { value: '1', label: 'Yes' },
-  { value: '0', label: 'No' },
-];
+export function booleanValueOptions(): MetaOption[] {
+  return [
+    { value: '1', label: t('Yes') },
+    { value: '0', label: t('No') },
+  ];
+}
 
 /** The relative-date hint shown on date attributes (RELATIVE_DATE_PATTERN). */
-export const RELATIVE_DATE_HINT =
-  'A date (YYYY-MM-DD) or a relative expression like "-30 days" / "+2 hours", resolved at evaluation time.';
+export function relativeDateHint(): string {
+  return t('A date (YYYY-MM-DD) or a relative expression like "-30 days" / "+2 hours", resolved at evaluation time.');
+}
 
 let sequence = 0;
 
@@ -216,10 +235,10 @@ export function parseConditionTree(raw: string | null | undefined): ParsedTree {
   try {
     decoded = JSON.parse(raw);
   } catch {
-    return { root: null, error: 'Conditions must be valid JSON (a serialized condition tree).' };
+    return { root: null, error: t('Conditions must be valid JSON (a serialized condition tree).') };
   }
   if (!isPlainObject(decoded)) {
-    return { root: null, error: 'A condition tree must be a JSON object.' };
+    return { root: null, error: t('A condition tree must be a JSON object.') };
   }
   return { root: toNode(decoded), error: null };
 }
@@ -544,7 +563,7 @@ export function optionsWithCurrent(options: MetaOption[], current: string): Meta
   if (current === '' || options.some((o) => o.value === current)) {
     return options;
   }
-  return [...options, { value: current, label: `${current} (not offered)` }];
+  return [...options, { value: current, label: `${current} ${t('(not offered)')}` }];
 }
 
 /** Pretty-print a node for the read-only unknown-node view (a text node only). */

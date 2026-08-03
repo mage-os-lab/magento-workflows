@@ -28,9 +28,10 @@ import {
   writeValue,
   type NormalizedField,
 } from '../configPanel';
+import { t } from '../i18n';
 import {
-  DURATION_UNITS,
   composeDuration,
+  durationUnits,
   isIsoDuration,
   splitDuration,
   type DurationUnit,
@@ -122,7 +123,7 @@ export function ConfigPanel({
   );
 
   return (
-    <aside className="wf-panel" aria-label="Step configuration">
+    <aside className="wf-panel" aria-label={t('Step configuration')}>
       <header className="wf-panel__head">
         <h3 className="wf-panel__title">{node.id}</h3>
         <span className="wf-panel__type">{step.type}</span>
@@ -130,7 +131,7 @@ export function ConfigPanel({
 
       {node.data.degraded && (
         <p className="wf-panel__degraded">
-          This action code is not registered on this install. It can be deleted but not configured.
+          {t('This action code is not registered on this install. It can be deleted but not configured.')}
         </p>
       )}
 
@@ -145,7 +146,7 @@ export function ConfigPanel({
             disabled={readOnly}
             onClick={() => onEditConditions({ scope: 'step', stepKey: node.id })}
           >
-            Edit conditions…
+            {t('Edit conditions…')}
           </button>
         </div>
       )}
@@ -186,7 +187,7 @@ export function ConfigPanel({
 
       {variablePaths.length > 0 && (
         <details className="wf-panel__vars">
-          <summary>Available variables</summary>
+          <summary>{t('Available variables')}</summary>
           <ul>
             {variablePaths.map((v) => (
               <li key={v.path}>
@@ -199,7 +200,7 @@ export function ConfigPanel({
 
       <footer className="wf-panel__foot">
         <button type="button" className="wf-panel__delete" disabled={readOnly} onClick={() => onDelete(node.id)}>
-          Delete step
+          {t('Delete step')}
         </button>
       </footer>
     </aside>
@@ -246,7 +247,7 @@ function SwitchCasesEditor({
   return (
     <div className="wf-panel__conditions wf-cases">
       <span className="wf-field__label" id={`${stepKey}-cases-label`}>
-        Cases (first match wins)
+        {t('Cases (first match wins)')}
       </span>
       <ul className="wf-cases__list" aria-labelledby={`${stepKey}-cases-label`}>
         {cases.map((c, index) => {
@@ -263,8 +264,8 @@ function SwitchCasesEditor({
               />
               <span className="wf-cases__state">
                 {typeof c.conditions_serialized === 'string' && c.conditions_serialized.trim() !== ''
-                  ? 'Conditions set'
-                  : 'Always matches'}
+                  ? t('Conditions set')
+                  : t('Always matches')}
               </span>
               <div className="wf-cases__buttons">
                 <button
@@ -274,11 +275,11 @@ function SwitchCasesEditor({
                     onEditConditions({ scope: 'case', stepKey, caseIndex: index, caseKey })
                   }
                 >
-                  Edit conditions…
+                  {t('Edit conditions…')}
                 </button>
                 <button
                   type="button"
-                  aria-label={`Move case "${caseKey}" earlier`}
+                  aria-label={`${t('Move case earlier:')} "${caseKey}"`}
                   disabled={readOnly || index === 0}
                   onClick={() => apply(moveCase(graph, stepKey, index, -1, actions))}
                 >
@@ -286,7 +287,7 @@ function SwitchCasesEditor({
                 </button>
                 <button
                   type="button"
-                  aria-label={`Move case "${caseKey}" later`}
+                  aria-label={`${t('Move case later:')} "${caseKey}"`}
                   disabled={readOnly || index === cases.length - 1}
                   onClick={() => apply(moveCase(graph, stepKey, index, 1, actions))}
                 >
@@ -294,7 +295,7 @@ function SwitchCasesEditor({
                 </button>
                 <button
                   type="button"
-                  aria-label={`Remove case "${caseKey}"`}
+                  aria-label={`${t('Remove case:')} "${caseKey}"`}
                   disabled={readOnly || cases.length === 1}
                   onClick={() => apply(removeCase(graph, stepKey, index, actions))}
                 >
@@ -307,7 +308,7 @@ function SwitchCasesEditor({
       </ul>
       {cases.length === 0 && (
         <p className="wf-field__notice">
-          This switch has no cases yet — it cannot be saved until it has one.
+          {t('This switch has no cases yet — it cannot be saved until it has one.')}
         </p>
       )}
       <button
@@ -316,7 +317,7 @@ function SwitchCasesEditor({
         disabled={readOnly}
         onClick={() => apply(addCase(graph, stepKey, actions))}
       >
-        Add case
+        {t('Add case')}
       </button>
       {error && (
         <span className="wf-field__notice wf-field__notice--error" role="alert">
@@ -356,7 +357,7 @@ function CaseKeyInput({
     <input
       type="text"
       className="wf-cases__key"
-      aria-label={`Case ${index + 1} key`}
+      aria-label={`${t('Case key')} ${index + 1}`}
       value={draft}
       disabled={readOnly}
       spellCheck={false}
@@ -388,7 +389,7 @@ function DelayFields({
   return (
     <>
       <DurationField
-        label="Duration *"
+        label={`${t('Duration')} *`}
         value={String(config.duration ?? '')}
         readOnly={readOnly}
         onChange={(v) => onChange('duration', v)}
@@ -400,18 +401,18 @@ function DelayFields({
           disabled={readOnly}
           onChange={(e) => onChange('business_days', e.target.checked)}
         />
-        Count business days only (Mon–Fri, store timezone)
+        {t('Count business days only (Mon–Fri, store timezone)')}
       </label>
       <TextField
-        label="Run at (store-local HH:MM)"
+        label={t('Run at (store-local HH:MM)')}
         value={at}
-        notice="Optional. After the duration, roll forward to the next occurrence of this time."
+        notice={t('Optional. After the duration, roll forward to the next occurrence of this time.')}
         readOnly={readOnly}
         onChange={(v) => onChange('at', v)}
       />
       {at !== '' && !isValidTimeOfDay(at) && (
         <span className="wf-field__notice wf-field__notice--error" role="alert">
-          Use 24-hour HH:MM, e.g. 09:30.
+          {t('Use 24-hour HH:MM, e.g. 09:30.')}
         </span>
       )}
     </>
@@ -445,9 +446,9 @@ function WaitFields({
         onChange={(v) => onChange('event', v)}
       />
       <DurationField
-        label="Timeout *"
+        label={`${t('Timeout')} *`}
         value={String(config.timeout ?? '')}
-        notice="Required. The on-timeout path fires when the event has not arrived by then."
+        notice={t('Required. The on-timeout path fires when the event has not arrived by then.')}
         readOnly={readOnly}
         onChange={(v) => onChange('timeout', v)}
       />
@@ -483,7 +484,7 @@ function EventField({
   return (
     <div className="wf-field">
       <span className="wf-field__label" id="wf-wait-event-label">
-        Event name *
+        {t('Event name')} *
       </span>
       {free ? (
         <input
@@ -501,7 +502,7 @@ function EventField({
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">— select —</option>
+          <option value="">{t('— select —')}</option>
           {groups.map((group) => (
             <optgroup key={group.label} label={group.label}>
               {group.options.map((o) => (
@@ -520,12 +521,12 @@ function EventField({
           disabled={readOnly}
           onClick={() => setManual(!manual)}
         >
-          {free ? 'Choose a registered event instead' : 'Enter an event name instead'}
+          {free ? t('Choose a registered event instead') : t('Enter an event name instead')}
         </button>
       )}
       {value !== '' && !isValidEventName(value) && (
         <span className="wf-field__notice wf-field__notice--error" role="alert">
-          Use lower-case letters, numbers, “.”, “_” or “-” (max 128 characters).
+          {t('Use lower-case letters, numbers, “.”, “_” or “-” (max 128 characters).')}
         </span>
       )}
     </div>
@@ -552,13 +553,13 @@ function ApprovalFields({
   return (
     <>
       <TextField
-        label="Title *"
+        label={`${t('Title')} *`}
         value={String(config.title ?? '')}
         readOnly={readOnly}
         onChange={(v) => onChange('title', v)}
       />
       <label className="wf-field">
-        <span className="wf-field__label">Instructions</span>
+        <span className="wf-field__label">{t('Instructions')}</span>
         <textarea
           value={String(config.instructions ?? '')}
           disabled={readOnly}
@@ -566,14 +567,14 @@ function ApprovalFields({
         />
       </label>
       <DurationField
-        label="Timeout *"
+        label={`${t('Timeout')} *`}
         value={String(config.timeout ?? '')}
-        notice="Required. No indefinite parks — the on-timeout path fires when nobody decides."
+        notice={t('Required. No indefinite parks — the on-timeout path fires when nobody decides.')}
         readOnly={readOnly}
         onChange={(v) => onChange('timeout', v)}
       />
       <TextField
-        label="Assignee role"
+        label={t('Assignee role')}
         value={String(config.assignee_role ?? '')}
         readOnly={readOnly}
         onChange={(v) => onChange('assignee_role', v)}
@@ -585,7 +586,7 @@ function ApprovalFields({
           disabled={readOnly}
           onChange={(e) => onChange('allow_bulk', e.target.checked)}
         />
-        Allow bulk decisions
+        {t('Allow bulk decisions')}
       </label>
       <PayloadFieldsEditor
         rows={readPayloadFields(config.payload_fields)}
@@ -624,10 +625,10 @@ function PayloadFieldsEditor({
   return (
     <div className="wf-field wf-rows">
       <span className="wf-field__label" id="wf-payload-fields-label">
-        Payload fields
+        {t('Payload fields')}
       </span>
       <span className="wf-field__notice">
-        Values the decider fills in. Each key is exposed to later steps.
+        {t('Values the decider fills in. Each key is exposed to later steps.')}
       </span>
       <ul className="wf-rows__list" aria-labelledby="wf-payload-fields-label">
         {rows.map((row, index) => {
@@ -638,8 +639,8 @@ function PayloadFieldsEditor({
                 <input
                   type="text"
                   className="wf-rows__key"
-                  aria-label={`Payload field ${index + 1} key`}
-                  placeholder="key"
+                  aria-label={`${t('Payload field key')} ${index + 1}`}
+                  placeholder={t('key')}
                   value={String(row.key ?? '')}
                   disabled={readOnly}
                   spellCheck={false}
@@ -647,14 +648,14 @@ function PayloadFieldsEditor({
                 />
                 <input
                   type="text"
-                  aria-label={`Payload field ${index + 1} label`}
-                  placeholder="Label"
+                  aria-label={`${t('Payload field label')} ${index + 1}`}
+                  placeholder={t('Label')}
                   value={String(row.label ?? '')}
                   disabled={readOnly}
                   onChange={(e) => update(index, { label: e.target.value })}
                 />
                 <select
-                  aria-label={`Payload field ${index + 1} type`}
+                  aria-label={`${t('Payload field type')} ${index + 1}`}
                   value={String(row.type ?? 'string')}
                   disabled={readOnly}
                   onChange={(e) =>
@@ -674,11 +675,11 @@ function PayloadFieldsEditor({
                     disabled={readOnly}
                     onChange={(e) => update(index, { required: e.target.checked })}
                   />
-                  Required
+                  {t('Required')}
                 </label>
                 <button
                   type="button"
-                  aria-label={`Move payload field ${index + 1} up`}
+                  aria-label={`${t('Move payload field up:')} ${index + 1}`}
                   disabled={readOnly || index === 0}
                   onClick={() => onChange(moveItem(rows, index, -1))}
                 >
@@ -686,7 +687,7 @@ function PayloadFieldsEditor({
                 </button>
                 <button
                   type="button"
-                  aria-label={`Move payload field ${index + 1} down`}
+                  aria-label={`${t('Move payload field down:')} ${index + 1}`}
                   disabled={readOnly || index === rows.length - 1}
                   onClick={() => onChange(moveItem(rows, index, 1))}
                 >
@@ -694,7 +695,7 @@ function PayloadFieldsEditor({
                 </button>
                 <button
                   type="button"
-                  aria-label={`Remove payload field ${index + 1}`}
+                  aria-label={`${t('Remove payload field:')} ${index + 1}`}
                   disabled={readOnly}
                   onClick={() => onChange(removeAt(rows, index))}
                 >
@@ -715,7 +716,7 @@ function PayloadFieldsEditor({
         disabled={readOnly}
         onClick={() => onChange([...rows, blankPayloadField(rows)])}
       >
-        Add payload field
+        {t('Add payload field')}
       </button>
     </div>
   );
@@ -738,7 +739,7 @@ function NotifyEmailsEditor({
   return (
     <div className="wf-field wf-rows">
       <span className="wf-field__label" id="wf-notify-emails-label">
-        Notify emails
+        {t('Notify emails')}
       </span>
       <ul className="wf-rows__list" aria-labelledby="wf-notify-emails-label">
         {rows.map((row, index) => {
@@ -748,7 +749,7 @@ function NotifyEmailsEditor({
               <div className="wf-rows__controls">
                 <input
                   type="email"
-                  aria-label={`Notify email ${index + 1}`}
+                  aria-label={`${t('Notify email')} ${index + 1}`}
                   placeholder="name@example.com"
                   value={row}
                   disabled={readOnly}
@@ -757,7 +758,7 @@ function NotifyEmailsEditor({
                 />
                 <button
                   type="button"
-                  aria-label={`Remove notify email ${index + 1}`}
+                  aria-label={`${t('Remove notify email:')} ${index + 1}`}
                   disabled={readOnly}
                   onClick={() => onChange(removeAt(rows, index))}
                 >
@@ -774,7 +775,7 @@ function NotifyEmailsEditor({
         })}
       </ul>
       <button type="button" disabled={readOnly} onClick={() => onChange([...rows, ''])}>
-        Add recipient
+        {t('Add recipient')}
       </button>
     </div>
   );
@@ -842,7 +843,7 @@ function DurationField({
           type="text"
           className="wf-duration__iso"
           aria-label={label}
-          placeholder="ISO-8601, e.g. PT1H"
+          placeholder={t('ISO-8601, e.g. PT1H')}
           value={value}
           disabled={readOnly}
           spellCheck={false}
@@ -861,7 +862,7 @@ function DurationField({
             className="wf-duration__amount"
             min={1}
             step={1}
-            aria-label={`${label} amount`}
+            aria-label={`${label} — ${t('amount')}`}
             value={amount}
             disabled={readOnly}
             onChange={(e) => {
@@ -871,7 +872,7 @@ function DurationField({
           />
           <select
             className="wf-duration__unit"
-            aria-label={`${label} unit`}
+            aria-label={`${label} — ${t('unit')}`}
             value={unit}
             disabled={readOnly}
             onChange={(e) => {
@@ -880,7 +881,7 @@ function DurationField({
               compose(amount, next);
             }}
           >
-            {DURATION_UNITS.map((o) => (
+            {durationUnits().map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -895,23 +896,23 @@ function DurationField({
           disabled={readOnly}
           onClick={() => setManual(!iso)}
         >
-          {iso ? 'Use the duration picker' : 'Enter an ISO-8601 duration instead'}
+          {iso ? t('Use the duration picker') : t('Enter an ISO-8601 duration instead')}
         </button>
       )}
       {pinnedToIso && isIsoDuration(value) && (
         <span className="wf-field__notice">
-          This duration mixes units, so it is edited as ISO-8601.
+          {t('This duration mixes units, so it is edited as ISO-8601.')}
         </span>
       )}
       {notice && <span className="wf-field__notice">{notice}</span>}
       {value === '' && (
         <span className="wf-field__notice wf-field__notice--error" role="alert">
-          A duration is required.
+          {t('A duration is required.')}
         </span>
       )}
       {value !== '' && !isIsoDuration(value) && (
         <span className="wf-field__notice wf-field__notice--error" role="alert">
-          Not an ISO-8601 duration (e.g. PT30M, PT2H, P3D).
+          {t('Not an ISO-8601 duration (e.g. PT30M, PT2H, P3D).')}
         </span>
       )}
     </div>
@@ -977,7 +978,7 @@ function ConfigFieldControl({
   if (field.isSecret) {
     return (
       <SelectField
-        label={`${field.label} (secret)`}
+        label={`${field.label} ${t('(secret)')}`}
         options={config.secrets.map((name) => ({ value: name, label: name }))}
         value={String(value ?? '')}
         required={field.required}
@@ -1070,7 +1071,7 @@ function SelectField({
     <label className="wf-field">
       <span className="wf-field__label">{label}{required ? ' *' : ''}</span>
       <select value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)}>
-        <option value="">— select —</option>
+        <option value="">{t('— select —')}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -1125,7 +1126,7 @@ function MultiSelectField({
           </option>
         ))}
       </select>
-      <span className="wf-field__notice">Hold Ctrl (⌘ on macOS) to select more than one.</span>
+      <span className="wf-field__notice">{t('Hold Ctrl (⌘ on macOS) to select more than one.')}</span>
       {notice && <span className="wf-field__notice">{notice}</span>}
     </label>
   );
@@ -1280,7 +1281,7 @@ function SearchSelectField({
               <button
                 type="button"
                 className="wf-chips__remove"
-                aria-label={`Remove ${labels[v] ?? v}`}
+                aria-label={`${t('Remove:')} ${labels[v] ?? v}`}
                 disabled={readOnly}
                 onClick={() => onChange(removeFromMultiValue(value, v))}
               >
@@ -1292,13 +1293,13 @@ function SearchSelectField({
       )}
       <input
         type="text"
-        aria-label={`Search ${field.label}`}
-        placeholder={`Search (min ${field.minChars} chars)…`}
+        aria-label={`${t('Search')} ${field.label}`}
+        placeholder={field.minChars > 0 ? `${t('Type at least')} ${field.minChars}…` : t('Search…')}
         value={query}
         disabled={readOnly}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {loading && <span className="wf-field__notice">Searching…</span>}
+      {loading && <span className="wf-field__notice">{t('Searching…')}</span>}
       {multi ? (
         // Always sits on the placeholder: picking a result ADDS it as a chip.
         <select
@@ -1311,7 +1312,7 @@ function SearchSelectField({
             }
           }}
         >
-          <option value="">— add —</option>
+          <option value="">{t('— add —')}</option>
           {rendered.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
@@ -1325,7 +1326,7 @@ function SearchSelectField({
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="">— select —</option>
+          <option value="">{t('— select —')}</option>
           {rendered.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}

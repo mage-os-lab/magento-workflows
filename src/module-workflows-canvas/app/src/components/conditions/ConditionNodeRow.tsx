@@ -1,12 +1,12 @@
 import type { AttributeMeta, ConditionNode, MetaOption, NodeMeta } from '../../conditionTree';
 import {
-  COMBINE_VALUE_OPTIONS,
-  EXISTS_OPTIONS,
-  FALLBACK_AGGREGATORS,
-  FALLBACK_OPERATORS,
-  MATCH_MODE_OPTIONS,
   applyAttributeChange,
+  combineValueOptions,
+  existsOptions,
+  fallbackAggregators,
+  fallbackOperators,
   kindOf,
+  matchModeOptions,
   nodeDefaultAttributeMeta,
   nodeToPrettyJson,
   nodeType,
@@ -14,6 +14,7 @@ import {
   orFallback,
   propString,
 } from '../../conditionTree';
+import { t } from '../../i18n';
 import { AddChildMenu } from './AddChildMenu';
 import { ValueControl } from './ValueControl';
 
@@ -69,7 +70,7 @@ export function ConditionNodeRow({ node, isRoot, handlers }: Props): JSX.Element
           <button
             type="button"
             className="wf-cond__remove"
-            aria-label={`Remove condition: ${label}`}
+            aria-label={`${t('Remove condition:')} ${label}`}
             disabled={handlers.readOnly}
             onClick={() => handlers.onRemove(node.id)}
           >
@@ -118,20 +119,20 @@ function CombineRow({
   const value = effective(node, 'value', '1');
   return (
     <span className="wf-cond__sentence">
-      <span className="wf-cond__text">If</span>
+      <span className="wf-cond__text">{t('If')}</span>
       <OptionSelect
-        label="Aggregator"
-        options={orFallback(meta?.aggregators, FALLBACK_AGGREGATORS)}
+        label={t('Aggregator')}
+        options={orFallback(meta?.aggregators, fallbackAggregators())}
         value={aggregator}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onSetProp(node.id, 'aggregator', v)}
       />
-      <span className="wf-cond__text">of these conditions are</span>
+      <span className="wf-cond__text">{t('of these conditions are')}</span>
       <OptionSelect
-        label="Expected result"
+        label={t('Expected result')}
         // The node's OWN value select: TRUE/FALSE for a plain combine, but e.g.
         // FOUND/NOT FOUND for an items subtree — always the server's wording.
-        options={orFallback(meta?.value_options, COMBINE_VALUE_OPTIONS)}
+        options={orFallback(meta?.value_options, combineValueOptions())}
         value={value}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onSetProp(node.id, 'value', v)}
@@ -156,18 +157,18 @@ function RelatedRow({
   const hasChildren = (node.children?.length ?? 0) > 0;
   return (
     <span className="wf-cond__sentence">
-      <span className="wf-cond__text">Related</span>
+      <span className="wf-cond__text">{t('Related')}</span>
       <OptionSelect
-        label="Relation"
+        label={t('Relation')}
         options={meta?.relations ?? []}
         value={relation}
-        placeholder="— select relation —"
+        placeholder={t('— select relation —')}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onSetProp(node.id, 'relation', v)}
       />
       <OptionSelect
-        label="Existence"
-        options={orFallback(meta?.value_options, EXISTS_OPTIONS)}
+        label={t('Existence')}
+        options={orFallback(meta?.value_options, existsOptions())}
         value={exists}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onSetProp(node.id, 'value', v)}
@@ -178,10 +179,10 @@ function RelatedRow({
               server ships each relation's cardinality for exactly this. */}
           {isToMany(meta, relation) && (
             <>
-              <span className="wf-cond__text">where</span>
+              <span className="wf-cond__text">{t('where')}</span>
               <OptionSelect
-                label="Match mode"
-                options={orFallback(meta?.match_modes, MATCH_MODE_OPTIONS)}
+                label={t('Match mode')}
+                options={orFallback(meta?.match_modes, matchModeOptions())}
                 value={matchMode}
                 readOnly={handlers.readOnly}
                 onChange={(v) => handlers.onSetProp(node.id, 'match_mode', v)}
@@ -190,22 +191,22 @@ function RelatedRow({
           )}
           {hasChildren && (
             <>
-              <span className="wf-cond__text">against</span>
+              <span className="wf-cond__text">{t('against')}</span>
               <OptionSelect
-                label="Related child aggregator"
-                options={orFallback(meta?.aggregators, FALLBACK_AGGREGATORS)}
+                label={t('Related child aggregator')}
+                options={orFallback(meta?.aggregators, fallbackAggregators())}
                 value={effective(node, 'aggregator', 'all')}
                 readOnly={handlers.readOnly}
                 onChange={(v) => handlers.onSetProp(node.id, 'aggregator', v)}
               />
-              <span className="wf-cond__text">of:</span>
+              <span className="wf-cond__text">{t('of:')}</span>
             </>
           )}
         </>
       )}
       {exists === '0' && (
         <span className="wf-cond__hint">
-          NOT EXISTS is a bare existence check — child conditions are not allowed.
+          {t('NOT EXISTS is a bare existence check — child conditions are not allowed.')}
         </span>
       )}
     </span>
@@ -231,27 +232,27 @@ function LeafRow({
     value: code,
     label: m.label,
   }));
-  const operators = orFallback(attributeMeta?.operators, FALLBACK_OPERATORS);
+  const operators = orFallback(attributeMeta?.operators, fallbackOperators());
 
   return (
     <span className="wf-cond__sentence">
       <OptionSelect
-        label="Attribute"
+        label={t('Attribute')}
         options={attributeOptions}
         value={attribute}
-        placeholder="— select attribute —"
+        placeholder={t('— select attribute —')}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onReplace(node.id, applyAttributeChange(node, v, attributes[v]))}
       />
       <OptionSelect
-        label={`Operator for ${attribute || 'the attribute'}`}
+        label={`${t('Operator for')} ${attribute || t('the attribute')}`}
         options={operators}
         value={propString(node, 'operator')}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onSetProp(node.id, 'operator', v)}
       />
       <ValueControl
-        label={`Value for ${attribute || 'the attribute'}`}
+        label={`${t('Value for')} ${attribute || t('the attribute')}`}
         value={node.props.value}
         attributeMeta={attributeMeta}
         readOnly={handlers.readOnly}
@@ -276,26 +277,26 @@ function TriggerDataRow({
   const defaults = nodeDefaultAttributeMeta(meta);
   return (
     <span className="wf-cond__sentence">
-      <span className="wf-cond__text">Trigger data</span>
+      <span className="wf-cond__text">{t('Trigger data')}</span>
       <input
         type="text"
         className="wf-cond__path"
-        aria-label="Trigger payload path (dot notation)"
-        placeholder="e.g. to_status or items.0.sku"
+        aria-label={t('Trigger payload path (dot notation)')}
+        placeholder={t('e.g. to_status or items.0.sku')}
         value={path}
         disabled={handlers.readOnly}
         spellCheck={false}
         onChange={(e) => handlers.onSetProp(node.id, 'attribute', e.target.value)}
       />
       <OptionSelect
-        label="Operator for the trigger payload path"
-        options={orFallback(defaults?.operators, FALLBACK_OPERATORS)}
+        label={t('Operator for the trigger payload path')}
+        options={orFallback(defaults?.operators, fallbackOperators())}
         value={propString(node, 'operator')}
         readOnly={handlers.readOnly}
         onChange={(v) => handlers.onSetProp(node.id, 'operator', v)}
       />
       <ValueControl
-        label="Value for the trigger payload path"
+        label={t('Value for the trigger payload path')}
         value={node.props.value}
         attributeMeta={defaults}
         readOnly={handlers.readOnly}
@@ -314,8 +315,10 @@ function UnknownRow({ node }: { node: ConditionNode }): JSX.Element {
   return (
     <span className="wf-cond__sentence wf-cond__sentence--unknown">
       <span className="wf-cond__text">
-        Unrecognized condition{nodeType(node) ? `: ${nodeType(node)}` : ''} — shown read-only and
-        preserved exactly as stored.
+        {t('Unrecognized condition')}
+        {nodeType(node) ? `: ${nodeType(node)}` : ''}
+        {' — '}
+        {t('shown read-only and preserved exactly as stored.')}
       </span>
       <pre className="wf-cond__raw">{nodeToPrettyJson(node)}</pre>
     </span>
@@ -347,7 +350,7 @@ function OptionSelect({
       onChange={(e) => onChange(e.target.value)}
     >
       {(placeholder !== undefined || value === '') && (
-        <option value="">{placeholder ?? '— select —'}</option>
+        <option value="">{placeholder ?? t('— select —')}</option>
       )}
       {optionsWithCurrent(options, value).map((o) => (
         <option key={o.value} value={o.value}>
@@ -381,5 +384,5 @@ function describeNode(node: ConditionNode, meta: NodeMeta | null): string {
   }
   const type = nodeType(node);
   const short = type.split('\\').pop() ?? type;
-  return short === '' ? 'condition' : short;
+  return short === '' ? t('condition') : short;
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  OFFLINE_WARNING,
+  offlineWarning,
   applyConditions,
   cachedNodeMeta,
   loadNodeMeta,
@@ -221,7 +221,7 @@ describe('applyConditions — the apply round-trip through the shared endpoint',
     const res = await applyConditions(makeConfig(), tree, fetchImpl as unknown as typeof fetch);
     expect(res.outcome).toBe('offline');
     expect(res.conditionsSerialized).toBe(tree);
-    expect(res.warning).toBe(OFFLINE_WARNING);
+    expect(res.warning).toBe(offlineWarning());
     expect(res.error).toBeNull();
   });
 

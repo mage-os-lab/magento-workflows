@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  PAYLOAD_TYPES,
+  payloadTypes,
   blankPayloadField,
   notifyEmailError,
   payloadFieldError,
@@ -121,17 +121,17 @@ describe('payload_fields — inline validation (the server checks, restated)', (
       { key: 'k', label: 'A', type: 'string' },
       { key: 'k', label: 'B', type: 'string' },
     ];
-    expect(payloadFieldError(dupes, 1)).toBe('Key "k" is used more than once.');
+    expect(payloadFieldError(dupes, 1)).toBe('This key is used more than once: "k"');
     expect(payloadFieldError(rows, 9)).toBeNull();
   });
 });
 
 describe('payload_fields — type options', () => {
   it('offers the three server types, plus an unrecognized stored one', () => {
-    expect(PAYLOAD_TYPES.map((o) => o.value)).toEqual(['string', 'number', 'boolean']);
-    expect(payloadTypeOptions('number')).toEqual(PAYLOAD_TYPES);
+    expect(payloadTypes().map((o) => o.value)).toEqual(['string', 'number', 'boolean']);
+    expect(payloadTypeOptions('number')).toEqual(payloadTypes());
     expect(payloadTypeOptions('weird')).toEqual([
-      ...PAYLOAD_TYPES,
+      ...payloadTypes(),
       { value: 'weird', label: 'weird (not offered)' },
     ]);
   });

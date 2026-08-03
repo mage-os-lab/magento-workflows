@@ -1,9 +1,10 @@
 import type { AttributeMeta, MetaOption } from '../../conditionTree';
 import {
-  BOOLEAN_VALUE_OPTIONS,
-  RELATIVE_DATE_HINT,
+  booleanValueOptions,
   optionsWithCurrent,
+  relativeDateHint,
 } from '../../conditionTree';
+import { t } from '../../i18n';
 
 /**
  * The typed value control of a leaf condition row, driven entirely by the
@@ -65,7 +66,7 @@ export function ValueControl({ label, value, attributeMeta, readOnly, onChange }
 
   if (element === 'select' || inputType === 'select' || inputType === 'boolean') {
     const current = value === undefined || value === null ? '' : String(value);
-    const base = served.length > 0 ? served : inputType === 'boolean' ? BOOLEAN_VALUE_OPTIONS : [];
+    const base = served.length > 0 ? served : inputType === 'boolean' ? booleanValueOptions() : [];
     return (
       <select
         className="wf-cond__value"
@@ -74,7 +75,7 @@ export function ValueControl({ label, value, attributeMeta, readOnly, onChange }
         disabled={readOnly}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">— select —</option>
+        <option value="">{t('— select —')}</option>
         {optionsWithCurrent(base, current).map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -100,7 +101,7 @@ export function ValueControl({ label, value, attributeMeta, readOnly, onChange }
       />
       {isDate && (
         <span className="wf-cond__hint" id="wf-cond-date-hint">
-          {RELATIVE_DATE_HINT}
+          {relativeDateHint()}
         </span>
       )}
     </span>
@@ -123,7 +124,7 @@ function mergeSelected(options: MetaOption[], selected: string[]): MetaOption[] 
   const merged = [...options];
   for (const value of selected) {
     if (!merged.some((o) => o.value === value)) {
-      merged.push({ value, label: `${value} (not offered)` });
+      merged.push({ value, label: `${value} ${t('(not offered)')}` });
     }
   }
   return merged;

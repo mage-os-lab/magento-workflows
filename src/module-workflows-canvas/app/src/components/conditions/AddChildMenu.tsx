@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { MetaOptionGroup } from '../../conditionTree';
+import { t } from '../../i18n';
 
 /**
  * The "⊕ Add condition" affordance of a combine row. The stock rule widget uses
@@ -38,12 +39,12 @@ export function AddChildMenu({ groups, contextLabel, readOnly, onAdd }: Props): 
     <span className="wf-cond__add">
       <select
         className="wf-cond__add-select"
-        aria-label={`Add a condition to ${contextLabel}`}
+        aria-label={`${t('Add a condition to')} ${contextLabel}`}
         value={spec}
         disabled={readOnly}
         onChange={(e) => setSpec(e.target.value)}
       >
-        <option value="">— add condition —</option>
+        <option value="">{t('— add condition —')}</option>
         {groups.map((group, gi) => (
           <optgroup key={`${group.label}-${gi}`} label={group.label}>
             {(group.options ?? []).map((option) => (
@@ -60,7 +61,7 @@ export function AddChildMenu({ groups, contextLabel, readOnly, onAdd }: Props): 
         disabled={readOnly || spec === ''}
         onClick={add}
       >
-        Add
+        {t('Add')}
       </button>
     </span>
   );

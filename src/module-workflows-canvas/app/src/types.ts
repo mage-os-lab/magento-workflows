@@ -234,6 +234,11 @@ export interface MountConfig {
   workflow: WorkflowMeta | null;
   /** Selects for the workflow-settings panel (always emitted by Mount.php). */
   workflowOptions: WorkflowOptions;
+  /**
+   * English phrase -> translated phrase (Model/I18n/PhraseCatalog via
+   * Mount.php). Consumed once at mount by i18n.setTranslations.
+   */
+  i18n: Record<string, string>;
   /** code => {label, group}: kept for node summaries (Phase A). */
   actions: Record<string, { label: string; group: string }>;
   /** Full palette/config action metadata (Phase B). ACL-filtered display. */

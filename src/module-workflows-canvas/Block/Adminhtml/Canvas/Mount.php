@@ -16,6 +16,7 @@ use MageOS\Workflows\Api\SecretMetadataProviderInterface;
 use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\Workflows\Model\Definition\Definition;
+use MageOS\WorkflowsCanvas\Model\I18n\PhraseCatalog;
 
 /**
  * Builds the bootstrap config for the React canvas and exposes it as a single
@@ -64,6 +65,10 @@ class Mount extends Template
         private readonly OptionSourceInterface $triggerTypeSource,
         private readonly OptionSourceInterface $statusSource,
         private readonly OptionSourceInterface $websiteSource,
+        // The canvas UI phrase map (English phrase => __() translation), so the
+        // React bundle renders translated text while Magento's translation
+        // pipeline stays the single authority (no client-side locale files).
+        private readonly PhraseCatalog $phraseCatalog,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -121,6 +126,10 @@ class Mount extends Template
             // Always emitted: editing a saved workflow needs the same lists the
             // new-workflow settings panel does.
             'workflowOptions' => $this->workflowOptions(),
+            // English phrase => translated phrase for every t() call in the
+            // app (Model/I18n/PhraseCatalog — kept in sync by the i18n
+            // collector). The client falls back to English per phrase.
+            'i18n' => $this->phraseCatalog->all(),
             'actions' => $this->actionLabels(),
             // Full palette/config metadata (Phase B). ACL-filtered for display
             // by the provider; the save path re-authorizes every action code.
