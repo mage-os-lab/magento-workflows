@@ -188,6 +188,10 @@ class ViewLabelsTest extends TestCase
                 }
             ),
             'systemStore' => new class extends SystemStore {
+                public function __construct()
+                {
+                }
+
                 public function getStoreName($storeId)
                 {
                     if ((int) $storeId < 0) {

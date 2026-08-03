@@ -38,7 +38,7 @@ class SubscriberRecentEntityProviderTest extends TestCase
             ) {
             }
 
-            public function create()
+            public function create(array $data = [])
             {
                 return new class ($this->subscribers, $this->test) {
                     /** @param array<int, FakeSubscriber> $subscribers */

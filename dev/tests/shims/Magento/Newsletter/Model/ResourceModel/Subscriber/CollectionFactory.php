@@ -13,7 +13,9 @@ namespace Magento\Newsletter\Model\ResourceModel\Subscriber;
  */
 class CollectionFactory
 {
-    public function create()
+    // Signature matches the real generated factory so the standalone runner
+    // catches create() overrides that would be incompatible on a live install.
+    public function create(array $data = [])
     {
         return null;
     }
