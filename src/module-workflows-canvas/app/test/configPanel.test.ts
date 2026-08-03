@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   SEARCH_DEBOUNCE_MS,
+  addToMultiValue,
   eventOptionGroups,
   isCataloguedEvent,
   isValidEventName,
@@ -12,6 +13,8 @@ import {
   optionsWithSelected,
   parseMultiValue,
   readValue,
+  removeFromMultiValue,
+  searchAddOptions,
   serializeMultiValue,
   shouldSearch,
   writeValue,
@@ -56,6 +59,28 @@ describe('normalizeField — the F6 options / options_search union', () => {
     const n = normalizeField({ name: 's', label: 'Secret', type: 'secret' });
     expect(n.isSecret).toBe(true);
     expect(n.optionMode).toBe('none');
+  });
+
+  it('flags a multiselect (multi), whichever option mode it carries', () => {
+    const searched = normalizeField({
+      name: 'skus',
+      label: 'Products',
+      type: 'multiselect',
+      options_search: { source: 'products', min_chars: 2 },
+    });
+    expect(searched.multi).toBe(true);
+    expect(searched.optionMode).toBe('search');
+
+    const inline = normalizeField({
+      name: 'website_ids',
+      label: 'Websites',
+      type: 'multiselect',
+      options: [{ value: '1', label: 'Main' }],
+    });
+    expect(inline.multi).toBe(true);
+    expect(inline.optionMode).toBe('inline');
+
+    expect(normalizeField({ name: 'c', label: 'C', type: 'select' }).multi).toBe(false);
   });
 
   it('prefers inline options when both are somehow present', () => {
@@ -198,6 +223,52 @@ describe('multiselect serialization', () => {
       { value: '1', label: 'Main' },
       { value: '7', label: '7 (not offered)' },
     ]);
+  });
+});
+
+/**
+ * The multi search-select (multiselect + options_search): chips over the same
+ * comma-list value — picking a result ADDS, a chip's × REMOVES, and both write
+ * through serializeMultiValue so the stored shape stays the runtime's.
+ */
+describe('multi search-select chip logic', () => {
+  it('adds a picked value to the stored comma list', () => {
+    expect(addToMultiValue('', '5')).toBe('5');
+    expect(addToMultiValue('5', '9')).toBe('5,9');
+    expect(addToMultiValue(undefined, '5')).toBe('5');
+  });
+
+  it('re-picking an already-selected value is a no-op, not a duplicate', () => {
+    expect(addToMultiValue('5,9', '5')).toBe('5,9');
+  });
+
+  it('tolerates a legacy array value on add', () => {
+    expect(addToMultiValue([5, 9], '2')).toBe('5,9,2');
+  });
+
+  it('removes one chip, preserving the rest in order', () => {
+    expect(removeFromMultiValue('5,9,2', '9')).toBe('5,2');
+    expect(removeFromMultiValue('5,9,2', 'missing')).toBe('5,9,2');
+  });
+
+  it('removing the last chip empties to "" so writeValue drops the key', () => {
+    expect(removeFromMultiValue('5', '5')).toBe('');
+    const step: StepNode = { type: 'action', action: 'a', config: { skus: '5' } };
+    expect(writeValue(step, 'skus', removeFromMultiValue('5', '5')).config).toEqual({});
+  });
+
+  it('survives an add -> remove round-trip', () => {
+    expect(removeFromMultiValue(addToMultiValue('5,9', '2'), '2')).toBe('5,9');
+  });
+
+  it('offers only the fetched results not already selected as chips', () => {
+    const fetched = [
+      { value: '5', label: 'Summer Sale' },
+      { value: '6', label: 'Winter Sale' },
+    ];
+    expect(searchAddOptions(fetched, ['5'])).toEqual([{ value: '6', label: 'Winter Sale' }]);
+    expect(searchAddOptions(fetched, [])).toEqual(fetched);
+    expect(searchAddOptions([], ['5'])).toEqual([]);
   });
 });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ApprovalPayloadField,
   ConfigFieldOption,
@@ -9,6 +9,7 @@ import type {
   TriggerMeta,
 } from '../types';
 import {
+  addToMultiValue,
   eventOptionGroups,
   isCataloguedEvent,
   isValidEventName,
@@ -19,7 +20,9 @@ import {
   optionsWithSelected,
   parseMultiValue,
   readValue,
+  removeFromMultiValue,
   SEARCH_DEBOUNCE_MS,
+  searchAddOptions,
   serializeMultiValue,
   shouldSearch,
   writeValue,
@@ -957,11 +960,14 @@ function ConfigFieldControl({
       />
     );
   }
+  // Multi + search second: a multiselect over an options_search source renders
+  // the same fetching control in its multi (chips) mode — the raw value goes
+  // through so parseMultiValue can read a comma string or a legacy array.
   if (field.optionMode === 'search') {
     return (
       <SearchSelectField
         field={field}
-        value={String(value ?? '')}
+        value={value}
         config={config}
         readOnly={readOnly}
         onChange={onChange}
@@ -1135,6 +1141,11 @@ function MultiSelectField({
  * placeholder: with the value sitting on `value=""`, re-picking the item the
  * field already showed cleared it. Its label is remembered from whichever fetch
  * first resolved it, so a restored value reads as a name rather than a bare id.
+ *
+ * A MULTISELECT field (field.multi) reuses the same fetch loop in chips mode:
+ * the stored comma list renders as removable chips, and the select ADDS the
+ * picked result to the list (addToMultiValue) instead of replacing it. Labels
+ * are resolved per value through the same one-shot lookup as the single mode.
  */
 function SearchSelectField({
   field,
@@ -1144,16 +1155,26 @@ function SearchSelectField({
   onChange,
 }: {
   field: NormalizedField;
-  value: string;
+  value: unknown;
   config: MountConfig;
   readOnly: boolean;
   onChange: (value: string) => void;
 }): JSX.Element {
+  const multi = field.multi;
+  const selected = multi ? parseMultiValue(value) : [];
+  const single = multi ? '' : String(value ?? '');
+  // The values whose labels are worth resolving: the whole selection (multi) or
+  // the one persisted value (single). Keyed as a string for effect deps.
+  const wanted = multi ? selected : single !== '' ? [single] : [];
+  const wantedKey = wanted.join(',');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [options, setOptions] = useState<ConfigFieldOption[]>([]);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [labels, setLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  // Values already looked up once — a source that cannot resolve one leaves the
+  // bare id showing; there is no retry.
+  const attempted = useRef<Set<string>>(new Set());
   const source = field.searchSource;
   const endpoint = config.endpoints.options;
 
@@ -1162,31 +1183,38 @@ function SearchSelectField({
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Resolve a label for the PERSISTED value up front, by querying the proxy for
-  // the value itself — the same trick the install form plays server-side
+  // Resolve labels for the PERSISTED value(s) up front, by querying the proxy
+  // for each value itself — the same trick the install form plays server-side
   // (Install::currentValueLabel calls the source's fetch($value)). Without it a
   // restored record reads as a bare id until the operator happens to type a
-  // query that includes it. A source that cannot resolve it simply leaves the id
-  // showing; the effect does not retry.
+  // query that includes it.
   useEffect(() => {
-    if (!source || value === '' || selectedLabel !== null) {
+    if (!source) {
+      return;
+    }
+    const pending = wanted.filter((v) => !attempted.current.has(v));
+    if (pending.length === 0) {
       return;
     }
     let cancelled = false;
-    const url = `${endpoint}?source=${encodeURIComponent(source)}&q=${encodeURIComponent(value)}`;
-    fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-      .then((r) => (r.ok ? r.json() : { options: [] }))
-      .then((body: { options?: ConfigFieldOption[] }) => {
-        const resolved = labelForValue(body.options ?? [], value);
-        if (!cancelled && resolved !== null) {
-          setSelectedLabel(resolved);
-        }
-      })
-      .catch(() => undefined);
+    for (const v of pending) {
+      attempted.current.add(v);
+      const url = `${endpoint}?source=${encodeURIComponent(source)}&q=${encodeURIComponent(v)}`;
+      fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then((r) => (r.ok ? r.json() : { options: [] }))
+        .then((body: { options?: ConfigFieldOption[] }) => {
+          const resolved = labelForValue(body.options ?? [], v);
+          if (!cancelled && resolved !== null) {
+            setLabels((prev) => ({ ...prev, [v]: resolved }));
+          }
+        })
+        .catch(() => undefined);
+    }
     return () => {
       cancelled = true;
     };
-  }, [value, selectedLabel, source, endpoint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantedKey, source, endpoint]);
 
   useEffect(() => {
     if (!field.searchSource) {
@@ -1204,12 +1232,19 @@ function SearchSelectField({
         if (!cancelled) {
           const fetched = body.options ?? [];
           setOptions(fetched);
-          // Remember the label for the persisted value the first time a fetch
-          // resolves it, so it survives the next (narrower) query.
-          const resolved = labelForValue(fetched, value);
-          if (resolved !== null) {
-            setSelectedLabel(resolved);
-          }
+          // Remember labels for persisted values the first time a fetch
+          // resolves them, so they survive the next (narrower) query.
+          setLabels((prev) => {
+            let next = prev;
+            for (const v of wanted) {
+              const resolved = labelForValue(fetched, v);
+              if (resolved !== null && prev[v] !== resolved) {
+                next = next === prev ? { ...prev } : next;
+                next[v] = resolved;
+              }
+            }
+            return next;
+          });
         }
       })
       .catch(() => {
@@ -1225,15 +1260,36 @@ function SearchSelectField({
     return () => {
       cancelled = true;
     };
-  }, [debounced, field, value, config.endpoints.options]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced, field, wantedKey, config.endpoints.options]);
 
-  const rendered = optionsWithSelected(options, value, selectedLabel);
+  const rendered = multi
+    ? searchAddOptions(options, selected)
+    : optionsWithSelected(options, single, labels[single] ?? null);
 
   return (
     <div className="wf-field wf-field--search">
       <span className="wf-field__label" id={`wf-search-${field.name}`}>
         {field.label}{field.required ? ' *' : ''}
       </span>
+      {multi && selected.length > 0 && (
+        <ul className="wf-chips" aria-labelledby={`wf-search-${field.name}`}>
+          {selected.map((v) => (
+            <li className="wf-chips__chip" key={v}>
+              <span className="wf-chips__label">{labels[v] ?? v}</span>
+              <button
+                type="button"
+                className="wf-chips__remove"
+                aria-label={`Remove ${labels[v] ?? v}`}
+                disabled={readOnly}
+                onClick={() => onChange(removeFromMultiValue(value, v))}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <input
         type="text"
         aria-label={`Search ${field.label}`}
@@ -1243,19 +1299,40 @@ function SearchSelectField({
         onChange={(e) => setQuery(e.target.value)}
       />
       {loading && <span className="wf-field__notice">Searching…</span>}
-      <select
-        aria-labelledby={`wf-search-${field.name}`}
-        value={value}
-        disabled={readOnly}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">— select —</option>
-        {rendered.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      {multi ? (
+        // Always sits on the placeholder: picking a result ADDS it as a chip.
+        <select
+          aria-labelledby={`wf-search-${field.name}`}
+          value=""
+          disabled={readOnly}
+          onChange={(e) => {
+            if (e.target.value !== '') {
+              onChange(addToMultiValue(value, e.target.value));
+            }
+          }}
+        >
+          <option value="">— add —</option>
+          {rendered.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <select
+          aria-labelledby={`wf-search-${field.name}`}
+          value={single}
+          disabled={readOnly}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">— select —</option>
+          {rendered.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      )}
       {field.notice && <span className="wf-field__notice">{field.notice}</span>}
     </div>
   );

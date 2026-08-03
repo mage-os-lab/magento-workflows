@@ -30,6 +30,8 @@ export interface NormalizedField {
   searchSource: string | null;
   minChars: number;
   isSecret: boolean;
+  /** true for `type: multiselect` — the value is the comma-separated list. */
+  multi: boolean;
 }
 
 /** Normalize an action's getConfigForm() field list into a render model. */
@@ -61,6 +63,7 @@ export function normalizeField(field: ConfigField): NormalizedField {
     searchSource: optionMode === 'search' ? String(search?.source) : null,
     minChars: optionMode === 'search' ? Number(search?.min_chars ?? 0) : 0,
     isSecret: String(field.type ?? '') === 'secret',
+    multi: String(field.type ?? '') === 'multiselect',
   };
 }
 
@@ -181,6 +184,31 @@ export function multiSelectOptions(
     }
   }
   return out;
+}
+
+/**
+ * Chip-add for a multi search select: append one picked value to the stored
+ * comma list. serializeMultiValue dedupes, so re-picking an already-selected
+ * value is a no-op rather than a duplicate.
+ */
+export function addToMultiValue(stored: unknown, value: string): string {
+  return serializeMultiValue([...parseMultiValue(stored), value]);
+}
+
+/** Chip-remove: drop one value from the stored comma list ('' drops the key). */
+export function removeFromMultiValue(stored: unknown, value: string): string {
+  return serializeMultiValue(parseMultiValue(stored).filter((v) => v !== value));
+}
+
+/**
+ * The option list a multi search select offers for ADDING: the fetched results
+ * minus the values already selected (those render as chips, not as choices).
+ */
+export function searchAddOptions(
+  options: readonly ConfigFieldOption[],
+  selected: readonly string[],
+): ConfigFieldOption[] {
+  return options.filter((o) => !selected.includes(o.value));
 }
 
 // ---- wait step: the trigger-event catalogue ------------------------------
