@@ -1,4 +1,4 @@
-import type { MountConfig } from './types';
+import type { ConfigFieldOption, MountConfig } from './types';
 
 /**
  * Reads the bootstrap config from the mount element's data-config attribute —
@@ -43,12 +43,22 @@ export function readMountConfig(el: Element | null): MountConfig | null {
     },
     formKey: String(c.formKey ?? ''),
     workflow: c.workflow ?? null,
+    workflowOptions: {
+      entityTypes: optionList(c.workflowOptions?.entityTypes),
+      triggerTypes: optionList(c.workflowOptions?.triggerTypes),
+      statuses: optionList(c.workflowOptions?.statuses),
+      websites: optionList(c.workflowOptions?.websites),
+    },
     actions: c.actions ?? {},
     actionsMeta: Array.isArray(c.actionsMeta) ? c.actionsMeta : [],
     triggers: Array.isArray(c.triggers) ? c.triggers : [],
     secrets: Array.isArray(c.secrets) ? c.secrets : [],
     approvalsAvailable: Boolean(c.approvalsAvailable),
   };
+}
+
+function optionList(value: unknown): ConfigFieldOption[] {
+  return Array.isArray(value) ? (value as ConfigFieldOption[]) : [];
 }
 
 export const MOUNT_SELECTOR = '[data-role="mageos-workflows-canvas"]';

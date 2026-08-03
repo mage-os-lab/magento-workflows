@@ -36,6 +36,7 @@ export function makeConfig(overrides: Partial<MountConfig> = {}): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
     approvalsAvailable: false,
     ...overrides,
   };

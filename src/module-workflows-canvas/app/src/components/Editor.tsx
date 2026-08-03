@@ -20,6 +20,7 @@ import { Outline } from './Outline';
 import { Palette, type PaletteDragPayload } from './Palette';
 import { ConfigPanel } from './ConfigPanel';
 import { ConditionSlideOut } from './ConditionSlideOut';
+import { WorkflowSettings } from './WorkflowSettings';
 import {
   addNode,
   blankStep,
@@ -37,6 +38,13 @@ import {
   type ConditionTarget,
 } from '../conditionTarget';
 import { canUndo, canRedo, initHistory, push, redo, undo, type History } from '../history';
+import {
+  applyMeta,
+  initMeta,
+  metaFingerprint,
+  metaSaveError,
+  type EditableMeta,
+} from '../workflowMeta';
 import { submitSave } from '../saveClient';
 import { armUnloadGuard, fingerprintDefinition, isDirty } from '../unsavedGuard';
 import {
@@ -76,12 +84,24 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const [rootConditions, setRootConditions] = useState<string | null>(
     config.workflow?.conditionsSerialized ?? null,
   );
+
+  // The general workflow fields (name/status/entity/trigger/websites), edited
+  // in the settings slide-out. Like the root conditions they are not part of
+  // the definition, so they live beside the graph history and are folded into
+  // the config saveClient/validateClient read. A brand-new workflow (id 0)
+  // opens the panel up front — name and entity type are the first decisions.
+  const [meta, setMeta] = useState<EditableMeta>(() => initMeta(config.workflow));
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(
+    () => config.workflow !== null && config.workflow.id === 0,
+  );
+
   const effectiveConfig = useMemo<MountConfig>(() => {
-    if (!config.workflow || config.workflow.conditionsSerialized === rootConditions) {
-      return config;
+    let cfg = config;
+    if (config.workflow && config.workflow.conditionsSerialized !== rootConditions) {
+      cfg = { ...cfg, workflow: { ...config.workflow, conditionsSerialized: rootConditions } };
     }
-    return { ...config, workflow: { ...config.workflow, conditionsSerialized: rootConditions } };
-  }, [config, rootConditions]);
+    return applyMeta(cfg, meta);
+  }, [config, rootConditions, meta]);
 
   const readOnly = graph.readOnly;
 
@@ -105,11 +125,11 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   // transition (and the effect cleanup it would schedule) lands too late.
   const savedFingerprint = useRef<string | null>(null);
   const dirty = useRef(false);
-  // The root condition tree is saved alongside the definition, so an edit to it
-  // alone must still arm the guard.
+  // The root condition tree and the settings-panel meta are saved alongside the
+  // definition, so an edit to either alone must still arm the guard.
   const fingerprintNow = useMemo(
-    () => `${fingerprintDefinition(definition)}|${rootConditions ?? ''}`,
-    [definition, rootConditions],
+    () => `${fingerprintDefinition(definition)}|${rootConditions ?? ''}|${metaFingerprint(meta)}`,
+    [definition, rootConditions, meta],
   );
   if (savedFingerprint.current === null) {
     savedFingerprint.current = fingerprintNow;
@@ -138,7 +158,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         // OPENING an un-laid-out workflow would arm the guard.
         savedFingerprint.current = `${fingerprintDefinition(definitionOf(moveAll(graph, positions)))}|${
           config.workflow?.conditionsSerialized ?? ''
-        }`;
+        }|${metaFingerprint(initMeta(config.workflow))}`;
       });
       return () => {
         cancelled = true;
@@ -207,7 +227,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
       )}
 
       <Toolbar
-        config={config}
+        title={meta.name !== '' ? meta.name : 'Workflow'}
         canUndo={canUndo(history)}
         canRedo={canRedo(history)}
         hasErrors={pinned.hasErrors}
@@ -216,8 +236,17 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         rootConditionsSet={rootConditions !== null && rootConditions.trim() !== ''}
         onUndo={() => setHistory((h) => undo(h))}
         onRedo={() => setHistory((h) => redo(h))}
+        onOpenSettings={() => setSettingsOpen(true)}
         onEditRootConditions={() => setConditionTarget({ scope: 'workflow' })}
         onSave={() => {
+          // Client-side gate only for what the server would bounce anyway: a
+          // nameless workflow. Open the settings panel instead of navigating.
+          const metaError = metaSaveError(meta);
+          if (metaError !== null) {
+            setStatus(metaError);
+            setSettingsOpen(true);
+            return;
+          }
           setStatus('Saving…');
           // Disarm first: the save IS a navigation (a real hidden-form POST),
           // so a still-armed guard would prompt on the way out. The page is
@@ -290,6 +319,17 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         onSelect={setSelected}
         selected={selected}
       />
+
+      {settingsOpen && (
+        <WorkflowSettings
+          meta={meta}
+          options={config.workflowOptions}
+          triggers={config.triggers}
+          readOnly={readOnly}
+          onChange={setMeta}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {conditionTarget && (
         <ConditionSlideOut
@@ -465,7 +505,7 @@ function FlowSurface({
 }
 
 function Toolbar({
-  config,
+  title,
   canUndo: undoable,
   canRedo: redoable,
   hasErrors,
@@ -474,10 +514,11 @@ function Toolbar({
   rootConditionsSet,
   onUndo,
   onRedo,
+  onOpenSettings,
   onEditRootConditions,
   onSave,
 }: {
-  config: MountConfig;
+  title: string;
   canUndo: boolean;
   canRedo: boolean;
   hasErrors: boolean;
@@ -486,17 +527,23 @@ function Toolbar({
   rootConditionsSet: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onOpenSettings: () => void;
   onEditRootConditions: () => void;
   onSave: () => void;
 }): JSX.Element {
   return (
     <div className="wf-canvas__toolbar" role="toolbar" aria-label="Editor actions">
-      <strong className="wf-canvas__title">{config.workflow?.name ?? 'Workflow'}</strong>
+      <strong className="wf-canvas__title">{title}</strong>
       <button type="button" onClick={onUndo} disabled={!undoable || readOnly}>
         Undo
       </button>
       <button type="button" onClick={onRedo} disabled={!redoable || readOnly}>
         Redo
+      </button>
+      {/* The general workflow fields (name/status/entity/trigger/websites) —
+          the settings slide-out is the canvas' half of the classic form. */}
+      <button type="button" onClick={onOpenSettings} disabled={readOnly}>
+        Workflow settings
       </button>
       {/* The workflow-level gate ("does this workflow run at all?"), edited in
           the same slide-out as a step's tree. The badge is the set/unset

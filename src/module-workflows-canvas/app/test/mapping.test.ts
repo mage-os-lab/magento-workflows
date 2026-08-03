@@ -34,6 +34,7 @@ function config(def: Definition, knownSchemaVersion = 3): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
     approvalsAvailable: false,
   };
 }

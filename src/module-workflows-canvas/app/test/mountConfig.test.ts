@@ -23,6 +23,12 @@ describe('readMountConfig', () => {
       formKey: 'abc',
       workflow: { id: 7, name: 'W', entityType: 'sales_order', triggerType: 'event', triggerRef: 'x', definition: null },
       actions: { 'order.add_comment': { label: 'Add Comment', group: 'Sales' } },
+      workflowOptions: {
+        entityTypes: [{ value: 'sales_order', label: 'Sales Order' }],
+        triggerTypes: [{ value: 'event', label: 'Event' }],
+        statuses: [{ value: '2', label: 'Enabled' }],
+        websites: [{ value: '1', label: 'Main Website' }],
+      },
       approvalsAvailable: true,
     });
     const config = readMountConfig(el);
@@ -33,6 +39,10 @@ describe('readMountConfig', () => {
     expect(config?.grants.dryRun).toBe(false);
     expect(config?.endpoints.executionSteps).toBe('/steps');
     expect(config?.actions['order.add_comment'].label).toBe('Add Comment');
+    expect(config?.workflowOptions.entityTypes).toEqual([
+      { value: 'sales_order', label: 'Sales Order' },
+    ]);
+    expect(config?.workflowOptions.statuses).toEqual([{ value: '2', label: 'Enabled' }]);
     expect(config?.approvalsAvailable).toBe(true);
   });
 
@@ -59,5 +69,12 @@ describe('readMountConfig', () => {
     // Missing addon-availability flag degrades safely to "not available" —
     // the palette must never offer a node type that cannot save.
     expect(config?.approvalsAvailable).toBe(false);
+    // Missing option lists degrade to empty lists, never undefined.
+    expect(config?.workflowOptions).toEqual({
+      entityTypes: [],
+      triggerTypes: [],
+      statuses: [],
+      websites: [],
+    });
   });
 });

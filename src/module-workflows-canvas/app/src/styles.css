@@ -36,6 +36,17 @@
   color: #c62828;
 }
 
+.wf-canvas__dryrun-entity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.wf-canvas__dryrun-entity input {
+  width: 90px;
+}
+
 .wf-canvas__flow {
   height: 640px;
   border: 1px solid #d6d6d6;
@@ -409,6 +420,24 @@
   background: #eceff1;
   font-size: 10px;
   text-transform: uppercase;
+}
+
+/* ---- Workflow settings slide-out -------------------------------------- */
+.wf-settings__websites {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.wf-settings__website {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.wf-settings__website input {
+  width: auto;
 }
 
 /* ---- Condition tree builder ------------------------------------------- */

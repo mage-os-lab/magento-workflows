@@ -65,8 +65,11 @@ export function buildSavePayload(config: MountConfig, definition: Definition): S
   // so byte-equality of the stored value depends only on the parsed content.
   push('definition', JSON.stringify(definition));
 
-  // Return to the canvas editor after the save round-trips through the form.
-  push('back', '1');
+  // Return to the CANVAS editor after the save round-trips through the Save
+  // controller — for a brand-new workflow this is what lands the browser on
+  // canvas/edit?workflow_id=<new id>, the id that only exists once the save
+  // has run (canvas-first authoring).
+  push('back', 'canvas');
 
   return pairs;
 }

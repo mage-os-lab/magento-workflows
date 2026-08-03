@@ -10,12 +10,16 @@ import { expect, test, type Page } from '@playwright/test';
  * save loop performs. The server side of save (auth/ACL/Save controller/F2
  * plugin) is covered by the PHP suite.
  *
- * Two scenarios:
+ * Three scenarios:
  *   1. add a Stop step, WIRE it from the existing action's `next` handle by
  *      dragging a connection, and assert the posted definition carries the
  *      edge in the right key AND persists ui positions (bootstrapped + moved);
  *   2. connect then DELETE the edge via select + Backspace and assert the
- *      posted definition reflects the removal (next back to null).
+ *      posted definition reflects the removal (next back to null);
+ *   3. canvas-first creation: mount the no-id blank-workflow config
+ *      (admin-page-new.html), fill name + entity type in the auto-opened
+ *      settings panel, add a node, save, and assert the POST carries the
+ *      general fields and back=canvas with NO workflow_id.
  */
 
 async function mockEndpoints(page: Page): Promise<{ saved: string[] }> {
@@ -136,4 +140,38 @@ test('delete a connected edge via keyboard: the posted definition drops the edge
   const stopKey = Object.keys(steps).find((k) => steps[k].type === 'stop');
   expect(stopKey).toBeTruthy();
   expect(steps.s1.next).toBeNull();
+});
+
+test('canvas-first creation: settings + save post the general fields with back=canvas and no workflow_id', async ({ page }) => {
+  const { saved } = await mockEndpoints(page);
+  await page.goto('/app/e2e/fixtures/admin-page-new.html');
+
+  // A brand-new workflow (id 0) opens the settings panel by itself: name and
+  // entity type are the first authoring decisions.
+  const settings = page.getByRole('dialog', { name: 'Workflow settings' });
+  await expect(settings).toBeVisible();
+  await settings.getByLabel('Name').fill('Canvas-born Workflow');
+  await settings.getByLabel('Entity type').selectOption('sales_order');
+  await settings.getByRole('button', { name: 'Close' }).click();
+  await expect(settings).toBeHidden();
+
+  // Author a minimal graph so the save carries a real definition.
+  await page.getByRole('button', { name: 'Add Stop' }).click();
+  await expect(page.locator('.react-flow__node')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => saved.length, { timeout: 10_000 }).toBeGreaterThan(0);
+
+  const { params, definition } = parseSavedDefinition(saved[0]);
+  // The edited general fields post through the classic Save controller...
+  expect(params.get('name')).toBe('Canvas-born Workflow');
+  expect(params.get('entity_type')).toBe('sales_order');
+  // ...asking to land back on the canvas (which is where the new id appears)...
+  expect(params.get('back')).toBe('canvas');
+  // ...and a NEW workflow posts no id at all — the controller creates one.
+  expect(params.get('workflow_id')).toBeNull();
+
+  const steps = definition.steps ?? {};
+  expect(Object.keys(steps).length).toBe(1);
+  expect(Object.values(steps)[0].type).toBe('stop');
 });

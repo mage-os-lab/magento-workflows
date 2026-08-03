@@ -59,6 +59,9 @@ function Viewer({ config }: Props): JSX.Element {
   const [overlay, setOverlay] = useState<Overlay>(emptyOverlay());
   const [overlayLabel, setOverlayLabel] = useState<string>('');
   const [error, setError] = useState<string>('');
+  // Optional entity id for the dry-run: empty = the server picks its default
+  // sample entity; a value posts entity_id (Data/DryRun.php reads it).
+  const [dryRunEntityId, setDryRunEntityId] = useState<string>('');
 
   // Auto-layout when there is no persisted ui layout.
   useEffect(() => {
@@ -117,6 +120,9 @@ function Viewer({ config }: Props): JSX.Element {
       const form = new URLSearchParams();
       form.set('workflow_id', String(config.workflow.id));
       form.set('form_key', config.formKey);
+      if (dryRunEntityId.trim() !== '') {
+        form.set('entity_id', dryRunEntityId.trim());
+      }
       const res = await fetch(config.endpoints.dryRun, {
         method: 'POST',
         credentials: 'same-origin',
@@ -132,7 +138,7 @@ function Viewer({ config }: Props): JSX.Element {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Dry-run failed');
     }
-  }, [config]);
+  }, [config, dryRunEntityId]);
 
   const clearOverlay = useCallback(() => {
     setOverlay(emptyOverlay());
@@ -196,9 +202,21 @@ function Viewer({ config }: Props): JSX.Element {
           </button>
         )}
         {config.grants.dryRun && config.workflow && (
-          <button type="button" onClick={runDryRun}>
-            Run dry-run overlay
-          </button>
+          <>
+            <label className="wf-canvas__dryrun-entity">
+              Entity ID
+              <input
+                type="number"
+                min={1}
+                placeholder="auto"
+                value={dryRunEntityId}
+                onChange={(e) => setDryRunEntityId(e.target.value)}
+              />
+            </label>
+            <button type="button" onClick={runDryRun}>
+              Run dry-run overlay
+            </button>
+          </>
         )}
         {overlayLabel && (
           <>

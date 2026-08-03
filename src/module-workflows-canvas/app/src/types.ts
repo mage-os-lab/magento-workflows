@@ -187,6 +187,18 @@ export interface WorkflowMeta {
   definition: Definition | null;
 }
 
+/**
+ * Option lists for the workflow-settings panel, projected server-side from the
+ * SAME option sources the classic admin form's selects use (Mount.php). Values
+ * are stringified (status is an int column, entity type a code).
+ */
+export interface WorkflowOptions {
+  entityTypes: ConfigFieldOption[];
+  triggerTypes: ConfigFieldOption[];
+  statuses: ConfigFieldOption[];
+  websites: ConfigFieldOption[];
+}
+
 /** Bootstrap config delivered via the mount div's data-config attribute. */
 export interface MountConfig {
   workflowId: number | null;
@@ -220,6 +232,8 @@ export interface MountConfig {
   };
   formKey: string;
   workflow: WorkflowMeta | null;
+  /** Selects for the workflow-settings panel (always emitted by Mount.php). */
+  workflowOptions: WorkflowOptions;
   /** code => {label, group}: kept for node summaries (Phase A). */
   actions: Record<string, { label: string; group: string }>;
   /** Full palette/config action metadata (Phase B). ACL-filtered display. */

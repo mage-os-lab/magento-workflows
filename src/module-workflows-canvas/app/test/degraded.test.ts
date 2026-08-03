@@ -32,6 +32,7 @@ function config(actions: MountConfig['actions']): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
     approvalsAvailable: false,
   };
 }
