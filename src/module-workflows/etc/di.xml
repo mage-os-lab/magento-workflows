@@ -104,6 +104,30 @@
         </arguments>
     </type>
 
+    <!-- entity:* template-parameter type => option-source code. Aliases are
+         registered beside the sources they name; core owns email_template,
+         domain packs append their own. Omitted `bounded`/`min_chars` mean a
+         search-typed source with a 2-character threshold. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="email_template" xsi:type="array">
+                    <item name="source" xsi:type="string">email_templates</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Typed template-parameter validation needs the option sources. Both
+         constructor arguments default to null (the unit-test path), and Magento
+         DI does not auto-inject defaulted arguments, so they are wired here. -->
+    <type name="MageOS\Workflows\Model\Template\ParameterEngine">
+        <arguments>
+            <argument name="optionSourcePool" xsi:type="object">MageOS\Workflows\Model\Option\OptionSourcePool</argument>
+            <argument name="entityRegistry" xsi:type="object">MageOS\Workflows\Model\Option\EntityOptionSourceRegistry</argument>
+        </arguments>
+    </type>
+
     <!-- Dry-run endpoints (03) -->
     <preference for="MageOS\Workflows\Api\WorkflowDryRunInterface"
                 type="MageOS\Workflows\Model\Webapi\WorkflowDryRun"/>

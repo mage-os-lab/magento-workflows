@@ -42,6 +42,15 @@ for branch/switch/approval edges), the save/validate client contracts, and a
 Playwright smoke that asserts actual edge wiring and ui-position persistence
 in the posted definition.
 
+One gap the lint lane structurally cannot cover is covered here instead: no
+JSON-Schema validator runs anywhere in CI (the lint lane only JSON-decodes), so
+`SeedPackFixtureTest` is the de-facto schema gate for the bundled template pack
+— alongside its compat/install/dry-run pipeline it pins every declared
+parameter `type` to the closed set published in
+`spec/workflow-template.schema.json` (`string|number|url|duration|select|secret`
+or `entity:<alias>`), fails on the removed `optional` key, and checks the
+fixture's representative parameter values against those declared types.
+
 ## The ideal, and the distance to it
 
 For this engine the ideal test portfolio is, in priority order:

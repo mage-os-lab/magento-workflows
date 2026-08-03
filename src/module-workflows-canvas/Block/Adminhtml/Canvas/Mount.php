@@ -86,8 +86,10 @@ class Mount extends Template
                 'dryRun' => $this->getUrl('mageos_workflows_canvas/data/dryRun'),
                 // Same-origin admin JSON validate proxy (::manage, form key).
                 'validate' => $this->getUrl('mageos_workflows_canvas/data/validate'),
-                // Same-origin admin JSON option-source proxy (::view).
-                'options' => $this->getUrl('mageos_workflows_canvas/data/options'),
+                // Same-origin admin JSON option-source proxy (::view). Owned by
+                // admin-ui, whose install form uses the same feed — one route,
+                // not a per-surface copy of the same delegation.
+                'options' => $this->getUrl('mageos_workflows/data/options'),
                 // The EXISTING admin Save controller — the canvas has no save
                 // path of its own (docs/discovery/canvas.md §4).
                 'save' => $this->getUrl('mageos_workflows/workflow/save'),

@@ -14,7 +14,7 @@
             "edition": "any"
         },
         "parameters": [
-            {"key": "alert_threshold", "label": "Rating at or below which CX is alerted", "type": "string", "default": "2"},
+            {"key": "alert_threshold", "label": "Rating at or below which CX is alerted", "type": "number", "min": 1, "step": 1, "default": "2"},
             {"key": "reward_rule_id", "label": "Cart price rule for the five-star reward", "type": "entity:salesrule", "required": true}
         ]
     },

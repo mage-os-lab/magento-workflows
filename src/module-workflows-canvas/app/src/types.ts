@@ -198,7 +198,7 @@ export interface MountConfig {
     dryRun: string;
     /** Same-origin admin JSON validate proxy (canvas Data/Validate). */
     validate: string;
-    /** Same-origin admin JSON option-source proxy (canvas Data/Options). */
+    /** Same-origin admin JSON option-source proxy (admin-ui Data/Options). */
     options: string;
     /** The EXISTING admin Save controller (mageos_workflows/workflow/save). */
     save: string;

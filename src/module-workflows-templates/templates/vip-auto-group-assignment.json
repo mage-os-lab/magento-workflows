@@ -14,8 +14,8 @@
             "edition": "any"
         },
         "parameters": [
-            {"key": "spend_threshold", "label": "Lifetime spend threshold", "type": "string", "default": "1000"},
-            {"key": "vip_group_id", "label": "VIP customer group ID", "type": "string", "required": true}
+            {"key": "spend_threshold", "label": "Lifetime spend threshold", "type": "number", "min": 0, "default": "1000"},
+            {"key": "vip_group_id", "label": "VIP customer group ID", "type": "entity:customer_group", "required": true}
         ]
     },
     "workflow": {
