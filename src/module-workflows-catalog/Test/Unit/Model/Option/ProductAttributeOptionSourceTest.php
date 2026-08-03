@@ -62,7 +62,7 @@ class ProductAttributeOptionSourceTest extends TestCase
             public function __construct(private readonly array $rows)
             {
             }
-            public function create()
+            public function create(array $data = [])
             {
                 return $this->rows;
             }
