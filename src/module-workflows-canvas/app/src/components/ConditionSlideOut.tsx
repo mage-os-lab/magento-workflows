@@ -339,12 +339,12 @@ export function ConditionSlideOut({
             </label>
           )}
           <div className="wf-slideout__buttons">
-            <button type="button" onClick={onClose}>
+            <button type="button" className="action-default" onClick={onClose}>
               {t('Cancel')}
             </button>
             <button
               type="button"
-              className="wf-slideout__apply"
+              className="action-primary wf-slideout__apply"
               disabled={readOnly || applying || jsonError !== null}
               onClick={apply}
             >

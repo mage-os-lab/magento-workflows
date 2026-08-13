@@ -253,7 +253,7 @@ function Viewer({ config }: Props): JSX.Element {
       <div className="wf-canvas__toolbar">
         <strong className="wf-canvas__title">{config.workflow?.name ?? t('Workflow')}</strong>
         {config.executionId && (
-          <button type="button" onClick={() => loadExecution(config.executionId as number)}>
+          <button type="button" className="action-default" onClick={() => loadExecution(config.executionId as number)}>
             {t('Reload execution')}
           </button>
         )}
@@ -269,7 +269,7 @@ function Viewer({ config }: Props): JSX.Element {
                 onChange={(e) => setDryRunEntityId(e.target.value)}
               />
             </label>
-            <button type="button" onClick={runDryRun}>
+            <button type="button" className="action-default" onClick={runDryRun}>
               {t('Run dry-run overlay')}
             </button>
           </>
@@ -277,7 +277,7 @@ function Viewer({ config }: Props): JSX.Element {
         {overlayLabel && (
           <>
             <span className="wf-canvas__overlay-label">{t('Overlay:')} {overlayLabel}</span>
-            <button type="button" onClick={clearOverlay}>
+            <button type="button" className="action-default" onClick={clearOverlay}>
               {t('Clear overlay')}
             </button>
           </>

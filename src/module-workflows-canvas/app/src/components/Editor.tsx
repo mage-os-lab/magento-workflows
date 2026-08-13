@@ -598,10 +598,10 @@ function Toolbar({
   return (
     <div className="wf-canvas__toolbar" role="toolbar" aria-label={t('Editor actions')}>
       <strong className="wf-canvas__title">{title}</strong>
-      <button type="button" onClick={onUndo} disabled={!undoable || readOnly}>
+      <button type="button" className="action-default" onClick={onUndo} disabled={!undoable || readOnly}>
         {t('Undo')}
       </button>
-      <button type="button" onClick={onRedo} disabled={!redoable || readOnly}>
+      <button type="button" className="action-default" onClick={onRedo} disabled={!redoable || readOnly}>
         {t('Redo')}
       </button>
       {/* The general workflow fields (name/status/entity/trigger/websites)
@@ -611,14 +611,14 @@ function Toolbar({
           indicator — root conditions are otherwise invisible on the canvas. */}
       <button
         type="button"
-        className="wf-canvas__root-conditions"
+        className="action-default wf-canvas__root-conditions"
         onClick={onEditRootConditions}
         disabled={readOnly}
       >
         {t('Workflow conditions')}
         <span className="wf-canvas__badge">{rootConditionsSet ? t('Set') : t('Not set')}</span>
       </button>
-      <button type="button" className="wf-canvas__save" onClick={onSave} disabled={readOnly}>
+      <button type="button" className="action-primary wf-canvas__save" onClick={onSave} disabled={readOnly}>
         {t('Save')}
       </button>
       {hasErrors && (

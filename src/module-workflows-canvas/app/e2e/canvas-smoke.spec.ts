@@ -70,8 +70,9 @@ async function addStopAndConnect(page: Page): Promise<void> {
   await page.mouse.move(tgt.x + tgt.width / 2, tgt.y + tgt.height / 2, { steps: 15 });
   await page.mouse.up();
 
-  // The committed (graph-backed) edge renders.
-  await expect(page.locator('.react-flow__edge')).toHaveCount(1);
+  // The committed (graph-backed) step edge renders — counted apart from the
+  // presentational trigger edge, which is always there.
+  await expect(page.locator('.react-flow__edge:not([data-id="__wf_trigger_edge__"])')).toHaveCount(1);
 }
 
 function parseSavedDefinition(body: string): {
