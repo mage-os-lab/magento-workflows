@@ -358,6 +358,34 @@
   font-size: 12px;
 }
 
+/* Why the condition builder cannot start (missing entity type, metadata
+   failure) — styled after the Magento admin warning message pattern. */
+.wf-slideout__meta-error {
+  background: #fdf0d5;
+  border: 1px solid #f0dcb0;
+  color: #6f4400;
+  font-size: 13px;
+  margin: 10px 0;
+  padding: 10px 12px;
+}
+
+.wf-slideout__meta-error p {
+  margin: 0 0 6px;
+}
+
+.wf-slideout__retry {
+  background: #fff;
+  border: 1px solid #adadad;
+  color: #514943;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.wf-slideout__retry:hover {
+  border-color: #514943;
+}
+
 .wf-slideout__json-toggle {
   margin-top: 12px;
   font-size: 12px;

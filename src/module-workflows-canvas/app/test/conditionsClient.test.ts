@@ -103,6 +103,39 @@ describe('loadNodeMeta — lazy, cached metadata per node type', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it('does NOT cache a 5xx failure — a later call retries the request', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ success: false, error: 'boom' }, 500))
+      .mockResolvedValueOnce(jsonResponse({ success: true, root: NODE.type, node: NODE }));
+    const config = makeConfig();
+
+    const first = await loadNodeMeta(config, 'sales_order', null, fetchImpl as unknown as typeof fetch);
+    expect(first.ok).toBe(false);
+    expect(cachedNodeMeta('sales_order', null)).toBeNull();
+
+    const second = await loadNodeMeta(config, 'sales_order', null, fetchImpl as unknown as typeof fetch);
+    expect(second.ok).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('does NOT cache a network failure — a later call retries the request', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(jsonResponse({ success: true, root: NODE.type, node: NODE }));
+    const config = makeConfig();
+
+    const first = await loadNodeMeta(config, 'sales_order', null, fetchImpl as unknown as typeof fetch);
+    expect(first.ok).toBe(false);
+    expect(first.error).toMatch(/could not be loaded/);
+    expect(cachedNodeMeta('sales_order', null)).toBeNull();
+
+    const second = await loadNodeMeta(config, 'sales_order', null, fetchImpl as unknown as typeof fetch);
+    expect(second.ok).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('survives a non-JSON / unreachable endpoint without throwing', async () => {
     const fetchImpl = vi.fn(async () => new Response('<html>login</html>', { status: 302 }));
     const res = await loadNodeMeta(

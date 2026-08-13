@@ -85,6 +85,8 @@ export function ConditionSlideOut({
   const [rootType, setRootType] = useState<string | null>(null);
   const [metaByType, setMetaByType] = useState<Record<string, NodeMeta | null>>({});
   const [pending, setPending] = useState(0);
+  /** Why the builder cannot start a tree (missing entity type, meta failure). */
+  const [rootError, setRootError] = useState<string | null>(null);
 
   const [applying, setApplying] = useState(false);
   const [result, setResult] = useState<ConditionApplyResult | null>(null);
@@ -142,10 +144,20 @@ export function ConditionSlideOut({
     [config, entityType, fetchImpl],
   );
 
-  // Root metadata on open: it names the entity's root combine class (needed to
-  // start a tree from empty) and describes that class in one round-trip.
-  useEffect(() => {
+  // Root metadata: it names the entity's root combine class (needed to start a
+  // tree from empty) and describes that class in one round-trip. Runs on open
+  // and again whenever the entity type changes under the open dialog (the
+  // settings panel edits it live), and is re-runnable via the Retry button —
+  // a transient fetch failure must not leave every "Add condition" control
+  // dead until a page reload.
+  const loadRoot = useCallback((): (() => void) => {
+    if (entityType === '') {
+      setRootType(null);
+      setRootError(t('Choose an entity type in Workflow settings first — the available condition attributes depend on it.'));
+      return () => undefined;
+    }
     let cancelled = false;
+    setRootError(null);
     setPending((p) => p + 1);
     void loadNodeMeta(config, entityType, null, fetchImpl).then((res) => {
       setPending((p) => p - 1);
@@ -159,12 +171,17 @@ export function ConditionSlideOut({
         const node = res.node;
         setMetaByType((m) => ({ ...m, [node.type]: node }));
       }
+      if (!res.ok) {
+        setRootType(null);
+        setRootError(res.error ?? t('Condition metadata could not be loaded.'));
+      }
     });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [config, entityType, fetchImpl]);
+
+  useEffect(() => loadRoot(), [loadRoot]);
 
   // Every distinct type present in the tree gets described, once.
   useEffect(() => {
@@ -242,6 +259,17 @@ export function ConditionSlideOut({
             builder below is the shipped editor. */}
         <div className="wf-slideout__fragment" data-role="mageos-workflows-conditions-fragment" />
 
+        {rootError !== null && (
+          <div className="wf-slideout__meta-error message message-warning" role="alert">
+            <p>{rootError}</p>
+            {entityType !== '' && (
+              <button type="button" className="wf-slideout__retry" onClick={loadRoot}>
+                {t('Retry')}
+              </button>
+            )}
+          </div>
+        )}
+
         <ConditionTreeEditor
           root={root}
           rootType={rootType}
@@ -250,6 +278,7 @@ export function ConditionSlideOut({
           metaFor={metaFor}
           ensureMeta={ensureMeta}
           onChange={updateRoot}
+          showUnavailableHint={rootError === null}
         />
 
         <details

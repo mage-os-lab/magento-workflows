@@ -31,6 +31,12 @@ interface Props {
   metaFor: (type: string) => NodeMeta | null;
   ensureMeta: (type: string) => Promise<NodeMeta | null>;
   onChange: (updater: (current: ConditionNode | null) => ConditionNode | null) => void;
+  /**
+   * Suppress the generic "metadata unavailable" hint when the host already
+   * renders a more specific explanation (missing entity type, server error
+   * with a Retry button) right above this editor.
+   */
+  showUnavailableHint?: boolean;
 }
 
 export function ConditionTreeEditor({
@@ -41,6 +47,7 @@ export function ConditionTreeEditor({
   metaFor,
   ensureMeta,
   onChange,
+  showUnavailableHint = true,
 }: Props): JSX.Element {
   const handlers: TreeHandlers = {
     metaFor,
@@ -76,7 +83,7 @@ export function ConditionTreeEditor({
           >
             {t('Add conditions')}
           </button>
-          {rootType === null && !loading && (
+          {rootType === null && !loading && showUnavailableHint && (
             <p className="wf-cond__hint">
               {t("The condition metadata for this workflow's entity type is unavailable, so the builder cannot start a tree. Use “Edit as JSON” below.")}
             </p>
