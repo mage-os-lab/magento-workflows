@@ -124,10 +124,14 @@ test('delete a connected edge via keyboard: the posted definition drops the edge
 
   await addStopAndConnect(page);
 
-  // Select the edge and delete it with the keyboard (deleteKeyCode).
-  await page.locator('.react-flow__edge').click();
+  // Select the step edge (not the presentational trigger edge) and delete it
+  // with the keyboard (deleteKeyCode). The trigger edge is not deletable and
+  // must survive.
+  const stepEdge = page.locator('.react-flow__edge:not([data-id="__wf_trigger_edge__"])');
+  await stepEdge.click();
   await page.keyboard.press('Backspace');
-  await expect(page.locator('.react-flow__edge')).toHaveCount(0);
+  await expect(stepEdge).toHaveCount(0);
+  await expect(page.locator('[data-id="__wf_trigger_edge__"]')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => saved.length, { timeout: 10_000 }).toBeGreaterThan(0);
@@ -153,9 +157,11 @@ test('canvas-first creation: settings + save post the general fields with back=c
   await settings.getByLabel('Name').fill('Canvas-born Workflow');
   await settings.getByLabel('Entity type').selectOption('sales_order');
 
-  // Author a minimal graph so the save carries a real definition.
+  // Author a minimal graph so the save carries a real definition. (The
+  // trigger card is a presentational extra node — count step nodes only.)
   await page.getByRole('button', { name: 'Add Stop' }).click();
-  await expect(page.locator('.react-flow__node')).toHaveCount(1);
+  await expect(page.locator('.react-flow__node:not(.react-flow__node-trigger)')).toHaveCount(1);
+  await expect(page.locator('.react-flow__node-trigger')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => saved.length, { timeout: 10_000 }).toBeGreaterThan(0);

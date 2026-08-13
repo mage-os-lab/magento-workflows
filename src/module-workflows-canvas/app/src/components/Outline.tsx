@@ -2,6 +2,7 @@ import type { Graph } from '../types';
 import { getStepEdges, edgeLabel } from '../edges';
 import { t } from '../i18n';
 import type { Overlay } from '../overlay';
+import type { TriggerCard } from '../triggerNode';
 
 /**
  * Read-only outline/list rendering of the graph on the same page — the
@@ -19,15 +20,30 @@ export function Outline({
   overlay,
   onSelect,
   selected,
+  trigger,
 }: {
   graph: Graph;
   overlay: Overlay;
   onSelect?: (stepKey: string) => void;
   selected?: string | null;
+  /** The trigger card, rendered ahead of the steps (same data as the canvas). */
+  trigger?: TriggerCard;
 }): JSX.Element {
   return (
     <section className="wf-outline" aria-label={t('Workflow outline')}>
       <h3 className="wf-outline__title">{t('Outline')}</h3>
+      {trigger && (
+        <p className="wf-outline__trigger">
+          <strong>{t('Trigger')}</strong>
+          {': '}
+          {trigger.title}
+          {trigger.entity !== '' && ` · ${trigger.entity}`}
+          {' — '}
+          {trigger.conditions !== null
+            ? `${t('Only if')}: ${trigger.conditions}`
+            : t('No conditions — this always runs.')}
+        </p>
+      )}
       <ol className="wf-outline__list">
         {graph.nodes.map((n) => {
           const status = overlay.nodeStatus[n.id];

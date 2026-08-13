@@ -116,9 +116,9 @@ describe('addCase', () => {
     expect(casesOf(stepOf(before))).toHaveLength(2); // input graph unchanged
   });
 
-  it('refreshes the node summary so the canvas label tracks the case count', () => {
+  it('refreshes the node summary so the canvas label tracks the cases', () => {
     const { graph: after } = addCase(graph(), 'route', config.actions);
-    expect(after.nodes.find((n) => n.id === 'route')?.data.summary).toBe('Switch (3 cases)');
+    expect(after.nodes.find((n) => n.id === 'route')?.data.summary).toBe('Cases: high, low, case_3');
   });
 
   it('refuses a step that is not a switch', () => {

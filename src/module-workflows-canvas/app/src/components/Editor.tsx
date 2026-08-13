@@ -16,7 +16,14 @@ import type { Graph, MountConfig, StepNode } from '../types';
 import { t } from '../i18n';
 import { toDefinition } from '../mapping';
 import { autoLayout, needsLayout } from '../layout';
-import { nodeTypes, type NodeData } from './WorkflowNode';
+import {
+  buildTriggerCard,
+  triggerPosition,
+  TRIGGER_EDGE_ID,
+  TRIGGER_NODE_ID,
+  type TriggerCard,
+} from '../triggerNode';
+import { nodeTypes, type NodeData, type TriggerNodeData } from './WorkflowNode';
 import { Outline } from './Outline';
 import { Palette, type PaletteDragPayload } from './Palette';
 import { ConfigPanel } from './ConfigPanel';
@@ -215,6 +222,24 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
 
   const selectedNode = useMemo(() => graph.nodes.find((n) => n.id === selected) ?? null, [graph, selected]);
 
+  // The presentational trigger card (see triggerNode.ts): rebuilt live from
+  // the settings-panel meta and the root conditions, so the canvas always
+  // shows what starts the workflow and its entry gate.
+  const triggerCard = useMemo<TriggerCard>(
+    () =>
+      buildTriggerCard(
+        {
+          triggerType: meta.triggerType,
+          triggerRef: meta.triggerRef,
+          entityType: meta.entityType,
+          conditionsSerialized: rootConditions,
+        },
+        config.triggers,
+        config.workflowOptions,
+      ),
+    [meta, rootConditions, config],
+  );
+
   return (
     <div className="wf-canvas wf-canvas--editor" role="application" aria-label={t('Workflow visual editor')}>
       {readOnly && (
@@ -280,6 +305,12 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           graph={graph}
           pinned={pinned}
           readOnly={readOnly}
+          triggerCard={triggerCard}
+          onTriggerClick={() => {
+            if (!readOnly) {
+              setConditionTarget({ scope: 'workflow' });
+            }
+          }}
           onSelect={setSelected}
           onCommit={commit}
           onMove={(id, position) => commit(moveNode(graph, id, position))}
@@ -326,6 +357,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         overlay={{ nodeStatus: {}, nodeError: {}, durationMs: {}, takenEdgeIds: new Set() }}
         onSelect={setSelected}
         selected={selected}
+        trigger={triggerCard}
       />
 
       {conditionTarget && (
@@ -378,6 +410,8 @@ function FlowSurface({
   graph,
   pinned,
   readOnly,
+  triggerCard,
+  onTriggerClick,
   onSelect,
   onCommit,
   onMove,
@@ -386,18 +420,33 @@ function FlowSurface({
   graph: Graph;
   pinned: PinnedMessages;
   readOnly: boolean;
+  triggerCard: TriggerCard;
+  onTriggerClick: () => void;
   onSelect: (id: string | null) => void;
   onCommit: (graph: Graph) => void;
   onMove: (id: string, position: { x: number; y: number }) => void;
 }): JSX.Element {
   const { screenToFlowPosition } = useReactFlow();
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<NodeData | TriggerNodeData>>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  // Re-seed React Flow state whenever the source graph changes identity.
+  // Re-seed React Flow state whenever the source graph changes identity. The
+  // trigger node/edge are appended presentationally — they are not in the
+  // Graph model, cannot be deleted or rewired, and their position derives
+  // from the entry step (triggerNode.ts).
   useEffect(() => {
-    setRfNodes(
-      graph.nodes.map((n) => ({
+    const trigger: Node<TriggerNodeData> = {
+      id: TRIGGER_NODE_ID,
+      type: 'trigger',
+      position: triggerPosition(graph),
+      draggable: false,
+      deletable: false,
+      connectable: false,
+      data: { card: triggerCard, editable: !readOnly },
+    };
+    setRfNodes([
+      trigger,
+      ...graph.nodes.map((n) => ({
         id: n.id,
         type: n.type,
         position: n.position,
@@ -406,17 +455,31 @@ function FlowSurface({
           messages: pinned.byNode[n.id] ?? [],
         } as unknown as NodeData,
       })),
-    );
-    setRfEdges(
-      graph.edges.map((e) => ({
+    ]);
+    const triggerEdge: Edge[] =
+      graph.entry !== null
+        ? [
+            {
+              id: TRIGGER_EDGE_ID,
+              source: TRIGGER_NODE_ID,
+              target: graph.entry,
+              deletable: false,
+              selectable: false,
+              style: { stroke: '#79a22e', strokeWidth: 1.5, strokeDasharray: '6 3' },
+            },
+          ]
+        : [];
+    setRfEdges([
+      ...triggerEdge,
+      ...graph.edges.map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
         sourceHandle: e.sourceHandle,
         label: e.label || undefined,
       })),
-    );
-  }, [graph, pinned, setRfNodes, setRfEdges]);
+    ]);
+  }, [graph, pinned, triggerCard, readOnly, setRfNodes, setRfEdges]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -469,7 +532,13 @@ function FlowSurface({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={(_, node) => onSelect(node.id)}
+        onNodeClick={(_, node) => {
+          if (node.id === TRIGGER_NODE_ID) {
+            onTriggerClick();
+            return;
+          }
+          onSelect(node.id);
+        }}
         onNodeDragStop={(_, node) => onMove(node.id, node.position)}
         onPaneClick={() => onSelect(null)}
         nodesDraggable={!readOnly}

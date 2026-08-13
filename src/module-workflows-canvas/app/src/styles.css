@@ -145,6 +145,78 @@
   box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.4);
 }
 
+/* Type accents: a colored top edge + tinted type chip per step type, so a
+   graph is scannable by shape/color before any label is read. The palette
+   leans on the Magento admin colors (orange #eb5202, link blue #007bdb,
+   success green #79a22e, error red #e22626). */
+.wf-node {
+  border-top-width: 4px;
+}
+
+.wf-node--action { border-top-color: #007bdb; }
+.wf-node--action .wf-node__type { color: #007bdb; }
+
+.wf-node--branch,
+.wf-node--switch { border-top-color: #eb5202; }
+.wf-node--branch .wf-node__type,
+.wf-node--switch .wf-node__type { color: #eb5202; }
+
+.wf-node--delay,
+.wf-node--wait { border-top-color: #8d6e00; }
+.wf-node--delay .wf-node__type,
+.wf-node--wait .wf-node__type { color: #8d6e00; }
+
+.wf-node--approval { border-top-color: #6f42c1; }
+.wf-node--approval .wf-node__type { color: #6f42c1; }
+
+.wf-node--stop { border-top-color: #e22626; }
+.wf-node--stop .wf-node__type { color: #e22626; }
+
+.wf-node--degraded { border-top-color: #e22626; }
+
+/* The trigger card: the one deliberately-heavier element on the canvas. */
+.wf-node--trigger {
+  border-color: #79a22e;
+  border-top-width: 4px;
+  background: #f6faef;
+  min-width: 210px;
+}
+
+.wf-node__head--trigger .wf-node__type {
+  color: #79a22e;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.wf-node__icon {
+  width: 9px;
+  height: 11px;
+}
+
+.wf-node__chip {
+  background: #e5f0d3;
+  border-radius: 8px;
+  color: #4d6b17;
+  font-size: 10px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.wf-node__conditions {
+  border-top: 1px dashed #cfdcb5;
+  color: #4d6b17;
+  cursor: pointer;
+  font-size: 11px;
+  margin-top: 6px;
+  padding-top: 5px;
+}
+
+.wf-node__conditions--none {
+  color: #7a7a7a;
+}
+
 .wf-node--degraded {
   background: #fff5f5;
 }

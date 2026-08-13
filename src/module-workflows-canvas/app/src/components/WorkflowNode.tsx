@@ -2,6 +2,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { GraphNode, StepNode } from '../types';
 import { getStepEdges, edgeLabel } from '../edges';
 import { t } from '../i18n';
+import type { TriggerCard } from '../triggerNode';
 
 /**
  * One typed node renderer for every step type. Handles are placed per the edge
@@ -80,7 +81,11 @@ export function WorkflowNode({ data }: NodeProps): JSX.Element {
         borderColor: statusColor ?? (d.degraded ? '#c62828' : '#c4c4c4'),
       }}
     >
-      {!d.isEntry && <Handle type="target" position={Position.Top} />}
+      {/* Always present: without a target handle React Flow silently drops
+          every edge INTO this node — including the trigger card's edge to the
+          entry step (and any loop-back a definition may legally contain). The
+          entry's handle is non-connectable so users still cannot wire into it. */}
+      <Handle type="target" position={Position.Top} isConnectable={!d.isEntry} />
 
       <div className="wf-node__head">
         <span className="wf-node__type">{typeLabel(type)}</span>
@@ -119,6 +124,47 @@ export function WorkflowNode({ data }: NodeProps): JSX.Element {
   );
 }
 
+export interface TriggerNodeData extends Record<string, unknown> {
+  card: TriggerCard;
+  /** Editor-only: clicking the conditions row opens the root-conditions editor. */
+  editable: boolean;
+}
+
+/**
+ * The trigger card at the top of every graph (purely presentational — see
+ * triggerNode.ts). Distinct visual weight from step nodes: the reader's eye
+ * needs one unambiguous "this is where it starts".
+ */
+export function TriggerNode({ data }: NodeProps): JSX.Element {
+  const d = data as TriggerNodeData;
+  return (
+    <div className="wf-node wf-node--trigger" data-testid="wf-trigger-node">
+      <div className="wf-node__head wf-node__head--trigger">
+        <span className="wf-node__type">
+          <svg className="wf-node__icon" viewBox="0 0 12 14" aria-hidden="true">
+            <path d="M7.5 0 1 8h3.5L4 14l6.5-8H7z" fill="currentColor" />
+          </svg>
+          {t('Trigger')}
+        </span>
+        {d.card.entity !== '' && <span className="wf-node__chip">{d.card.entity}</span>}
+      </div>
+
+      <div className="wf-node__summary">{d.card.title}</div>
+
+      <div
+        className={`wf-node__conditions${d.card.conditions === null ? ' wf-node__conditions--none' : ''}`}
+        title={d.editable ? t('Click to edit the workflow conditions') : undefined}
+      >
+        {d.card.conditions !== null
+          ? `${t('Only if')}: ${d.card.conditions}`
+          : t('No conditions — this always runs.')}
+      </div>
+
+      <Handle type="source" position={Position.Bottom} isConnectable={false} />
+    </div>
+  );
+}
+
 function renderSourceHandles(edges: string[]): JSX.Element[] {
   if (edges.length === 0) {
     return [];
@@ -152,6 +198,7 @@ export const nodeTypes = {
   approval: WorkflowNode,
   stop: WorkflowNode,
   degraded: WorkflowNode,
+  trigger: TriggerNode,
 };
 
 export type { GraphNode };

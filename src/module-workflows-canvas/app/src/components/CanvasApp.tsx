@@ -22,9 +22,16 @@ import {
 } from '../overlay';
 import { t } from '../i18n';
 import { initMeta } from '../workflowMeta';
+import {
+  buildTriggerCard,
+  TRIGGER_EDGE_ID,
+  TRIGGER_NODE_ID,
+  type TriggerCard,
+} from '../triggerNode';
 import { Outline } from './Outline';
 import { Editor } from './Editor';
 import { WorkflowSettings } from './WorkflowSettings';
+import type { TriggerNodeData } from './WorkflowNode';
 
 interface Props {
   config: MountConfig;
@@ -156,7 +163,38 @@ function Viewer({ config }: Props): JSX.Element {
     );
   }
 
-  const rfNodes: Node<NodeData>[] = baseGraph.nodes.map((n) => {
+  // The presentational trigger card (see triggerNode.ts), placed above the
+  // entry step's EFFECTIVE position (auto-layout may have overridden it).
+  const triggerCard: TriggerCard | null = config.workflow
+    ? buildTriggerCard(
+        {
+          triggerType: config.workflow.triggerType,
+          triggerRef: config.workflow.triggerRef,
+          entityType: config.workflow.entityType,
+          conditionsSerialized: config.workflow.conditionsSerialized,
+        },
+        config.triggers,
+        config.workflowOptions,
+      )
+    : null;
+  const entryNode = baseGraph.nodes.find((n) => n.id === baseGraph.entry) ?? null;
+  const entryPos = entryNode ? positions?.[entryNode.id] ?? entryNode.position : null;
+
+  const triggerNodes: Node<TriggerNodeData>[] = triggerCard
+    ? [
+        {
+          id: TRIGGER_NODE_ID,
+          type: 'trigger',
+          position: entryPos ? { x: entryPos.x, y: entryPos.y - 150 } : { x: 80, y: 40 },
+          draggable: false,
+          deletable: false,
+          connectable: false,
+          data: { card: triggerCard, editable: false },
+        },
+      ]
+    : [];
+
+  const stepNodes: Node<NodeData>[] = baseGraph.nodes.map((n) => {
     const pos = positions?.[n.id] ?? n.position;
     const status = overlay.nodeStatus[n.id];
     const dur = overlay.durationMs[n.id];
@@ -173,8 +211,23 @@ function Viewer({ config }: Props): JSX.Element {
       },
     };
   });
+  const rfNodes: Node<NodeData | TriggerNodeData>[] = [...triggerNodes, ...stepNodes];
 
-  const rfEdges: Edge[] = baseGraph.edges.map((e) => {
+  const triggerEdges: Edge[] =
+    triggerCard && baseGraph.entry !== null
+      ? [
+          {
+            id: TRIGGER_EDGE_ID,
+            source: TRIGGER_NODE_ID,
+            target: baseGraph.entry,
+            deletable: false,
+            selectable: false,
+            style: { stroke: '#79a22e', strokeWidth: 1.5, strokeDasharray: '6 3' },
+          },
+        ]
+      : [];
+
+  const stepEdges: Edge[] = baseGraph.edges.map((e) => {
     const taken = overlay.takenEdgeIds.has(e.id);
     return {
       id: e.id,
@@ -186,6 +239,7 @@ function Viewer({ config }: Props): JSX.Element {
       style: taken ? { stroke: '#1565c0', strokeWidth: 2 } : undefined,
     };
   });
+  const rfEdges: Edge[] = [...triggerEdges, ...stepEdges];
 
   return (
     <div className="wf-canvas">
@@ -265,7 +319,7 @@ function Viewer({ config }: Props): JSX.Element {
       </div>
 
       {/* Screen-reader / no-canvas outline (C3's legacy). */}
-      <Outline graph={baseGraph} overlay={overlay} />
+      <Outline graph={baseGraph} overlay={overlay} trigger={triggerCard ?? undefined} />
     </div>
   );
 }
