@@ -53,11 +53,13 @@ async function addStopAndConnect(page: Page): Promise<void> {
   const stopNode = page.locator('.react-flow__node', { hasText: 'Stop' });
   await expect(stopNode).toBeVisible();
 
-  // Move the freshly-dropped stop node well below the action node.
+  // Click-adds now land on a free spot below the graph (no more stacking), so
+  // no clearing move is needed — a small nudge still exercises drag + the
+  // layout-dirty flag without pushing the node out of the viewport.
   const stopBox = (await stopNode.boundingBox())!;
-  await page.mouse.move(stopBox.x + stopBox.width / 2, stopBox.y + 10);
+  await page.mouse.move(stopBox.x + stopBox.width / 2, stopBox.y + 30);
   await page.mouse.down();
-  await page.mouse.move(stopBox.x + stopBox.width / 2, stopBox.y + 220, { steps: 10 });
+  await page.mouse.move(stopBox.x + stopBox.width / 2 + 80, stopBox.y + 60, { steps: 8 });
   await page.mouse.up();
 
   // Drag a connection: action `next` source handle -> stop target handle.
@@ -129,7 +131,15 @@ test('delete a connected edge via keyboard: the posted definition drops the edge
   // with the keyboard (deleteKeyCode). The trigger edge is not deletable and
   // must survive.
   const stepEdge = page.locator('.react-flow__edge:not([data-id="__wf_trigger_edge__"])');
-  await stepEdge.click();
+  // A vertical edge has a zero-WIDTH bounding box, which locator.click refuses
+  // as "not visible" — click the path's midpoint by coordinates instead.
+  const mid = await stepEdge.locator('path').first().evaluate((el) => {
+    const path = el as SVGPathElement;
+    const point = path.getPointAtLength(path.getTotalLength() / 2);
+    const ctm = path.getScreenCTM()!;
+    return { x: ctm.a * point.x + ctm.c * point.y + ctm.e, y: ctm.b * point.x + ctm.d * point.y + ctm.f };
+  });
+  await page.mouse.click(mid.x, mid.y);
   await page.keyboard.press('Backspace');
   await expect(stepEdge).toHaveCount(0);
   await expect(page.locator('[data-id="__wf_trigger_edge__"]')).toHaveCount(1);
@@ -156,7 +166,7 @@ test('canvas-first creation: settings + save post the general fields with back=c
   const settings = page.getByRole('region', { name: 'Workflow settings' });
   await expect(settings).toBeVisible();
   await settings.getByLabel('Name').fill('Canvas-born Workflow');
-  await settings.getByLabel('Entity type').selectOption('sales_order');
+  await settings.getByLabel('Applies to').selectOption('sales_order');
 
   // Author a minimal graph so the save carries a real definition. (The
   // trigger card is a presentational extra node — count step nodes only.)

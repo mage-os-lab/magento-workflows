@@ -155,7 +155,10 @@ export function TriggerNode({ data }: NodeProps): JSX.Element {
 
       <div
         className={`wf-node__conditions${d.card.conditions === null ? ' wf-node__conditions--none' : ''}`}
-        title={d.editable ? t('Click to edit the workflow conditions') : undefined}
+        title={
+          d.card.conditionsFull ??
+          (d.editable ? t('Click to edit the workflow conditions') : undefined)
+        }
       >
         {d.card.conditions !== null
           ? `${t('Only if')}: ${d.card.conditions}`

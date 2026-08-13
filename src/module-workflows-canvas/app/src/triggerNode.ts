@@ -1,4 +1,5 @@
 import type { Edge, Node } from '@xyflow/react';
+import { conditionAttributeLabel } from './conditionLabels';
 import { t } from './i18n';
 import type { Graph, TriggerMeta, WorkflowOptions } from './types';
 
@@ -31,6 +32,12 @@ export interface TriggerCard {
   entity: string;
   /** Compact root-conditions summary, or null for "always runs". */
   conditions: string | null;
+  /**
+   * Every root condition spelled out (tooltip text): the face summary
+   * truncates to "first +N more", and the hidden N were otherwise invisible
+   * short of opening the editor.
+   */
+  conditionsFull: string | null;
 }
 
 /** Resolve an option label from a {value,label} list, falling back to raw. */
@@ -59,11 +66,28 @@ export function buildTriggerCard(
       break;
     }
   }
+  const allLeaves = conditionLeaves(fields.conditionsSerialized);
   return {
     title,
     entity: fields.entityType === '' ? '' : optionLabel(options.entityTypes, fields.entityType),
     conditions: summarizeConditions(fields.conditionsSerialized),
+    conditionsFull: allLeaves.length > 1 ? allLeaves.join('  ·  ') : null,
   };
+}
+
+/** Every leaf of a serialized tree as display strings (empty on no/bad tree). */
+export function conditionLeaves(serialized: string | null | undefined): string[] {
+  if (typeof serialized !== 'string' || serialized.trim() === '') {
+    return [];
+  }
+  try {
+    const root = JSON.parse(serialized) as RawConditionNode;
+    const leaves: string[] = [];
+    collectLeaves(root, leaves);
+    return leaves;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -198,7 +222,7 @@ function collectLeaves(node: RawConditionNode, out: string[]): void {
   }
   const operator = typeof node.operator === 'string' ? node.operator : '==';
   const glyph = OPERATOR_GLYPHS[operator] ?? operator;
-  out.push(`${attribute} ${glyph} ${formatValue(node.value)}`);
+  out.push(`${conditionAttributeLabel(attribute)} ${glyph} ${formatValue(node.value)}`);
 }
 
 function formatValue(value: unknown): string {

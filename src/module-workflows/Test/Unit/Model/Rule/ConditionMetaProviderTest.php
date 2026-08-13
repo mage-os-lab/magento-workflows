@@ -506,7 +506,7 @@ final class MetaFixtureRootCombine extends Combine
             ['value' => self::class, 'label' => 'Conditions Combination'],
             ['value' => MetaFixtureItemsCombine::class, 'label' => 'Order Items'],
             ['value' => TriggerData::class, 'label' => 'Trigger Data (advanced)'],
-            ['value' => RelatedEntityCombine::class, 'label' => 'Related Entity (exists / not exists)'],
+            ['value' => RelatedEntityCombine::class, 'label' => 'Related record (exists / does not exist)'],
             ['value' => MetaFixtureBrokenCombine::class, 'label' => 'Broken Subtree'],
             ['value' => MetaFixtureNotACondition::class, 'label' => 'Mis-registered'],
             ['label' => 'Order Attribute', 'value' => [

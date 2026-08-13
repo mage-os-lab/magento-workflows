@@ -87,7 +87,7 @@ abstract class AbstractWorkflowCombine extends Combine
             return [];
         }
         return [
-            ['value' => RelatedEntityCombine::class, 'label' => __('Related Entity (exists / not exists)')],
+            ['value' => RelatedEntityCombine::class, 'label' => __('Related record (exists / does not exist)')],
         ];
     }
 

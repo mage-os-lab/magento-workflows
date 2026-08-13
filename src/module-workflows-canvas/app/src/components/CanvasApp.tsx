@@ -22,6 +22,8 @@ import {
   type Overlay,
 } from '../overlay';
 import { t } from '../i18n';
+import { buildAttributeLabelMap, setConditionAttributeLabels } from '../conditionLabels';
+import { loadNodeMeta } from '../conditionsClient';
 import { initMeta } from '../workflowMeta';
 import {
   buildTriggerCard,
@@ -60,13 +62,36 @@ export function CanvasApp({ config }: Props): JSX.Element {
 function Viewer({ config }: Props): JSX.Element {
   const definition = config.workflow?.definition ?? null;
 
-  const baseGraph = useMemo<Graph | null>(
-    () => (definition ? toGraph(definition, config) : null),
-    [definition, config],
-  );
-
   const { fitView } = useReactFlow();
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
+  // Merchant labels for condition summaries (same feed as the editor; ::view
+  // may read conditionMeta). Failure leaves raw attribute codes.
+  const [labelsVersion, setLabelsVersion] = useState(0);
+
+  const baseGraph = useMemo<Graph | null>(
+    () => (definition ? toGraph(definition, config) : null),
+    // labelsVersion: summaries are baked into node data at map time, so the
+    // graph is re-derived once the merchant labels arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [definition, config, labelsVersion],
+  );
+  useEffect(() => {
+    const entityType = config.workflow?.entityType ?? '';
+    if (entityType === '') {
+      return undefined;
+    }
+    let cancelled = false;
+    void loadNodeMeta(config, entityType, null).then((res) => {
+      if (cancelled || !res.node) {
+        return;
+      }
+      setConditionAttributeLabels(buildAttributeLabelMap(res.node));
+      setLabelsVersion((v) => v + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [config]);
   const [overlay, setOverlay] = useState<Overlay>(emptyOverlay());
   const [overlayLabel, setOverlayLabel] = useState<string>('');
   const [error, setError] = useState<string>('');

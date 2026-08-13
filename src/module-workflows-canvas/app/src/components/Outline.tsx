@@ -47,7 +47,17 @@ export function Outline({
       <ol className="wf-outline__list">
         {graph.nodes.map((n) => {
           const status = overlay.nodeStatus[n.id];
-          const edges = Object.entries(getStepEdges(n.data.step)).filter(([, t]) => t !== null);
+          // Routing comes from graph.edges — the SAME model a save serializes —
+          // never from the step data, which connect() deliberately leaves
+          // untouched. Reading the step here made the outline lie after every
+          // rewire (it kept showing the pre-edit target). Handles with no edge
+          // are listed as "(not connected)": a dead switch case or dangling
+          // branch path is a routing fact the reader must see, not a blank.
+          const handles = Object.keys(getStepEdges(n.data.step));
+          const targetOf = new Map(
+            graph.edges.filter((e) => e.source === n.id).map((e) => [e.sourceHandle, e.target]),
+          );
+          const edges = handles.map((name) => [name, targetOf.get(name) ?? null] as const);
           const keyNode = onSelect ? (
             <button
               type="button"
@@ -72,7 +82,12 @@ export function Outline({
                 <ul className="wf-outline__edges">
                   {edges.map(([name, target]) => (
                     <li key={name}>
-                      {edgeLabel(name) || t('next')} → {target}
+                      {edgeLabel(name) || t('next')} →{' '}
+                      {target !== null ? (
+                        target
+                      ) : (
+                        <span className="wf-outline__unconnected">{t('(not connected)')}</span>
+                      )}
                     </li>
                   ))}
                 </ul>

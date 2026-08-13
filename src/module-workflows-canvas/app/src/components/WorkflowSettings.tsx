@@ -76,11 +76,21 @@ export function WorkflowSettings({
         value={String(meta.status)}
         readOnly={readOnly}
         onChange={(v) => set({ status: Number(v) })}
+        note={
+          // "Shadow" is a third state next to Enabled/Disabled that nothing
+          // else on screen explains — say what it does where it's chosen.
+          options.statuses
+            .find((o) => o.value === String(meta.status))
+            ?.label.toLowerCase()
+            .includes('shadow')
+            ? t('Shadow mode runs silently: conditions are evaluated on live traffic and every action logs what it WOULD do, without doing it.')
+            : undefined
+        }
       />
 
       <MetaSelect
         id="wf-settings-entity-type"
-        label={t('Entity type')}
+        label={t('Applies to')}
         options={options.entityTypes}
         value={meta.entityType}
         placeholder={t('— select —')}
@@ -139,6 +149,7 @@ function MetaSelect({
   value,
   placeholder,
   readOnly,
+  note,
   onChange,
 }: {
   id: string;
@@ -148,6 +159,8 @@ function MetaSelect({
   /** Offered as the empty option when the stored value may legally be ''. */
   placeholder?: string;
   readOnly: boolean;
+  /** Contextual explanation shown under the select (e.g. shadow mode). */
+  note?: string;
   onChange: (value: string) => void;
 }): JSX.Element {
   return (
@@ -170,6 +183,11 @@ function MetaSelect({
             </option>
           ))}
         </select>
+        {note !== undefined && (
+          <div className="admin__field-note wf-settings__note">
+            <span>{note}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -277,6 +295,13 @@ function TriggerRefField({
           >
             {free ? t('Choose a registered event instead') : t('Enter an event name instead')}
           </button>
+        )}
+        {/* A typo here saves fine and then the workflow simply never runs —
+            warn while typing, not just at save time (preSave checks it too). */}
+        {free && value !== '' && !catalogued && groups.length > 0 && (
+          <div className="admin__field-note wf-settings__note wf-settings__note--warning" role="alert">
+            <span>{t('This does not match any registered event, so the workflow may never run. Check the spelling, or pick from the registered list.')}</span>
+          </div>
         )}
       </div>
     </div>

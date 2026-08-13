@@ -124,10 +124,16 @@ export function ConfigPanel({
 
   return (
     <aside className="wf-panel" aria-label={t('Step configuration')}>
+      {/* Lead with what the step IS (its face summary); the machine step key
+          is demoted to small print — `check_value` means nothing to the
+          merchant editing "If Grand Total ≥ 1,000". */}
       <header className="wf-panel__head">
-        <h3 className="wf-panel__title">{node.id}</h3>
+        <h3 className="wf-panel__title wf-panel__title--friendly">{node.data.summary}</h3>
         <span className="wf-panel__type">{step.type}</span>
       </header>
+      <p className="wf-panel__key" title={t('Internal step key')}>
+        {node.id}
+      </p>
 
       {node.data.degraded && (
         <p className="wf-panel__degraded">
@@ -625,10 +631,10 @@ function PayloadFieldsEditor({
   return (
     <div className="wf-field wf-rows">
       <span className="wf-field__label" id="wf-payload-fields-label">
-        {t('Payload fields')}
+        {t('Decision form fields')}
       </span>
       <span className="wf-field__notice">
-        {t('Values the decider fills in. Each key is exposed to later steps.')}
+        {t('Fields the approver fills in when deciding. Later steps can use the answers.')}
       </span>
       <ul className="wf-rows__list" aria-labelledby="wf-payload-fields-label">
         {rows.map((row, index) => {
@@ -896,7 +902,7 @@ function DurationField({
           disabled={readOnly}
           onClick={() => setManual(!iso)}
         >
-          {iso ? t('Use the duration picker') : t('Enter an ISO-8601 duration instead')}
+          {iso ? t('Use the duration picker') : t('Enter a custom duration (advanced)')}
         </button>
       )}
       {pinnedToIso && isIsoDuration(value) && (

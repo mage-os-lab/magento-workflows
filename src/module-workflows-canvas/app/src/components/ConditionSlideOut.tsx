@@ -332,9 +332,9 @@ export function ConditionSlideOut({
                 disabled={readOnly}
                 onChange={(e) => setRevalidate(e.target.checked)}
               />
-              {t('Re-validate entity before evaluating')}
+              {t('Check against the latest data (recommended)')}
               <span className="wf-field__notice">
-                {t('On by default: the entity is re-hydrated fresh so a stale snapshot (after a delay, queue lag or redelivery) cannot decide the branch. Turn it off to evaluate the frozen trigger snapshot instead.')}
+                {t('The record is re-loaded fresh before these conditions run, so a decision made after a delay uses current data. Turn off to use the data exactly as it was when the workflow started.')}
               </span>
             </label>
           )}

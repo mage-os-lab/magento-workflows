@@ -857,3 +857,96 @@
 .wf-cases__add {
   margin-top: 4px;
 }
+
+/* ---- merchant-review round ---------------------------------------------- */
+
+/* Connection handles: the visual dot stays modest but the hit-area is real —
+   a 6px target made the core gesture fail silently in merchant testing. */
+.wf-canvas__flow .react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  background: #35414a;
+}
+
+/* A selected edge must LOOK selected (there was no styling at all). */
+.wf-canvas__flow .react-flow__edge.selected path.react-flow__edge-path {
+  stroke: #007bdb;
+  stroke-width: 2.5;
+}
+
+.wf-canvas__dirty {
+  background: #fdf0d5;
+  border: 1px solid #f0dcb0;
+  border-radius: 3px;
+  color: #6f4400;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+.wf-canvas__save-review {
+  background: #fdf0d5;
+  border: 1px solid #f0dcb0;
+  border-radius: 4px;
+  color: #6f4400;
+  font-size: 13px;
+  padding: 10px 14px;
+}
+
+.wf-canvas__save-review-head {
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.wf-canvas__save-review ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.wf-canvas__save-review li {
+  margin-bottom: 4px;
+}
+
+.wf-canvas__save-review-jump {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.wf-palette__howto {
+  border-top: 1px solid #e0e0e0;
+  color: #666;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+  padding-top: 8px;
+}
+
+.wf-panel__key {
+  color: #999;
+  font-family: monospace;
+  font-size: 11px;
+  margin: -6px 0 8px;
+}
+
+.wf-panel__title--friendly {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.wf-outline__unconnected {
+  color: #8a6200;
+  font-weight: 600;
+}
+
+.wf-settings__note--warning {
+  color: #8a6200;
+}

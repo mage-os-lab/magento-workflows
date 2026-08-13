@@ -55,6 +55,25 @@ export function addNode(
   };
 }
 
+/**
+ * A free spot for a click-added node: below the lowest existing node, aligned
+ * to its column. The old fixed {80,80} drop point stacked every added step on
+ * the same spot — three clicks produced what looked like ONE card, with the
+ * hidden ones silently catching edge drops meant for the visible one.
+ */
+export function freePosition(graph: Graph): { x: number; y: number } {
+  if (graph.nodes.length === 0) {
+    return { x: 80, y: 220 };
+  }
+  let lowest = graph.nodes[0];
+  for (const node of graph.nodes) {
+    if (node.position.y > lowest.position.y) {
+      lowest = node;
+    }
+  }
+  return { x: lowest.position.x, y: lowest.position.y + 150 };
+}
+
 /** Remove a node and every edge touching it (no dangling edges survive). */
 export function deleteNode(graph: Graph, id: string): Graph {
   const nodes = graph.nodes.filter((n) => n.id !== id);

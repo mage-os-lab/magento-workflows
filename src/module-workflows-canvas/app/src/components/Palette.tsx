@@ -68,6 +68,10 @@ export function Palette({ config, onAdd }: Props): JSX.Element {
           </ul>
         </section>
       ))}
+      {/* The connect gesture is invisible until someone tells you it exists. */}
+      <p className="wf-palette__howto">
+        {t('To connect steps, drag from a dot on the bottom edge of one step to the top of another. Click a step or connection and press Delete to remove it.')}
+      </p>
     </nav>
   );
 }

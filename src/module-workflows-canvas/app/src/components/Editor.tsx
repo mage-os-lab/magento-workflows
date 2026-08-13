@@ -38,9 +38,13 @@ import {
   connect as connectOp,
   deleteNode,
   disconnect,
+  freePosition,
   moveNode,
   positionsOf,
 } from '../graphOps';
+import { preSaveFindings, type PreSaveFinding } from '../preSave';
+import { buildAttributeLabelMap, setConditionAttributeLabels } from '../conditionLabels';
+import { loadNodeMeta } from '../conditionsClient';
 import {
   applyTargetConditions,
   readRevalidate,
@@ -57,7 +61,7 @@ import {
   type EditableMeta,
 } from '../workflowMeta';
 import { submitSave } from '../saveClient';
-import { armUnloadGuard, fingerprintDefinition, isDirty } from '../unsavedGuard';
+import { armUnloadGuard, fingerprintDefinition, isDirty as isDirtyFn } from '../unsavedGuard';
 import {
   buildValidateRequest,
   debounce,
@@ -87,6 +91,10 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const [pinned, setPinned] = useState<PinnedMessages>({ byNode: {}, document: [], hasErrors: false });
   const [status, setStatus] = useState<string>('');
   const [conditionTarget, setConditionTarget] = useState<ConditionTarget | null>(null);
+  // Pre-save review findings: shown after the first Save click when the graph
+  // has empty required fields / dangling paths; the second click saves anyway.
+  const [saveWarnings, setSaveWarnings] = useState<PreSaveFinding[] | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   // The workflow ROOT condition tree. It is not part of the definition (it is
   // its own workflow column), so it lives beside the graph history and is
@@ -144,7 +152,11 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   }
 
   useEffect(() => {
-    dirty.current = isDirty(savedFingerprint.current ?? '', fingerprintNow);
+    const nowDirty = isDirtyFn(savedFingerprint.current ?? '', fingerprintNow);
+    dirty.current = nowDirty;
+    setIsDirty(nowDirty);
+    // Any edit invalidates a pending "Save anyway": the next Save re-reviews.
+    setSaveWarnings(null);
   }, [fingerprintNow]);
 
   useEffect(() => armUnloadGuard(() => dirty.current), []);
@@ -225,6 +237,29 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
 
   const selectedNode = useMemo(() => graph.nodes.find((n) => n.id === selected) ?? null, [graph, selected]);
 
+  // Merchant labels for condition summaries ("Grand Total", not grand_total):
+  // fetched once per entity type from the same cached metadata feed the
+  // condition editor uses, then every existing face summary is recomputed.
+  // Fetch failure just leaves raw codes — never broken UI.
+  const [labelsVersion, setLabelsVersion] = useState(0);
+  useEffect(() => {
+    if (meta.entityType === '') {
+      return undefined;
+    }
+    let cancelled = false;
+    void loadNodeMeta(config, meta.entityType, null).then((res) => {
+      if (cancelled || !res.node) {
+        return;
+      }
+      setConditionAttributeLabels(buildAttributeLabelMap(res.node));
+      setLabelsVersion((v) => v + 1);
+      setHistory((h) => ({ ...h, present: refreshSummaries(h.present, config) }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [meta.entityType, config]);
+
   // The presentational trigger card (see triggerNode.ts): rebuilt live from
   // the settings-panel meta and the root conditions, so the canvas always
   // shows what starts the workflow and its entry gate.
@@ -243,8 +278,9 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
     // Deliberately NOT the whole meta object: the card reads only these three
     // fields, and a new card identity reseeds every React Flow node/edge —
     // depending on `meta` would rebuild the canvas (and drop its selection
-    // state) on every keystroke in the Name field.
-    [meta.triggerType, meta.triggerRef, meta.entityType, rootConditions, config],
+    // state) on every keystroke in the Name field. labelsVersion re-renders
+    // the condition summary once merchant labels arrive.
+    [meta.triggerType, meta.triggerRef, meta.entityType, rootConditions, config, labelsVersion],
   );
 
   return (
@@ -267,6 +303,8 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         onUndo={() => setHistory((h) => undo(h))}
         onRedo={() => setHistory((h) => redo(h))}
         onEditRootConditions={() => setConditionTarget({ scope: 'workflow' })}
+        dirty={isDirty}
+        savingBlocked={saveWarnings !== null && saveWarnings.length > 0}
         onSave={() => {
           // Client-side gate only for what the server would bounce anyway: a
           // nameless workflow. Point at the always-visible settings panel by
@@ -276,6 +314,17 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
             setStatus(metaError);
             document.getElementById(SETTINGS_NAME_INPUT_ID)?.focus();
             return;
+          }
+          // First click with review findings: show them and hold the save. The
+          // second click ("Save anyway") proceeds — the server re-validates
+          // everything regardless.
+          if (saveWarnings === null) {
+            const findings = preSaveFindings(graph, config, meta);
+            if (findings.length > 0) {
+              setSaveWarnings(findings);
+              setStatus('');
+              return;
+            }
           }
           setStatus(t('Saving…'));
           // Disarm first: the save IS a navigation (a real hidden-form POST),
@@ -302,8 +351,15 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         <Palette
           config={config}
           onAdd={(payload) => {
-            const g = addFromPayload(graph, payload, { x: 80, y: 80 }, config);
+            // A free spot below the graph (never the old fixed point that
+            // stacked every added card on the same pixels), and the new step
+            // opens selected so its config panel is immediately in view.
+            const g = addFromPayload(graph, payload, freePosition(graph), config);
             commit(g);
+            const added = g.nodes.find((n) => !graph.nodes.some((o) => o.id === n.id));
+            if (added) {
+              setSelected(added.id);
+            }
           }}
         />
 
@@ -321,6 +377,15 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           onSelect={setSelected}
           onCommit={commit}
           onMove={(id, position) => commit(moveNode(graph, id, position))}
+          onDeleted={(nodes, edges) => {
+            const what =
+              nodes > 0 && edges > 0
+                ? t('Step and connection deleted')
+                : nodes > 0
+                  ? t('Step deleted')
+                  : t('Connection deleted');
+            setStatus(`${what} — ${t('press Ctrl+Z to undo.')}`);
+          }}
         />
 
         {selectedNode && (
@@ -346,6 +411,27 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           />
         )}
       </div>
+
+      {saveWarnings !== null && saveWarnings.length > 0 && (
+        <div className="wf-canvas__save-review message message-warning" role="alert">
+          <p className="wf-canvas__save-review-head">
+            {t('Before you save — this workflow has gaps. Fix them, or press "Save anyway" to save as-is:')}
+          </p>
+          <ul>
+            {saveWarnings.map((f, i) => (
+              <li key={`${f.stepKey ?? 'wf'}-${i}`}>
+                {f.stepKey !== null ? (
+                  <button type="button" className="wf-canvas__save-review-jump" onClick={() => setSelected(f.stepKey)}>
+                    {f.message}
+                  </button>
+                ) : (
+                  f.message
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="wf-canvas__doc-messages" role="status" aria-live="polite">
         {pinned.document.length > 0 && (
@@ -423,6 +509,7 @@ function FlowSurface({
   onSelect,
   onCommit,
   onMove,
+  onDeleted,
 }: {
   config: MountConfig;
   graph: Graph;
@@ -433,6 +520,7 @@ function FlowSurface({
   onSelect: (id: string | null) => void;
   onCommit: (graph: Graph) => void;
   onMove: (id: string, position: { x: number; y: number }) => void;
+  onDeleted: (nodes: number, edges: number) => void;
 }): JSX.Element {
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<NodeData | TriggerNodeData>>([]);
@@ -553,6 +641,10 @@ function FlowSurface({
         nodesConnectable={!readOnly}
         elementsSelectable
         deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
+        // Generous magnetic snap: the visual dots are small, and a drop a few
+        // pixels off a 6px handle silently discarding the connection was the
+        // single hardest gesture in merchant testing.
+        connectionRadius={40}
         onDelete={({ nodes: deletedNodes, edges: deletedEdges }) => {
           // One combined commit for a delete gesture: a bare edge delete must
           // reach the graph too (it previously only touched React Flow's local
@@ -566,6 +658,9 @@ function FlowSurface({
             g = deleteNode(g, n.id);
           }
           onCommit(g);
+          // Keyboard deletion is easy to hit by accident and has no confirm:
+          // say what happened and how to take it back.
+          onDeleted(deletedNodes.length, deletedEdges.length);
         }}
         fitView
         proOptions={{ hideAttribution: true }}
@@ -586,6 +681,8 @@ function Toolbar({
   status,
   readOnly,
   rootConditionsSet,
+  dirty,
+  savingBlocked,
   onUndo,
   onRedo,
   onEditRootConditions,
@@ -598,6 +695,8 @@ function Toolbar({
   status: string;
   readOnly: boolean;
   rootConditionsSet: boolean;
+  dirty: boolean;
+  savingBlocked: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onEditRootConditions: () => void;
@@ -626,8 +725,13 @@ function Toolbar({
         {t('Workflow conditions')}
         <span className="wf-canvas__badge">{rootConditionsSet ? t('Set') : t('Not set')}</span>
       </button>
+      {dirty && !readOnly && (
+        <span className="wf-canvas__dirty" role="status">
+          {t('Unsaved changes')}
+        </span>
+      )}
       <button type="button" className="action-primary wf-canvas__save" onClick={onSave} disabled={readOnly}>
-        {t('Save')}
+        {savingBlocked ? t('Save anyway') : t('Save')}
       </button>
       {hasErrors && (
         <span className="wf-canvas__error" role="status">
@@ -671,6 +775,17 @@ function replaceStep(
         ? { ...n, data: { ...n.data, step, summary: nodeSummary(step, actions) } }
         : n,
     ),
+  };
+}
+
+/** Recompute every face summary (after merchant labels arrive). */
+function refreshSummaries(graph: Graph, config: MountConfig): Graph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((n) => ({
+      ...n,
+      data: { ...n.data, summary: nodeSummary(n.data.step, config.actions) },
+    })),
   };
 }
 
