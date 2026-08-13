@@ -98,10 +98,19 @@ export function ConditionNodeRow({ node, isRoot, handlers }: Props): JSX.Element
   );
 }
 
-/** NOT EXISTS forbids children server-side, so the sub-tree is not offered. */
+/**
+ * NOT EXISTS forbids children server-side, so the sub-tree is not offered.
+ * Neither is it offered before a relation is chosen: the add-menu would list
+ * EVERY registered target's attributes at once (the metadata is fetched per
+ * node type, before any relation narrows it), which reads as noise — pick the
+ * relation first, then qualify it.
+ */
 function childrenVisible(node: ConditionNode, kind: string): boolean {
   if (kind !== 'related') {
     return true;
+  }
+  if (propString(node, 'relation') === '') {
+    return false;
   }
   return effective(node, 'value', '1') !== '0';
 }

@@ -1,6 +1,8 @@
+import { Fragment } from 'react';
 import type { AttributeMeta, MetaOption } from '../../conditionTree';
 import {
   booleanValueOptions,
+  optionSections,
   optionsWithCurrent,
   relativeDateHint,
 } from '../../conditionTree';
@@ -55,11 +57,7 @@ export function ValueControl({ label, value, attributeMeta, readOnly, onChange }
           onChange(Array.from(e.target.selectedOptions).map((o) => o.value))
         }
       >
-        {mergeSelected(options, selected).map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {renderSections(mergeSelected(options, selected))}
       </select>
     );
   }
@@ -76,11 +74,7 @@ export function ValueControl({ label, value, attributeMeta, readOnly, onChange }
         onChange={(e) => onChange(e.target.value)}
       >
         <option value="">{t('— select —')}</option>
-        {optionsWithCurrent(base, current).map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {renderSections(optionsWithCurrent(base, current))}
       </select>
     );
   }
@@ -117,6 +111,24 @@ function toArray(value: unknown): unknown[] {
   }
   // A comma list is how the same field arrives from a hand-written tree.
   return String(value).split(',').map((part) => part.trim());
+}
+
+/** Grouped rows render under <optgroup> headings; ungrouped rows render bare. */
+function renderSections(options: MetaOption[]): JSX.Element[] {
+  return optionSections(options).map((section, i) => {
+    const rows = section.options.map((o) => (
+      <option key={o.value} value={o.value}>
+        {o.label}
+      </option>
+    ));
+    return section.group !== null ? (
+      <optgroup key={`${section.group}-${i}`} label={section.group}>
+        {rows}
+      </optgroup>
+    ) : (
+      <Fragment key={`bare-${i}`}>{rows}</Fragment>
+    );
+  });
 }
 
 /** Keep every selected value selectable, even one the server did not offer. */

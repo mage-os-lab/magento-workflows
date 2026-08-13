@@ -34,6 +34,12 @@ import { t } from './i18n';
 export interface MetaOption {
   value: string;
   label: string;
+  /**
+   * Optgroup heading the server preserved from a grouped native source
+   * (payment/shipping methods group by provider/carrier, store views by
+   * website). Consecutive rows sharing a group render under one <optgroup>.
+   */
+  group?: string;
 }
 
 /**
@@ -564,6 +570,28 @@ export function optionsWithCurrent(options: MetaOption[], current: string): Meta
     return options;
   }
   return [...options, { value: current, label: `${current} ${t('(not offered)')}` }];
+}
+
+/**
+ * Partition an option list into render sections: consecutive rows sharing a
+ * `group` become one <optgroup>, ungrouped rows render bare. Order is
+ * preserved — the server already emits groups contiguously, and an appended
+ * "(not offered)" row simply lands in its own bare tail section.
+ */
+export function optionSections(
+  options: MetaOption[],
+): Array<{ group: string | null; options: MetaOption[] }> {
+  const sections: Array<{ group: string | null; options: MetaOption[] }> = [];
+  for (const option of options) {
+    const group = option.group ?? null;
+    const tail = sections[sections.length - 1];
+    if (tail && tail.group === group) {
+      tail.options.push(option);
+    } else {
+      sections.push({ group, options: [option] });
+    }
+  }
+  return sections;
 }
 
 /** Pretty-print a node for the read-only unknown-node view (a text node only). */

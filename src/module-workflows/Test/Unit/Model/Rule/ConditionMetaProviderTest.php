@@ -244,6 +244,30 @@ class ConditionMetaProviderTest extends TestCase
         $this->assertSame([], $attributes['created_at']['value_options']);
     }
 
+    public function testGroupedValueOptionsKeepTheirHeadingAndTrimIndentation(): void
+    {
+        $attributes = $this->meta(MetaFixtureLeaf::class)['attributes'];
+        $options = $attributes['ship_via']['value_options'];
+
+        // Nested optgroups survive projection as a `group` key on each leaf —
+        // "Ground" is ambiguous without "UPS" — and the leading-space
+        // indentation some core sources emit (a flat-<select> visual hack that
+        // HTML collapses) is trimmed in favour of the real grouping.
+        $this->assertSame(
+            [
+                ['value' => 'ups_GND', 'label' => 'Ground', 'group' => 'UPS'],
+                ['value' => 'ups_1DA', 'label' => 'Next Day Air', 'group' => 'UPS'],
+                ['value' => 'pickup', 'label' => 'Store Pickup'],
+            ],
+            $options
+        );
+        // Ungrouped enums stay exactly as they were: no group key appears.
+        $this->assertSame(
+            [['value' => 'pending', 'label' => 'Pending'], ['value' => 'complete', 'label' => 'Complete']],
+            $attributes['status']['value_options']
+        );
+    }
+
     // --- FQCN validation -----------------------------------------------------
 
     public function testUnreachableConditionClassIsRejected(): void
@@ -564,6 +588,7 @@ final class MetaFixtureLeaf extends AbstractCondition
             'grand_total' => __('Grand Total'),
             'created_at' => __('Created At'),
             'flagged' => __('Flagged'),
+            'ship_via' => __('Shipping Method'),
         ]);
         return $this;
     }
@@ -574,7 +599,7 @@ final class MetaFixtureLeaf extends AbstractCondition
     public function getInputType()
     {
         return match ((string)$this->getAttribute()) {
-            'status' => 'select',
+            'status', 'ship_via' => 'select',
             'grand_total' => 'numeric',
             'created_at' => 'date',
             'flagged' => 'boolean',
@@ -608,6 +633,16 @@ final class MetaFixtureLeaf extends AbstractCondition
                 'flagged' => [
                     ['value' => 1, 'label' => __('Yes')],
                     ['value' => 0, 'label' => __('No')],
+                ],
+                // The core Allmethods / Store::getStoreValuesForForm() shape:
+                // nested option groups, with the leading-space indentation some
+                // sources emit for flat-select rendering.
+                'ship_via' => [
+                    ['label' => __('UPS'), 'value' => [
+                        ['value' => 'ups_GND', 'label' => __('    Ground')],
+                        ['value' => 'ups_1DA', 'label' => __('Next Day Air')],
+                    ]],
+                    ['value' => 'pickup', 'label' => __('Store Pickup')],
                 ],
                 default => [],
             });

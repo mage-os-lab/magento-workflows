@@ -496,15 +496,21 @@ class ConditionMetaProvider
     }
 
     /**
-     * Flatten a native option list to `[{value, label}]`. Nested optgroups
-     * (Store::getStoreValuesForForm() nests website / group / store) are
-     * flattened to their selectable leaves — the contract is a flat list and a
-     * dropped group heading loses no selectable value.
+     * Flatten a native option list to `[{value, label, group?}]`. Nested
+     * optgroups (payment/shipping Allmethods group by provider/carrier,
+     * Store::getStoreValuesForForm() nests website / group / store) keep their
+     * OUTERMOST heading as a `group` key on each selectable leaf: dropping the
+     * heading loses no selectable value, but it loses meaning — "Ground" is
+     * ambiguous without "UPS", and a store view means little without its
+     * website. Labels are trimmed: the leading-space indentation some core
+     * sources emit is a flat-<select> visual hack that HTML collapses anyway;
+     * grouping replaces it.
      *
      * @param mixed $raw
-     * @return array<int, array{value: string, label: string}>
+     * @param string|null $group heading inherited from an enclosing optgroup
+     * @return array<int, array{value: string, label: string, group?: string}>
      */
-    private function options(mixed $raw): array
+    private function options(mixed $raw, ?string $group = null): array
     {
         if (!is_array($raw)) {
             return [];
@@ -513,22 +519,41 @@ class ConditionMetaProvider
         foreach ($raw as $key => $option) {
             if (!is_array($option)) {
                 // A plain code => label hash is a legal option source too.
-                $rows[] = ['value' => (string) $key, 'label' => (string) $option];
+                $rows[] = $this->optionRow((string) $key, (string) $option, $group);
                 continue;
             }
             $value = $option['value'] ?? null;
             if (is_array($value)) {
-                $rows = array_merge($rows, $this->options($value));
+                // The outermost heading wins for deeper nesting (website >
+                // store group > store view reads best as one website group).
+                $heading = trim((string) ($option['label'] ?? ''));
+                $rows = array_merge(
+                    $rows,
+                    $this->options($value, $group ?? ($heading !== '' ? $heading : null))
+                );
                 continue;
             }
             if ($value === null || is_object($value)) {
                 continue;
             }
-            $rows[] = [
-                'value' => is_bool($value) ? (string) (int) $value : (string) $value,
-                'label' => (string) ($option['label'] ?? ''),
-            ];
+            $rows[] = $this->optionRow(
+                is_bool($value) ? (string) (int) $value : (string) $value,
+                (string) ($option['label'] ?? ''),
+                $group
+            );
         }
         return $rows;
+    }
+
+    /**
+     * @return array{value: string, label: string, group?: string}
+     */
+    private function optionRow(string $value, string $label, ?string $group): array
+    {
+        $row = ['value' => $value, 'label' => trim($label)];
+        if ($group !== null && $group !== '') {
+            $row['group'] = $group;
+        }
+        return $row;
     }
 }

@@ -13,6 +13,7 @@ import {
   isEmptyTree,
   nodeDefaultAttributeMeta,
   nodeType,
+  optionSections,
   optionsWithCurrent,
   orFallback,
   parseConditionTree,
@@ -381,5 +382,33 @@ describe('conditionTree — attribute switch and select safety', () => {
       { value: 'a', label: 'A' },
       { value: '%param.vip_group_id%', label: '%param.vip_group_id% (not offered)' },
     ]);
+  });
+});
+
+describe('optionSections — optgroup partitioning for grouped value options', () => {
+  it('groups consecutive rows by their group key and keeps bare rows bare', () => {
+    const sections = optionSections([
+      { value: 'ups_GND', label: 'Ground', group: 'UPS' },
+      { value: 'ups_1DA', label: 'Next Day Air', group: 'UPS' },
+      { value: 'flatrate_flatrate', label: 'Fixed', group: 'Flat Rate' },
+      { value: 'pickup', label: 'Store Pickup' },
+    ]);
+    expect(sections).toEqual([
+      { group: 'UPS', options: [
+        { value: 'ups_GND', label: 'Ground', group: 'UPS' },
+        { value: 'ups_1DA', label: 'Next Day Air', group: 'UPS' },
+      ] },
+      { group: 'Flat Rate', options: [{ value: 'flatrate_flatrate', label: 'Fixed', group: 'Flat Rate' }] },
+      { group: null, options: [{ value: 'pickup', label: 'Store Pickup' }] },
+    ]);
+  });
+
+  it('an ungrouped list yields one bare section (no optgroup rendered)', () => {
+    const sections = optionSections([
+      { value: 'pending', label: 'Pending' },
+      { value: 'complete', label: 'Complete' },
+    ]);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].group).toBeNull();
   });
 });

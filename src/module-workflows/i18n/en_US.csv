@@ -115,6 +115,7 @@
 "Prune Executions After (days)","Prune Executions After (days)"
 "Redact Secrets in Shadow Mode","Redact Secrets in Shadow Mode"
 "Related Attribute","Related Attribute"
+"Related Attribute (%1)","Related Attribute (%1)"
 "Related Entity (exists / not exists)","Related Entity (exists / not exists)"
 "Related-Entity Resolution Cap","Related-Entity Resolution Cap"
 "Requires Adobe Commerce; this is a Community/Mage-OS install.","Requires Adobe Commerce; this is a Community/Mage-OS install."
