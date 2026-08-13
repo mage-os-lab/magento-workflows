@@ -2,7 +2,9 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { GraphNode, StepNode } from '../types';
 import { getStepEdges, edgeLabel } from '../edges';
 import { t } from '../i18n';
-import type { TriggerCard } from '../triggerNode';
+import type { TriggerNodeData } from '../triggerNode';
+
+export type { TriggerNodeData };
 
 /**
  * One typed node renderer for every step type. Handles are placed per the edge
@@ -77,9 +79,15 @@ export function WorkflowNode({ data }: NodeProps): JSX.Element {
       className={`wf-node wf-node--${type}${d.degraded ? ' wf-node--degraded' : ''}${
         d.onTakenPath ? ' wf-node--taken' : ''
       }`}
-      style={{
-        borderColor: statusColor ?? (d.degraded ? '#c62828' : '#c4c4c4'),
-      }}
+      // Inline border-color only for the DYNAMIC cases (overlay status,
+      // degraded): an unconditional inline value expands to all four sides
+      // and would override the per-type border-top-color accents in the
+      // stylesheet.
+      style={
+        statusColor !== undefined || d.degraded
+          ? { borderColor: statusColor ?? '#c62828' }
+          : undefined
+      }
     >
       {/* Always present: without a target handle React Flow silently drops
           every edge INTO this node — including the trigger card's edge to the
@@ -122,12 +130,6 @@ export function WorkflowNode({ data }: NodeProps): JSX.Element {
       {renderSourceHandles(edges)}
     </div>
   );
-}
-
-export interface TriggerNodeData extends Record<string, unknown> {
-  card: TriggerCard;
-  /** Editor-only: clicking the conditions row opens the root-conditions editor. */
-  editable: boolean;
 }
 
 /**

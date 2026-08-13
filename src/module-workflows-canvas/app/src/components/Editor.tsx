@@ -16,14 +16,16 @@ import type { Graph, MountConfig, StepNode } from '../types';
 import { t } from '../i18n';
 import { toDefinition } from '../mapping';
 import { autoLayout, needsLayout } from '../layout';
+import { nodeSummary } from '../nodeSummary';
 import {
   buildTriggerCard,
+  buildTriggerFlowElements,
   triggerPosition,
-  TRIGGER_EDGE_ID,
   TRIGGER_NODE_ID,
   type TriggerCard,
+  type TriggerNodeData,
 } from '../triggerNode';
-import { nodeTypes, type NodeData, type TriggerNodeData } from './WorkflowNode';
+import { nodeTypes, type NodeData } from './WorkflowNode';
 import { Outline } from './Outline';
 import { Palette, type PaletteDragPayload } from './Palette';
 import { ConfigPanel } from './ConfigPanel';
@@ -237,7 +239,11 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         config.triggers,
         config.workflowOptions,
       ),
-    [meta, rootConditions, config],
+    // Deliberately NOT the whole meta object: the card reads only these three
+    // fields, and a new card identity reseeds every React Flow node/edge —
+    // depending on `meta` would rebuild the canvas (and drop its selection
+    // state) on every keystroke in the Name field.
+    [meta.triggerType, meta.triggerRef, meta.entityType, rootConditions, config],
   );
 
   return (
@@ -326,7 +332,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
             config={config}
             graph={graph}
             readOnly={readOnly}
-            onChange={(stepKey, step) => commit(replaceStep(graph, stepKey, step))}
+            onChange={(stepKey, step) => commit(replaceStep(graph, stepKey, step, config.actions))}
             // Switch case edits arrive as a whole graph: a case key is an edge
             // handle, so the panel's case ops (switchCases) rewrite nodes AND
             // edges together and hand the result straight to the history.
@@ -390,6 +396,7 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
                     graph,
                     target.stepKey,
                     applyTargetConditions(step, target, conditionsSerialized, revalidateEntity),
+                    config.actions,
                   ),
                 );
               }
@@ -435,17 +442,14 @@ function FlowSurface({
   // Graph model, cannot be deleted or rewired, and their position derives
   // from the entry step (triggerNode.ts).
   useEffect(() => {
-    const trigger: Node<TriggerNodeData> = {
-      id: TRIGGER_NODE_ID,
-      type: 'trigger',
-      position: triggerPosition(graph),
-      draggable: false,
-      deletable: false,
-      connectable: false,
-      data: { card: triggerCard, editable: !readOnly },
-    };
+    const trigger = buildTriggerFlowElements(
+      triggerCard,
+      graph.entry,
+      triggerPosition(graph),
+      !readOnly,
+    );
     setRfNodes([
-      trigger,
+      trigger.node,
       ...graph.nodes.map((n) => ({
         id: n.id,
         type: n.type,
@@ -456,21 +460,8 @@ function FlowSurface({
         } as unknown as NodeData,
       })),
     ]);
-    const triggerEdge: Edge[] =
-      graph.entry !== null
-        ? [
-            {
-              id: TRIGGER_EDGE_ID,
-              source: TRIGGER_NODE_ID,
-              target: graph.entry,
-              deletable: false,
-              selectable: false,
-              style: { stroke: '#79a22e', strokeWidth: 1.5, strokeDasharray: '6 3' },
-            },
-          ]
-        : [];
     setRfEdges([
-      ...triggerEdge,
+      ...trigger.edges,
       ...graph.edges.map((e) => ({
         id: e.id,
         source: e.source,
@@ -647,11 +638,21 @@ function stepOf(graph: Graph, stepKey: string): StepNode | null {
   return graph.nodes.find((n) => n.id === stepKey)?.data.step ?? null;
 }
 
-function replaceStep(graph: Graph, stepKey: string, step: StepNode): Graph {
+function replaceStep(
+  graph: Graph,
+  stepKey: string,
+  step: StepNode,
+  actions: MountConfig['actions'],
+): Graph {
   return {
     ...graph,
     nodes: graph.nodes.map((n) =>
-      n.id === stepKey ? { ...n, data: { ...n.data, step } } : n,
+      // Recompute the face summary alongside the step (switchCases.ts does the
+      // same): branch faces show their condition, wait faces their timeout,
+      // approval faces their title — all editable through paths that land here.
+      n.id === stepKey
+        ? { ...n, data: { ...n.data, step, summary: nodeSummary(step, actions) } }
+        : n,
     ),
   };
 }

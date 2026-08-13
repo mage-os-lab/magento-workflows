@@ -24,14 +24,13 @@ import { t } from '../i18n';
 import { initMeta } from '../workflowMeta';
 import {
   buildTriggerCard,
-  TRIGGER_EDGE_ID,
-  TRIGGER_NODE_ID,
+  buildTriggerFlowElements,
   type TriggerCard,
+  type TriggerNodeData,
 } from '../triggerNode';
 import { Outline } from './Outline';
 import { Editor } from './Editor';
 import { WorkflowSettings } from './WorkflowSettings';
-import type { TriggerNodeData } from './WorkflowNode';
 
 interface Props {
   config: MountConfig;
@@ -180,19 +179,14 @@ function Viewer({ config }: Props): JSX.Element {
   const entryNode = baseGraph.nodes.find((n) => n.id === baseGraph.entry) ?? null;
   const entryPos = entryNode ? positions?.[entryNode.id] ?? entryNode.position : null;
 
-  const triggerNodes: Node<TriggerNodeData>[] = triggerCard
-    ? [
-        {
-          id: TRIGGER_NODE_ID,
-          type: 'trigger',
-          position: entryPos ? { x: entryPos.x, y: entryPos.y - 150 } : { x: 80, y: 40 },
-          draggable: false,
-          deletable: false,
-          connectable: false,
-          data: { card: triggerCard, editable: false },
-        },
-      ]
-    : [];
+  const triggerElements = triggerCard
+    ? buildTriggerFlowElements(
+        triggerCard,
+        baseGraph.entry,
+        entryPos ? { x: entryPos.x, y: entryPos.y - 150 } : { x: 80, y: 40 },
+        false,
+      )
+    : null;
 
   const stepNodes: Node<NodeData>[] = baseGraph.nodes.map((n) => {
     const pos = positions?.[n.id] ?? n.position;
@@ -211,21 +205,10 @@ function Viewer({ config }: Props): JSX.Element {
       },
     };
   });
-  const rfNodes: Node<NodeData | TriggerNodeData>[] = [...triggerNodes, ...stepNodes];
-
-  const triggerEdges: Edge[] =
-    triggerCard && baseGraph.entry !== null
-      ? [
-          {
-            id: TRIGGER_EDGE_ID,
-            source: TRIGGER_NODE_ID,
-            target: baseGraph.entry,
-            deletable: false,
-            selectable: false,
-            style: { stroke: '#79a22e', strokeWidth: 1.5, strokeDasharray: '6 3' },
-          },
-        ]
-      : [];
+  const rfNodes: Node<NodeData | TriggerNodeData>[] = [
+    ...(triggerElements ? [triggerElements.node] : []),
+    ...stepNodes,
+  ];
 
   const stepEdges: Edge[] = baseGraph.edges.map((e) => {
     const taken = overlay.takenEdgeIds.has(e.id);
@@ -239,7 +222,7 @@ function Viewer({ config }: Props): JSX.Element {
       style: taken ? { stroke: '#1565c0', strokeWidth: 2 } : undefined,
     };
   });
-  const rfEdges: Edge[] = [...triggerEdges, ...stepEdges];
+  const rfEdges: Edge[] = [...(triggerElements ? triggerElements.edges : []), ...stepEdges];
 
   return (
     <div className="wf-canvas">

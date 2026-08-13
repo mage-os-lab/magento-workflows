@@ -1,3 +1,4 @@
+import type { Edge, Node } from '@xyflow/react';
 import { t } from './i18n';
 import type { Graph, TriggerMeta, WorkflowOptions } from './types';
 
@@ -76,6 +77,50 @@ export function triggerPosition(graph: Graph): { x: number; y: number } {
     return { x: 80, y: 40 };
   }
   return { x: entry.position.x, y: entry.position.y - 150 };
+}
+
+/** The trigger card's React Flow node payload (rendered by TriggerNode). */
+export interface TriggerNodeData extends Record<string, unknown> {
+  card: TriggerCard;
+  /** Editor-only: clicking the conditions row opens the root-conditions editor. */
+  editable: boolean;
+}
+
+/**
+ * The React Flow node + edge for the trigger card — one constructor for the
+ * editor and the viewer, so the offsets, flags, and edge styling cannot drift
+ * between the two surfaces.
+ */
+export function buildTriggerFlowElements(
+  card: TriggerCard,
+  entry: string | null,
+  position: { x: number; y: number },
+  editable: boolean,
+): { node: Node<TriggerNodeData>; edges: Edge[] } {
+  return {
+    node: {
+      id: TRIGGER_NODE_ID,
+      type: 'trigger',
+      position,
+      draggable: false,
+      deletable: false,
+      connectable: false,
+      data: { card, editable },
+    },
+    edges:
+      entry !== null
+        ? [
+            {
+              id: TRIGGER_EDGE_ID,
+              source: TRIGGER_NODE_ID,
+              target: entry,
+              deletable: false,
+              selectable: false,
+              style: { stroke: '#79a22e', strokeWidth: 1.5, strokeDasharray: '6 3' },
+            },
+          ]
+        : [],
+  };
 }
 
 // ---- compact condition summaries ------------------------------------------
