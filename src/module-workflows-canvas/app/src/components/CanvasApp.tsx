@@ -4,6 +4,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  useReactFlow,
   type Edge,
   type Node,
 } from '@xyflow/react';
@@ -64,6 +65,7 @@ function Viewer({ config }: Props): JSX.Element {
     [definition, config],
   );
 
+  const { fitView } = useReactFlow();
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }> | null>(null);
   const [overlay, setOverlay] = useState<Overlay>(emptyOverlay());
   const [overlayLabel, setOverlayLabel] = useState<string>('');
@@ -91,6 +93,16 @@ function Viewer({ config }: Props): JSX.Element {
     setPositions(null);
     return undefined;
   }, [baseGraph]);
+
+  // Re-frame once the async auto-layout has moved the nodes: the mount-time
+  // `fitView` prop framed the PRE-layout positions.
+  useEffect(() => {
+    if (positions !== null) {
+      requestAnimationFrame(() => {
+        void fitView({ padding: 0.15, maxZoom: 1 });
+      });
+    }
+  }, [positions, fitView]);
 
   // Auto-load the execution overlay when arriving from the execution view.
   useEffect(() => {

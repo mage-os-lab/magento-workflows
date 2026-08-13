@@ -6,6 +6,7 @@ import {
   MiniMap,
   addEdge as _addEdge,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
   useReactFlow,
   type Connection,
@@ -433,9 +434,10 @@ function FlowSurface({
   onCommit: (graph: Graph) => void;
   onMove: (id: string, position: { x: number; y: number }) => void;
 }): JSX.Element {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<NodeData | TriggerNodeData>>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const fitted = useRef(false);
 
   // Re-seed React Flow state whenever the source graph changes identity. The
   // trigger node/edge are appended presentationally — they are not in the
@@ -471,6 +473,21 @@ function FlowSurface({
       })),
     ]);
   }, [graph, pinned, triggerCard, readOnly, setRfNodes, setRfEdges]);
+
+  // Frame the graph once, as soon as the nodes are MEASURED and their
+  // positions are REAL: the mount-time `fitView` prop fires before any nodes
+  // exist (they arrive via the seed effect above), fitView() on unmeasured
+  // nodes is a silent no-op, and a definition without a stored layout gets
+  // its true positions only after the async elk pass — without this, opening
+  // such a workflow lands the viewport on one corner of the graph. Later
+  // seeds (user edits) never re-fit: yanking the viewport mid-edit is worse.
+  const nodesInitialized = useNodesInitialized();
+  useEffect(() => {
+    if (!fitted.current && nodesInitialized && !needsLayout(graph)) {
+      fitted.current = true;
+      void fitView({ padding: 0.15, maxZoom: 1 });
+    }
+  }, [nodesInitialized, graph, fitView]);
 
   const onConnect = useCallback(
     (connection: Connection) => {

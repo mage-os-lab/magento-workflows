@@ -147,6 +147,13 @@
   box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.4);
 }
 
+/* Selection state: React Flow marks the wrapper .selected but nothing styled
+   it, so clicking a node opened the config panel with no visual cue on the
+   canvas of WHICH node is being edited. Admin link blue, matching the theme. */
+.react-flow__node.selected .wf-node {
+  box-shadow: 0 0 0 2px #007bdb, 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 /* Type accents: a colored top edge + tinted type chip per step type, so a
    graph is scannable by shape/color before any label is read. The palette
    leans on the Magento admin colors (orange #eb5202, link blue #007bdb,
@@ -407,6 +414,15 @@
   box-sizing: border-box;
 }
 
+/* A full-width checkbox renders as a detached box on its own row, nowhere
+   near its label text — every boolean field (revalidate, business-days,
+   approval flags) was hit by the blanket width above. */
+.wf-field input[type='checkbox'] {
+  width: auto;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 .wf-field__notice {
   display: block;
   color: #757575;
@@ -577,6 +593,17 @@
 
 .wf-slideout__revalidate {
   margin: 0;
+}
+
+/* Checkbox inline with its label text; the explanatory notice wraps below. */
+.wf-slideout__revalidate input {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.wf-slideout__revalidate .wf-field__notice {
+  display: block;
+  margin-top: 4px;
 }
 
 .wf-slideout__buttons {
