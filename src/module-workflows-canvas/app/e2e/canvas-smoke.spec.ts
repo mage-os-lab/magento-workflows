@@ -146,14 +146,12 @@ test('canvas-first creation: settings + save post the general fields with back=c
   const { saved } = await mockEndpoints(page);
   await page.goto('/app/e2e/fixtures/admin-page-new.html');
 
-  // A brand-new workflow (id 0) opens the settings panel by itself: name and
-  // entity type are the first authoring decisions.
-  const settings = page.getByRole('dialog', { name: 'Workflow settings' });
+  // The settings panel is persistent above the canvas — no modal to open or
+  // dismiss. Name and entity type are the first authoring decisions.
+  const settings = page.getByRole('region', { name: 'Workflow settings' });
   await expect(settings).toBeVisible();
   await settings.getByLabel('Name').fill('Canvas-born Workflow');
   await settings.getByLabel('Entity type').selectOption('sales_order');
-  await settings.getByRole('button', { name: 'Close' }).click();
-  await expect(settings).toBeHidden();
 
   // Author a minimal graph so the save carries a real definition.
   await page.getByRole('button', { name: 'Add Stop' }).click();

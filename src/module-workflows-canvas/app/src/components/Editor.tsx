@@ -21,7 +21,7 @@ import { Outline } from './Outline';
 import { Palette, type PaletteDragPayload } from './Palette';
 import { ConfigPanel } from './ConfigPanel';
 import { ConditionSlideOut } from './ConditionSlideOut';
-import { WorkflowSettings } from './WorkflowSettings';
+import { SETTINGS_NAME_INPUT_ID, WorkflowSettings } from './WorkflowSettings';
 import {
   addNode,
   blankStep,
@@ -87,14 +87,11 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   );
 
   // The general workflow fields (name/status/entity/trigger/websites), edited
-  // in the settings slide-out. Like the root conditions they are not part of
-  // the definition, so they live beside the graph history and are folded into
-  // the config saveClient/validateClient read. A brand-new workflow (id 0)
-  // opens the panel up front — name and entity type are the first decisions.
+  // in the persistent settings panel above the canvas. Like the root
+  // conditions they are not part of the definition, so they live beside the
+  // graph history and are folded into the config saveClient/validateClient
+  // read.
   const [meta, setMeta] = useState<EditableMeta>(() => initMeta(config.workflow));
-  const [settingsOpen, setSettingsOpen] = useState<boolean>(
-    () => config.workflow !== null && config.workflow.id === 0,
-  );
 
   const effectiveConfig = useMemo<MountConfig>(() => {
     let cfg = config;
@@ -237,15 +234,15 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         rootConditionsSet={rootConditions !== null && rootConditions.trim() !== ''}
         onUndo={() => setHistory((h) => undo(h))}
         onRedo={() => setHistory((h) => redo(h))}
-        onOpenSettings={() => setSettingsOpen(true)}
         onEditRootConditions={() => setConditionTarget({ scope: 'workflow' })}
         onSave={() => {
           // Client-side gate only for what the server would bounce anyway: a
-          // nameless workflow. Open the settings panel instead of navigating.
+          // nameless workflow. Point at the always-visible settings panel by
+          // focusing its name input instead of navigating.
           const metaError = metaSaveError(meta);
           if (metaError !== null) {
             setStatus(metaError);
-            setSettingsOpen(true);
+            document.getElementById(SETTINGS_NAME_INPUT_ID)?.focus();
             return;
           }
           setStatus(t('Saving…'));
@@ -258,6 +255,16 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           submitSave(effectiveConfig, definition);
         }}
       />
+
+      {config.workflow !== null && (
+        <WorkflowSettings
+          meta={meta}
+          options={config.workflowOptions}
+          triggers={config.triggers}
+          readOnly={readOnly}
+          onChange={setMeta}
+        />
+      )}
 
       <div className="wf-canvas__stage">
         <Palette
@@ -320,17 +327,6 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         onSelect={setSelected}
         selected={selected}
       />
-
-      {settingsOpen && (
-        <WorkflowSettings
-          meta={meta}
-          options={config.workflowOptions}
-          triggers={config.triggers}
-          readOnly={readOnly}
-          onChange={setMeta}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
 
       {conditionTarget && (
         <ConditionSlideOut
@@ -515,7 +511,6 @@ function Toolbar({
   rootConditionsSet,
   onUndo,
   onRedo,
-  onOpenSettings,
   onEditRootConditions,
   onSave,
 }: {
@@ -528,7 +523,6 @@ function Toolbar({
   rootConditionsSet: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  onOpenSettings: () => void;
   onEditRootConditions: () => void;
   onSave: () => void;
 }): JSX.Element {
@@ -541,11 +535,8 @@ function Toolbar({
       <button type="button" onClick={onRedo} disabled={!redoable || readOnly}>
         {t('Redo')}
       </button>
-      {/* The general workflow fields (name/status/entity/trigger/websites) —
-          the settings slide-out is the canvas' half of the classic form. */}
-      <button type="button" onClick={onOpenSettings} disabled={readOnly}>
-        {t('Workflow settings')}
-      </button>
+      {/* The general workflow fields (name/status/entity/trigger/websites)
+          live in the persistent settings panel rendered below this toolbar. */}
       {/* The workflow-level gate ("does this workflow run at all?"), edited in
           the same slide-out as a step's tree. The badge is the set/unset
           indicator — root conditions are otherwise invisible on the canvas. */}

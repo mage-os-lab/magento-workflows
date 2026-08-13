@@ -27,6 +27,77 @@
   font-size: 15px;
 }
 
+/* The persistent workflow-settings panel above the canvas. The field markup
+   inside is Magento's own (admin__field / admin__control-*) so the theme
+   styles the controls; this block only contributes the one-row layout and a
+   card boundary the admin theme has no pattern for. Explicit label/control
+   resets keep the panel legible on the mocked e2e page too, where the admin
+   theme CSS is absent. */
+.wf-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 20px;
+  background: #f8f8f8;
+  border: 1px solid #d6d6d6;
+  border-radius: 4px;
+  margin: 0;
+  padding: 12px 16px;
+}
+
+.wf-settings .wf-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  min-width: 160px;
+  border: 0;
+  padding: 0;
+}
+
+.wf-settings__field--name {
+  min-width: 240px;
+}
+
+.wf-settings .admin__field-label {
+  color: #303030;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  width: auto;
+}
+
+.wf-settings .admin__field-control {
+  width: auto;
+  margin: 0;
+}
+
+.wf-settings .admin__control-text,
+.wf-settings .admin__control-select {
+  max-width: 260px;
+}
+
+.wf-settings .admin__field-error {
+  display: block;
+  color: #e22626;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.wf-settings__note {
+  font-size: 11px;
+  color: #666;
+  max-width: 260px;
+}
+
+.wf-settings__website {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+  font-size: 12px;
+}
+
 .wf-canvas__overlay-label {
   color: #1565c0;
   font-weight: 600;

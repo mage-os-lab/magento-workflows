@@ -94,7 +94,6 @@ class PhraseCatalog
             'Delay' => (string) __('Delay'),
             'Delete step' => (string) __('Delete step'),
             'does not contain' => (string) __('does not contain'),
-            'Done' => (string) __('Done'),
             'Dry-run failed.' => (string) __('Dry-run failed.'),
             'Dry-run preview' => (string) __('Dry-run preview'),
             'Duration' => (string) __('Duration'),

@@ -21,8 +21,10 @@ import {
   type Overlay,
 } from '../overlay';
 import { t } from '../i18n';
+import { initMeta } from '../workflowMeta';
 import { Outline } from './Outline';
 import { Editor } from './Editor';
+import { WorkflowSettings } from './WorkflowSettings';
 
 interface Props {
   config: MountConfig;
@@ -232,6 +234,18 @@ function Viewer({ config }: Props): JSX.Element {
           </span>
         )}
       </div>
+
+      {/* The same settings panel the editor shows, read-only: a viewer-grade
+          admin still needs to see what the workflow is and when it fires. */}
+      {config.workflow !== null && (
+        <WorkflowSettings
+          meta={initMeta(config.workflow)}
+          options={config.workflowOptions}
+          triggers={config.triggers}
+          readOnly
+          onChange={() => undefined}
+        />
+      )}
 
       <div className="wf-canvas__flow">
         <ReactFlow
