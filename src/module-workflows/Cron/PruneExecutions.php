@@ -6,6 +6,7 @@ namespace MageOS\Workflows\Cron;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ResourceConnection;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
+use MageOS\Workflows\Model\Engine\Dispatcher;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -18,6 +19,13 @@ use Psr\Log\LoggerInterface;
  * shorter clock (mageos_workflows/dry_run/retention_days, default 7) — they are
  * previews, not history, and carry entity snapshots that should not linger.
  * Whatever survives that pass is still swept by the general retention below.
+ *
+ * Debounce slots (mageos_workflow_debounce) are swept here too: the
+ * dispatcher's insert IS the debounce check, so every guarded dispatch leaves
+ * a permanent row that nothing else deletes. A slot only guards its own time
+ * bucket (intdiv(now, window)), so anything older than one full window can
+ * never match again — pruned on a generous multiple of the configured window,
+ * never a retention-days clock.
  */
 class PruneExecutions
 {
@@ -30,8 +38,17 @@ class PruneExecutions
     private const EXECUTION_TABLE = 'mageos_workflow_execution';
     private const STEP_TABLE = 'mageos_workflow_execution_step';
     private const BATCH_TABLE = 'mageos_workflow_batch';
+    private const DEBOUNCE_TABLE = 'mageos_workflow_debounce';
 
     private const BATCH_SIZE = 1000;
+
+    /**
+     * Debounce slots expire after one window; keep 2x (floor: one hour) so a
+     * mid-flight window-config change or clock skew never revives a dispatch
+     * the merchant expected debounced.
+     */
+    private const DEBOUNCE_SAFETY_MULTIPLIER = 2;
+    private const DEBOUNCE_MIN_KEEP_SECONDS = 3600;
 
     public function __construct(
         private readonly ResourceConnection $resourceConnection,
@@ -85,6 +102,47 @@ class PruneExecutions
                 $cutoff
             ));
         }
+
+        $debounceDeleted = $this->pruneDebounceSlots();
+        if ($debounceDeleted > 0) {
+            $this->logger->info(sprintf(
+                'Workflow retention pruning removed %d expired debounce slots',
+                $debounceDeleted
+            ));
+        }
+    }
+
+    /**
+     * Batch-delete debounce slots too old to ever match a current time bucket
+     * again (bucket = intdiv(now, window), so one window is the true horizon).
+     */
+    private function pruneDebounceSlots(): int
+    {
+        $window = (int) $this->scopeConfig->getValue(Dispatcher::CONFIG_DEBOUNCE_WINDOW);
+        if ($window <= 0) {
+            $window = Dispatcher::DEFAULT_DEBOUNCE_WINDOW;
+        }
+        $keepSeconds = max($window * self::DEBOUNCE_SAFETY_MULTIPLIER, self::DEBOUNCE_MIN_KEEP_SECONDS);
+        $cutoff = gmdate('Y-m-d H:i:s', time() - $keepSeconds);
+
+        $connection = $this->resourceConnection->getConnection();
+        $debounceTable = $this->resourceConnection->getTableName(self::DEBOUNCE_TABLE);
+
+        $totalDeleted = 0;
+        do {
+            $debounceIds = array_map('intval', $connection->fetchCol(
+                $connection->select()
+                    ->from($debounceTable, ['debounce_id'])
+                    ->where('created_at < ?', $cutoff)
+                    ->limit(self::BATCH_SIZE)
+            ));
+            if ($debounceIds === []) {
+                break;
+            }
+            $totalDeleted += $connection->delete($debounceTable, ['debounce_id IN (?)' => $debounceIds]);
+        } while (count($debounceIds) === self::BATCH_SIZE);
+
+        return $totalDeleted;
     }
 
     /**

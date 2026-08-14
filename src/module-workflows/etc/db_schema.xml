@@ -149,6 +149,18 @@
         <index referenceId="MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID" indexType="btree">
             <column name="origin_uuid"/>
         </index>
+        <!-- Retention pruning (Cron/PruneExecutions) needs BOTH of these: the
+             general pass filters on completed_at alone, and MariaDB cannot use
+             the composite below without its leading column, while the dry-run
+             pass filters on (mode, completed_at). Without them each nightly
+             batch is a full-table scan over mediumtext-carrying rows. -->
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_COMPLETED_AT" indexType="btree">
+            <column name="completed_at"/>
+        </index>
+        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_MODE_COMPLETED_AT" indexType="btree">
+            <column name="mode"/>
+            <column name="completed_at"/>
+        </index>
     </table>
 
     <table name="mageos_workflow_execution_step" resource="default" engine="innodb"
@@ -203,6 +215,10 @@
         <constraint xsi:type="foreign" referenceId="MAGEOS_WF_DEBOUNCE_WORKFLOW_ID"
                     table="mageos_workflow_debounce" column="workflow_id"
                     referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
+        <!-- Cron/PruneExecutions sweeps expired slots by created_at nightly -->
+        <index referenceId="MAGEOS_WORKFLOW_DEBOUNCE_CREATED_AT" indexType="btree">
+            <column name="created_at"/>
+        </index>
     </table>
 
     <!-- mageos_workflow_stock_flag moved to mage-os/workflows-inventory with the

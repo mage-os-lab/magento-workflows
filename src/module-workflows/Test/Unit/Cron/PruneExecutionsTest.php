@@ -16,6 +16,10 @@ use PHPUnit\Framework\TestCase;
  * ones are retained; rows still in flight (completed_at IS NULL) are never
  * pruned regardless of age; and dry-run audit rows are pruned first on their
  * own, shorter clock (default 7 days vs the general 90).
+ *
+ * Debounce slots ride the same cron: a slot only guards its own time bucket,
+ * so rows older than max(2x window, 1 hour) are swept; fresher rows are kept
+ * (they may still be the active bucket's guard).
  */
 class PruneExecutionsTest extends TestCase
 {
@@ -126,6 +130,44 @@ class PruneExecutionsTest extends TestCase
         $this->assertFalse(isset($this->connection->executions[9]));
     }
 
+    private function seedDebounce(int $id, string $createdAt): void
+    {
+        $this->connection->debounces[$id] = [
+            'debounce_id' => $id,
+            'created_at' => $createdAt,
+        ];
+    }
+
+    private function secondsAgo(int $seconds): string
+    {
+        return gmdate('Y-m-d H:i:s', time() - $seconds);
+    }
+
+    public function testExpiredDebounceSlotsArePrunedAndFreshOnesKept(): void
+    {
+        // Default window 60s -> keep horizon is the one-hour floor.
+        $this->seedDebounce(1, $this->secondsAgo(2 * 3600));
+        $this->seedDebounce(2, $this->secondsAgo(300));
+
+        $this->cron()->execute();
+
+        $this->assertFalse(isset($this->connection->debounces[1]), 'slot past the keep horizon must be swept');
+        $this->assertTrue(isset($this->connection->debounces[2]), 'slot inside the keep horizon must survive');
+    }
+
+    public function testDebounceKeepHorizonScalesWithTheConfiguredWindow(): void
+    {
+        // Window 1 day -> keep horizon 2 days: a day-old slot must survive
+        // (it may still guard the active bucket), a 3-day-old one must not.
+        $this->seedDebounce(3, $this->secondsAgo(86400));
+        $this->seedDebounce(4, $this->secondsAgo(3 * 86400));
+
+        $this->cron(['mageos_workflows/guards/debounce_window_seconds' => 86400])->execute();
+
+        $this->assertTrue(isset($this->connection->debounces[3]));
+        $this->assertFalse(isset($this->connection->debounces[4]));
+    }
+
     public function testFlushedBatchesOlderThanRetentionArePrunedAndOpenOnesKept(): void
     {
         $this->connection->batches[100] = [
@@ -191,12 +233,16 @@ class PruneFakeConnection
     private const EXECUTION_TABLE = 'mageos_workflow_execution';
     private const STEP_TABLE = 'mageos_workflow_execution_step';
     private const BATCH_TABLE = 'mageos_workflow_batch';
+    private const DEBOUNCE_TABLE = 'mageos_workflow_debounce';
 
     /** @var array<int, array<string, mixed>> execution_id => row */
     public array $executions = [];
 
     /** @var array<int, array<string, mixed>> batch_id => row */
     public array $batches = [];
+
+    /** @var array<int, array<string, mixed>> debounce_id => row */
+    public array $debounces = [];
 
     /** @var array<int, int[]> every step-table delete's execution-id list */
     public array $stepDeletes = [];
@@ -214,6 +260,7 @@ class PruneFakeConnection
         $source = match ($select->table) {
             self::EXECUTION_TABLE => array_values($this->executions),
             self::BATCH_TABLE => array_values($this->batches),
+            self::DEBOUNCE_TABLE => array_values($this->debounces),
             default => [],
         };
         $matched = array_values(array_filter(
@@ -253,6 +300,16 @@ class PruneFakeConnection
             foreach ($ids as $id) {
                 if (isset($this->batches[$id])) {
                     unset($this->batches[$id]);
+                    $deleted++;
+                }
+            }
+            return $deleted;
+        }
+        if ((string) $table === self::DEBOUNCE_TABLE) {
+            $deleted = 0;
+            foreach ($ids as $id) {
+                if (isset($this->debounces[$id])) {
+                    unset($this->debounces[$id]);
                     $deleted++;
                 }
             }

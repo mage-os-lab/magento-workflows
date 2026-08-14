@@ -77,7 +77,9 @@
             "MAGEOS_WORKFLOW_EXECUTION_UUID": true,
             "MAGEOS_WORKFLOW_EXECUTION_STATUS_TRIGGERED_AT": true,
             "MAGEOS_WORKFLOW_EXECUTION_WAIT_MATCH": true,
-            "MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID": true
+            "MAGEOS_WORKFLOW_EXECUTION_ORIGIN_UUID": true,
+            "MAGEOS_WORKFLOW_EXECUTION_COMPLETED_AT": true,
+            "MAGEOS_WORKFLOW_EXECUTION_MODE_COMPLETED_AT": true
         },
         "constraint": {
             "PRIMARY": true,
@@ -113,6 +115,9 @@
             "entity_id": true,
             "time_bucket": true,
             "created_at": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_DEBOUNCE_CREATED_AT": true
         },
         "constraint": {
             "PRIMARY": true,

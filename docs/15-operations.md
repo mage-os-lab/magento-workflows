@@ -161,6 +161,13 @@ CASCADE) are pruned by the same `mageos_workflows_prune_executions` cron on the 
 `mageos_workflows/retention/days` clock. Open/flushing batches are never pruned — they are
 still accumulating or mid-flush.
 
+**Debounce slots** (`mageos_workflow_debounce`) are swept by the same cron. The
+dispatcher's atomic debounce works by *inserting* a slot row per guarded dispatch — the
+insert is the check — so the table would otherwise grow forever. A slot only guards its
+own time bucket, so the cron deletes rows older than twice the configured
+`mageos_workflows/guards/debounce_window_seconds` (minimum keep: one hour). No PII is
+involved (workflow id, entity id, bucket number only) and there is no separate setting.
+
 **Approval task rows** (`mageos_workflow_approval`, from the optional
 `mage-os/workflows-approvals` addon — [Approval Gate discovery §3](discovery/approval-gate.md#3-data-model))
 carry `title`/`instructions` interpolated **at park time**, plus any decision `note`/`payload` —
