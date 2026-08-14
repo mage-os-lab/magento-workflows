@@ -7,6 +7,7 @@ use Magento\Framework\Api\FilterBuilder;
 use Magento\Framework\Api\Search\FilterGroupBuilder;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SearchCriteriaInterface;
+use MageOS\Workflows\Model\Rule\Condition\AbstractWorkflowCondition;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -132,6 +133,15 @@ class ConditionToSearchCriteria
 
             $conditionType = self::OPERATOR_MAP[$operator];
             $value = $condition['value'] ?? null;
+            if (is_string($value) && preg_match(AbstractWorkflowCondition::RELATIVE_DATE_PATTERN, trim($value)) === 1) {
+                $value = $this->resolveRelativeDateBoundary(trim($value), $operator);
+                if ($value === null) {
+                    // ==/!=/()/!() against a relative date has day-granular
+                    // "same day" semantics SQL can't express on a DATETIME
+                    // column - fall back to in-process evaluation.
+                    return null;
+                }
+            }
             if (in_array($conditionType, ['in', 'nin'], true)) {
                 $value = is_array($value)
                     ? array_values($value)
@@ -146,5 +156,36 @@ class ConditionToSearchCriteria
         }
 
         return $filters;
+    }
+
+    /**
+     * Resolves a relative-date value ('-72 hours', '+2 weeks') to a concrete
+     * UTC day boundary, mirroring AbstractWorkflowCondition's evaluation-time
+     * semantics: both sides there are normalized to Y-m-d, so a comparison is
+     * day-granular and INCLUSIVE of the resolved day for <= and exclusive of
+     * it for >. Against a full DATETIME column that means:
+     *
+     *   <=  day D  =>  field <= 'D 23:59:59'   (all of day D matches)
+     *   >   day D  =>  field >  'D 23:59:59'   (day D itself never matches)
+     *   >=  day D  =>  field >= 'D 00:00:00'
+     *   <   day D  =>  field <  'D 00:00:00'
+     *
+     * Returns null for operators whose day-equality semantics SQL can't
+     * mirror (callers fall back to in-process evaluation).
+     */
+    private function resolveRelativeDateBoundary(string $expression, string $operator): ?string
+    {
+        $normalized = preg_replace('/^([+-])\s+/', '$1', $expression) ?? $expression;
+        try {
+            $day = (new \DateTime($normalized, new \DateTimeZone('UTC')))->format('Y-m-d');
+        } catch (\Exception) {
+            return null;
+        }
+
+        return match ($operator) {
+            '<=', '>' => $day . ' 23:59:59',
+            '>=', '<' => $day . ' 00:00:00',
+            default => null,
+        };
     }
 }

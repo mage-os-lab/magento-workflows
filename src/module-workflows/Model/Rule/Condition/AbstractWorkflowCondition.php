@@ -45,9 +45,11 @@ abstract class AbstractWorkflowCondition extends AbstractCondition
     private const KEY_HYDRATED = '__hydrated_entity';
 
     /**
-     * Relative date VALUE expressions resolved at evaluation time
+     * Relative date VALUE expressions resolved at evaluation time. Public so
+     * the scheduler's SQL-mapping path (ConditionToSearchCriteria) recognizes
+     * the exact same value shapes this evaluator does — the two must not drift.
      */
-    private const RELATIVE_DATE_PATTERN = '/^[+-]\s*\d+\s+(minute|hour|day|week|month|year)s?$/i';
+    public const RELATIVE_DATE_PATTERN = '/^[+-]\s*\d+\s+(minute|hour|day|week|month|year)s?$/i';
 
     /**
      * Two-phase validation: snapshot first, hydrate on miss.
