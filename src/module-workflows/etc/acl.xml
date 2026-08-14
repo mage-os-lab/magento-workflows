@@ -66,6 +66,7 @@
                     <resource id="MageOS_Workflows::action_marketing" title="Author Marketing Actions" sortOrder="90"/>
                     <resource id="MageOS_Workflows::action_notify" title="Author Notify Actions" sortOrder="100"/>
                     <resource id="MageOS_Workflows::action_flow" title="Author Flow Actions" sortOrder="110"/>
+                    <resource id="MageOS_Workflows::action_review" title="Author Review Actions" sortOrder="120"/>
                 </resource>
             </resource>
         </resources>

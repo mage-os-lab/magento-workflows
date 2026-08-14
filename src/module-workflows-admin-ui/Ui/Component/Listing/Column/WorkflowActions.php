@@ -52,6 +52,12 @@ class WorkflowActions extends Column
                         'title' => __('Delete "%1"', $item['name'] ?? ''),
                         'message' => __('Are you sure you want to delete this workflow?'),
                     ],
+                    // REQUIRED. The Delete controller is POST-only; without this flag
+                    // the actions column navigates (GET) and the front controller
+                    // rejects the request with a 404. `post` makes actions.js submit
+                    // a real form_key-bearing POST (utils.submit), same as core's
+                    // customer-group and CMS grids.
+                    'post' => true,
                     '__disableTmpl' => true,
                 ],
             ];

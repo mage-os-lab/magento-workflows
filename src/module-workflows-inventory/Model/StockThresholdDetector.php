@@ -276,6 +276,11 @@ class StockThresholdDetector
 
         if ($publisher !== null && method_exists($publisher, 'publish')) {
             $publisher->publish($eventName, [
+                // 'productId' hydrates via ProductRepositoryInterface::getById($productId)
+                // — async-events binds service arguments by parameter name (see
+                // etc/async_events.xml); 'entity_id'/'product_id' ride along for
+                // the fan-out/aggregation layer and template variables.
+                'productId' => $productId,
                 'entity_id' => $productId,
                 'product_id' => $productId,
                 'sku' => $product['sku'] ?? null,

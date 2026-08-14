@@ -134,6 +134,13 @@ class AbandonedCartDetector
 
         if ($publisher !== null && method_exists($publisher, 'publish')) {
             $payload = [
+                // 'cartId' hydrates via CartRepositoryInterface::get($cartId) —
+                // async-events binds service arguments by parameter name, so the
+                // key MUST match the declared method's parameter (see
+                // etc/async_events.xml). 'entity_id' rides along for the
+                // fan-out/aggregation layer, same shape as every other publisher.
+                'cartId' => $quoteId,
+                'entity_id' => $quoteId,
                 'quote_id' => $quoteId,
                 'customer_email' => $quote['customer_email'] ?? null,
                 'store_id' => (int) ($quote['store_id'] ?? 0),

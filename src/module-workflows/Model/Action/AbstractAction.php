@@ -47,6 +47,7 @@ abstract class AbstractAction implements ActionInterface, ActionMetadataInterfac
         'marketing' => 'marketing',
         'notify' => 'notify',
         'flow' => 'flow',
+        'review' => 'review',
     ];
 
     /**

@@ -11,6 +11,7 @@ use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Delete;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\DryRun;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Edit;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Index;
+use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\MassDelete;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\MassDisable;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\MassEnable;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\NewAction;
@@ -56,6 +57,7 @@ class WorkflowActionMethodContractTest extends TestCase
             Delete::class => 'deletes a workflow',
             MassEnable::class => 'enables workflows in bulk',
             MassDisable::class => 'disables workflows in bulk',
+            MassDelete::class => 'deletes workflows in bulk',
         ];
     }
 

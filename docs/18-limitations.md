@@ -39,12 +39,14 @@ first; the per-flow "why" clauses reference them.
    the executor, but the executor itself still never loops, forks and joins, or invokes
    another workflow. → still kills in-graph per-item iteration, parallel/join, and
    reusable sub-routines.
-3. **Four condition roots + `async_events.xml` event coverage.** Roots are
-   `sales_order`, `customer`, `quote`, `catalog_product`; triggerable events equal what
-   is declared in async-events XML. The July 2026 relation registry lets a condition
-   cross-reference a *registered* related entity (e.g. a guest order → the customer account
-   matching its email), but the trigger and root set is unchanged. → anything outside those
-   roots (wishlist, RMA, reward points, CMS, subscriptions) is still invisible.
+3. **Five condition roots + `async_events.xml` event coverage.** Roots are
+   `sales_order`, `customer`, `quote`, `catalog_product`, `newsletter_subscriber`; triggerable
+   events equal what is declared in async-events XML. The July 2026 relation registry lets a
+   condition cross-reference a *registered* related entity (e.g. a guest order → the customer
+   account matching its email), but the trigger and root set is otherwise unchanged. → anything
+   outside those roots and their registered triggers/relations (RMA, reward points, CMS,
+   subscriptions) is still invisible. Wishlist ships a narrower, non-root carve-out — see
+   [Entity & domain coverage](#entity--domain-coverage) below.
 4. **Restricted variable resolver.** Dot-path access plus a fixed formatter whitelist
    (`upper/lower/trim/number/date/default`, plus `count/pluck/join/table/json` for
    collections in batch digests), no expressions ([07 — Actions §Variable
@@ -136,9 +138,9 @@ What remains genuinely unsupported is below.
 
 ## Entity & domain coverage
 
-*Root cause: through-line 3 (four roots + async-events coverage).*
+*Root cause: through-line 3 (five roots + async-events coverage).*
 
-- **Wishlist automations** (added, price-dropped, wishlist back-in-stock) — wishlist is neither a root nor a covered trigger.
+- **Wishlist automations, partial** — `workflows-wishlist` ships a `wishlist.item_added` trigger (entity `catalog_product`), a `product.wishlisted_customers` fan-out relation, and a `wishlist_items_count` aggregate on the customer root, so "notify when a product is wishlisted" and "customer has N+ wishlisted items" both work today. Still missing: price-drop-on-wishlisted-item and wishlist-item-back-in-stock — there is no trigger that joins a stock/price change to the set of customers who wishlisted that product (the relation runs the other direction, product → customers, not price-change-event → wishlisting customers as a dispatch source).
 - **Condition on reviews as data** ("customers with 3+ reviews") — review is a trigger only, not a queryable root.
 - **Drive flows from CMS/content changes** — no CMS entity coverage.
 - **React to category membership changes** — category isn't a trigger entity (only an action target).

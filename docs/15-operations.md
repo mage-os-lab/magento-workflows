@@ -32,14 +32,22 @@ running for an execution to progress end to end (see
      instead of hiding in `running` forever.
    - `mageos_workflows_prune_executions` — daily at 02:00. Retention/PII pruning (below).
 
-   The scheduler module (`workflows-scheduler`) registers three more jobs in the same
+   The scheduler module (`workflows-scheduler`) registers one more job in the same
    group: `mageos_workflows_scheduler` (every minute; evaluates schedule-type
-   workflows), `mageos_workflows_abandoned_carts` (every 10 minutes), and
-   `mageos_workflows_stock_threshold` (every 10 minutes) — the publisher for the
-   `inventory.stock_threshold_crossed` trigger. The stock detector fires when a managed
-   product's qty drops to or below `mageos_workflows/scheduler/stock_threshold`
-   (default 5; `0` disables it), with hysteresis via the `mageos_workflow_stock_flag`
-   table so a product hovering at the boundary fires once, not every 10 minutes.
+   workflows). Two more cron jobs exist but ship with their *domain packs*, not the
+   scheduler, post-domain-pack-split — a merchant needs the matching pack installed
+   for the job to run at all:
+   - `mageos_workflows_abandoned_carts` (every 10 minutes) — registered by
+     `mage-os/workflows-sales` (`etc/crontab.xml`, `AbandonedCartDetector`). Without
+     `workflows-sales` installed, `quote.abandoned` never fires.
+   - `mageos_workflows_stock_threshold` (every 10 minutes) — registered by
+     `mage-os/workflows-inventory` (`etc/crontab.xml`, `StockThresholdDetector`), the
+     publisher for the `inventory.stock_threshold_crossed` trigger. Without
+     `workflows-inventory` installed, that trigger never fires. The detector fires
+     when a managed product's qty drops to or below
+     `mageos_workflows/scheduler/stock_threshold` (default 5; `0` disables it), with
+     hysteresis via the `mageos_workflow_stock_flag` table so a product hovering at
+     the boundary fires once, not every 10 minutes.
 
    If Magento cron is not scheduled at all (no crontab entry, or `cron:run` never
    invoked), none of these jobs ever execute, independent of queue backend.
@@ -415,25 +423,43 @@ To recover:
 
 ## First 10 minutes after install
 
-1. `bin/magento setup:upgrade` — creates the module's tables and registers its cron jobs
+1. Install the packages. The batteries-included path is the metapackage:
+   `composer require mage-os/workflows-suite`. It is **not yet on Packagist** — until it
+   is, point Composer at a path or VCS repo instead (see the [README's Install
+   section](../README.md#install) for the `repositories` block), then
+   `composer require mage-os/workflows-suite:@dev`.
+2. **Enable the modules.** `magento2-module`-type Composer packages are installed but not
+   auto-enabled — skipping this step is the single most common reason `setup:upgrade`
+   "succeeds" but nothing shows up in the admin menu. Either name them explicitly:
+
+   ```
+   bin/magento module:enable MageOS_Workflows MageOS_WorkflowsAdminUi MageOS_WorkflowsActionsCore \
+       MageOS_WorkflowsTriggersCore MageOS_WorkflowsScheduler MageOS_WorkflowsSales \
+       MageOS_WorkflowsCustomer MageOS_WorkflowsCatalog MageOS_WorkflowsInventory \
+       MageOS_WorkflowsReview MageOS_WorkflowsNewsletter MageOS_WorkflowsWishlist
+   ```
+
+   or, if enabling everything Composer just installed is acceptable on this store,
+   `bin/magento module:enable --all`.
+3. `bin/magento setup:upgrade` — creates the modules' tables and registers their cron jobs
    with Magento's schedule generator. `bin/magento setup:db:status` should report the
    schema as up to date immediately afterwards; if it reports pending `modify_column`
    changes on any of the suite's tables, see "Declarative schema and JSON columns" below.
-2. Confirm Magento cron is actually scheduled at the OS level (not just that
+4. Confirm Magento cron is actually scheduled at the OS level (not just that
    `crontab.xml` exists) — `crontab -l` for the web user should show the Magento-managed
    entry.
-3. Decide RabbitMQ vs. db-queue (see "Required infrastructure" above) and start
+5. Decide RabbitMQ vs. db-queue (see "Required infrastructure" above) and start
    consumers accordingly — either long-running consumer processes, or
    `cron_consumers_runner` entries in `env.php` for `mageos.workflow.execute` and
    `mageos.workflow.resume` (plus your async-events consumer(s)).
-4. Wait a couple of minutes for at least one cron cycle, then run
+6. Wait a couple of minutes for at least one cron cycle, then run
    `bin/magento workflow:health`. Everything should read OK except possibly
    `queue_backend` (WARN is expected and fine on a deliberate db-queue install).
-5. Create or import one workflow, trigger it (e.g. `bin/magento workflow:run
+7. Create or import one workflow, trigger it (e.g. `bin/magento workflow:run
    <workflow_id> --entity-id=<id>` for a manual smoke test), and confirm with
    `bin/magento workflow:stats --workflow-id=<id>` that the execution reaches
    `complete` rather than sitting in `pending`.
-6. Open the workflow grid in the admin UI — if anything above was missed, the health
+8. Open the workflow grid in the admin UI — if anything above was missed, the health
    notice block will say so directly on that page from now on; on a fully healthy
    install it renders nothing.
 

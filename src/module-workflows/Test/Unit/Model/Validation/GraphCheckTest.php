@@ -149,6 +149,49 @@ class GraphCheckTest extends TestCase
         $this->assertSame([], $messages);
     }
 
+    public function testPostWaitBranchWithoutRevalidationIsWarning(): void
+    {
+        // A wait step parks until its event or timeout, exactly like a delay
+        // or an approval gate — the frozen trigger snapshot is just as stale.
+        $messages = $this->check([
+            'schema' => 2,
+            'entry' => 'w1',
+            'steps' => [
+                'w1' => [
+                    'type' => 'wait',
+                    'config' => ['event' => 'sales.order.paid', 'timeout' => 'P3D'],
+                    'on_event' => 'b1',
+                    'on_timeout' => null,
+                ],
+                'b1' => ['type' => 'branch', 'revalidate_entity' => false, 'on_true' => 's1', 'on_false' => null],
+                's1' => ['type' => 'stop'],
+            ],
+        ]);
+
+        $this->assertSame([GraphCheck::CODE_POST_DELAY_STALE], $this->codes($messages));
+        $this->assertSame('b1', $messages[0]->getStepKey());
+    }
+
+    public function testPostWaitBranchWithRevalidationIsClean(): void
+    {
+        $messages = $this->check([
+            'schema' => 2,
+            'entry' => 'w1',
+            'steps' => [
+                'w1' => [
+                    'type' => 'wait',
+                    'config' => ['event' => 'sales.order.paid', 'timeout' => 'P3D'],
+                    'on_event' => 'b1',
+                    'on_timeout' => null,
+                ],
+                'b1' => ['type' => 'branch', 'revalidate_entity' => true, 'on_true' => 's1', 'on_false' => null],
+                's1' => ['type' => 'stop'],
+            ],
+        ]);
+
+        $this->assertSame([], $messages);
+    }
+
     public function testPostApprovalBranchWithoutRevalidationIsWarning(): void
     {
         // A gate can park for days; a branch after it evaluating the frozen

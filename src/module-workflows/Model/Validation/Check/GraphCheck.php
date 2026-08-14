@@ -36,10 +36,15 @@ class GraphCheck implements CheckInterface
 
     /**
      * Steps that park for an unbounded stretch, after which the frozen trigger
-     * snapshot is stale: a plain delay, and an approval gate that can sleep to
-     * its timeout (docs/discovery/approval-gate.md §4).
+     * snapshot is stale: a plain delay, a wait step that can sleep to its
+     * timeout, and an approval gate that can do the same
+     * (docs/discovery/approval-gate.md §4, docs/08-execution-model.md).
      */
-    private const POST_PARK_STALE_SOURCES = [Definition::STEP_DELAY, Definition::STEP_APPROVAL];
+    private const POST_PARK_STALE_SOURCES = [
+        Definition::STEP_DELAY,
+        Definition::STEP_WAIT,
+        Definition::STEP_APPROVAL,
+    ];
 
     /**
      * @inheritDoc

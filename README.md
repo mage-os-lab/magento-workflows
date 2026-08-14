@@ -67,8 +67,9 @@ src/module-workflows-catalog/         mage-os/workflows-catalog      MageOS_Work
 src/module-workflows-inventory/       mage-os/workflows-inventory    MageOS_WorkflowsInventory
 src/module-workflows-review/          mage-os/workflows-review       MageOS_WorkflowsReview
 src/module-workflows-newsletter/      mage-os/workflows-newsletter   MageOS_WorkflowsNewsletter
+src/module-workflows-wishlist/        mage-os/workflows-wishlist     MageOS_WorkflowsWishlist
 # Metapackage
-src/metapackage-workflows-suite/      mage-os/workflows-suite        (engine + infra + all six domain packs)
+src/metapackage-workflows-suite/      mage-os/workflows-suite        (engine + infra + all seven domain packs)
 # Optional extras (opt-in, not in the suite)
 src/module-workflows-canvas/          mage-os/workflows-canvas       MageOS_WorkflowsCanvas (optional React Flow viewer + editor)
 src/module-workflows-templates/       mage-os/workflows-templates    MageOS_WorkflowsTemplates (bundled gallery content pack)
@@ -85,6 +86,43 @@ The core module ships the domain model (`etc/db_schema.xml`), two-phase conditio
 
 ## Status
 
-**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 22 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. The follow-on discovery-track build ([docs/discovery/](docs/discovery/README.md)) added, behind default-off flags and optional modules: multi-way `switch` branching with save-time graph validation (definition schema 3), entity cross-referencing (relation registry), a side-effect-free dry-run (CLI/REST/admin trace panel), trigger-level fan-out, batch aggregation, the template gallery (14 bundled recipes), the optional React Flow canvas, and the native-grid visibility addon. The bundled entity bindings have since been reorganized into six vertical domain packs (sales, customer, catalog, inventory, review, newsletter) plus a `workflows-suite` metapackage, leaving the engine and the shared trigger/action/scheduler packs entity-agnostic ([domain-pack split](docs/discovery/implementation/08-domain-packs.md)). A standalone test runner exercises `Test/Unit` across the module suite (via a Magento shim layer, `dev/tests/shims/`), plus the canvas's TypeScript tests, with CI lint + units on PHP 8.1–8.4.
+**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 27 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. The follow-on discovery-track build ([docs/discovery/](docs/discovery/README.md)) added, behind default-off flags and optional modules: multi-way `switch` branching with save-time graph validation (definition schema 3), entity cross-referencing (relation registry), a side-effect-free dry-run (CLI/REST/admin trace panel), trigger-level fan-out, batch aggregation, the template gallery (14 bundled recipes), the optional React Flow canvas, and the native-grid visibility addon. The bundled entity bindings have since been reorganized into seven vertical domain packs (sales, customer, catalog, inventory, review, newsletter, wishlist) plus a `workflows-suite` metapackage, leaving the engine and the shared trigger/action/scheduler packs entity-agnostic ([domain-pack split](docs/discovery/implementation/08-domain-packs.md)). A standalone test runner exercises `Test/Unit` across the module suite (via a Magento shim layer, `dev/tests/shims/`), plus the canvas's TypeScript tests, with CI lint + units on PHP 8.1–8.4.
 
 Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end — this remains the gate before any GA claim), full unit/integration coverage (the runner exists; suites are still growing), the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and a signed remote template feed. Class-name fidelity against `mageos-async-events` internals has now been audited against the real package source (`mage-os/mageos-async-events` @ `b249976`) and holds: the `NotifierFactory` `notifierClasses` object-pool keyed by subscription `metadata`, the `NotifierInterface::notify(AsyncEventInterface, CloudEventImmutable): ResultInterface` contract (we narrow the return to `NotifierResult`), the `async_events.xsd` node shape, and the `AsyncEventRepositoryInterface::save(AsyncEventInterface, bool $checkResources)` signature plus the `AsyncEventInterface` accessors the subscription lifecycle drives are all confirmed (citations in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks; asserted at runtime by `AsyncEventsFidelityTest`). Two items are flagged rather than confirmed: `EventPublisher` publishes through the async-events *delivery* dispatcher (`EventDispatcher::dispatch`) instead of the queue publisher (`AsyncEventPublisherInterface::publish`) — a synchronous-vs-async / payload-fidelity trade-off; and upstream `AsyncEventRepository::save()` ignores `event_name` changes on an existing subscription, so re-pointing a bound workflow's trigger needs a subscription recreate. Both are documented in `docs/14-risks.md`. End-to-end execution against a live Magento install (compiled by `setup:di:compile`) remains the outstanding gate before any GA claim.
+
+## Install
+
+The batteries-included path is the `mage-os/workflows-suite` metapackage (engine + admin UI + the three infrastructure packs + all seven domain packs):
+
+```
+composer require mage-os/workflows-suite
+```
+
+**Not yet on Packagist.** Until it's published, point Composer at the source directly — either a path repo (working from a checkout of this monorepo) or a VCS repo (pointing at each package's own git remote, once split out):
+
+```json
+{
+    "repositories": [
+        { "type": "path", "url": "../magento-workflows/src/*", "options": { "symlink": false } }
+    ]
+}
+```
+
+then `composer require mage-os/workflows-suite:@dev`.
+
+Composer alone does not enable the modules — `magento2-module`-type packages are installed but not auto-enabled. Enable them before `setup:upgrade`, either individually:
+
+```
+bin/magento module:enable MageOS_Workflows MageOS_WorkflowsAdminUi MageOS_WorkflowsActionsCore \
+    MageOS_WorkflowsTriggersCore MageOS_WorkflowsScheduler MageOS_WorkflowsSales \
+    MageOS_WorkflowsCustomer MageOS_WorkflowsCatalog MageOS_WorkflowsInventory \
+    MageOS_WorkflowsReview MageOS_WorkflowsNewsletter MageOS_WorkflowsWishlist
+```
+
+or, on a store where enabling everything Composer just installed is acceptable:
+
+```
+bin/magento module:enable --all
+```
+
+Then run `bin/magento setup:upgrade` as usual. See [Operations §First 10 minutes after install](docs/15-operations.md#first-10-minutes-after-install) for what to check once the modules are enabled and schema is up to date.

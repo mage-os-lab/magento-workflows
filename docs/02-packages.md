@@ -23,10 +23,10 @@ entity-agnostic *in fact*. Every package's composer metadata is CI-enforced hone
 |---|---|
 | `mage-os/workflows-sales` | Order + quote condition roots, order/quote hydrators, `order.*`/`quote.*` relations, order-history aggregates on the customer root, the order-status + abandoned-cart triggers and `AbandonedCartDetector`, order + coupon actions, order-status/cart-price-rule option sources (+ their `entity:order_status` and `entity:salesrule` aliases), `sales_order`/`quote` `QueryRunner` maps, the cart-abandonment threshold config field |
 | `mage-os/workflows-customer` | Customer condition root, customer hydrator, `customer.open_orders` relation, the customer-group-changed trigger, `customer.assign_group`/`set_attribute`/`anonymize` actions, customer-group option source (+ its `entity:customer_group` alias), `customer` `QueryRunner` map |
-| `mage-os/workflows-catalog` | Product condition root, product hydrator, `product.set_attribute`/`set_status`/`set_categories`/`set_special_price` actions, the `websites` option source (+ its `entity:website` alias), `catalog_product` `QueryRunner` map |
+| `mage-os/workflows-catalog` | Product condition root, product hydrator, `product.set_attribute`/`set_status`/`set_categories`/`set_special_price`/`assign_websites`/`set_product_links` actions, the `websites` option source (+ its `entity:website` alias), `catalog_product` `QueryRunner` map |
 | `mage-os/workflows-inventory` | `StockThresholdDetector`, the stock-threshold-crossed trigger, the stock-flag hysteresis table, `product.set_stock`, the stock-threshold config field; *suggests* MSI (runtime-guarded) |
-| `mage-os/workflows-review` | `ReviewSubmittedObserver` + the `catalog.product.review_submitted` trigger |
-| `mage-os/workflows-newsletter` | `customer.newsletter` action + the anonymize-unsubscribe plugin on `workflows-customer`'s Anonymize |
+| `mage-os/workflows-review` | `ReviewSubmittedObserver` + the `catalog.product.review_submitted` trigger, `ReviewStatusChangedObserver` + the `review.status_changed` trigger, and the `review.set_status` action |
+| `mage-os/workflows-newsletter` | `customer.newsletter` action, the anonymize-unsubscribe plugin on `workflows-customer`'s Anonymize, the `newsletter_subscriber` condition root, and the `newsletter.subscription_changed` trigger |
 | `mage-os/workflows-wishlist` | `WishlistItemAddedObserver` + the `wishlist.item_added` trigger, the `product.wishlisted_customers` fan-out relation, and the `wishlist_items_count` aggregate on the customer root |
 
 **Metapackage:**

@@ -29,7 +29,7 @@ Enabling a workflow programmatically creates a hidden async-event subscription (
 
 - The engine inherits async-events' **queue transport, quadratic backoff retry, dead-lettering, UUID tracing, replay, and ES-indexed searchability** with zero code. A failed workflow dispatch is just a failed delivery — replayable from the existing admin grid.
 - The **payload arrives pre-hydrated** by the event's declared service class (`OrderRepositoryInterface::get` etc.) — the same snapshot an HTTP subscriber would get. This becomes the trigger snapshot placed into execution `context.trigger`.
-- **Trigger coverage = `async_events.xml` definitions.** `mageos-common-async-events` covers customer/order/invoice/shipment basics; `workflows-triggers-core` fills gaps: order status change (with from→to in payload), stock threshold crossed², review submitted, cart abandoned¹, customer group changed, credit memo, RMA if present.
+- **Trigger coverage = `async_events.xml` definitions.** `mageos-common-async-events` covers customer/order/invoice/shipment basics; the domain packs fill gaps, each declaring its own `workflow_triggers.xml`: `workflows-sales` (order status change with from→to in payload, cart abandoned¹, credit memo), `workflows-customer` (customer group changed), `workflows-inventory` (stock threshold crossed²), `workflows-review` (review submitted, review status changed), RMA if present. `workflows-triggers-core` itself declares no trigger metadata post-domain-pack-split — it owns only the async-events notifier binding and the `EventPublisher` the domain packs publish gap-fill events through; its `workflow_triggers.xml` is an intentionally empty stub.
 
 ¹ Cart abandonment isn't an event — it's a query ("quote updated > N hours ago, no order"). It lives in the scheduler (below), which then *publishes* a `quote.abandoned` async event, keeping one dispatch path.
 
@@ -97,9 +97,9 @@ The inverse of fan-out: an aggregation clause (`aggregation` = `{mode, …}`) co
 
 ## Manual triggers
 
-- Admin mass-action on order/customer/product grids ("Run workflow…")
+- The workflow edit page's **Run Now** button (single entity ID, plus a recent-entity picker where one exists)
 - `bin/magento workflow:run <id> --entity-id=…`
 
 Spawns a standard execution with `trigger_type=manual` recorded. This doubles as the developer test harness during development and the merchant's test harness after.
 
-Manual mass-run is guarded: confirmation modal with matched-count preview, per-run cap (default 1k, configurable), a dedicated ACL resource, and a full audit log entry ([Security §Manual mass-run](10-security.md#manual-mass-run)).
+**Current scope is single-entity only.** There is no grid mass-action, no REST run route, and no other multi-entity manual dispatch path today — the dedicated `MageOS_Workflows::manual_run` ACL resource gates both surfaces above, and a `manual_run_cap` config value already exists, but it has no consumer yet because there is no mass surface to cap. A mass-run surface (confirmation modal with matched-count preview, the cap enforced, a full audit log entry) is tracked as future work, not shipped ([Security §Manual mass-run](10-security.md#manual-mass-run), [#17](https://github.com/rhoerr/magento-workflows/issues/17)).

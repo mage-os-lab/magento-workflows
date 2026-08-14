@@ -8,7 +8,7 @@ Grid + tabbed form:
 |---|---|
 | General | Name, status, scope, loop guard |
 | Trigger | Grouped select from trigger metadata; schedule builder for cron type |
-| Conditions | The stock rule widget — ugly, familiar, free |
+| Conditions | The JSON condition editor in a shared slide-out (`conditions-slideout.js`, wired into the classic form's Conditions tab) — the stock rule widget was spiked and deferred with evidence; see [Conditions §Condition editing UI](06-conditions.md#condition-editing-ui) |
 | Actions | `dynamicRows`; each row's fieldset rendered from `getConfigForm()` metadata; delay and stop are just row types. v1 exposes linear + delays + a single optional post-delay branch |
 | Logs | Embedded execution grid |
 
