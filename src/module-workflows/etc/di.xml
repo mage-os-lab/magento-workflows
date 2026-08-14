@@ -28,6 +28,14 @@
     <preference for="MageOS\Workflows\Model\Aggregation\BatchExecutionFactoryInterface"
                 type="MageOS\Workflows\Model\Aggregation\BatchExecutionFactory"/>
 
+    <!-- Durable at-most-once claims for unrecoverable side effects (email).
+         Backed by UNIQUE(claim_key) on mageos_workflow_send_log, NOT a cache
+         entry: see SendClaimStoreInterface for why the cache guard it replaced
+         could not hold. Any action pack that sends something unrecallable
+         should depend on this contract rather than inventing a second guard. -->
+    <preference for="MageOS\Workflows\Model\Idempotency\SendClaimStoreInterface"
+                type="MageOS\Workflows\Model\Idempotency\SendClaimStore"/>
+
     <!-- Template gallery (06): the bundled source ships now; a future signed
          remote source registers as a second implementor behind a config toggle,
          with no gallery/installer changes. Pack modules add their name to
@@ -69,6 +77,13 @@
                 type="MageOS\Workflows\Model\Webapi\OptionSourceProvider"/>
     <preference for="MageOS\Workflows\Api\Data\OptionItemInterface"
                 type="MageOS\Workflows\Model\Webapi\OptionItem"/>
+
+    <!-- Execution READ model for REST (GET /V1/workflow-executions[/:id]). Sits
+         in front of the repository so the context blob can be redacted on the
+         way out WITHOUT masking it for the engine, which loads executions
+         through the same repository and needs them verbatim. -->
+    <preference for="MageOS\Workflows\Api\WorkflowExecutionReaderInterface"
+                type="MageOS\Workflows\Model\Webapi\WorkflowExecutionReader"/>
 
     <!-- Execution step timeline endpoint (07 / canvas execution overlay). -->
     <preference for="MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface"

@@ -11,8 +11,8 @@ entity-agnostic *in fact*. Every package's composer metadata is CI-enforced hone
 
 | Package | Contents |
 |---|---|
-| `mage-os/workflows` | Core engine: domain model, condition evaluation/machinery (rule pools, hydration/relation/leaf/combine pools, aggregate pool), execution, queues, secrets, webapi + CLI, generic leaves, the `email_templates` option source (+ its `entity:email_template` alias), and the `EntityOptionSourceRegistry` the packs register aliases into |
-| `mage-os/workflows-admin-ui` | Grid + form UI, executions log UI, ACL, dry-run recent-entity picker |
+| `mage-os/workflows` | Core engine: domain model, condition evaluation/machinery (rule pools, hydration/relation/leaf/combine pools, aggregate pool), execution, queues, secrets, webapi + CLI, **the ACL resources its own REST routes and validation pipeline enforce** (`::view`/`::manage`/`::dry_run`/`::secrets`/`::action_*` and the tree root — an undeclared resource is denied, so a headless install would otherwise 403), generic leaves, the `email_templates` option source (+ its `entity:email_template` alias), and the `EntityOptionSourceRegistry` the packs register aliases into |
+| `mage-os/workflows-admin-ui` | Grid + form UI, executions log UI, the two admin-only ACL resources (`::enable`, `::manual_run`) grafted onto core's tree, dry-run recent-entity picker |
 | `mage-os/workflows-actions-core` | Entity-agnostic action library: `notify.email`/`notify.webhook`/`notify.admin`, `flow.set_variable`, and the bundled ad-hoc email template |
 | `mage-os/workflows-triggers-core` | Async-events notifier binding, subscription lifecycle/ownership, and the `EventPublisher` the domain packs publish gap-fill events through |
 | `mage-os/workflows-scheduler` | Scheduled-trigger infrastructure: cron entry, entity-agnostic `QueryRunner` + `ConditionToSearchCriteria`, schedule-state table (domain packs contribute their per-entity `QueryRunner` maps) |

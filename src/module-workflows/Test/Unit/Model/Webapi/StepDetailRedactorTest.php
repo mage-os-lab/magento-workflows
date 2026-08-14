@@ -51,6 +51,27 @@ class StepDetailRedactorTest extends TestCase
         $this->assertFalse(str_contains($out, 'SUPERSECRETTOKEN'));
     }
 
+    /**
+     * The fields this filter guards are stored as JSON, where json_encode has
+     * escaped the solidus — so the bytes in the blob are not the bytes of the
+     * plaintext secret. Matching only the plaintext form let webhook URLs (the
+     * single most likely place for a real token) fall through to the weaker
+     * generic layer, which masks them as an anonymous ***.
+     */
+    public function testMasksSecretsInTheirJsonEscapedFormToo(): void
+    {
+        $secret = 'https://hooks.test/services/T00/B11/xoxb-9f8e7d6c';
+        $blob = (string) json_encode(['steps' => ['notify' => ['url' => $secret]]]);
+
+        // Sanity: the stored bytes really are escaped, not the plaintext.
+        $this->assertFalse(str_contains($blob, $secret));
+
+        $out = (string) $this->redactor->redact($blob, ['slack_hook' => $secret]);
+
+        $this->assertStringContainsString('***slack_hook***', $out);
+        $this->assertFalse(str_contains($out, 'xoxb-9f8e7d6c'));
+    }
+
     public function testMasksUrlUserinfo(): void
     {
         $out = (string) $this->redactor->redact('https://user:hunter2@host/path', []);

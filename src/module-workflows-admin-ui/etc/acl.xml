@@ -1,22 +1,36 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * ACL resources OWNED BY THE ADMIN UI PACKAGE.
+ *
+ * The workflows tree root and everything core enforces (::view, ::manage,
+ * ::dry_run, ::secrets, the per-group ::action_* authoring gates) are declared
+ * by mage-os/workflows itself — see src/module-workflows/etc/acl.xml for why:
+ * core's REST routes reference those resources, an unknown resource is denied,
+ * and core does not require this package. Do NOT re-declare them here; a second
+ * declaration with a title makes the merged tree order-dependent.
+ *
+ * What is left is genuinely admin-UI-only — the two resources whose ONLY
+ * enforcement points are controllers in this package:
+ *
+ *   ::enable      Controller/Adminhtml/Workflow/MassEnable + MassDisable.
+ *   ::manual_run  Controller/Adminhtml/Workflow/Run (and the Run Now button /
+ *                 modal that render only when it is granted).
+ *
+ * Both graft onto MageOS_Workflows::workflows by id, with no title and no
+ * sortOrder on the parent — the same merge pattern mage-os/workflows-approvals
+ * uses for its two resources. This module sequences MageOS_Workflows, so the
+ * root is always declared before this file merges onto it.
+ */
+-->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
     <acl>
         <resources>
             <resource id="Magento_Backend::admin">
-                <resource id="MageOS_Workflows::workflows" title="Workflows" sortOrder="65">
-                    <resource id="MageOS_Workflows::view" title="View Workflows &amp; Executions" sortOrder="10"/>
-                    <resource id="MageOS_Workflows::manage" title="Create &amp; Edit Workflows" sortOrder="20"/>
+                <resource id="MageOS_Workflows::workflows">
                     <resource id="MageOS_Workflows::enable" title="Enable / Disable Workflows" sortOrder="30"/>
                     <resource id="MageOS_Workflows::manual_run" title="Manually Run Workflows" sortOrder="40"/>
-                    <resource id="MageOS_Workflows::dry_run" title="Dry-Run Workflows" sortOrder="45"/>
-                    <resource id="MageOS_Workflows::secrets" title="Reference Secrets in Workflow Actions" sortOrder="50"/>
-                    <resource id="MageOS_Workflows::action_sales" title="Author Sales Actions" sortOrder="60"/>
-                    <resource id="MageOS_Workflows::action_customer" title="Author Customer Actions" sortOrder="70"/>
-                    <resource id="MageOS_Workflows::action_catalog" title="Author Catalog Actions" sortOrder="80"/>
-                    <resource id="MageOS_Workflows::action_marketing" title="Author Marketing Actions" sortOrder="90"/>
-                    <resource id="MageOS_Workflows::action_notify" title="Author Notify Actions" sortOrder="100"/>
-                    <resource id="MageOS_Workflows::action_flow" title="Author Flow Actions" sortOrder="110"/>
                 </resource>
             </resource>
         </resources>

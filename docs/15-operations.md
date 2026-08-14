@@ -301,6 +301,24 @@ Workflow CRUD and execution reads are exposed over the standard Magento REST lay
 under `::view`. This is the CI/CD deployment path for workflow definitions when SSH
 (`bin/magento workflow:import`) isn't available.
 
+**The ACL resources these routes reference are declared by the core package itself**
+(`src/module-workflows/etc/acl.xml`), not by the admin UI. Magento denies a resource it
+has never seen declared, so a headless install — `mage-os/workflows` without
+`mage-os/workflows-admin-ui`, which is exactly the CI/CD shape — used to 403 on every
+route. Only `::enable` and `::manual_run`, whose sole enforcement points are admin
+controllers, still ship with the admin UI ([Scope & ACL](09-scope-acl-observability.md#acl)).
+
+**Execution reads are paginated and redacted.** `GET /V1/workflow-executions` applies a
+default page size of **50** when the caller names none and caps an explicit `pageSize` at
+**200** (`WorkflowExecutionRepository::DEFAULT_PAGE_SIZE` / `MAX_PAGE_SIZE`); the rows carry
+two `MEDIUMTEXT` columns on a table sized for millions, so an unbounded list was a
+one-request denial of service. `total_count` still reports the true match count and the
+echoed `search_criteria` reports the page size actually used, so a capped client can see it
+was capped and page for the rest. Both execution read routes bind to
+`WorkflowExecutionReaderInterface`, a read model in front of the repository, which masks
+credentials out of the `context` blob on the way out — the engine keeps loading executions
+through the repository unredacted ([Security §Secrets](10-security.md#secrets)).
+
 **Dry-run** is exposed as `POST /V1/workflows/dry-run` (a posted definition + entity ref
 or a synthetic `triggerPayload` for CI, snapshot-only fidelity) and
 `POST /V1/workflows/:workflowId/dry-run` (saved workflow), both under the dedicated

@@ -11,7 +11,8 @@ use MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\RunNowModal;
  * target entity ID with a recent-entity picker — this button used to ask with a
  * window.prompt. The on_click stays a one-liner that raises one custom event on
  * the modal container; the RequireJS module owns the behaviour, including
- * building the Run URL, so nothing about the dispatch lives in inline script.
+ * POSTing to the Run controller, so nothing about the dispatch lives in inline
+ * script.
  *
  * The visibility gates are the modal's gates too (saved workflow + the dedicated
  * manual-run ACL), so the button never renders without the container it opens.

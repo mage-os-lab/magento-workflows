@@ -51,7 +51,7 @@ Definition schema bumped to **version 2** (`schema: 1|2` accepted; v1 documents 
 ### Wave 5 — Variables, API, platform
 
 - **Variable formatters**: `{{ path|filter }}` / `{{ path|filter:'arg' }}` with a fixed whitelist — `upper`, `lower`, `trim`, `number[:decimals]`, `date[:'format']`, `default:'fallback'`. Still no directive execution, no method calls.
-- **REST API** (`etc/webapi.xml`): workflow CRUD + list, execution list/get, under the existing ACL resources — enables CI/CD deployment of workflows without SSH.
+- **REST API** (`etc/webapi.xml`): workflow CRUD + list, execution list/get, under ACL resources the core package declares itself (so a headless engine-only install actually authorizes, rather than 403-ing on resources only the admin UI shipped) — enables CI/CD deployment of workflows without SSH. Execution reads are page-capped and secret-redacted; see [Operations §REST API](15-operations.md#rest-api).
 - **CI matrix**: unit suite + lint on PHP 8.1 / 8.2 / 8.3 / 8.4.
 
 ### Wave 6 — Test coverage (in progress, continuous through all waves)

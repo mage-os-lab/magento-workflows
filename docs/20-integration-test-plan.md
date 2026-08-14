@@ -451,7 +451,10 @@ quote.
 `AbstractBackendController`) — grid page renders under the real ACL
 resource; Save controller round-trip (form key enforced, definition posted
 as the JSON editor does, success message, row persisted, validation error
-re-renders with message); Run controller: manual run dispatches, and the
+re-renders with message); Run controller: manual run dispatches **on a POST
+carrying the form key**, and a GET to the same route is refused by the
+framework (it declares `HttpPostActionInterface` only — see
+[Security §Manual mass-run](10-security.md#manual-mass-run)), and the
 docs/10 mass-run contract (cap, matched-count preview, audit-log hash) is
 pinned — **expected to fail** per the open finding, `@group
 known-divergence`; mass enable/disable transit the repository (so

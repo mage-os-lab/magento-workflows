@@ -65,9 +65,14 @@ class RunNowModal extends Template
     }
 
     /**
-     * The Run controller URL WITHOUT the entity id: the URL builder appends the
-     * adminhtml secret key, and extra path params after it are still routed, so
-     * the JS appends 'entity_id/<n>/' to this — the same contract the prompt had.
+     * The Run controller URL, WITHOUT the entity id.
+     *
+     * The id is not in the path any more: running a workflow fires real side
+     * effects, so the modal POSTs it in the request body (run-now-modal.js →
+     * mage/utils/misc submit(), which also stamps the form key the admin CSRF
+     * check requires). This URL is only the form action. The URL builder still
+     * appends the adminhtml secret key, which is harmless on a POST — the base
+     * admin action validates the form key instead of the secret key for POSTs.
      */
     public function getRunUrl(): string
     {

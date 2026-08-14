@@ -5,7 +5,13 @@
  * The "Run Now" entity picker, hidden until the toolbar button opens it. Same
  * shape as the dry-run picker: a recent-entity select (only when a provider
  * registered rows for this entity type) that copies into the free numeric input
- * the Run URL is built from.
+ * the module POSTs to the Run controller.
+ *
+ * No <form> element here on purpose: the modal widget relocates this container
+ * in the DOM when it opens, and the edit page already owns a form. The module
+ * builds a detached form at submit time (mage/utils/misc), which is also where
+ * the admin form key comes from — so no CSRF token is rendered into this markup
+ * or into a data-* attribute.
  *
  * Renders nothing on the new-workflow form or without the manual-run ACL — the
  * toolbar button is gated identically, so there is never a button without its

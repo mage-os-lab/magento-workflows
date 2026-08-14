@@ -112,11 +112,14 @@ $execution = $block->getExecution();
                         <td><?= $block->escapeHtml((string) $step->getFinishedAt()) ?></td>
                         <td><?= $block->escapeHtml((string) $step->getResumeAt()) ?></td>
                         <td>
-                            <?php if ($step->getError()): ?>
-                                <div class="message message-error"><?= $block->escapeHtml($step->getError()) ?></div>
+                            <?php /* Redacted in the BLOCK, never here — see Execution\View. */ ?>
+                            <?php $stepError = $block->getStepError($step); ?>
+                            <?php if ($stepError !== ''): ?>
+                                <div class="message message-error"><?= $block->escapeHtml($stepError) ?></div>
                             <?php endif; ?>
-                            <?php if ($step->getResult()): ?>
-                                <pre style="white-space: pre-wrap;"><?= $block->escapeHtml($block->formatJson($step->getResult())) ?></pre>
+                            <?php $stepResult = $block->getStepResult($step); ?>
+                            <?php if ($stepResult !== ''): ?>
+                                <pre style="white-space: pre-wrap;"><?= $block->escapeHtml($stepResult) ?></pre>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -131,7 +134,8 @@ $execution = $block->getExecution();
             <span class="title"><?= $block->escapeHtml(__('Context (technical details)')) ?></span>
         </div>
         <div class="admin__page-section-content">
-            <pre style="white-space: pre-wrap;"><?= $block->escapeHtml($block->formatJson($execution->getContext())) ?></pre>
+            <?php /* Redacted in the BLOCK, never here — see Execution\View. */ ?>
+            <pre style="white-space: pre-wrap;"><?= $block->escapeHtml($block->getContextJson()) ?></pre>
         </div>
     </div>
 <?php endif; ?>

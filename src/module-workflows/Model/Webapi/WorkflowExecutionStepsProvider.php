@@ -6,7 +6,6 @@ namespace MageOS\Workflows\Model\Webapi;
 use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface;
 use MageOS\Workflows\Model\ResourceModel\WorkflowExecutionStep\CollectionFactory;
-use MageOS\Workflows\Model\Variable\SecretsProviderInterface;
 
 /**
  * GET /V1/workflow-executions/:executionId/steps (07): reads the step-execution
@@ -24,8 +23,7 @@ class WorkflowExecutionStepsProvider implements WorkflowExecutionStepsProviderIn
     public function __construct(
         private readonly WorkflowExecutionRepositoryInterface $executionRepository,
         private readonly CollectionFactory $stepCollectionFactory,
-        private readonly SecretsProviderInterface $secretsProvider,
-        private readonly StepDetailRedactor $redactor
+        private readonly ExecutionDetailRedactor $detailRedactor
     ) {
     }
 
@@ -118,25 +116,24 @@ class WorkflowExecutionStepsProvider implements WorkflowExecutionStepsProviderIn
 
     /**
      * Resolved name => plaintext secret map, for exact redaction. Read
-     * server-side only; never returned. (Test seam.)
+     * server-side only; never returned. Sourced from the shared
+     * ExecutionDetailRedactor so this route, the single-execution/list routes
+     * and the admin execution page all mask against the SAME map. (Test seam.)
      *
      * @return array<string, string>
      */
     protected function secretValues(): array
     {
-        $map = [];
-        foreach ($this->secretsProvider->listKeys() as $name) {
-            $value = $this->secretsProvider->get($name);
-            if ($value !== null && $value !== '') {
-                $map[(string) $name] = $value;
-            }
-        }
-        return $map;
+        return $this->detailRedactor->secretValues();
     }
 
+    /**
+     * The shared rule set — this route hands it to the static summarizeError()
+     * helper rather than calling redact() directly. (Test seam.)
+     */
     protected function getRedactor(): StepDetailRedactor
     {
-        return $this->redactor;
+        return $this->detailRedactor->getRedactor();
     }
 
     /**

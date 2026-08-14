@@ -4,8 +4,9 @@
     <acl>
         <resources>
             <resource id="Magento_Backend::admin">
-                <!-- Grafts two resources into the existing core tree (declared
-                     in module-workflows-admin-ui acl.xml). Deciding is
+                <!-- Grafts two resources into the existing core tree (the
+                     MageOS_Workflows::workflows root is declared, with its
+                     title, in module-workflows acl.xml). Deciding is
                      deliberately separate from ::manage — the people who approve
                      refunds are usually not the people who author workflows (§5,
                      §10.4). -->

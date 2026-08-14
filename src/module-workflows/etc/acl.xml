@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * ACL resources OWNED BY THE CORE PACKAGE.
+ *
+ * A resource declaration must live in the package that owns the ENFORCEMENT
+ * point, not in whichever package happens to render a checkbox for it. Magento
+ * denies an unknown ACL resource, so a `<resource ref="…"/>` in this package's
+ * webapi.xml that resolves to nothing turns the route into a permanent 403.
+ * These resources used to be declared only in mage-os/workflows-admin-ui — a
+ * package core does not require — so every REST route 403'd on a headless /
+ * CI-CD install (no admin UI). They live here now.
+ *
+ * What core owns and therefore declares:
+ *
+ *   ::workflows   the tree root every workflows resource hangs off. Declared
+ *                 here (with its title) because core is the package that is
+ *                 always present; admin-ui and mage-os/workflows-approvals
+ *                 graft their extras onto it by id, without a title, the way
+ *                 Magento's acl.xml merge is meant to be used. Declaring the
+ *                 same id with a title twice is what makes the merged tree
+ *                 depend on module load order — so exactly one package titles
+ *                 each resource.
+ *   ::view        etc/webapi.xml — every read route.
+ *   ::manage      etc/webapi.xml (save / delete / validate) and
+ *                 etc/adminhtml/system.xml's section gate.
+ *   ::dry_run     etc/webapi.xml — both dry-run routes. Deliberately does NOT
+ *                 imply ::manual_run (previewing is not running, docs/09).
+ *   ::action_*    Model/Validation/Check/ActionAuthorizationCheck re-authorizes
+ *                 every authored action step against the resource
+ *                 Model/Action/AbstractAction::getAclResource() derives from
+ *                 the action-code prefix. That check runs on EVERY authoring
+ *                 path including the REST save route, so the per-group
+ *                 resources have to exist wherever core does. The list mirrors
+ *                 AbstractAction::ACL_GROUP_BY_CODE_PREFIX exactly (pinned by
+ *                 CoreAclCoverageTest); a new action-code prefix needs a new
+ *                 row here or authoring it is denied.
+ *   ::secrets     names a core subsystem (the `{{ secrets.* }}` resolver root
+ *                 and the secrets store behind it). Honest status: nothing
+ *                 enforces it yet — it is a declared-but-unchecked resource, so
+ *                 granting or withholding it changes nothing today. It is
+ *                 declared here rather than in admin-ui so that when an
+ *                 enforcement point does land it lands next to the subsystem
+ *                 it guards, and so the role-edit tree does not gain/lose a row
+ *                 depending on whether the admin UI is installed.
+ *
+ * What core does NOT declare (see module-workflows-admin-ui/etc/acl.xml):
+ * ::enable and ::manual_run — the only things that check them are admin
+ * controllers, so they ship with the admin UI.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <resource id="MageOS_Workflows::workflows" title="Workflows" sortOrder="65">
+                    <resource id="MageOS_Workflows::view" title="View Workflows &amp; Executions" sortOrder="10"/>
+                    <resource id="MageOS_Workflows::manage" title="Create &amp; Edit Workflows" sortOrder="20"/>
+                    <resource id="MageOS_Workflows::dry_run" title="Dry-Run Workflows" sortOrder="45"/>
+                    <resource id="MageOS_Workflows::secrets"
+                              title="Reference Secrets in Workflow Actions" sortOrder="50"/>
+                    <resource id="MageOS_Workflows::action_sales" title="Author Sales Actions" sortOrder="60"/>
+                    <resource id="MageOS_Workflows::action_customer" title="Author Customer Actions" sortOrder="70"/>
+                    <resource id="MageOS_Workflows::action_catalog" title="Author Catalog Actions" sortOrder="80"/>
+                    <resource id="MageOS_Workflows::action_marketing" title="Author Marketing Actions" sortOrder="90"/>
+                    <resource id="MageOS_Workflows::action_notify" title="Author Notify Actions" sortOrder="100"/>
+                    <resource id="MageOS_Workflows::action_flow" title="Author Flow Actions" sortOrder="110"/>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

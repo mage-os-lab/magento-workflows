@@ -18,10 +18,12 @@ use MageOS\Workflows\Api\RelationMetadataProviderInterface;
 use MageOS\Workflows\Api\SecretMetadataProviderInterface;
 use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
 use MageOS\Workflows\Api\WorkflowDryRunInterface;
+use MageOS\Workflows\Api\WorkflowExecutionReaderInterface;
 use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowExecutionStepsProviderInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\Workflows\Model\Variable\SecretsProviderInterface;
+use MageOS\Workflows\Model\WorkflowExecutionRepository;
 use MageOS\Workflows\Model\WorkflowFactory;
 use PHPUnit\Framework\TestCase;
 
@@ -38,6 +40,9 @@ use PHPUnit\Framework\TestCase;
  */
 class ServiceContractTest extends TestCase
 {
+    /** Credential-shaped needle seeded into an execution context; must never come back out over REST. */
+    private const CONTEXT_SENTINEL = 'sk_live_SERVICE_CONTRACT_SENTINEL';
+
     private WorkflowRepositoryInterface $workflowRepository;
     private WorkflowFactory $workflowFactory;
     private ResourceConnection $resourceConnection;
@@ -235,6 +240,12 @@ class ServiceContractTest extends TestCase
 
     /**
      * GET /V1/workflow-executions[/:id], /V1/workflow-executions/:id/steps.
+     *
+     * The two list/get routes bind to WorkflowExecutionReaderInterface, not to
+     * the repository: the repository is also the engine's load path and has to
+     * keep the context blob verbatim, so redaction sits in a read model in
+     * front of it. Both halves are asserted here against the merged production
+     * DI, plus the default page size the list route applies.
      */
     public function testExecutionServicesListGetAndStepsContract(): void
     {
@@ -252,6 +263,11 @@ class ServiceContractTest extends TestCase
             'entity_id' => 1,
             'store_id' => 1,
             'status' => WorkflowExecutionInterface::STATUS_COMPLETE,
+            // A step output the executor could plausibly have interpolated a
+            // secret into — the reader must not hand it back verbatim.
+            'context' => (string) json_encode([
+                'steps' => ['notify' => ['url' => 'https://hooks.test/x?token=' . self::CONTEXT_SENTINEL]],
+            ]),
         ]);
         $executionId = (int) $connection->lastInsertId($executionTable);
 
@@ -263,17 +279,39 @@ class ServiceContractTest extends TestCase
             'result' => '{"result":true}',
         ]);
 
+        // The repository is the ENGINE's load path: it must keep the context
+        // verbatim, or a resumed execution runs against masked data.
         $executionRepository = $objectManager->get(WorkflowExecutionRepositoryInterface::class);
         $byId = $executionRepository->getById($executionId);
         $this->assertSame($uuid, $byId->getUuid());
+        $this->assertStringContainsString(self::CONTEXT_SENTINEL, (string) $byId->getContext());
         $byUuid = $executionRepository->getByUuid($uuid);
         $this->assertSame($executionId, $byUuid->getExecutionId());
+
+        // The REST routes bind to the read model, which redacts.
+        $reader = $objectManager->get(WorkflowExecutionReaderInterface::class);
+        $read = $reader->getById($executionId);
+        $this->assertSame($uuid, $read->getUuid());
+        $this->assertStringNotContainsString(
+            self::CONTEXT_SENTINEL,
+            (string) $read->getContext(),
+            'GET /V1/workflow-executions/:id must not serialize a credential-shaped context verbatim'
+        );
 
         $searchCriteria = $objectManager->create(SearchCriteriaBuilder::class)
             ->addFilter(WorkflowExecutionInterface::WORKFLOW_ID, $workflowId)
             ->create();
-        $list = $executionRepository->getList($searchCriteria);
+        $list = $reader->getList($searchCriteria);
         $this->assertGreaterThanOrEqual(1, $list->getTotalCount());
+        foreach ($list->getItems() as $item) {
+            $this->assertStringNotContainsString(self::CONTEXT_SENTINEL, (string) $item->getContext());
+        }
+        // The list route defaults its page size rather than draining the table.
+        $this->assertSame(
+            WorkflowExecutionRepository::DEFAULT_PAGE_SIZE,
+            $list->getSearchCriteria()->getPageSize(),
+            'An omitted pageSize must be answered with the default, and echoed back honestly'
+        );
 
         $stepsProvider = $objectManager->get(WorkflowExecutionStepsProviderInterface::class);
         $steps = $stepsProvider->getSteps($executionId);

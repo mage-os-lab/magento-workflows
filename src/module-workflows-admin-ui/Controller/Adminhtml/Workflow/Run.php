@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow;
 
 use Magento\Backend\App\Action;
-use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\ResultFactory;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
@@ -13,11 +13,29 @@ use MageOS\Workflows\Api\DispatcherInterface;
 /**
  * Manual "Run Now" dispatch from the workflow edit page.
  *
- * GET with the standard adminhtml secret URL key (appended by the URL builder that renders
- * the button); dispatch itself is idempotent-guarded by the engine's debounce window.
- * Requires the dedicated manual-run ACL resource, not just "manage".
+ * POST ONLY. This action fires REAL side effects against a caller-chosen entity
+ * id — refunds, customer emails, outbound webhooks — so it is a state change and
+ * has to be requested like one. It used to be a GET, protected by nothing but
+ * the adminhtml secret URL key, which merchants routinely switch off
+ * (Stores > Configuration > Advanced > Admin > Security > "Add Secret Key to
+ * URLs" = No) and which leaks through Referer headers and browser history
+ * anyway. A logged-in admin could then be made to refund an order by loading an
+ * image tag. Every other mutating controller in this package is already POST;
+ * this one is now consistent with them.
+ *
+ * Declaring HttpPostActionInterface is what makes the framework reject the GET,
+ * and POST additionally routes dispatch through the CSRF gate:
+ * Magento\Backend\App\AbstractAction::_processUrlKeys() validates the form key
+ * on every POST from a logged-in admin (and skips the secret-key check in that
+ * branch — the form key is the stronger token). This controller does NOT
+ * implement CsrfAwareActionInterface, so nothing opts back out of that.
+ *
+ * The caller is the Run Now modal (RunNowModal + run-now-modal.js), which posts
+ * a virtual form carrying form_key and entity_id. Dispatch itself remains
+ * idempotent-guarded by the engine's debounce window, and the dedicated
+ * manual-run ACL resource — not just "manage" — is still required.
  */
-class Run extends Action implements HttpGetActionInterface
+class Run extends Action implements HttpPostActionInterface
 {
     public const ADMIN_RESOURCE = 'MageOS_Workflows::manual_run';
 

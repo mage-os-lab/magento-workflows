@@ -152,7 +152,7 @@ class RunNowModalContractTest extends TestCase
         );
     }
 
-    public function testTheModuleIsMappedAndAppendsTheEntityIdAsAPathSegment(): void
+    public function testTheModuleIsMappedAndPostsTheEntityId(): void
     {
         $this->assertStringContainsString('mageosWorkflowsRunNow', $this->templateSource());
         $this->assertStringContainsString(
@@ -163,9 +163,35 @@ class RunNowModalContractTest extends TestCase
 
         $js = $this->read('view/adminhtml/web/js/run-now-modal.js');
         $this->assertStringContainsString(
-            "runUrl + 'entity_id/' + encodeURIComponent(entityId) + '/'",
+            "'mage/utils/misc'",
             $js,
-            'The Run controller reads entity_id as a path param appended after the secret key.'
+            'The POST is built by the canonical admin helper, which stamps window.FORM_KEY into it.'
+        );
+        $this->assertStringContainsString('miscUtils.submit({', $js);
+        $this->assertStringContainsString("'entity_id': entityId", $js);
+    }
+
+    /**
+     * The regression this pins: "Run Now" used to be a GET — the module appended
+     * 'entity_id/<n>/' to the run URL and assigned window.location. Dispatching
+     * refunds/emails/webhooks off a URL load is a CSRF hole whenever the
+     * adminhtml secret key is switched off, which merchants do routinely. The
+     * only thing standing between a state change and a drive-by request is that
+     * this stays a POST, so no navigation may creep back in.
+     */
+    public function testTheModuleNeverNavigatesToTheRunUrl(): void
+    {
+        $js = $this->read('view/adminhtml/web/js/run-now-modal.js');
+
+        $this->assertStringNotContainsString(
+            'window.location',
+            $js,
+            'Running a workflow is a state change; it must be POSTed, never navigated to.'
+        );
+        $this->assertStringNotContainsString(
+            "runUrl + 'entity_id/",
+            $js,
+            'The entity id travels in the POST body now, not as a URL path segment.'
         );
     }
 

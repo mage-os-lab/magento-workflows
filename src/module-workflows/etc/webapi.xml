@@ -107,15 +107,21 @@
         </resources>
     </route>
 
-    <!-- Workflow executions (read-only) -->
+    <!-- Workflow executions (read-only). Bound to the READ MODEL, not the
+         repository: the repository is what the engine resumes executions
+         through and must keep the context blob verbatim, while everything
+         leaving over REST goes through the shared secret redaction first
+         (WorkflowExecutionReaderInterface). The list route is paginated by the
+         repository — default page size with a hard cap — because these rows
+         carry two mediumtext columns on a table sized for millions. -->
     <route url="/V1/workflow-executions" method="GET">
-        <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getList"/>
+        <service class="MageOS\Workflows\Api\WorkflowExecutionReaderInterface" method="getList"/>
         <resources>
             <resource ref="MageOS_Workflows::view"/>
         </resources>
     </route>
     <route url="/V1/workflow-executions/:executionId" method="GET">
-        <service class="MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface" method="getById"/>
+        <service class="MageOS\Workflows\Api\WorkflowExecutionReaderInterface" method="getById"/>
         <resources>
             <resource ref="MageOS_Workflows::view"/>
         </resources>
