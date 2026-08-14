@@ -88,16 +88,6 @@ class SetStatus extends AbstractAction implements SimulateableActionInterface
         return ['catalog_product'];
     }
 
-    /**
-     * review.* has no ACL bucket of its own; authoring is gated by the Catalog
-     * action ACL (the action lives on the catalog_product entity and mutates
-     * catalog-adjacent review data), rather than adding a new ACL resource.
-     */
-    public function getAclResource(): ?string
-    {
-        return 'MageOS_Workflows::action_catalog';
-    }
-
     public function getConfigForm(): array
     {
         return [

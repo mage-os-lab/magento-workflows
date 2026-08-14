@@ -233,7 +233,9 @@ class SetStatusTest extends TestCase
 
         $this->assertSame('review.set_status', $action->getCode());
         $this->assertSame(['catalog_product'], $action->getApplicableEntities());
-        $this->assertSame('MageOS_Workflows::action_catalog', $action->getAclResource());
+        // Inherited from AbstractAction's prefix map: review moderation is its
+        // own authoring privilege (declared in core acl.xml), not a catalog one.
+        $this->assertSame('MageOS_Workflows::action_review', $action->getAclResource());
         $form = $action->getConfigForm();
         $this->assertSame('status', $form[0]['name']);
     }
