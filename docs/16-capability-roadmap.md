@@ -40,7 +40,7 @@ Definition schema bumped to **version 2** (`schema: 1|2` accepted; v1 documents 
 | Action | Notes |
 |---|---|
 | `order.create_shipment` | `ShipOrderInterface`, guarded by `canShip()`, optional customer notify |
-| `order.create_creditmemo` | `RefundOrderInterface` offline full refund, guarded by `canCreditmemo()` |
+| `order.create_creditmemo` | `RefundOrderInterface` offline refund (full / percent / fixed); `canCreditmemo()` is the state guard, a per-execution+step dedupe marker on a memo comment is the redelivery guard |
 | `notify.email` ad-hoc mode | `subject` + `body` alternative to `template_id`, via a bundled pass-through template; variables work in both |
 | `product.set_categories` | add / remove / replace via `CategoryLinkManagementInterface` |
 | `product.set_special_price` | price + from/to dates, store-scoped attribute update |

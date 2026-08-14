@@ -20,12 +20,17 @@ use PHPUnit\Framework\TestCase;
  */
 class CreateCreditmemoPartialTest extends TestCase
 {
+    use CreditmemoRefundDoubles;
+
     public function testPercentModeRefundsPercentOfPaidTotalAsAdjustment(): void
     {
         $refund = $this->recordingRefund(creditmemoId: 900);
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 200.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -47,6 +52,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 99.99)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -62,6 +70,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 200.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -79,6 +90,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 100.0, refunded: 80.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -95,6 +109,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 100.0, refunded: 100.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -112,6 +129,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 200.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -128,6 +148,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 200.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -144,6 +167,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 200.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -160,6 +186,9 @@ class CreateCreditmemoPartialTest extends TestCase
         $action = new CreateCreditmemo(
             $this->repositoryReturning($this->order(paid: 200.0)),
             $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
             $this->argumentsFactory()
         );
 
@@ -178,7 +207,13 @@ class CreateCreditmemoPartialTest extends TestCase
         $refund = $this->recordingRefund();
         // No arguments factory (defaults to null): partial modes cannot build
         // the adjustment and must fail terminally before RefundOrder.
-        $action = new CreateCreditmemo($this->repositoryReturning($this->order(paid: 200.0)), $refund);
+        $action = new CreateCreditmemo(
+            $this->repositoryReturning($this->order(paid: 200.0)),
+            $refund,
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory()
+        );
 
         $result = $action->execute($this->context(), ['mode' => 'percent', 'percent' => '25']);
 

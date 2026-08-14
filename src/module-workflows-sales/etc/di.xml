@@ -119,6 +119,19 @@
         </arguments>
     </type>
 
+    <!-- order.create_creditmemo's partial-refund modes need the creation
+         arguments factory to carry adjustment_positive. The constructor
+         parameter is nullable (percent/fixed fail cleanly without it), and the
+         ObjectManager does NOT auto-resolve a parameter that has a default
+         value — so it must be wired by hand or percent/fixed would fail on
+         every run. The redelivery-marker dependencies are required parameters
+         precisely so they cannot be forgotten this way. -->
+    <type name="MageOS\WorkflowsSales\Action\Order\CreateCreditmemo">
+        <arguments>
+            <argument name="argumentsFactory" xsi:type="object">Magento\Sales\Api\Data\CreditmemoCreationArgumentsInterfaceFactory</argument>
+        </arguments>
+    </type>
+
     <!-- Scheduler QueryRunner entity map: sales_order + quote (relocated from
          the scheduler). QueryRunner itself stays in mage-os/workflows-scheduler;
          only its repository/DTO map entries for these entity types move here. -->

@@ -41,6 +41,10 @@ use PHPUnit\Framework\TestCase;
  * Every DB write and every action side effect is appended to one shared
  * WalkRecorder event log so persistence-vs-side-effect ORDERING is a direct
  * assertion, not an inference.
+ *
+ * Section 9 covers the other half of at-least-once delivery: re-entering the
+ * walk on a step row that is ALREADY complete must resume past it on its
+ * recorded outcome, never re-fire its side effect.
  */
 class ExecutorWalkTest extends TestCase
 {
@@ -456,6 +460,225 @@ class ExecutorWalkTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // 9. Redelivery onto an already-complete step row (docs/08 crash safety)
+    // ------------------------------------------------------------------
+
+    public function testRedeliveryOntoACompleteActionStepSkipsItAndFollowsItsEdge(): void
+    {
+        // The shape every redelivery path produces: a1 finished (row complete)
+        // but current_step never advanced past it — the execution row is only
+        // moved on at the TOP of the next step's iteration. Re-running a1 here
+        // would double its side effect.
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'a1');
+        $this->connection->seedStepRow('a1', WorkflowExecutionStepInterface::STATUS_COMPLETE, (string) json_encode([
+            'status' => 'success',
+            'output' => ['ran' => 'act.first'],
+        ]));
+
+        $conditions = new FakeWalkConditionEvaluator(true);
+        $this->buildExecutor($conditions)->execute(101);
+
+        // a1 did NOT re-run; the walk resumed at its static `next` edge.
+        $this->assertSame(0, $this->actions['act.first']->runs);
+        $this->assertSame(1, $this->actions['act.second']->runs);
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        // The completed row was never flipped back to running: the guard runs
+        // BEFORE the claim write, so a1 got no step-row write at all.
+        $this->assertSame([], $this->connection->stepRows('a1'));
+        $this->assertFalse(in_array('step_row:a1:running', $this->recorder->events, true));
+        // Root conditions are first-run only: a redelivery must not re-gate.
+        $this->assertSame([], $conditions->rootCalls);
+    }
+
+    public function testRedeliveryRehydratesTheCompletedStepOutputFromItsRow(): void
+    {
+        // Crash window: the step row (with its result) landed, the context save
+        // that follows it did not — so the bag has no steps.a1 output. The
+        // recorded result is written atomically WITH the complete status, so
+        // the guard rehydrates from it and downstream interpolation still sees
+        // steps.a1.*.
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'a1');
+        $this->connection->seedStepRow('a1', WorkflowExecutionStepInterface::STATUS_COMPLETE, (string) json_encode([
+            'status' => 'success',
+            'output' => ['ran' => 'act.first', 'invoice_id' => 77],
+        ]));
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $context = json_decode((string) $this->execution->getContext(), true);
+        $this->assertSame('act.first', $context['steps']['a1']['ran'] ?? null);
+        $this->assertSame(77, $context['steps']['a1']['invoice_id'] ?? null);
+        // The step that DID run still recorded its own output alongside it.
+        $this->assertSame('act.second', $context['steps']['a2']['ran'] ?? null);
+    }
+
+    public function testCompleteBranchRowFollowsTheRecordedEdgeWithoutReEvaluating(): void
+    {
+        // The gate recorded false on the first pass. The entity may have
+        // changed since; re-evaluating would now say true and send the resumed
+        // walk down the OTHER arm. The recorded result wins.
+        $this->execution = $this->newRedelivery($this->branchDefinition(), 'gate');
+        $this->connection->seedStepRow('gate', WorkflowExecutionStepInterface::STATUS_COMPLETE, '{"result":false}');
+        $conditions = new FakeWalkConditionEvaluator(true, ['BR' => true]);
+
+        $this->buildExecutor($conditions)->execute(101);
+
+        $this->assertSame(0, $this->actions['act.true']->runs);
+        $this->assertSame(1, $this->actions['act.false']->runs);
+        // The condition tree was never consulted, and the row was left alone.
+        $this->assertSame([], $conditions->serializedCalls);
+        $this->assertSame([], $this->connection->stepRows('gate'));
+    }
+
+    public function testCompleteSwitchRowFollowsTheRecordedCaseWithoutReEvaluating(): void
+    {
+        $this->execution = $this->newRedelivery($this->switchDefinition(), 'sw');
+        $this->connection->seedStepRow('sw', WorkflowExecutionStepInterface::STATUS_COMPLETE, '{"matched":"c2"}');
+        // Would now match c1 — the recorded case must still win.
+        $conditions = new FakeWalkConditionEvaluator(true, ['C1' => true, 'C2' => true, 'C3' => true]);
+
+        $this->buildExecutor($conditions)->execute(101);
+
+        $this->assertSame(0, $this->actions['act.one']->runs);
+        $this->assertSame(1, $this->actions['act.two']->runs);
+        $this->assertSame(0, $this->actions['act.default']->runs);
+        $this->assertSame([], $conditions->serializedCalls);
+    }
+
+    public function testCompleteSwitchRowWithNoMatchFollowsTheRecordedDefaultEdge(): void
+    {
+        $this->execution = $this->newRedelivery($this->switchDefinition(), 'sw');
+        $this->connection->seedStepRow('sw', WorkflowExecutionStepInterface::STATUS_COMPLETE, '{"matched":null}');
+        $conditions = new FakeWalkConditionEvaluator(true, ['C1' => true]);
+
+        $this->buildExecutor($conditions)->execute(101);
+
+        $this->assertSame(1, $this->actions['act.default']->runs);
+        $this->assertSame(0, $this->actions['act.one']->runs);
+        $this->assertSame([], $conditions->serializedCalls);
+    }
+
+    public function testCompleteBranchRowWithAnUnreadableResultFallsBackToReEvaluating(): void
+    {
+        // Re-evaluating a condition tree is side-effect free, so an unreadable
+        // recorded outcome degrades to today's behavior rather than guessing.
+        $this->execution = $this->newRedelivery($this->branchDefinition(), 'gate');
+        $this->connection->seedStepRow('gate', WorkflowExecutionStepInterface::STATUS_COMPLETE, 'not json');
+        $conditions = new FakeWalkConditionEvaluator(true, ['BR' => true]);
+
+        $this->buildExecutor($conditions)->execute(101);
+
+        $this->assertCount(1, $conditions->serializedCalls);
+        $this->assertSame(1, $this->actions['act.true']->runs);
+        $this->assertSame('{"result":true}', $this->connection->lastStepRow('gate')['result'] ?? null);
+    }
+
+    public function testCompleteStopRowCompletesTheExecutionWithoutRewritingTheRow(): void
+    {
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'end');
+        $this->connection->seedStepRow('end', WorkflowExecutionStepInterface::STATUS_COMPLETE);
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        $this->assertSame([], $this->connection->stepRows('end'));
+        $this->assertNotNull($this->events->last('workflow_execution_complete'));
+    }
+
+    public function testRunningStepRowIsStillReExecutedOnRedelivery(): void
+    {
+        // A `running` row means the consumer died mid-step: at-least-once, the
+        // step runs again. Only `complete` is a skip.
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'a1');
+        $this->connection->seedStepRow('a1', WorkflowExecutionStepInterface::STATUS_RUNNING);
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(1, $this->actions['act.first']->runs);
+        $this->assertSame(1, $this->actions['act.second']->runs);
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+    }
+
+    public function testPendingStepRowFromARetryableFailureIsStillReExecuted(): void
+    {
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'a1');
+        $this->connection->seedStepRow('a1', WorkflowExecutionStepInterface::STATUS_PENDING, null);
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(1, $this->actions['act.first']->runs);
+        $this->assertSame(
+            WorkflowExecutionStepInterface::STATUS_RUNNING,
+            $this->connection->stepRows('a1')[0]['status'] ?? null
+        );
+    }
+
+    public function testFailedStepRowIsStillReExecuted(): void
+    {
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'a1');
+        $this->connection->seedStepRow('a1', WorkflowExecutionStepInterface::STATUS_FAILED, '{"note":"boom"}');
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(1, $this->actions['act.first']->runs);
+    }
+
+    public function testFirstRunWithNoRecordedRowsExecutesEveryStepNormally(): void
+    {
+        // Guard regression pin: with no pre-existing rows the lookup returns
+        // nothing and the walk is byte-for-byte the pre-guard walk — one claim
+        // row per step, written before the side effect.
+        $this->execution = $this->newExecution($this->chainDefinition());
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(1, $this->actions['act.first']->runs);
+        $this->assertSame(1, $this->actions['act.second']->runs);
+        $this->assertSame(
+            WorkflowExecutionStepInterface::STATUS_RUNNING,
+            $this->connection->stepRows('a1')[0]['status'] ?? null
+        );
+        $this->assertTrue(
+            $this->recorder->indexOf('step_row:a1:running') < $this->recorder->indexOf('action:act.first')
+        );
+    }
+
+    public function testCompleteWaitRowStillReParksBecauseTheGuardExcludesParkSteps(): void
+    {
+        // Deliberate scoping (Executor::resumePastCompletedStep): wait /
+        // approval / delay steps are NOT skipped on a complete row. Their
+        // resumed routing lives in ResumeConsumer, which owns the decision
+        // rules; re-parking is the cheap, non-divergent fallback for the narrow
+        // crash window that can leave current_step on a closed gate.
+        $this->registerAction('act.after');
+        $definition = (string) json_encode([
+            'schema' => 2,
+            'entry' => 'w1',
+            'steps' => [
+                'w1' => [
+                    'type' => 'wait',
+                    'config' => ['event' => 'sales_order_invoice_pay', 'timeout' => 'PT1H'],
+                    'on_event' => 'after',
+                    'on_timeout' => 'after',
+                ],
+                'after' => ['type' => 'action', 'action' => 'act.after'],
+            ],
+        ]);
+        $this->execution = $this->newRedelivery($definition, 'w1');
+        $this->connection->seedStepRow('w1', WorkflowExecutionStepInterface::STATUS_COMPLETE, '{"resolution":"event"}');
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_WAITING, $this->execution->getStatus());
+        $this->assertSame('w1', $this->execution->getCurrentStep());
+        $this->assertSame(0, $this->actions['act.after']->runs);
+        $this->assertSame(
+            WorkflowExecutionStepInterface::STATUS_WAITING,
+            $this->connection->lastStepRow('w1')['status'] ?? null
+        );
+    }
+
+    // ------------------------------------------------------------------
     // Harness
     // ------------------------------------------------------------------
 
@@ -569,6 +792,19 @@ class ExecutorWalkTest extends TestCase
             'steps' => [],
             'workflow' => [],
         ]));
+        return $execution;
+    }
+
+    /**
+     * A redelivered message for an execution already mid-walk: status running
+     * (so the first-run root-condition gate does not re-fire) with current_step
+     * pointing at $currentStep.
+     */
+    private function newRedelivery(string $definition, string $currentStep): WorkflowExecutionStub
+    {
+        $execution = $this->newExecution($definition);
+        $execution->setStatus(WorkflowExecutionInterface::STATUS_RUNNING);
+        $execution->setCurrentStep($currentStep);
         return $execution;
     }
 
@@ -869,6 +1105,12 @@ class RecordingEventManager implements EventManagerInterface
  * returns false), inserts/updates are captured for assertions, and step-table
  * inserts are appended to the shared ordering log as
  * "step_row:<step_key>:<status>".
+ *
+ * fetchRow serves the redelivery guard's (execution_id, step_key) lookup from
+ * rows seeded with seedStepRow() — the pre-existing state a redelivered message
+ * finds. fetchOne deliberately keeps returning false even for a seeded key so
+ * every write still lands as an INSERT the stepRows() assertions can read;
+ * the two are independent fakes, not one simulated table.
  */
 class RecordingConnection
 {
@@ -878,8 +1120,19 @@ class RecordingConnection
     /** @var array<int, array{table: string, bind: array, where: mixed}> */
     public array $updates = [];
 
+    /** @var array<string, array{status: string, result: string|null}> pre-existing rows by step key */
+    public array $seededStepRows = [];
+
     public function __construct(private readonly WalkRecorder $recorder)
     {
+    }
+
+    /**
+     * Seed the step row a redelivered message would find already in the DB.
+     */
+    public function seedStepRow(string $stepKey, string $status, ?string $result = null): void
+    {
+        $this->seededStepRows[$stepKey] = ['status' => $status, 'result' => $result];
     }
 
     public function asResource(): ResourceConnection
@@ -913,6 +1166,9 @@ class RecordingConnection
             public function select(): object
             {
                 return new class {
+                    /** @var array<int, array{0: string, 1: mixed}> every where() binding, in order */
+                    public array $wheres = [];
+
                     public function from($table, $cols = '*'): self
                     {
                         return $this;
@@ -920,6 +1176,7 @@ class RecordingConnection
 
                     public function where($cond, $value = null): self
                     {
+                        $this->wheres[] = [(string) $cond, $value];
                         return $this;
                     }
 
@@ -933,6 +1190,18 @@ class RecordingConnection
             public function fetchOne($select)
             {
                 return false;
+            }
+
+            public function fetchRow($select)
+            {
+                $stepKey = null;
+                foreach ($select->wheres ?? [] as [$condition, $value]) {
+                    if ($condition === 'step_key = ?') {
+                        $stepKey = (string) $value;
+                    }
+                }
+
+                return $stepKey !== null ? ($this->capture->seededStepRows[$stepKey] ?? false) : false;
             }
 
             public function insert($table, array $bind)

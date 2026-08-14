@@ -13,12 +13,14 @@ use PHPUnit\Framework\TestCase;
 
 class CreateCreditmemoTest extends TestCase
 {
+    use CreditmemoRefundDoubles;
+
     public function testBoolConfigWithNotifyFalseDefaults(): void
     {
         $orderRepo = $this->createOrderRepositoryStub();
         $refundOrder = $this->createRefundOrderStub();
 
-        $action = new CreateCreditmemo($orderRepo, $refundOrder);
+        $action = new CreateCreditmemo($orderRepo, $refundOrder, ...$this->markerDoubles());
         $ctx = new ExecutionContext(new WorkflowExecutionStub(entityId: 1));
 
         $reflection = new \ReflectionClass($action);
@@ -33,7 +35,7 @@ class CreateCreditmemoTest extends TestCase
         $orderRepo = $this->createOrderRepositoryStub();
         $refundOrder = $this->createRefundOrderStub();
 
-        $action = new CreateCreditmemo($orderRepo, $refundOrder);
+        $action = new CreateCreditmemo($orderRepo, $refundOrder, ...$this->markerDoubles());
         $ctx = new ExecutionContext(new WorkflowExecutionStub(entityId: 1));
 
         $reflection = new \ReflectionClass($action);
@@ -48,7 +50,7 @@ class CreateCreditmemoTest extends TestCase
         $orderRepo = $this->createOrderRepositoryStub();
         $refundOrder = $this->createRefundOrderStub();
 
-        $action = new CreateCreditmemo($orderRepo, $refundOrder);
+        $action = new CreateCreditmemo($orderRepo, $refundOrder, ...$this->markerDoubles());
         $ctx = new ExecutionContext(new WorkflowExecutionStub(entityId: 1));
 
         $reflection = new \ReflectionClass($action);
@@ -63,7 +65,7 @@ class CreateCreditmemoTest extends TestCase
         $orderRepo = $this->createOrderRepositoryStub();
         $refundOrder = $this->createRefundOrderStub();
 
-        $action = new CreateCreditmemo($orderRepo, $refundOrder);
+        $action = new CreateCreditmemo($orderRepo, $refundOrder, ...$this->markerDoubles());
         $ctx = new ExecutionContext(new WorkflowExecutionStub(entityId: 1));
 
         $reflection = new \ReflectionClass($action);
@@ -71,6 +73,21 @@ class CreateCreditmemoTest extends TestCase
 
         $result = $method->invoke($action, ['notify' => 'yes'], 'notify');
         $this->assertTrue($result);
+    }
+
+    /**
+     * The three redelivery-marker dependencies, in constructor order. None of
+     * them is reached by these config-helper tests.
+     *
+     * @return array{0: \Magento\Sales\Api\CreditmemoRepositoryInterface, 1: \Magento\Framework\Api\SearchCriteriaBuilder, 2: \Magento\Sales\Api\Data\CreditmemoCommentCreationInterfaceFactory}
+     */
+    private function markerDoubles(): array
+    {
+        return [
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
+        ];
     }
 
     private function createOrderRepositoryStub(): OrderRepositoryInterface

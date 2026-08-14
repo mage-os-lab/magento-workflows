@@ -18,16 +18,22 @@ use PHPUnit\Framework\TestCase;
 /**
  * Behaviour coverage for order.create_creditmemo: a regression here refunds
  * money twice (redelivery) or misclassifies failures. Pins the promises in
- * docs/07-actions.md (canCreditmemo() guard, RefundOrderInterface) and
+ * docs/07-actions.md (canCreditmemo() state guard, RefundOrderInterface) and
  * docs/08-execution-model.md (at-least-once delivery, retryable flag).
+ *
+ * The redelivery half — the per-execution+step dedupe marker that makes the
+ * partial modes safe too — is pinned in CreateCreditmemoDedupeTest; every order
+ * here starts with no existing credit memos.
  */
 class CreateCreditmemoBehaviorTest extends TestCase
 {
+    use CreditmemoRefundDoubles;
+
     public function testExecuteSkipsWhenOrderCannotBeRefundedAndNeverCallsRefundService(): void
     {
         $order = $this->createFakeOrder(canCreditmemo: false);
         $refund = $this->createRecordingRefund();
-        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund);
+        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund, ...$this->markerDoubles());
 
         $result = $action->execute($this->createContext(), []);
 
@@ -41,7 +47,7 @@ class CreateCreditmemoBehaviorTest extends TestCase
     {
         $order = $this->createFakeOrder(canCreditmemo: true);
         $refund = $this->createRecordingRefund(creditmemoId: 501);
-        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund);
+        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund, ...$this->markerDoubles());
 
         $result = $action->execute($this->createContext(), []);
 
@@ -57,7 +63,7 @@ class CreateCreditmemoBehaviorTest extends TestCase
     {
         $order = $this->createFakeOrder(canCreditmemo: true);
         $refund = $this->createRecordingRefund(creditmemoId: 502);
-        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund);
+        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund, ...$this->markerDoubles());
 
         $result = $action->execute($this->createContext(), ['notify' => 'yes']);
 
@@ -71,7 +77,7 @@ class CreateCreditmemoBehaviorTest extends TestCase
         $order = $this->createFakeOrder(canCreditmemo: true);
         $refund = $this->createRecordingRefund();
         $refund->throwOnExecute = new LocalizedException(new Phrase('Creditmemo Document Validation Error'));
-        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund);
+        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund, ...$this->markerDoubles());
 
         $result = $action->execute($this->createContext(), []);
 
@@ -85,7 +91,7 @@ class CreateCreditmemoBehaviorTest extends TestCase
         $order = $this->createFakeOrder(canCreditmemo: true);
         $refund = $this->createRecordingRefund();
         $refund->throwOnExecute = new \RuntimeException('Deadlock found when trying to get lock');
-        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund);
+        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund, ...$this->markerDoubles());
 
         $result = $action->execute($this->createContext(), []);
 
@@ -107,7 +113,7 @@ class CreateCreditmemoBehaviorTest extends TestCase
             public function save($entity) { throw new \BadMethodCallException(__METHOD__); }
             public function deleteById($id) { throw new \BadMethodCallException(__METHOD__); }
         };
-        $action = new CreateCreditmemo($repository, $refund);
+        $action = new CreateCreditmemo($repository, $refund, ...$this->markerDoubles());
 
         $result = $action->execute($this->createContext(), []);
 
@@ -121,13 +127,29 @@ class CreateCreditmemoBehaviorTest extends TestCase
     {
         $order = $this->createFakeOrder(canCreditmemo: true);
         $refund = $this->createRecordingRefund();
-        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund);
+        $action = new CreateCreditmemo($this->createRepositoryReturning($order), $refund, ...$this->markerDoubles());
 
         $result = $action->simulate($this->createContext(), ['notify' => true]);
 
         $this->assertTrue($result->isSuccess());
         $this->assertTrue($result->getOutput()['simulated']);
         $this->assertSame(0, $refund->calls, 'simulate() must not move money');
+    }
+
+    /**
+     * The three redelivery-marker dependencies, in constructor order: an order
+     * with no existing memos, so the marker scan finds nothing and every test
+     * here exercises the first-run path.
+     *
+     * @return array{0: mixed, 1: mixed, 2: mixed}
+     */
+    private function markerDoubles(): array
+    {
+        return [
+            $this->creditmemoRepositoryWith(),
+            $this->creditmemoCriteriaBuilder(),
+            $this->creditmemoCommentFactory(),
+        ];
     }
 
     private function createContext(): ExecutionContext

@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsSales\Action\Order;
 
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Exception\LocalizedException;
+use Magento\Sales\Api\CreditmemoRepositoryInterface;
+use Magento\Sales\Api\Data\CreditmemoCommentCreationInterface;
+use Magento\Sales\Api\Data\CreditmemoCommentCreationInterfaceFactory;
 use Magento\Sales\Api\Data\CreditmemoCreationArgumentsInterface;
 use Magento\Sales\Api\Data\CreditmemoCreationArgumentsInterfaceFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
@@ -16,8 +20,30 @@ use MageOS\Workflows\Model\Action\ActionResult;
 
 /**
  * order.create_creditmemo — OFFLINE refund via the sales RefundOrder service
- * (no payment gateway call). canCreditmemo() guards redelivery for every mode:
- * a fully refunded order skips.
+ * (no payment gateway call).
+ *
+ * Two independent guards, both required:
+ *
+ *  - canCreditmemo() is a STATE guard: it stops a refund the order cannot take
+ *    (nothing left refundable, wrong state). It is NOT a redelivery guard —
+ *    that claim held only for `full` mode. percent/fixed issue adjustment-only
+ *    refunds with no item lines, which leave the order perfectly
+ *    creditmemo-able, so under at-least-once delivery (docs/08) a redelivered
+ *    message sailed past canCreditmemo() and refunded real money a second time.
+ *  - The dedupe MARKER is the redelivery guard, for EVERY mode including full
+ *    (defence in depth): each memo this action creates carries a credit-memo
+ *    comment holding an invisible HTML-comment marker with the execution+step
+ *    dedupe key (the same pattern as order.add_comment), and every run scans
+ *    the order's existing memos for its own marker first. The marker is written
+ *    by RefundOrder inside the SAME transaction as the memo — an offline refund
+ *    makes no gateway call, so there is no window where money moved but the
+ *    marker did not.
+ *
+ * The comment is created with is_visible_on_front FALSE and RefundOrder's
+ * appendComment flag FALSE, so it is never shown on the storefront, never set
+ * as a notified customer note, and never reaches the refund email (which
+ * renders customer_note only when customer_note_notify is set). It is an
+ * admin-side audit line, exactly like order.add_comment's marker.
  *
  * Modes (config `mode`, default `full`):
  *  - full    — refund every refundable item (empty item list). Unchanged v1
@@ -54,9 +80,31 @@ class CreateCreditmemo extends AbstractOrderAction implements SimulateableAction
     private const MODE_FIXED = 'fixed';
     private const MODES = [self::MODE_FULL, self::MODE_PERCENT, self::MODE_FIXED];
 
+    /**
+     * Same marker shape order.add_comment uses: an HTML comment carrying the
+     * execution+step dedupe key.
+     */
+    private const MARKER_FORMAT = '<!-- mageos-workflows:%s -->';
+
+    /**
+     * The comment body the marker rides in. Human-readable first so the admin
+     * credit-memo history explains itself.
+     */
+    private const MARKER_COMMENT_FORMAT = 'Refund issued by a Mage-OS workflow. %s';
+
+    /**
+     * The marker guard is money safety, not a nicety: the repository and the
+     * comment factory are REQUIRED constructor dependencies so it can never be
+     * silently absent. (Magento's ObjectManager does not auto-inject a
+     * parameter that has a default value, so an optional dependency here would
+     * arrive null in production unless di.xml wired it by hand.)
+     */
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         private readonly RefundOrderInterface $refundOrder,
+        private readonly CreditmemoRepositoryInterface $creditmemoRepository,
+        private readonly SearchCriteriaBuilder $searchCriteriaBuilder,
+        private readonly CreditmemoCommentCreationInterfaceFactory $commentFactory,
         private readonly ?CreditmemoCreationArgumentsInterfaceFactory $argumentsFactory = null
     ) {
         parent::__construct($orderRepository);
@@ -104,6 +152,30 @@ class CreateCreditmemo extends AbstractOrderAction implements SimulateableAction
             return $order;
         }
 
+        // Redelivery guard FIRST, before the state guard: it is the only one
+        // that holds for every mode, and its answer is the informative one —
+        // it hands back the memo this step already created instead of a
+        // state-derived "cannot be refunded".
+        $marker = sprintf(self::MARKER_FORMAT, $ctx->getDedupeKey($this->stepKey($ctx)));
+        try {
+            $existingId = $this->findMarkedCreditmemoId((int)$order->getEntityId(), $marker);
+        } catch (\Exception $e) {
+            // Never refund on an unanswered dedupe question: park for retry.
+            return ActionResult::failure(
+                'Could not check for an existing workflow credit memo: ' . $e->getMessage(),
+                true
+            );
+        }
+        if ($existingId !== null) {
+            return ActionResult::skipped(
+                sprintf(
+                    'Order %s was already refunded by this step (dedupe marker present)',
+                    $order->getIncrementId()
+                ),
+                ['creditmemo_id' => $existingId]
+            );
+        }
+
         if (!$order->canCreditmemo()) {
             return ActionResult::skipped(sprintf(
                 'Order %s cannot be refunded (state "%s")',
@@ -130,20 +202,19 @@ class CreateCreditmemo extends AbstractOrderAction implements SimulateableAction
         }
 
         try {
-            if ($mode === self::MODE_FULL) {
-                // Empty items = refund everything refundable, offline
-                $creditmemoId = $this->refundOrder->execute((int)$order->getEntityId(), [], $notify);
-            } else {
-                // Adjustment-only refund: no item lines, grand total = adjustment
-                $creditmemoId = $this->refundOrder->execute(
-                    (int)$order->getEntityId(),
-                    [],
-                    $notify,
-                    false,
-                    null,
-                    $arguments
-                );
-            }
+            // Empty items = refund everything refundable (full) or, with
+            // adjustment arguments, an adjustment-only memo whose grand total
+            // IS the adjustment. Both carry the dedupe comment, and both leave
+            // appendComment false so the marker is stored on the memo without
+            // becoming a notified customer note.
+            $creditmemoId = $this->refundOrder->execute(
+                (int)$order->getEntityId(),
+                [],
+                $notify,
+                false,
+                $this->buildMarkerComment($marker),
+                $arguments
+            );
         } catch (LocalizedException $e) {
             // Configuration/state problems will not resolve on redelivery
             return ActionResult::failure('Could not create credit memo: ' . $e->getMessage());
@@ -163,6 +234,12 @@ class CreateCreditmemo extends AbstractOrderAction implements SimulateableAction
         return ActionResult::success($output);
     }
 
+    /**
+     * No marker scan here, deliberately: simulate() never creates a memo, so no
+     * memo can carry THIS execution+step's marker and the scan could only ever
+     * miss. Keeping it out leaves simulation query-free as well as side-effect
+     * free.
+     */
     public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
     {
         $mode = $this->resolveMode($config);
@@ -199,6 +276,53 @@ class CreateCreditmemo extends AbstractOrderAction implements SimulateableAction
             $order->getIncrementId(),
             $this->boolConfig($config, 'notify') ? 'yes' : 'no'
         ));
+    }
+
+    /**
+     * The id of an existing credit memo on this order that already carries
+     * THIS execution+step's marker, or null when there is none.
+     *
+     * Lookup mechanism: the credit-memo repository filtered on order_id (an
+     * indexed column), then each memo's own comments. Both hops go through
+     * service contracts — the repository and CreditmemoInterface::getComments()
+     * (which lazy-loads the comment collection) — so the whole scan is
+     * mockable with plain doubles, unlike an order creditmemo COLLECTION.
+     * Filtering the comment table by marker text instead would be one query
+     * but a LIKE scan across every memo in the store, and it would lose the
+     * order scoping that keeps the search index-bound.
+     *
+     * Per-step by construction: the dedupe key is execution UUID + step key
+     * (docs/08), so two refund steps in one workflow never dedupe each other.
+     */
+    private function findMarkedCreditmemoId(int $orderId, string $marker): ?int
+    {
+        $this->searchCriteriaBuilder->addFilter('order_id', $orderId, 'eq');
+        $result = $this->creditmemoRepository->getList($this->searchCriteriaBuilder->create());
+
+        foreach ($result->getItems() as $creditmemo) {
+            foreach ((array)$creditmemo->getComments() as $comment) {
+                $text = $comment->getComment();
+                if (is_string($text) && str_contains($text, $marker)) {
+                    return (int)$creditmemo->getEntityId();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The credit-memo comment carrying the dedupe marker. Explicitly NOT
+     * visible on front; RefundOrder is called with appendComment false so the
+     * marker also never becomes a notified customer note (and so never reaches
+     * the refund email, which renders customer_note only when
+     * customer_note_notify is set).
+     */
+    private function buildMarkerComment(string $marker): CreditmemoCommentCreationInterface
+    {
+        $comment = $this->commentFactory->create();
+        $comment->setComment(sprintf(self::MARKER_COMMENT_FORMAT, $marker));
+        $comment->setIsVisibleOnFront(false);
+        return $comment;
     }
 
     /**

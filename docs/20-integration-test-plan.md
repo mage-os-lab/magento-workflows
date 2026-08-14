@@ -284,7 +284,8 @@ step row persisted **before** each side effect (RecordingAction observes the
 row already present); root-conditions false ⇒ execution `skipped` with zero
 action side effects; terminal action failure ⇒ execution `failed`, later
 steps not run; retryable failure ⇒ thrown so the queue redelivers, step row
-reflects retry state; branch and switch route by real condition evaluation
+reflects retry state; a redelivery parked back on an already-`complete` step
+row re-runs nothing and completes; branch and switch route by real condition evaluation
 against the fixture entity; `revalidate_entity` re-loads the entity on
 branch/switch; iteration cap halts a cyclic definition; definition_snapshot
 is what executes (mutating the workflow row mid-flight does not change the
@@ -377,7 +378,10 @@ consumer: exactly one comment); `ChangeStatus` respects the real state
 machine (legal transition applies; illegal ⇒ per docs/07 as amended —
 `skipped`, and the docs-stale reword is verified); cancel/refund/ship/invoice:
 `canX()` false ⇒ `skipped` not failed; invoice/creditmemo/shipment rows
-actually created and totals correct. These are the money-touching paths —
+actually created and totals correct; `CreateCreditmemo` writes its
+execution-UUID+step-key marker onto the memo's comment and a redelivery is
+skipped by that marker (not by `canCreditmemo()`, which does not hold for the
+percent/fixed modes) with the first memo's id handed back. These are the money-touching paths —
 each action gets its own test class.
 
 **19. `Action\Notify\EmailTest`** — `TransportBuilderMock` capture: template

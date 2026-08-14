@@ -6,6 +6,7 @@ namespace MageOS\Workflows\Test\Integration\Engine;
 use Magento\Framework\App\ResourceConnection;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
+use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Model\Engine\Executor;
 use MageOS\Workflows\Test\Integration\_files\ProgrammableAction;
 use MageOS\Workflows\Test\Integration\_files\WorkflowEngineTestTrait;
@@ -73,6 +74,57 @@ class ExecutorWalkTest extends TestCase
         $this->assertSame(
             ['s1' => 'complete', 's2' => 'complete', 's3' => 'complete'],
             $this->stepStatuses((int) $execution->getExecutionId())
+        );
+    }
+
+    public function testRedeliveryOntoCompleteStepRowsReRunsNothing(): void
+    {
+        // The redelivery shape docs/08 calls out: current_step still points at
+        // a step whose row is already `complete` (it only advances at the top
+        // of the NEXT step's iteration). Re-running s1 here would re-fire its
+        // side effect — a second refund, a second email.
+        $definition = [
+            'schema' => 1,
+            'entry' => 's1',
+            'steps' => [
+                's1' => $this->actionStep('success', 's2'),
+                's2' => $this->actionStep('success', null),
+            ],
+        ];
+        $workflow = $this->createWorkflow(['name' => 'redelivery', 'definition' => $definition]);
+        $execution = $this->seedExecution(
+            (int) $workflow->getWorkflowId(),
+            $workflow->getDefinition(),
+            1,
+            1
+        );
+        $id = (int) $execution->getExecutionId();
+
+        $this->executor()->execute($id);
+        $this->assertSame(['s1', 's2'], $this->action->ranSteps());
+
+        // Rewind the execution row the way a redelivered message finds it:
+        // running again, parked back on an already-complete step.
+        $reloaded = $this->reloadExecution($id);
+        $reloaded->setStatus(WorkflowExecutionInterface::STATUS_RUNNING);
+        $reloaded->setCurrentStep('s1');
+        $this->om()->get(WorkflowExecutionRepositoryInterface::class)->save($reloaded);
+
+        $this->executor()->execute($id);
+
+        $this->assertSame(
+            ['s1', 's2'],
+            $this->action->ranSteps(),
+            'Neither completed step ran a second time on redelivery'
+        );
+        $this->assertSame(
+            ['s1' => 'complete', 's2' => 'complete'],
+            $this->stepStatuses($id),
+            'A complete row is never flipped back to running by the redelivery'
+        );
+        $this->assertSame(
+            WorkflowExecutionInterface::STATUS_COMPLETE,
+            $this->reloadExecution($id)->getStatus()
         );
     }
 

@@ -13,8 +13,15 @@ use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 /**
  * Plan #18 (docs/20-integration-test-plan.md §5) — order.create_creditmemo
  * offline-refunds a paid order (invoice fixture), creating a real credit memo
- * row, and a redelivery is SKIPPED once fully refunded (canCreditmemo() false
- * => skipped).
+ * row, and a redelivery is SKIPPED.
+ *
+ * Two guards make that skip happen against a real database, and this test sees
+ * the first one: the dedupe MARKER the action writes onto the memo's own
+ * comment (execution UUID + step key — both stable across the two calls here)
+ * is found by the second delivery before any refund is attempted. The
+ * canCreditmemo() state guard behind it would also skip this particular
+ * full-mode case, but it does not hold for the partial modes — see
+ * CreateCreditmemoDedupeTest.
  *
  * @magentoDbIsolation enabled
  */
@@ -50,6 +57,16 @@ class CreditmemoTest extends ActionTestCase
 
         $second = $this->action->execute($ctx, []);
         $this->assertSame(ActionResultInterface::STATUS_SKIPPED, $second->getStatus());
+        $this->assertStringContainsString(
+            'already refunded by this step',
+            (string)($second->getOutput()['reason'] ?? ''),
+            'The dedupe marker, not the state guard, must be what stops the redelivery'
+        );
+        $this->assertSame(
+            (int)$first->getOutput()['creditmemo_id'],
+            (int)($second->getOutput()['creditmemo_id'] ?? 0),
+            'The skip must hand back the memo the first delivery created'
+        );
         $this->assertSame(1, $this->orderRepository->get((int)$order->getId())->getCreditmemosCollection()->getSize());
     }
 

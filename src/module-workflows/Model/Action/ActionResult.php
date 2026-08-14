@@ -24,9 +24,17 @@ class ActionResult implements ActionResultInterface
         return new self(self::STATUS_SUCCESS, $output);
     }
 
-    public static function skipped(?string $reason = null): self
+    /**
+     * @param array $output extra step output alongside the reason — e.g. the id
+     *              of the entity a dedupe guard found already created, so a
+     *              skipped redelivery still exposes it as steps.<key>.*
+     */
+    public static function skipped(?string $reason = null, array $output = []): self
     {
-        return new self(self::STATUS_SKIPPED, $reason !== null ? ['reason' => $reason] : []);
+        return new self(
+            self::STATUS_SKIPPED,
+            $reason !== null ? array_merge($output, ['reason' => $reason]) : $output
+        );
     }
 
     public static function failure(string $error, bool $retryable = false, array $output = []): self

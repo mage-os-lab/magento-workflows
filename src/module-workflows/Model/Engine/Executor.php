@@ -30,6 +30,17 @@ use Psr\Log\LoggerInterface;
  * consumer death mid-step means queue redelivery resumes from current_step.
  * Retryable step failures rethrow so the queue redelivers; terminal failures
  * fail the execution and trip the circuit breaker counter.
+ *
+ * Persist-before-side-effect makes redelivery SAFE to resume; it does not by
+ * itself make it safe to RE-RUN. current_step is only advanced at the top of
+ * the next iteration, so an execution whose step already finished still points
+ * at that step until the following step's pre-write lands — and every
+ * redelivery path (a retryable failure thrown by a later step, a zombie
+ * republish from the resume sweeper, a consumer death between the step-row
+ * write and the execution-row save) re-enters the walk on it. walk() therefore
+ * opens each iteration with the completed-step guard below
+ * (@see resumePastCompletedStep) so an already-`complete` step row is resumed
+ * PAST — using its recorded outcome — instead of re-executed.
  */
 class Executor
 {
@@ -179,6 +190,21 @@ class Executor
 
             $step = $definition->getStep($currentKey);
 
+            // Redelivery guard, BEFORE the running claim below so a finished
+            // step row is never flipped back to running. Re-checked on every
+            // iteration: a redelivery can re-enter the graph anywhere.
+            $resume = $this->resumePastCompletedStep($execution, $definition, $ctx, $currentKey, $step);
+            if ($resume !== null) {
+                if ($resume['stop']) {
+                    $this->completeExecution($execution, $ctx);
+                    return;
+                }
+                // Iterations still tick, so a cyclic snapshot of completed
+                // steps hits MAX_STEPS_PER_RUN exactly like a live one.
+                $currentKey = $resume['next'];
+                continue;
+            }
+
             // State in DB before the side effect: crash here = clean redelivery
             $execution->setCurrentStep($currentKey);
             $this->persistContext($execution, $ctx);
@@ -229,6 +255,183 @@ class Executor
         }
 
         $this->completeExecution($execution, $ctx);
+    }
+
+    /**
+     * At-least-once delivery means a step can be re-entered after it already
+     * finished (docs/08 "Crash safety and delivery semantics"). Re-running a
+     * `complete` step row would re-fire its side effect — a second refund, a
+     * second email — so a completed step is resumed PAST instead, following the
+     * edge its own recorded outcome chose. Rows in any other status
+     * (running/pending/failed/waiting) keep at-least-once semantics: the caller
+     * re-executes them, which is what those statuses mean.
+     *
+     * Scope is deliberately action / branch / switch / stop — the step types
+     * whose outcome is fully recoverable from the definition plus the step row:
+     *
+     *  - action: the next edge is static (`next`), and the recorded result
+     *    carries the output. The output is normally already in the persisted
+     *    context (runActionStep writes the step row, then persists the context
+     *    and saves), but the two writes are not one transaction, so a crash
+     *    between them leaves a complete row whose output never reached the
+     *    context bag. Rehydrating from the row — written atomically WITH the
+     *    complete status — closes that window for downstream interpolation.
+     *  - branch / switch: the recorded `{"result": bool}` / `{"matched": key}`
+     *    reproduces the edge originally taken, so a resumed walk cannot diverge
+     *    from the first pass because the entity changed underneath it. A
+     *    missing or corrupt result falls back to re-evaluating: conditions are
+     *    side-effect free, so re-evaluation is a correctness-preserving (if
+     *    less deterministic) fallback, not a hazard.
+     *  - stop: nothing to replay; the execution completes.
+     *
+     * delay / wait / approval are deliberately EXCLUDED. current_step never
+     * rests on a completed park step in the normal flow — runDelayStep advances
+     * it past the delay at park time, and ResumeConsumer routes wait/approval
+     * off the gate onto on_event/on_timeout/on_approved/on_rejected as it flips
+     * the row to complete — so the guard would only ever fire in the narrow
+     * crash window inside ResumeConsumer::process (row closed, execution not
+     * yet saved). Handling that here would mean duplicating the consumer's
+     * decision-routing rules in a second place, where they could drift; today's
+     * behavior re-parks the gate, keeps the recorded result (upsertStepRow only
+     * touches the columns it is given) and re-attaches to the idempotent
+     * approval task, so the next resume routes on the original decision. A late
+     * resume is a far cheaper failure mode than routing that disagrees with the
+     * consumer, so park steps keep the existing behavior.
+     *
+     * @param array $step definition node for $stepKey
+     * @return array{stop: bool, next: string|null}|null null = execute the step normally
+     */
+    private function resumePastCompletedStep(
+        WorkflowExecutionInterface $execution,
+        Definition $definition,
+        ExecutionContext $ctx,
+        string $stepKey,
+        array $step
+    ): ?array {
+        $type = $step['type'] ?? null;
+        if (!in_array($type, [
+            Definition::STEP_ACTION,
+            Definition::STEP_BRANCH,
+            Definition::STEP_SWITCH,
+            Definition::STEP_STOP,
+        ], true)) {
+            return null;
+        }
+
+        $row = $this->fetchStepRow($execution, $stepKey);
+        if ($row === null
+            || ($row['status'] ?? null) !== WorkflowExecutionStepInterface::STATUS_COMPLETE
+        ) {
+            return null;
+        }
+        $result = $this->decodeStepResult($row['result'] ?? null);
+
+        switch ($type) {
+            case Definition::STEP_STOP:
+                $this->logResumePast($execution, $stepKey, 'stop', 'completing the execution');
+                return ['stop' => true, 'next' => null];
+
+            case Definition::STEP_ACTION:
+                $output = $result['output'] ?? null;
+                if (is_array($output)) {
+                    $ctx->setStepOutput($stepKey, $output);
+                }
+                $next = $definition->getStepEdges($stepKey)['next'];
+                $this->logResumePast($execution, $stepKey, 'action', $this->describeEdge($next));
+                return ['stop' => false, 'next' => $next];
+
+            case Definition::STEP_BRANCH:
+                $taken = $result['result'] ?? null;
+                if (!is_bool($taken)) {
+                    // Unreadable outcome: re-evaluating is side-effect free
+                    return null;
+                }
+                $edges = $definition->getStepEdges($stepKey);
+                $next = $taken ? $edges['on_true'] : $edges['on_false'];
+                $this->logResumePast($execution, $stepKey, 'branch', $this->describeEdge($next));
+                return ['stop' => false, 'next' => $next];
+
+            case Definition::STEP_SWITCH:
+            default:
+                if (!array_key_exists('matched', $result)) {
+                    return null;
+                }
+                $edges = $definition->getStepEdges($stepKey);
+                $matched = $result['matched'];
+                if ($matched === null) {
+                    // No case matched on the first pass: the default edge
+                    $next = $edges['default'] ?? null;
+                } elseif (is_string($matched) || is_int($matched)) {
+                    $edgeKey = 'case:' . $matched;
+                    if (!array_key_exists($edgeKey, $edges)) {
+                        // The recorded case is gone from the snapshot: re-evaluate
+                        return null;
+                    }
+                    $next = $edges[$edgeKey];
+                } else {
+                    return null;
+                }
+                $this->logResumePast($execution, $stepKey, 'switch', $this->describeEdge($next));
+                return ['stop' => false, 'next' => $next];
+        }
+    }
+
+    /**
+     * Status + recorded result of this execution's row for $stepKey, or null
+     * when the step has never run. Indexed lookup on (execution_id, step_key).
+     *
+     * @return array{status: string, result: string|null}|null
+     */
+    private function fetchStepRow(WorkflowExecutionInterface $execution, string $stepKey): ?array
+    {
+        $connection = $this->resourceConnection->getConnection();
+        $row = $connection->fetchRow(
+            $connection->select()
+                ->from(
+                    $this->resourceConnection->getTableName(self::STEP_TABLE),
+                    [WorkflowExecutionStepInterface::STATUS, WorkflowExecutionStepInterface::RESULT]
+                )
+                ->where('execution_id = ?', (int) $execution->getExecutionId())
+                ->where('step_key = ?', $stepKey)
+                ->limit(1)
+        );
+
+        return is_array($row) ? $row : null;
+    }
+
+    /**
+     * Recorded step result as an array; [] when absent or unparseable (the
+     * callers treat that as "outcome unknown", never as a valid outcome).
+     */
+    private function decodeStepResult(mixed $resultJson): array
+    {
+        if (!is_string($resultJson) || $resultJson === '') {
+            return [];
+        }
+        $decoded = json_decode($resultJson, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function describeEdge(?string $next): string
+    {
+        return $next !== null ? sprintf('following the recorded edge to "%s"', $next) : 'ending the walk';
+    }
+
+    private function logResumePast(
+        WorkflowExecutionInterface $execution,
+        string $stepKey,
+        string $type,
+        string $outcome
+    ): void {
+        $this->logger->info(sprintf(
+            'Workflow execution %d re-entered already-complete %s step "%s" (queue redelivery); '
+            . 'skipping re-execution and %s',
+            (int) $execution->getExecutionId(),
+            $type,
+            $stepKey,
+            $outcome
+        ));
     }
 
     /**
