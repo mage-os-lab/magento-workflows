@@ -9,7 +9,8 @@
         "mage-os/workflows-triggers-core": "*",
         "magento/framework": ">=103.0.4",
         "magento/module-review": "*",
-        "magento/module-catalog": "*"
+        "magento/module-catalog": "*",
+        "magento/module-customer": "*"
     },
     "autoload": {
         "files": [

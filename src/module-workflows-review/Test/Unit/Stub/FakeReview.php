@@ -32,8 +32,17 @@ class FakeReview extends Review
         private $entityPkValue = 0,
         private $title = '',
         private $nickname = '',
-        private $storeId = 0
+        private $storeId = 0,
+        private $customerId = null
     ) {
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCustomerId()
+    {
+        return $this->customerId;
     }
 
     /**

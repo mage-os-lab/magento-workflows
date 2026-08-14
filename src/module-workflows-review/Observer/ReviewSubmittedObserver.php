@@ -6,6 +6,7 @@ namespace MageOS\WorkflowsReview\Observer;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Review\Model\Review;
+use MageOS\WorkflowsReview\Model\ReviewPayloadEnricher;
 use MageOS\WorkflowsTriggersCore\Service\EventPublisher;
 use Psr\Log\LoggerInterface;
 
@@ -27,7 +28,8 @@ class ReviewSubmittedObserver implements ObserverInterface
 
     public function __construct(
         private readonly EventPublisher $eventPublisher,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ReviewPayloadEnricher $payloadEnricher
     ) {
     }
 
@@ -51,6 +53,7 @@ class ReviewSubmittedObserver implements ObserverInterface
         }
 
         try {
+            $context = $this->payloadEnricher->enrich($review);
             $this->eventPublisher->publish(self::EVENT_NAME, [
                 // 'productId' hydrates via ProductRepositoryInterface::getById($productId)
                 'productId' => $productId,
@@ -59,6 +62,13 @@ class ReviewSubmittedObserver implements ObserverInterface
                 'review_title' => (string) $review->getTitle(),
                 'review_nickname' => (string) $review->getNickname(),
                 'store_id' => (int) $review->getStoreId(),
+                // Enriched context (each null when unavailable): average star
+                // rating across the review's rating dimensions, and the
+                // reviewer's identity for logged-in reviewers. Guest reviews
+                // carry null customer fields.
+                'rating' => $context['rating'],
+                'customer_id' => $context['customer_id'],
+                'customer_email' => $context['customer_email'],
             ]);
         } catch (\Throwable $exception) {
             $this->logger->error(

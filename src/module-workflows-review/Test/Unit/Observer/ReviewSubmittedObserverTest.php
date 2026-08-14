@@ -9,6 +9,7 @@ use Magento\Review\Model\Review;
 use MageOS\WorkflowsReview\Observer\ReviewSubmittedObserver;
 use MageOS\WorkflowsReview\Test\Unit\Stub\FakeReview;
 use MageOS\WorkflowsReview\Test\Unit\Stub\RecordingEventPublisher;
+use MageOS\WorkflowsReview\Test\Unit\Stub\StubReviewPayloadEnricher;
 use MageOS\WorkflowsReview\Test\Unit\Stub\RecordingLogger;
 use PHPUnit\Framework\TestCase;
 
@@ -47,7 +48,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testFiresOnceWhenReviewCreatedDirectlyApproved(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $observer->execute($this->observerEvent(['object' => $this->approvedProductReview(null)]));
 
@@ -64,7 +65,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testFiresOnPendingToApprovedModeration(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $observer->execute($this->observerEvent(
             ['data_object' => $this->approvedProductReview(Review::STATUS_PENDING)]
@@ -76,7 +77,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testDoesNotRefireOnSubsequentSavesOfApprovedReview(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $observer->execute($this->observerEvent(
             ['object' => $this->approvedProductReview(Review::STATUS_APPROVED)]
@@ -88,7 +89,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testDoesNotFireWhilePending(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $review = new FakeReview(21, Review::STATUS_PENDING, null, 1, 55);
         $observer->execute($this->observerEvent(['object' => $review]));
@@ -99,7 +100,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testDoesNotFireForNonProductReview(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         // entity row id 2 = customer reviews in stock data
         $observer->execute($this->observerEvent(['object' => $this->approvedProductReview(null, 2)]));
@@ -110,7 +111,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testFiresWhenEntityTypeUnknownLookupFreeGrace(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $observer->execute($this->observerEvent(['object' => $this->approvedProductReview(null, null)]));
 
@@ -120,7 +121,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testDoesNotFireWithoutProductId(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $review = new FakeReview(21, Review::STATUS_APPROVED, null, 1, 0);
         $observer->execute($this->observerEvent(['object' => $review]));
@@ -131,7 +132,7 @@ class ReviewSubmittedObserverTest extends TestCase
     public function testDoesNotFireWithoutReviewInEvent(): void
     {
         $publisher = new RecordingEventPublisher();
-        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger());
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
 
         $observer->execute($this->observerEvent([]));
 
@@ -142,7 +143,7 @@ class ReviewSubmittedObserverTest extends TestCase
     {
         $publisher = new RecordingEventPublisher(new \RuntimeException('amqp connection refused'));
         $logger = new RecordingLogger();
-        $observer = new ReviewSubmittedObserver($publisher, $logger);
+        $observer = new ReviewSubmittedObserver($publisher, $logger, new StubReviewPayloadEnricher());
 
         // Must not throw.
         $observer->execute($this->observerEvent(['object' => $this->approvedProductReview(null)]));
@@ -150,5 +151,40 @@ class ReviewSubmittedObserverTest extends TestCase
         $this->assertStringContainsString('error:', $logger->allMessages());
         $this->assertStringContainsString('catalog.product.review_submitted', $logger->allMessages());
         $this->assertStringContainsString('amqp connection refused', $logger->allMessages());
+    }
+
+    public function testEnrichedContextRidesAlongInThePayload(): void
+    {
+        $publisher = new RecordingEventPublisher();
+        $observer = new ReviewSubmittedObserver(
+            $publisher,
+            new RecordingLogger(),
+            new StubReviewPayloadEnricher([
+                'rating' => 5,
+                'customer_id' => 7,
+                'customer_email' => 'jane@example.com',
+            ])
+        );
+
+        $observer->execute($this->observerEvent(['object' => $this->approvedProductReview(null)]));
+
+        $this->assertCount(1, $publisher->published);
+        $data = $publisher->published[0]['data'];
+        $this->assertSame(5, $data['rating']);
+        $this->assertSame(7, $data['customer_id']);
+        $this->assertSame('jane@example.com', $data['customer_email']);
+    }
+
+    public function testGuestReviewCarriesNullEnrichmentFields(): void
+    {
+        $publisher = new RecordingEventPublisher();
+        $observer = new ReviewSubmittedObserver($publisher, new RecordingLogger(), new StubReviewPayloadEnricher());
+
+        $observer->execute($this->observerEvent(['object' => $this->approvedProductReview(null)]));
+
+        $data = $publisher->published[0]['data'];
+        $this->assertNull($data['rating']);
+        $this->assertNull($data['customer_id']);
+        $this->assertNull($data['customer_email']);
     }
 }

@@ -3,9 +3,9 @@
     "template": {
         "code": "product-review-triage",
         "title": "Product review triage",
-        "description": "Switches on review score: rewards five-star reviewers with a coupon, alerts CX on a low score.",
+        "description": "Switches on review score: rewards logged-in five-star reviewers with a coupon, alerts CX on a low score. Guest five-star reviews are skipped (no email to reward).",
         "category": "Marketing & reviews",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "requires": {
             "schema": 4,
             "triggers": ["catalog.product.review_submitted"],
@@ -34,7 +34,7 @@
                         {
                             "key": "five_star",
                             "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\TriggerData\",\"attribute\":\"rating\",\"operator\":\"==\",\"value\":\"5\"}",
-                            "next": "reward_customer"
+                            "next": "has_reviewer_email"
                         },
                         {
                             "key": "low_score",
@@ -44,6 +44,13 @@
                     ],
                     "revalidate_entity": false,
                     "default": null
+                },
+                "has_reviewer_email": {
+                    "type": "branch",
+                    "conditions_serialized": "{\"type\":\"MageOS\\\\Workflows\\\\Model\\\\Rule\\\\Condition\\\\TriggerData\",\"attribute\":\"customer_email\",\"operator\":\"{}\",\"value\":\"@\"}",
+                    "revalidate_entity": false,
+                    "on_true": "reward_customer",
+                    "on_false": null
                 },
                 "reward_customer": {
                     "type": "action",
