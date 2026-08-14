@@ -28,13 +28,15 @@ class FakeFanOutExpander extends FanOutExpander
         int $workflowId,
         array $sourceData,
         string $eventName,
-        ?string $traceUuid
+        ?string $traceUuid,
+        int $chainDepth = 0
     ): ?FanOutResult {
         $this->calls[] = [
             'workflowId' => $workflowId,
             'data' => $sourceData,
             'eventName' => $eventName,
             'traceUuid' => $traceUuid,
+            'chainDepth' => $chainDepth,
         ];
         if ($this->throws !== null) {
             throw $this->throws;

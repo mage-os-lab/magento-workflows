@@ -14,6 +14,10 @@ use MageOS\Workflows\Model\Action\ActionResult;
 /**
  * product.set_status — enables or disables the product on the execution's
  * store scope via mass attribute update (no full product save).
+ *
+ * Trigger-chaining boundary: this path skips catalog_product_save_after, so
+ * a status change made here never raises catalog.product.status_changed
+ * (docs/07-actions.md, footnote 11).
  */
 class SetStatus extends AbstractAction implements SimulateableActionInterface
 {

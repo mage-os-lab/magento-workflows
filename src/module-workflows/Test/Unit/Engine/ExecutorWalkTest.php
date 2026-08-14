@@ -18,6 +18,7 @@ use MageOS\Workflows\Api\WorkflowExecutionRepositoryInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\Action\ActionResult;
+use MageOS\Workflows\Model\Engine\ChainDepthContext;
 use MageOS\Workflows\Model\Engine\CircuitBreaker;
 use MageOS\Workflows\Model\Engine\DelayCalculator;
 use MageOS\Workflows\Model\Engine\Executor;
@@ -126,6 +127,29 @@ class ExecutorWalkTest extends TestCase
         $this->assertSame('act.second', $context['steps']['a2']['ran'] ?? null);
         // Completion event dispatched.
         $this->assertNotNull($this->events->last('workflow_execution_complete'));
+    }
+
+    public function testWalkBracketsTheChainDepthContextAroundActionSideEffects(): void
+    {
+        // An event published from inside an action must see this execution's
+        // depth + 1; once the walk ends, the context must be inactive again.
+        $context = new ChainDepthContext();
+        $observedDuringAction = null;
+        $this->execution = $this->newExecution($this->chainDefinition(
+            function () use ($context, &$observedDuringAction) {
+                $observedDuringAction = $context->dispatchDepth();
+                return ActionResult::success(['ran' => 'act.first']);
+            }
+        ));
+        $this->execution->setChainDepth(1);
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true), WorkflowInterface::STATUS_ENABLED, $context)
+            ->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        $this->assertSame(2, $observedDuringAction, 'inside the walk: execution chain_depth + 1');
+        $this->assertFalse($context->isActive(), 'the walk must unwind the context on the way out');
+        $this->assertSame(0, $context->dispatchDepth());
     }
 
     public function testStepRowIsPersistedBeforeTheActionSideEffectRuns(): void
@@ -1004,7 +1028,8 @@ class ExecutorWalkTest extends TestCase
 
     private function buildExecutor(
         ConditionEvaluator $conditions,
-        int $workflowStatus = WorkflowInterface::STATUS_ENABLED
+        int $workflowStatus = WorkflowInterface::STATUS_ENABLED,
+        ?ChainDepthContext $chainDepthContext = null
     ): Executor {
         return $this->executorFor(
             $conditions,
@@ -1012,7 +1037,8 @@ class ExecutorWalkTest extends TestCase
                 ->setName('Refund on cancel')
                 ->setStatus($workflowStatus)
                 ->setEntityType('sales_order')
-                ->setConditionsSerialized('{"root":"tree"}')
+                ->setConditionsSerialized('{"root":"tree"}'),
+            $chainDepthContext
         );
     }
 
@@ -1025,8 +1051,11 @@ class ExecutorWalkTest extends TestCase
         return $this->executorFor($conditions, null);
     }
 
-    private function executorFor(ConditionEvaluator $conditions, ?WorkflowInterface $workflow): Executor
-    {
+    private function executorFor(
+        ConditionEvaluator $conditions,
+        ?WorkflowInterface $workflow,
+        ?ChainDepthContext $chainDepthContext = null
+    ): Executor {
         $workflowRepository = new FakeWorkflowRepository($workflow);
         $executionRepository = new FakeExecutionRepository($this->recorder, $this->execution);
 
@@ -1043,7 +1072,8 @@ class ExecutorWalkTest extends TestCase
             new DelayCalculator(),
             new StubScopeConfig(['general/locale/timezone' => 'UTC']),
             null,
-            null
+            null,
+            $chainDepthContext
         );
     }
 

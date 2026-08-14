@@ -18,12 +18,12 @@ use Psr\Log\LoggerInterface;
  * a 'quote.abandoned' async event so they ride the same single dispatch
  * path as every other trigger.
  *
- * Soft dependency, intentionally: mageos-workflows-triggers-core owns the
- * EventPublisher that turns this into a real async-events subscription
- * target. This module must not hard-require that package (composer.json
- * only "suggest"s it), so we probe for the class at runtime and degrade to
- * a debug log when it's absent - the query/detection logic still runs and
- * still dedupes via mageos_workflow_abandoned_flag either way.
+ * Dependency note: this pack hard-requires mageos-workflows-triggers-core
+ * (composer.json + module.xml sequence), which owns the EventPublisher that
+ * turns the detection into a real async-events subscription target. The
+ * runtime ObjectManager probe below predates the domain-pack split (when the
+ * dependency really was soft) and is kept only as a belt-and-braces degrade
+ * path - on any correctly composed install the publisher always resolves.
  */
 class AbandonedCartDetector
 {
@@ -35,7 +35,7 @@ class AbandonedCartDetector
     private const QUOTE_TABLE = 'quote';
     private const FLAG_TABLE = 'mageos_workflow_abandoned_flag';
 
-    /** @see class docblock - soft dependency, not in composer.json "require" */
+    /** @see class docblock - hard dependency; probe kept as a degrade path */
     private const EVENT_PUBLISHER_CLASS = 'MageOS\\WorkflowsTriggersCore\\Service\\EventPublisher';
     private const EVENT_NAME = 'quote.abandoned';
 

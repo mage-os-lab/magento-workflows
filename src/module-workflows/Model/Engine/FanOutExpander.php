@@ -75,7 +75,8 @@ class FanOutExpander
         int $workflowId,
         array $sourceData,
         string $eventName,
-        ?string $traceUuid
+        ?string $traceUuid,
+        int $chainDepth = 0
     ): ?FanOutResult {
         try {
             $workflow = $this->workflowRepository->getById($workflowId);
@@ -134,7 +135,7 @@ class FanOutExpander
         $dispatched = 0;
         $skipped = 0;
         foreach ($targetIds as $targetId) {
-            if ($this->dispatchChild($workflowId, $relation->getTargetEntityType(), (int) $targetId, $origin)) {
+            if ($this->dispatchChild($workflowId, $relation->getTargetEntityType(), (int) $targetId, $origin, $chainDepth)) {
                 $dispatched++;
             } else {
                 $skipped++;
@@ -152,7 +153,13 @@ class FanOutExpander
      * @return bool true when an execution row was created; false when skipped
      *         (missing entity, a per-child guard, or an exception)
      */
-    private function dispatchChild(int $workflowId, string $targetType, int $targetId, array $origin): bool
+    private function dispatchChild(
+        int $workflowId,
+        string $targetType,
+        int $targetId,
+        array $origin,
+        int $chainDepth
+    ): bool
     {
         try {
             $entity = $this->hydrationProvider->getEntity($targetType, $targetId, false);
@@ -172,7 +179,8 @@ class FanOutExpander
             $execution = $this->dispatcher->dispatch(
                 $workflowId,
                 $childSnapshot,
-                WorkflowInterface::TRIGGER_TYPE_EVENT
+                WorkflowInterface::TRIGGER_TYPE_EVENT,
+                $chainDepth
             );
 
             return $execution !== null;

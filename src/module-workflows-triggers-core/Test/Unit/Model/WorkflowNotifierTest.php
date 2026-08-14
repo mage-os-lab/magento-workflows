@@ -5,6 +5,7 @@ namespace MageOS\WorkflowsTriggersCore\Test\Unit\Model;
 
 use CloudEvents\V1\CloudEventImmutable;
 use MageOS\AsyncEvents\Helper\NotifierResult;
+use MageOS\Workflows\Model\Engine\ChainDepthContext;
 use MageOS\Workflows\Model\Engine\FanOutResult;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
 use MageOS\WorkflowsTriggersCore\Model\WorkflowNotifier;
@@ -85,6 +86,37 @@ class WorkflowNotifierTest extends TestCase
         $this->assertFalse($result->getIsRetryable());
         $this->assertStringContainsString('dispatched', $result->getResponseData());
         $this->assertStringContainsString('exec-uuid-9', $result->getResponseData());
+    }
+
+    public function testChainDepthRideAlongIsStrippedAndFedToDispatch(): void
+    {
+        $execution = new WorkflowExecutionStub('exec-uuid-10');
+        $execution->setExecutionId(78);
+        $this->dispatcher->dispatchResult = $execution;
+
+        $this->notifier()->notify(
+            $this->subscription('workflow:42'),
+            $this->event(['entity_id' => 7, ChainDepthContext::PAYLOAD_KEY => 2])
+        );
+
+        $this->assertCount(1, $this->dispatcher->dispatchCalls);
+        $this->assertSame(2, $this->dispatcher->dispatchCalls[0]['chainDepth']);
+        $this->assertSame(
+            ['entity_id' => 7],
+            $this->dispatcher->dispatchCalls[0]['payload'],
+            'the reserved depth key must never reach the trigger snapshot'
+        );
+    }
+
+    public function testAbsentChainDepthKeyDispatchesAtDepthZero(): void
+    {
+        $execution = new WorkflowExecutionStub('exec-uuid-11');
+        $execution->setExecutionId(79);
+        $this->dispatcher->dispatchResult = $execution;
+
+        $this->notifier()->notify($this->subscription('workflow:42'), $this->event());
+
+        $this->assertSame(0, $this->dispatcher->dispatchCalls[0]['chainDepth']);
     }
 
     public function testIntentionalSkipIsSuccessfulAndNotRetryable(): void

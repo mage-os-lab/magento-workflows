@@ -17,6 +17,10 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * the execution's store, via Magento\Catalog\Model\Product\Action so only the
  * touched attribute is reindexed (no full product save).
  *
+ * Trigger-chaining boundary: this path skips catalog_product_save_after, so
+ * a change made here never raises catalog.product.price_changed /
+ * catalog.product.status_changed (docs/07-actions.md, footnote 11).
+ *
  * Same deny-by-default posture as customer.set_attribute (docs/10-security.md):
  * denylist ships in di.xml with sku (identity) and status (owned by the
  * dedicated product.set_status action); url_key intentionally remains allowed.

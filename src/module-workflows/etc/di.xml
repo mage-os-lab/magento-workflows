@@ -168,6 +168,11 @@
     <type name="MageOS\Workflows\Model\Engine\Executor">
         <arguments>
             <argument name="redactingVariableResolver" xsi:type="object">MageOS\Workflows\Model\Variable\VariableResolverForDryRun</argument>
+            <!-- REQUIRED for the chain-depth loop guard: the SHARED context the
+                 Executor brackets its walk with and EventPublisher stamps
+                 published payloads from. Optional-with-null in the constructor
+                 only so lightweight test harnesses can omit it. -->
+            <argument name="chainDepthContext" xsi:type="object">MageOS\Workflows\Model\Engine\ChainDepthContext</argument>
         </arguments>
     </type>
 

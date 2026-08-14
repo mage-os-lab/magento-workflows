@@ -75,7 +75,8 @@ class Executor
         private readonly DelayCalculator $delayCalculator,
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly ?VariableResolver $redactingVariableResolver = null,
-        private readonly ?ApprovalTaskManagerInterface $approvalTaskManager = null
+        private readonly ?ApprovalTaskManagerInterface $approvalTaskManager = null,
+        private readonly ?ChainDepthContext $chainDepthContext = null
     ) {
     }
 
@@ -225,6 +226,25 @@ class Executor
      * @throws \Throwable
      */
     private function walk(
+        WorkflowExecutionInterface $execution,
+        Definition $definition,
+        ExecutionContext $ctx,
+        ?WorkflowInterface $workflow,
+        string $currentKey
+    ): void {
+        // Bracket the walk so any event published from inside it (action
+        // side effects, entity-save observers) carries this execution's
+        // chain depth + 1 — the feed for Dispatcher's loop_guard_depth
+        // comparison (docs/07-actions.md §Guards).
+        $previousDepth = $this->chainDepthContext?->enter((int) $execution->getChainDepth());
+        try {
+            $this->walkSteps($execution, $definition, $ctx, $workflow, $currentKey);
+        } finally {
+            $this->chainDepthContext?->restore($previousDepth);
+        }
+    }
+
+    private function walkSteps(
         WorkflowExecutionInterface $execution,
         Definition $definition,
         ExecutionContext $ctx,

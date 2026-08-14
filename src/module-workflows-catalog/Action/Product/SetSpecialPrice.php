@@ -18,6 +18,10 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * are always written together: omitted dates are cleared so a previous
  * schedule can't linger. Writing the same values twice is a no-op, so the
  * action is idempotent under redelivery.
+ *
+ * Trigger-chaining boundary: this path skips catalog_product_save_after, so
+ * a price change made here never raises catalog.product.price_changed
+ * (docs/07-actions.md, footnote 11).
  */
 class SetSpecialPrice extends AbstractAction implements SimulateableActionInterface
 {

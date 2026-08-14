@@ -11,6 +11,7 @@ use MageOS\AsyncEvents\Service\AsyncEvent\NotifierInterface;
 use MageOS\Workflows\Api\Data\WorkflowExecutionInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\DispatcherInterface;
+use MageOS\Workflows\Model\Engine\ChainDepthContext;
 use MageOS\Workflows\Model\Engine\FanOutExpander;
 use MageOS\Workflows\Model\Engine\FanOutResult;
 use Psr\Log\LoggerInterface;
@@ -84,6 +85,13 @@ class WorkflowNotifier implements NotifierInterface
     {
         $data = $this->extractPayload($event);
 
+        // Chain-depth ride-along (docs/07-actions.md §Guards): EventPublisher
+        // stamps this reserved key on payloads published from inside a running
+        // execution. Strip it BEFORE the payload becomes a trigger snapshot;
+        // feed it to every dispatch below so loop_guard_depth can bite.
+        $chainDepth = max(0, (int) ($data[ChainDepthContext::PAYLOAD_KEY] ?? 0));
+        unset($data[ChainDepthContext::PAYLOAD_KEY]);
+
         $waitTarget = $this->extractWaitTarget($asyncEvent);
         if ($waitTarget !== null) {
             return $this->notifyWait($asyncEvent, $waitTarget[0], $waitTarget[1], $data);
@@ -111,7 +119,8 @@ class WorkflowNotifier implements NotifierInterface
                 $workflowId,
                 $data,
                 (string) $asyncEvent->getEventName(),
-                $this->extractTraceUuid($event)
+                $this->extractTraceUuid($event),
+                $chainDepth
             );
         } catch (\Throwable $exception) {
             // Pre-expansion failure (relation resolution threw before any child
@@ -145,7 +154,8 @@ class WorkflowNotifier implements NotifierInterface
             $execution = $this->dispatcher->dispatch(
                 $workflowId,
                 $data,
-                WorkflowInterface::TRIGGER_TYPE_EVENT
+                WorkflowInterface::TRIGGER_TYPE_EVENT,
+                $chainDepth
             );
         } catch (\Throwable $exception) {
             $this->logger->error(

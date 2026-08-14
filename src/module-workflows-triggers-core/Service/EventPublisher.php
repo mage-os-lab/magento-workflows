@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsTriggersCore\Service;
 
 use MageOS\AsyncEvents\Service\AsyncEvent\EventDispatcher;
+use MageOS\Workflows\Model\Engine\ChainDepthContext;
 
 /**
  * Single seam onto the async-events publishing API for the gap-fill events
@@ -37,7 +38,8 @@ use MageOS\AsyncEvents\Service\AsyncEvent\EventDispatcher;
 class EventPublisher
 {
     public function __construct(
-        private readonly EventDispatcher $eventDispatcher
+        private readonly EventDispatcher $eventDispatcher,
+        private readonly ChainDepthContext $chainDepthContext
     ) {
     }
 
@@ -46,6 +48,15 @@ class EventPublisher
      */
     public function publish(string $eventName, array $data): void
     {
+        // Published from inside a running execution (an action's side effect,
+        // or an observer an action's save fired): stamp the execution's chain
+        // depth so WorkflowNotifier can feed Dispatcher's loop_guard_depth
+        // comparison. Ordinary storefront/admin publishes carry no key and
+        // dispatch at depth 0. WorkflowNotifier strips the key before the
+        // payload becomes a trigger snapshot.
+        if ($this->chainDepthContext->isActive() && !isset($data[ChainDepthContext::PAYLOAD_KEY])) {
+            $data[ChainDepthContext::PAYLOAD_KEY] = $this->chainDepthContext->dispatchDepth();
+        }
         $this->eventDispatcher->dispatch($eventName, $data);
     }
 }
