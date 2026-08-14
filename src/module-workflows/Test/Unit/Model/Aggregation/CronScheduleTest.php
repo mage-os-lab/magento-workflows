@@ -80,6 +80,29 @@ class CronScheduleTest extends TestCase
         $this->assertSame('2026-07-05 09:00:00', $this->utc($this->cron->next($now, '0 9 * * *', $tz)));
     }
 
+    public function testLeapDayOnlyExpressionResolvesAcrossYears(): void
+    {
+        // Feb 29 exists in 2024 and 2028; from mid-2026 both directions must
+        // cross year boundaries. The old ±1-year minute scan threw here in
+        // 3 out of every 4 years.
+        $utc = new \DateTimeZone('UTC');
+        $now = $this->ts('2026-07-04 15:00:00');
+
+        $prev = $this->cron->previous($now, '0 0 29 2 *', $utc);
+        $next = $this->cron->next($now, '0 0 29 2 *', $utc);
+
+        $this->assertSame('2024-02-29 00:00:00', $this->utc($prev));
+        $this->assertSame('2028-02-29 00:00:00', $this->utc($next));
+    }
+
+    public function testImpossibleDayExpressionThrows(): void
+    {
+        // April 31 never exists; must fail fast (bounded day-skips), not scan
+        // minute-by-minute forever.
+        $this->expectException(\InvalidArgumentException::class);
+        $this->cron->next($this->ts('2026-07-04 15:00:00'), '0 0 31 4 *', new \DateTimeZone('UTC'));
+    }
+
     public function testInvalidExpressionThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);

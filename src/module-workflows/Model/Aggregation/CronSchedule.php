@@ -17,7 +17,18 @@ namespace MageOS\Workflows\Model\Aggregation;
  */
 class CronSchedule
 {
-    private const LOOKAROUND_MINUTES = 366 * 24 * 60;
+    /**
+     * Iteration budget for previous()/next(). The scan skips a whole DAY per
+     * step when the day fields don't match and steps a minute at a time only
+     * inside matching days, so the budget is sized in day-skips: a Feb-29-only
+     * expression ('0 0 29 2 *') legitimately has its nearest match up to 8
+     * years away (leap gap around a skipped century year), ~2930 day-skips,
+     * plus at most two partial in-day minute scans (2 x 1440). 16000 covers
+     * that with margin while keeping truly impossible expressions
+     * ('0 0 31 4 *') failing in milliseconds, not after a half-million
+     * minute probes as the old ±1-year minute-by-minute scan did.
+     */
+    private const LOOKAROUND_STEPS = 16000;
 
     /**
      * Latest matching minute at or before $ts (inclusive), as a unix timestamp.
@@ -28,13 +39,21 @@ class CronSchedule
     {
         $fields = $this->parse($expression);
         $cursor = $this->floorToMinute($ts, $tz);
-        for ($i = 0; $i <= self::LOOKAROUND_MINUTES; $i++) {
-            if ($this->matches($cursor, $fields, $tz)) {
+        for ($i = 0; $i <= self::LOOKAROUND_STEPS; $i++) {
+            $dt = (new \DateTimeImmutable('@' . $cursor))->setTimezone($tz);
+            if (!$this->dayMatches($dt, $fields)) {
+                // Skip to 23:59 of the previous day in the target zone.
+                $cursor = $dt->setTime(0, 0)->modify('-1 minute')->getTimestamp();
+                continue;
+            }
+            if ($this->timeMatches($dt, $fields)) {
                 return $cursor;
             }
             $cursor -= 60;
         }
-        throw new \InvalidArgumentException(sprintf('Cron expression "%s" matched no minute in a year', $expression));
+        throw new \InvalidArgumentException(
+            sprintf('Cron expression "%s" matched no minute within the lookaround horizon', $expression)
+        );
     }
 
     /**
@@ -46,13 +65,21 @@ class CronSchedule
     {
         $fields = $this->parse($expression);
         $cursor = $this->floorToMinute($ts, $tz) + 60;
-        for ($i = 0; $i <= self::LOOKAROUND_MINUTES; $i++) {
-            if ($this->matches($cursor, $fields, $tz)) {
+        for ($i = 0; $i <= self::LOOKAROUND_STEPS; $i++) {
+            $dt = (new \DateTimeImmutable('@' . $cursor))->setTimezone($tz);
+            if (!$this->dayMatches($dt, $fields)) {
+                // Skip to 00:00 of the next day in the target zone.
+                $cursor = $dt->setTime(0, 0)->modify('+1 day')->getTimestamp();
+                continue;
+            }
+            if ($this->timeMatches($dt, $fields)) {
                 return $cursor;
             }
             $cursor += 60;
         }
-        throw new \InvalidArgumentException(sprintf('Cron expression "%s" matched no minute in a year', $expression));
+        throw new \InvalidArgumentException(
+            sprintf('Cron expression "%s" matched no minute within the lookaround horizon', $expression)
+        );
     }
 
     private function floorToMinute(int $ts, \DateTimeZone $tz): int
@@ -62,23 +89,14 @@ class CronSchedule
     }
 
     /**
-     * @param array<int, int[]> $fields
+     * @param array<int, int[]|bool> $fields
      */
-    private function matches(int $ts, array $fields, \DateTimeZone $tz): bool
+    private function dayMatches(\DateTimeImmutable $dt, array $fields): bool
     {
-        $dt = (new \DateTimeImmutable('@' . $ts))->setTimezone($tz);
-        $minute = (int) $dt->format('i');
-        $hour = (int) $dt->format('G');
         $dom = (int) $dt->format('j');
         $month = (int) $dt->format('n');
         $dow = (int) $dt->format('w'); // 0 (Sun) .. 6 (Sat)
 
-        if (!in_array($minute, $fields[0], true)) {
-            return false;
-        }
-        if (!in_array($hour, $fields[1], true)) {
-            return false;
-        }
         if (!in_array($month, $fields[3], true)) {
             return false;
         }
@@ -92,6 +110,15 @@ class CronSchedule
             return $domMatch || $dowMatch;
         }
         return $domMatch && $dowMatch;
+    }
+
+    /**
+     * @param array<int, int[]|bool> $fields
+     */
+    private function timeMatches(\DateTimeImmutable $dt, array $fields): bool
+    {
+        return in_array((int) $dt->format('i'), $fields[0], true)
+            && in_array((int) $dt->format('G'), $fields[1], true);
     }
 
     /**
