@@ -114,6 +114,26 @@ class AbandonedCartDetectorTest extends TestCase
         $this->assertSame(21, $publisher->published[0][1]['quote_id']);
     }
 
+    public function testThresholdAboveSevenDaysStillDetects(): void
+    {
+        // 240h (10-day) threshold: the MAX_AGE_DAYS lookback floor is
+        // threshold-relative, so a 12-day-old cart is a candidate
+        // (10d < 12d < 10d+7d). Before the fix the fixed now-7d floor
+        // inverted the range and the detector silently matched nothing.
+        $db = new FakeQuoteDb();
+        $db->addQuote(30, $this->ago('-12 days'));
+
+        $publisher = new RecordingPublisher();
+        $this->detector(
+            new FakeResourceConnection($db),
+            '240',
+            new FakeObjectManager($publisher)
+        )->execute();
+
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame(30, $publisher->published[0][1]['quote_id']);
+    }
+
     public function testFlaggedQuoteIsNotRepublishedOnTheNextRun(): void
     {
         $db = new FakeQuoteDb();

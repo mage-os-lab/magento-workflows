@@ -92,7 +92,11 @@ class AbandonedCartDetector
 
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $olderThan = $now->modify(sprintf('-%d hours', $hours))->format('Y-m-d H:i:s');
-        $newerThan = $now->modify(sprintf('-%d days', self::MAX_AGE_DAYS))->format('Y-m-d H:i:s');
+        // The MAX_AGE_DAYS lookback floor is relative to the THRESHOLD, not to
+        // "now": with a fixed now-7d floor, any configured threshold above
+        // 7*24 hours inverted the range (updated_at < olderThan AND
+        // >= newerThan can match nothing) and silently disabled detection.
+        $newerThan = $now->modify(sprintf('-%d hours', $hours + self::MAX_AGE_DAYS * 24))->format('Y-m-d H:i:s');
 
         $select = $connection->select()
             ->from(['q' => $quoteTable], ['entity_id', 'customer_email', 'store_id', 'updated_at'])
