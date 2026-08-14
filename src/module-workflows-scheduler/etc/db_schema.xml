@@ -13,6 +13,13 @@
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="workflow_id"/>
         </constraint>
+        <!-- CASCADE like every other child table of mageos_workflow: without
+             it a deleted workflow orphans its watermark row, and a reused
+             workflow_id silently inherits the old watermark — skipping every
+             entity older than a schedule the new workflow never ran. -->
+        <constraint xsi:type="foreign" referenceId="MAGEOS_WF_SCHEDULE_STATE_WORKFLOW_ID"
+                    table="mageos_workflow_schedule_state" column="workflow_id"
+                    referenceTable="mageos_workflow" referenceColumn="workflow_id" onDelete="CASCADE"/>
     </table>
 
     <!-- mageos_workflow_abandoned_flag moved to mage-os/workflows-sales with the

@@ -34,8 +34,15 @@ use MageOS\Workflows\Model\Execution\ExecutionContext;
  */
 class VariableResolver
 {
+    /**
+     * Filter arguments come in two forms, both documented in docs/07:
+     * quoted (`|default:'none'`, may contain spaces) and unquoted
+     * (`|number:2` — no spaces, quotes, pipes or braces, so the argument can
+     * never swallow the closing `}}`).
+     */
     private const PLACEHOLDER =
-        '/\{\{\s*([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_\-]+)*)((?:\s*\|\s*[a-z_]+(?::\'[^\']*\')?)*)\s*\}\}/';
+        '/\{\{\s*([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_\-]+)*)'
+        . '((?:\s*\|\s*[a-z_]+(?::(?:\'[^\']*\'|[^\s\'|{}]+))?)*)\s*\}\}/';
     private const ALLOWED_ROOTS = ['trigger', 'steps', 'workflow', 'secrets'];
     private const FILTERS = ['upper', 'lower', 'trim', 'number', 'date', 'default'];
 
@@ -125,7 +132,15 @@ class VariableResolver
         if ($filterChain === '') {
             return $value;
         }
-        preg_match_all('/\|\s*([a-z_]+)(?::\'([^\']*)\')?/', $filterChain, $filters, PREG_SET_ORDER);
+        // Branch-reset group (?|...) captures the argument into ONE group
+        // whether it arrived quoted or unquoted, so a quoted empty string
+        // (`default:''`) stays distinguishable from "no argument".
+        preg_match_all(
+            '/\|\s*([a-z_]+)(?::(?|\'([^\']*)\'|([^\s\'|{}]+)))?/',
+            $filterChain,
+            $filters,
+            PREG_SET_ORDER
+        );
         foreach ($filters as $filter) {
             $name = $filter[1];
             $arg = $filter[2] ?? null;

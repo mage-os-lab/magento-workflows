@@ -1,0 +1,7 @@
+# Monorepo-level dist hygiene: development trees stay out of any archive of
+# the monorepo package itself. The per-package rule that matters most is
+# src/module-workflows-canvas/.gitattributes (TS source + toolchain).
+/dev export-ignore
+/spec export-ignore
+/docs export-ignore
+.gitattributes export-ignore

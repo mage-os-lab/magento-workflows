@@ -62,6 +62,37 @@ class VariableResolverFormattersTest extends TestCase
         $this->assertSame('1,234.50', $result);
     }
 
+    public function testNumberFilterWithUnquotedDecimalsArgument(): void
+    {
+        // The documented short form (docs/07 "number[:decimals]"): the
+        // placeholder grammar accepts an unquoted argument, not only ':'...''.
+        $ctx = $this->makeContext(['total' => '199.5']);
+
+        $result = $this->resolver->resolve('{{ trigger.total|number:2 }}', $ctx);
+
+        $this->assertSame('199.50', $result);
+    }
+
+    public function testUnquotedArgumentWorksForDateAndChainsWithQuoted(): void
+    {
+        $ctx = $this->makeContext(['created' => '2026-07-01 10:30:00', 'coupon' => '']);
+
+        $this->assertSame(
+            '2026-07-01',
+            $this->resolver->resolve('{{ trigger.created|date:Y-m-d }}', $ctx)
+        );
+        // Unquoted and quoted arguments mix in one chain; a quoted EMPTY
+        // argument still counts as "argument given".
+        $this->assertSame(
+            'none',
+            $this->resolver->resolve("{{ trigger.coupon|trim|default:'none' }}", $ctx)
+        );
+        $this->assertSame(
+            '',
+            $this->resolver->resolve("{{ trigger.coupon|default:'' }}", $ctx)
+        );
+    }
+
     public function testNumberFilterDefaultsToTwoDecimals(): void
     {
         $ctx = $this->makeContext(['total' => '1234.567']);

@@ -1,0 +1,7 @@
+# Keep the composer dist tarball to what a store actually runs: the built
+# bundle ships in view/adminhtml/web; the TypeScript source, its test suites,
+# and the node toolchain under app/ (plus the PHP test tree) are development
+# material and stay out of the archive.
+/app export-ignore
+/Test export-ignore
+.gitattributes export-ignore

@@ -140,11 +140,14 @@ Eight defects only a real install could catch; every one shipped broken:
   compare + a guard armed only while dirty, disarmed synchronously by the
   save navigation); pinned by `test/unsavedGuard.test.ts`.
 
-### Open — documented behavior not implemented
-- **`{{ ... number:2 }}` unquoted filter args render literally**
+- **`{{ ... number:2 }}` unquoted filter args rendered literally**
   (docs/07 documents unquoted `number:2`; the resolver's placeholder regex
-  accepts only quoted args). Pinned `known-divergence` in the integration
-  `ResolverTest`; implement or amend docs/07.
+  accepted only quoted args). Fixed by extending the placeholder grammar to
+  accept unquoted arguments (no spaces/quotes/pipes/braces); the former
+  `known-divergence` pin in the integration `ResolverTest` now runs in the
+  blocking gate, plus unit coverage for unquoted/quoted mixing.
+
+### Open — documented behavior not implemented
 - **Entity deleted during a delay is NOT resumed as `skipped`**
   (docs/08:99). `ResumeConsumer` never re-checks the entity; root conditions
   are evaluated only on first run (`Executor.php:108-123`), so a vanished
