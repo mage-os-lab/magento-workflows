@@ -9,7 +9,7 @@ import {
 } from '../src/graphOps';
 import { toDefinition, toGraph } from '../src/mapping';
 import { makeConfig } from './support';
-import type { Graph, StepNode } from '../src/types';
+import type { Definition, Graph, StepNode } from '../src/types';
 
 /**
  * Edit-then-serialize round-trip: build a graph BY EDITING (graphOps), not by
@@ -170,5 +170,81 @@ describe('edit-then-serialize — edits after authoring serialize faithfully', (
     expect(def.steps.route.cases).toEqual([{ key: 'high', next: 'approve' }, { key: 'low' }]);
     // No edge in the definition points at the deleted step.
     expect(JSON.stringify(def)).not.toContain('cool');
+  });
+});
+
+/**
+ * BUG 1 regression: a switch case LOADED from a definition (so `next` is a
+ * real, populated property — unlike authorGraph() above, where graph-authored
+ * cases never carry `next` at all) must be nulled, not left stale, once graph
+ * surgery removes the edge it depended on. deleteNode/disconnect only ever
+ * touch graph.edges, never step.cases[].next, so rebuildStep is the one place
+ * that has to reconcile the two — mirroring exactly how it already does for
+ * the scalar EDGE_KEYS (next/on_true/…/on_timeout).
+ */
+describe('loading a definition with populated switch case targets — stale case.next after graph surgery', () => {
+  const LOADED_DEF: Definition = {
+    schema: 4,
+    entry: 'route',
+    steps: {
+      route: {
+        type: 'switch',
+        cases: [
+          { key: 'high', conditions_serialized: null, next: 'approve' },
+          { key: 'low', conditions_serialized: null, next: 'cool' },
+        ],
+        default: 'end',
+      },
+      approve: { type: 'stop' },
+      cool: { type: 'stop' },
+      end: { type: 'stop' },
+    },
+  };
+
+  it('round-trips losslessly when nothing was touched (a viewer-only load is never clobbered)', () => {
+    const graph = toGraph(LOADED_DEF, config);
+    const def = toDefinition(graph, { positions: positionsOf(graph) });
+    expect(def.steps.route.cases).toEqual(LOADED_DEF.steps.route.cases);
+  });
+
+  it('deleteNode on a case target nulls that case instead of leaving a dangling reference', () => {
+    const graph = toGraph(LOADED_DEF, config);
+    // Sanity: the case edge is present in the graph before surgery.
+    expect(
+      graph.edges.some(
+        (e) => e.source === 'route' && e.sourceHandle === 'case:high' && e.target === 'approve',
+      ),
+    ).toBe(true);
+
+    const after = deleteNode(graph, 'approve');
+    const def = toDefinition(after, { positions: positionsOf(after) });
+
+    expect(def.steps.route.cases).toEqual([
+      { key: 'high', conditions_serialized: null, next: null },
+      { key: 'low', conditions_serialized: null, next: 'cool' },
+    ]);
+    // No stray reference to the deleted step survives the save — this is
+    // exactly what the server's Definition::fromJson would otherwise reject
+    // ("points to unknown step").
+    expect(JSON.stringify(def)).not.toContain('approve');
+  });
+
+  it('disconnecting a case edge nulls the case target the same way', () => {
+    const graph = toGraph(LOADED_DEF, config);
+    const after = disconnect(graph, 'route::case:low');
+    const def = toDefinition(after, { positions: positionsOf(after) });
+
+    expect(def.steps.route.cases).toEqual([
+      { key: 'high', conditions_serialized: null, next: 'approve' },
+      { key: 'low', conditions_serialized: null, next: null },
+    ]);
+  });
+
+  it('a case the graph still wires (untouched by the surgery) is left alone', () => {
+    const graph = toGraph(LOADED_DEF, config);
+    const after = deleteNode(graph, 'approve');
+    const def = toDefinition(after, { positions: positionsOf(after) });
+    // Only the "high" case (pointed at the deleted step) was affected.
+    expect(def.steps.route.cases?.[1]).toEqual({ key: 'low', conditions_serialized: null, next: 'cool' });
   });
 });

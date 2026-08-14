@@ -7,6 +7,7 @@ import type {
   GraphNode,
   MountConfig,
   StepNode,
+  SwitchCase,
   UiBlock,
 } from './types';
 
@@ -158,10 +159,19 @@ function rebuildStep(original: StepNode, edges: GraphEdge[]): StepNode {
     delete step.conditions_serialized;
   }
   if (step.type === 'switch' && Array.isArray(step.cases)) {
+    const originalCases = Array.isArray(original.cases) ? original.cases : [];
     step.cases = step.cases.map((c) => {
       const target = byHandle.get(`case:${c.key}`);
       if (target !== undefined) {
         return { ...c, next: target };
+      }
+      if (originalCaseHadEdge(originalCases, c.key)) {
+        // Mirrors the scalar EDGE_KEYS handling above: the case originally
+        // carried a `next` (even a stale one the graph no longer has an edge
+        // for — deleteNode/disconnect only touch graph.edges, never
+        // step.cases[].next) -> null it rather than leave a dangling target
+        // the server would reject ("points to unknown step").
+        return { ...c, next: null };
       }
       return c;
     });
@@ -172,6 +182,12 @@ function rebuildStep(original: StepNode, edges: GraphEdge[]): StepNode {
 
 function originalHadEdge(step: StepNode, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(step, key);
+}
+
+/** Whether the original (pre-edit) case for `key` already declared a `next`. */
+function originalCaseHadEdge(cases: SwitchCase[], key: string): boolean {
+  const match = cases.find((c) => c && typeof c === 'object' && String(c.key ?? '') === key);
+  return match !== undefined && Object.prototype.hasOwnProperty.call(match, 'next');
 }
 
 /**

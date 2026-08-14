@@ -74,6 +74,50 @@ describe('preSaveFindings', () => {
     const findings = preSaveFindings(makeGraph(DEF, cfg), cfg, meta);
     expect(findings.some((f) => f.message.includes('may never run'))).toBe(false);
   });
+
+  // BUG 3: toGraph (mapping.ts) silently drops a case/branch edge whose target
+  // step is missing from the definition — the outcome vanishes from the
+  // canvas with no indication anything was wrong. preSaveFindings must call
+  // that out by name (source step + missing target), distinctly from the
+  // generic "never wired" finding above.
+  it('flags a branch edge whose target step is missing from the definition (dropped by toGraph)', () => {
+    const cfg = config();
+    const def: Definition = {
+      schema: 2,
+      entry: 'b1',
+      steps: {
+        // on_true points at "ghost", a step that does not exist in `steps`.
+        b1: { type: 'branch', conditions_serialized: null, on_true: 'ghost', on_false: 'a1' },
+        a1: { type: 'action', action: 'notify.email', config: { template: 'x' }, next: null },
+      },
+    };
+    const meta = { ...initMeta(cfg.workflow), triggerType: 'event', triggerRef: 'sales.order.created' };
+
+    const graph = makeGraph(def, cfg);
+    // Confirms the premise: toGraph really did drop the dangling edge.
+    expect(graph.edges.some((e) => e.source === 'b1' && e.sourceHandle === 'on_true')).toBe(false);
+
+    const findings = preSaveFindings(graph, cfg, meta);
+    const message = findings.find((f) => f.stepKey === 'b1' && f.message.includes('"yes"'))?.message;
+    expect(message).toBeDefined();
+    expect(message).toContain('missing step');
+    expect(message).toContain('"ghost"');
+    expect(message).toContain('dropped');
+    // Distinct from the generic "leads nowhere" wording used for a handle
+    // that was simply never wired.
+    expect(message).not.toContain('leads nowhere');
+  });
+
+  it('still uses the generic "leads nowhere" finding for a handle that was never wired at all', () => {
+    const cfg = config();
+    const messages = preSaveFindings(makeGraph(DEF, cfg), cfg, {
+      ...initMeta(cfg.workflow),
+      triggerType: 'event',
+      triggerRef: 'sales.order.created',
+    }).map((f) => f.message);
+    expect(messages.some((m) => m.includes('"no"') && m.includes('leads nowhere'))).toBe(true);
+    expect(messages.some((m) => m.includes('missing step'))).toBe(false);
+  });
 });
 
 describe('freePosition', () => {

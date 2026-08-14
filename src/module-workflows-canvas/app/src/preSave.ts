@@ -19,6 +19,7 @@ export interface PreSaveFinding {
 
 export function preSaveFindings(graph: Graph, config: MountConfig, meta: EditableMeta): PreSaveFinding[] {
   const findings: PreSaveFinding[] = [];
+  const stepIds = new Set(graph.nodes.map((n) => n.id));
 
   // Unregistered trigger event: saves fine, then never fires — with no clue
   // why. Free-text entry stays legal (custom modules dispatch custom events),
@@ -61,16 +62,31 @@ export function preSaveFindings(graph: Graph, config: MountConfig, meta: Editabl
     // (An action/delay with no `next` is a legitimate end-of-flow, so single
     // `next` handles are exempt — but every branch/switch/wait/approval
     // outcome is a real routing decision the author has to make.)
-    const handles = Object.keys(getStepEdges(step));
+    const rawEdges = getStepEdges(step);
+    const handles = Object.keys(rawEdges);
     if (handles.length > 1) {
       const wired = new Set(graph.edges.filter((e) => e.source === node.id).map((e) => e.sourceHandle));
       for (const handle of handles) {
-        if (!wired.has(handle)) {
+        if (wired.has(handle)) {
+          continue;
+        }
+        const target = rawEdges[handle];
+        // toGraph (mapping.ts) silently drops a case/branch edge whose target
+        // is not (or no longer) a step in this definition — a stale reference
+        // rather than an outcome the author simply never wired. Call that out
+        // by name instead of folding it into the generic "leads nowhere"
+        // finding below, so the missing step key is visible.
+        if (target !== null && !stepIds.has(target)) {
           findings.push({
             stepKey: node.id,
-            message: `"${node.data.summary}" — ${t('the')} "${edgeLabel(handle) || handle}" ${t('path leads nowhere. Connect it to a step, or to a Stop if it should end there.')}`,
+            message: `"${node.data.summary}" — ${t('the')} "${edgeLabel(handle) || handle}" ${t('case/branch edge pointed to missing step')} "${target}" ${t('and was dropped. Reconnect it, or leave it to end the flow.')}`,
           });
+          continue;
         }
+        findings.push({
+          stepKey: node.id,
+          message: `"${node.data.summary}" — ${t('the')} "${edgeLabel(handle) || handle}" ${t('path leads nowhere. Connect it to a step, or to a Stop if it should end there.')}`,
+        });
       }
     }
   }

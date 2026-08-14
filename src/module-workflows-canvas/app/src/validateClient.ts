@@ -126,3 +126,37 @@ export function debounce<A extends unknown[]>(
     }, delayMs);
   };
 }
+
+/**
+ * Staleness guard for the continuous validation loop. Debouncing collapses
+ * rapid EDITS into one call, but two calls from separate debounce windows can
+ * still have requests in flight at once, and the network gives no ordering
+ * guarantee — a slow response from an EARLIER edit can resolve after a fast
+ * response from a LATER one, pinning stale messages over fresh ones.
+ *
+ * Wraps `request` with a monotonically increasing ordinal captured per call;
+ * `apply` only fires for the response carrying the highest ordinal seen so
+ * far, so an out-of-order (stale) resolution is silently dropped instead of
+ * overwriting what a newer request already applied.
+ */
+export function withValidationStaleGuard(
+  request: (config: MountConfig, req: ValidateRequest) => Promise<ValidateResponse>,
+  apply: (res: ValidateResponse) => void,
+): (config: MountConfig, req: ValidateRequest) => void {
+  let seq = 0;
+  let latestApplied = 0;
+  return (config, req) => {
+    const ordinal = ++seq;
+    request(config, req)
+      .then((res) => {
+        if (ordinal <= latestApplied) {
+          // A later request already resolved and was applied — this response
+          // is stale, drop it.
+          return;
+        }
+        latestApplied = ordinal;
+        apply(res);
+      })
+      .catch(() => undefined);
+  };
+}

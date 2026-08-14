@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildValidateRequest, debounce, pinMessages, postValidate } from '../src/validateClient';
+import {
+  buildValidateRequest,
+  debounce,
+  pinMessages,
+  postValidate,
+  withValidationStaleGuard,
+  type ValidateResponse,
+} from '../src/validateClient';
 import { makeConfig } from './support';
 import type { ValidationMessage } from '../src/types';
 
@@ -118,3 +125,70 @@ describe('debounce', () => {
     vi.useRealTimers();
   });
 });
+
+// BUG 2: the continuous validation loop had no staleness guard, so an
+// out-of-order network response (a slow EARLIER request resolving after a
+// fast LATER one) could pin stale validation messages over fresh ones.
+describe('withValidationStaleGuard', () => {
+  const okResponse = (messages: ValidationMessage[]): Response =>
+    new Response(JSON.stringify({ success: true, messages }), { status: 200 });
+
+  it('ignores a stale response that resolves after a newer one has already been applied', async () => {
+    const config = makeConfig();
+    const applied: ValidateResponse[] = [];
+
+    // Two in-flight requests; resolvers held open so the test controls order.
+    let resolveFirst!: (r: Response) => void;
+    let resolveSecond!: (r: Response) => void;
+    const fetchImpl = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => (resolveFirst = resolve)))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => (resolveSecond = resolve)));
+
+    const guarded = withValidationStaleGuard(
+      (cfg, req) => postValidate(cfg, req, fetchImpl as unknown as typeof fetch),
+      (res) => applied.push(res),
+    );
+
+    guarded(config, { definition: '{"schema":3,"v":1}' }); // ordinal 1 — the stale one
+    guarded(config, { definition: '{"schema":3,"v":2}' }); // ordinal 2 — the fresh one
+
+    // The FRESH (later) request's network response lands first.
+    resolveSecond(
+      okResponse([{ severity: 'warning', code: 'FRESH', message: 'fresh', step_key: null, edge: null }]),
+    );
+    await flushMicrotasks();
+
+    // The STALE (earlier) request's response lands last.
+    resolveFirst(
+      okResponse([{ severity: 'error', code: 'STALE', message: 'stale', step_key: null, edge: null }]),
+    );
+    await flushMicrotasks();
+
+    expect(applied).toHaveLength(1);
+    expect(applied[0].messages?.[0].code).toBe('FRESH');
+  });
+
+  it('applies in-order responses normally', async () => {
+    const config = makeConfig();
+    const applied: ValidateResponse[] = [];
+    const fetchImpl = vi.fn(async () =>
+      okResponse([{ severity: 'warning', code: 'W', message: 'w', step_key: null, edge: null }]),
+    );
+    const guarded = withValidationStaleGuard(
+      (cfg, req) => postValidate(cfg, req, fetchImpl as unknown as typeof fetch),
+      (res) => applied.push(res),
+    );
+
+    guarded(config, { definition: '{}' });
+    await flushMicrotasks();
+    guarded(config, { definition: '{}' });
+    await flushMicrotasks();
+
+    expect(applied).toHaveLength(2);
+  });
+});
+
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}

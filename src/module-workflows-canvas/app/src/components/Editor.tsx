@@ -67,6 +67,7 @@ import {
   debounce,
   pinMessages,
   postValidate,
+  withValidationStaleGuard,
   type PinnedMessages,
 } from '../validateClient';
 import type { StepType } from '../types';
@@ -193,17 +194,24 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   }, []);
 
   // ---- continuous validation (debounced) --------------------------------
+  // Debouncing collapses rapid edits into one request per pause, but two
+  // requests from separate pauses can still race over the network — a slow
+  // response to an earlier edit resolving after a fresher one would otherwise
+  // pin stale messages (issue: continuous validation has no staleness guard).
+  // withValidationStaleGuard drops any response an already-applied later one
+  // has superseded.
+  const applyValidation = useRef(
+    withValidationStaleGuard(postValidate, (res) => {
+      if (res.success && res.messages) {
+        setPinned(pinMessages(res.messages));
+      }
+    }),
+  ).current;
   const runValidate = useRef(
     debounce((cfg: MountConfig, def: string) => {
       // Root conditions ride along from the bootstrap so root-condition
       // findings surface live, not only at save time (Data/Validate contract).
-      postValidate(cfg, buildValidateRequest(cfg, def))
-        .then((res) => {
-          if (res.success && res.messages) {
-            setPinned(pinMessages(res.messages));
-          }
-        })
-        .catch(() => undefined);
+      applyValidation(cfg, buildValidateRequest(cfg, def));
     }, 600),
   ).current;
 
