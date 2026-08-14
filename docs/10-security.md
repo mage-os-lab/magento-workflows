@@ -22,13 +22,54 @@ The webhook action ships **hardened, not hardenable**:
 - **Explicit trust boundary:** captured responses are attacker-influenceable data. They are usable in branch conditions and variable interpolation but **never as action identifiers** (no `{{ steps.x.response.action_code }}` resolving which action runs), **never in attribute codes**, and always type-coerced at the condition comparator. Documented in the SDK: action configs interpolate *values*, never *structure*.
 - **Optional response JSON Schema per step** — mismatch = step failure, keeping garbage out of downstream branches.
 
+## Condition-tree instantiation gate
+
+A stored condition tree's node `type` strings reach Magento's condition factory — an
+ObjectManager `create()` of a class name from stored data (trust boundary `::manage`, plus
+data patches that bypass save-time validation). Before `loadArray`, the evaluator now
+refuses any `type` naming an **existing class outside the registered condition surface**
+(`ConditionTypeAllowlist`: both pools' combine/leaf classes, the engine's related-entity
+combine and trigger-data leaf, plus a di.xml-extensible `additional` list for third-party
+condition packs). Inert non-class marker strings still pass — they instantiate nothing and
+appear in real trees. The point is that a hostile type's constructor fires *before* any
+`instanceof` check could object; the gate runs before the factory ever sees the string.
+
 ## Secrets
 
 - Dedicated ACL resource for secret CRUD.
 - Values encrypted via `EncryptorInterface`.
 - **Write-only in the UI** — never re-displayed.
-- Redacted in execution logs and ES documents by key prefix.
 - Definitions reference secrets **by name only** — exports never contain values.
+
+### Redaction coverage on stored execution detail
+
+Definitions never hold secret values, but *executions* can: step `result`, step `error` and
+the execution `context` bag are written by the production executor from **interpolated**
+action config, so a webhook URL carrying its token, or a raw HTTP-client exception message,
+lands in them verbatim. Every surface that shows those fields to a human runs them through
+one shared filter — `StepDetailRedactor`, fed the server-side secret map by
+`ExecutionDetailRedactor` — which masks known secret values as `***<name>***` (matched both
+as plaintext and in their JSON-escaped form, because the fields are stored as JSON) and then
+masks generic credential shapes (URL userinfo, `Bearer` tokens, `token=`/`password=`/
+`api_key=` pairs) as defence in depth.
+
+All four read paths are covered, and all of them are reachable at the *weakest* grant,
+`MageOS_Workflows::view`:
+
+| Path | Where it redacts |
+| --- | --- |
+| `GET /V1/workflow-executions/:id/steps` (and the canvas overlay controller that delegates to it) | `WorkflowExecutionStepsProvider` |
+| `GET /V1/workflow-executions/:id` | `WorkflowExecutionReader` |
+| `GET /V1/workflow-executions` | `WorkflowExecutionReader` |
+| Admin execution-detail page | `WorkflowsAdminUi\Block\Adminhtml\Execution\View` (in the block, not the template) |
+
+The REST redaction sits in a **read model in front of the repository**, never in the
+repository: `WorkflowExecutionRepositoryInterface` is also how the engine loads executions
+to resume them, and a masked context would resume the workflow against corrupted data.
+`definition_snapshot` is deliberately *not* redacted — it holds secret *names* only.
+
+Redaction into ES documents by key prefix is a separate, unbuilt control (see
+[PII containment](#pii-containment) #2); nothing indexes executions today.
 
 ## Import is untrusted input
 
@@ -52,6 +93,8 @@ Execution `context` holds entity snapshots (names, emails, addresses). Three con
 ## Manual mass-run
 
 **Current scope: single-entity manual runs only.** Every manual-run surface that ships today takes exactly one entity ID: the workflow edit page's "Run Now" button (`RunNowButton` opens the `RunNowModal` picker, which asks for one ID) into `WorkflowsAdminUi\Controller\Adminhtml\Workflow\Run`, which rejects a missing or non-numeric `entity_id`, and the `workflow:run --entity-id` CLI command. There is no grid mass-action, no REST run route, and no other multi-entity manual dispatch path — so there is no mass surface to cap or preview yet.
+
+**Manual run is a POST.** Dispatching fires real side effects — refunds, customer emails, outbound webhooks — against a caller-chosen entity id, so `Workflow\Run` implements `HttpPostActionInterface` like every other mutating controller in the suite. That is the CSRF control, not a style preference: `Magento\Backend\App\AbstractAction::_processUrlKeys()` validates the admin **form key** on every POST from a logged-in admin, and falls back to the secret URL key only on non-POST requests. The secret key is not a CSRF defence — merchants routinely switch it off (Advanced > Admin > Security), and it leaks through Referer headers and browser history — so while this action was a GET, any page a logged-in admin visited could fire a live run with an `<img>` tag. The Run Now modal submits through `mage/utils/misc`'s `submit()`, which stamps the form key into a detached form; no controller here implements `CsrfAwareActionInterface`. Pinned by `WorkflowActionMethodContractTest` and `RunNowModalContractTest`.
 
 What exists of the controls below: the **dedicated ACL resource** `MageOS_Workflows::manual_run` gates both the button and the controller (and is deliberately not implied by `::dry_run`). The cap is *configured* — `mageos_workflows/guards/manual_run_cap`, default 1000, exposed under Guards — but has no consumer while manual runs are one entity at a time; it currently serves as the vocabulary the approvals addon's mass-decide cap borrows.
 

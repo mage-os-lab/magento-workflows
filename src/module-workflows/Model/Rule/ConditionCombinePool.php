@@ -54,6 +54,18 @@ class ConditionCombinePool
     }
 
     /**
+     * Every registered combine class, all entity types — the allowlist source
+     * for validating stored `type` strings before they reach the condition
+     * factory (ConditionTypeAllowlist).
+     *
+     * @return string[]
+     */
+    public function getClasses(): array
+    {
+        return array_values($this->combines);
+    }
+
+    /**
      * Create a fresh root combine for the entity type. Always a new instance:
      * combines are stateful (children, aggregator) and never shareable.
      *

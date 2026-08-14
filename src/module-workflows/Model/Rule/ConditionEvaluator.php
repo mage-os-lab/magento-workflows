@@ -35,11 +35,18 @@ use MageOS\Workflows\Model\Relation\RelationContext;
  */
 class ConditionEvaluator
 {
+    /**
+     * The allowlist is a REQUIRED dependency on purpose: it gates which
+     * classes stored tree data may instantiate, and an optional-with-default
+     * parameter would silently arrive null in production (the ObjectManager
+     * does not auto-resolve defaulted parameters).
+     */
     public function __construct(
         private readonly WorkflowRuleFactory $workflowRuleFactory,
         private readonly HydrationProviderInterface $hydrationProvider,
         private readonly DataObjectFactory $dataObjectFactory,
-        private readonly RelationContext $relationContext
+        private readonly RelationContext $relationContext,
+        private readonly ConditionTypeAllowlist $typeAllowlist
     ) {
     }
 
@@ -77,6 +84,13 @@ class ConditionEvaluator
         if ($tree === []) {
             return true;
         }
+        // Refuse to load a tree whose `type` would instantiate a class
+        // outside the registered condition surface — loadArray() hands the
+        // raw string to the condition factory, and a hostile type's
+        // constructor fires before anything can object. Same explicit-failure
+        // contract as decode(): a tree that names an unknown class is
+        // malformed data, not a skippable node.
+        $this->assertTypesAllowed($tree);
 
         // Fresh per-tree relation resolution: clears any memo carried over from
         // a prior evaluation in the same (long-lived consumer) process. The
@@ -113,6 +127,30 @@ class ConditionEvaluator
         $model->setData(HydrationProviderInterface::KEY_ENTITY_ID, $ctx->getEntityId());
         $model->setData(HydrationProviderInterface::KEY_FRESH, $fresh);
         return $model;
+    }
+
+    /**
+     * Recursive walk over the decoded tree: every node carrying a string
+     * `type` must pass the allowlist (registered condition class, or an inert
+     * non-class marker). Children live under `conditions` at every level.
+     *
+     * @throws \InvalidArgumentException when a node's type names an existing
+     *         class outside the registered condition surface
+     */
+    private function assertTypesAllowed(array $node): void
+    {
+        $type = $node['type'] ?? null;
+        if (is_string($type) && $type !== '' && !$this->typeAllowlist->isAllowed($type)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Workflow condition type "%s" is not a registered condition class',
+                $type
+            ));
+        }
+        foreach ((array) ($node['conditions'] ?? []) as $child) {
+            if (is_array($child)) {
+                $this->assertTypesAllowed($child);
+            }
+        }
     }
 
     /**

@@ -37,9 +37,13 @@ namespace MageOS\Workflows\Test\Unit\Rule {
     use MageOS\Workflows\Model\Execution\ExecutionContext;
     use MageOS\Workflows\Model\Relation\RelationContext;
     use MageOS\Workflows\Model\Relation\RelationPool;
+    use MageOS\Workflows\Model\Rule\ConditionCombinePool;
     use MageOS\Workflows\Model\Rule\ConditionEvaluator;
+    use MageOS\Workflows\Model\Rule\ConditionLeafPool;
+    use MageOS\Workflows\Model\Rule\ConditionTypeAllowlist;
     use MageOS\Workflows\Model\Rule\HydrationProviderInterface;
     use MageOS\Workflows\Model\Rule\WorkflowRuleFactory;
+    use MageOS\Workflows\Test\Unit\Model\Rule\FakeLeafObjectManager;
     use MageOS\Workflows\Test\Unit\Stub\StubHydrationProvider;
     use MageOS\Workflows\Test\Unit\Stub\StubScopeConfig;
     use MageOS\Workflows\Test\Unit\Stub\StubStoreManager;
@@ -64,6 +68,10 @@ namespace MageOS\Workflows\Test\Unit\Rule {
 
         public function setUp(): void
         {
+            // FakeLeafObjectManager is declared inside ConditionLeafPoolTest.php
+            // (same technique as DispatcherTest's factory stand-in); force that
+            // file to load before we type against it.
+            \class_exists(\MageOS\Workflows\Test\Unit\Model\Rule\ConditionLeafPoolTest::class);
             $this->ruleFactory = new FakeWorkflowRuleFactory();
         }
 
@@ -142,6 +150,33 @@ namespace MageOS\Workflows\Test\Unit\Rule {
             $this->evaluator()->evaluateSerialized('"always"', 'sales_order', $this->context(), false);
         }
 
+        public function testTypeNamingAnUnregisteredExistingClassThrows(): void
+        {
+            // The security contract (ConditionTypeAllowlist): a stored `type`
+            // that would instantiate a real class outside the registered
+            // condition surface is malformed data, refused BEFORE loadArray
+            // can hand it to the condition factory.
+            $tree = '{"type":"combine","aggregator":"all","conditions":['
+                . '{"type":"' . addslashes(\ArrayObject::class) . '","attribute":"x","operator":"==","value":"1"}]}';
+
+            $this->expectException(\InvalidArgumentException::class);
+            $this->expectExceptionMessage('not a registered condition class');
+
+            $this->evaluator()->evaluateSerialized($tree, 'sales_order', $this->context(), false);
+        }
+
+        public function testInertNonClassTypeMarkersAreStillAccepted(): void
+        {
+            // "combine" is not a loadable class: it instantiates nothing, so
+            // rejecting it would break stored trees without closing any hole.
+            $this->ruleFactory->validateResult = true;
+
+            $result = $this->evaluator()
+                ->evaluateSerialized(self::TREE, 'sales_order', $this->context(), false);
+
+            $this->assertTrue($result);
+        }
+
         // --------------------------------------------------------------
         // Snapshot pass (revalidate=false) vs fresh revalidation
         // --------------------------------------------------------------
@@ -211,6 +246,10 @@ namespace MageOS\Workflows\Test\Unit\Rule {
 
         private function evaluator(?StubHydrationProvider $provider = null): ConditionEvaluator
         {
+            // Empty pools: any type that is an EXISTING class is rejected,
+            // while inert marker strings (self::TREE's "combine") pass — the
+            // exact production contract with no domain packs installed.
+            $om = new FakeLeafObjectManager([]);
             return new ConditionEvaluator(
                 $this->ruleFactory,
                 $provider ?? new StubHydrationProvider([]),
@@ -220,6 +259,10 @@ namespace MageOS\Workflows\Test\Unit\Rule {
                     new StubStoreManager(),
                     new StubScopeConfig(),
                     new NullLogger()
+                ),
+                new ConditionTypeAllowlist(
+                    new ConditionCombinePool($om, []),
+                    new ConditionLeafPool($om, [])
                 )
             );
         }

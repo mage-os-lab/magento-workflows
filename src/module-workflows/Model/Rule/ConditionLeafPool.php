@@ -44,6 +44,18 @@ class ConditionLeafPool
     }
 
     /**
+     * Every registered leaf class, all entity types — the allowlist source
+     * for validating stored `type` strings before they reach the condition
+     * factory (ConditionTypeAllowlist).
+     *
+     * @return string[]
+     */
+    public function getClasses(): array
+    {
+        return array_values($this->leaves);
+    }
+
+    /**
      * Create a fresh leaf condition for the entity type, null when
      * unregistered. Always a new instance: conditions are stateful.
      *
