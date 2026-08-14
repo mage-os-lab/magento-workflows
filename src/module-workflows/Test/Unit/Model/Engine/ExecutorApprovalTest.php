@@ -373,12 +373,13 @@ class FakeApprovalTaskManager implements ApprovalTaskManagerInterface
 }
 
 /**
- * In-memory stand-in for the DB adapter: the step-row upsert always inserts
- * (fetchOne returns false), and inserts/updates are captured for assertions.
+ * In-memory stand-in for the DB adapter: step-row writes arrive as the
+ * executor's insertOnDuplicate upsert (unique key on (execution_id, step_key))
+ * and are captured — bind and update-column list — alongside plain updates.
  */
 class CapturingConnection
 {
-    /** @var array<int, array{table: string, bind: array}> */
+    /** @var array<int, array{table: string, bind: array, update_columns: string[]}> */
     public array $inserts = [];
     /** @var array<int, array{table: string, bind: array, where: mixed}> */
     public array $updates = [];
@@ -443,7 +444,17 @@ class CapturingConnection
 
             public function insert($table, array $bind)
             {
-                $this->capture->inserts[] = ['table' => $table, 'bind' => $bind];
+                $this->capture->inserts[] = ['table' => $table, 'bind' => $bind, 'update_columns' => []];
+                return 1;
+            }
+
+            /**
+             * The step-row upsert against the (execution_id, step_key) unique
+             * key; $fields is the exact column set it may overwrite.
+             */
+            public function insertOnDuplicate($table, array $bind, array $fields = [])
+            {
+                $this->capture->inserts[] = ['table' => $table, 'bind' => $bind, 'update_columns' => $fields];
                 return 1;
             }
 

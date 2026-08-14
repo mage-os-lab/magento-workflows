@@ -74,11 +74,21 @@ class ResumeConsumer
 
         // Snapshot the parked step before closing it: wait routing needs its
         // key and the resolution the resume path recorded.
+        //
+        // The limit(1) is a pick, so it is ordered. It used to be able to pick
+        // between two rows for the SAME step (the old racy step upsert could
+        // duplicate them); the unique key on (execution_id, step_key) ended
+        // that. What remains is the one crash shape that can leave a stale
+        // waiting row from an EARLIER park alongside the current one, and for
+        // that "newest row wins" is the right answer — the current park is the
+        // one this resume is about. Both rows are closed by the UPDATE below
+        // either way; only the routing needs the pick to be deterministic.
         $parked = $connection->fetchRow(
             $connection->select()
                 ->from($stepTable, ['step_key', 'result'])
                 ->where('execution_id = ?', $id)
                 ->where('status = ?', WorkflowExecutionStepInterface::STATUS_WAITING)
+                ->order('step_execution_id DESC')
                 ->limit(1)
         );
 

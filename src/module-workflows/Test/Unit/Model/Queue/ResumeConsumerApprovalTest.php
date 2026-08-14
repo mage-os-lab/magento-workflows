@@ -145,6 +145,11 @@ class ResumeConsumerApprovalTest extends TestCase
                                 return $this;
                             }
 
+                            public function order($spec): self
+                            {
+                                return $this;
+                            }
+
                             public function limit($n, $o = 0): self
                             {
                                 return $this;

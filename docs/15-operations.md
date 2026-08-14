@@ -19,8 +19,17 @@ running for an execution to progress end to end (see
    firing on schedule). Two of this module's own jobs live in the `default` cron group
    (`etc/crontab.xml`):
    - `mageos_workflows_resume_sweeper` — every minute. On a db-queue install this *is*
-     the delay-resume mechanism (see below); it also recovers zombie steps whose consumer
-     died mid-step.
+     the delay-resume mechanism (see below); it also recovers **zombies**, in both
+     shapes: a *step* left `running` with a claim older than 30 minutes (the consumer
+     died inside the step), and an *execution* left `running` whose step rows hold
+     nothing `running` or `pending` (the consumer died in the gap after the step row was
+     closed and before the execution row moved on). The second kind used to be
+     unrecoverable — nothing matched it and retention pruning skips non-completed
+     executions, so the row was immortal. It is now claimed `running → pending` and
+     republished to the execute topic; the executor resumes *past* the finished step
+     rather than re-running it, so no side effect repeats. If nobody consumes the
+     republished message, the row shows up in the `stuck_executions` health check
+     instead of hiding in `running` forever.
    - `mageos_workflows_prune_executions` — daily at 02:00. Retention/PII pruning (below).
 
    The scheduler module (`workflows-scheduler`) registers three more jobs in the same
@@ -117,7 +126,7 @@ On this path:
 | `queue_backend` | Whether `queue/amqp/host` is set in deployment config. | WARN (not FAIL) when unset — db-queue is a supported path, not an error. Confirm you've wired consumers into `cron_consumers_runner` or a process manager per "DB queue" above. |
 | `cron_alive` | Whether any `cron_schedule` row has `scheduled_at` in the last 15 minutes. | FAIL means Magento cron itself isn't running. Check your OS crontab has the Magento-generated entry, and that `bin/magento cron:run` isn't erroring (`var/log/cron.log`, `var/log/system.log`). |
 | `sweeper_scheduled` | Whether `mageos_workflows_resume_sweeper` has a `cron_schedule` row in the last 30 minutes. | WARN. Either the `default` cron group isn't running, or `setup:upgrade` / `cache:flush` hasn't run since this module was installed so the job isn't registered in the schedule generator yet. Run `bin/magento setup:upgrade` and wait one cron cycle. |
-| `stuck_executions` | Count of `mageos_workflow_execution` rows `status = pending` with `triggered_at` older than 10 minutes. | FAIL. The `mageos.workflow.execute` consumer is not running (or has been down long enough to accumulate a backlog). Start/restart it; see "Required infrastructure" above. |
+| `stuck_executions` | Count of `mageos_workflow_execution` rows `status = pending` with `triggered_at` older than 10 minutes. | FAIL. The `mageos.workflow.execute` consumer is not running (or has been down long enough to accumulate a backlog). Start/restart it; see "Required infrastructure" above. Rows the resume sweeper re-claimed from a stranded `running` state land here too, which is the point: an abandoned execution is now *visible* as unconsumed work rather than invisible in `running`. |
 | `overdue_resumes` | Count of `mageos_workflow_execution_step` rows `status = waiting` with `resume_at` older than 10 minutes. | FAIL. Neither the `mageos.workflow.resume` consumer nor the `mageos_workflows_resume_sweeper` cron job is draining delay steps. Check both: consumer process status, and `sweeper_scheduled` above. |
 | `async_events_module` | Whether `MageOS_AsyncEvents` is enabled (`Magento\Framework\Module\Manager::isEnabled`). | FAIL if disabled. Event-triggered workflows (the majority of workflows in practice) will never fire — this module is a hard dependency (`etc/module.xml` sequence), so a disabled dependency here means someone ran `module:disable` on it directly. Re-enable it: `bin/magento module:enable MageOS_AsyncEvents`. |
 
@@ -338,6 +347,19 @@ Operational notes:
 raises an admin notification. This is deliberate: a misconfigured webhook or a downstream
 outage must not silently burn the retry queue for days. **A suspended workflow does not
 self-heal** — a human has to look at it.
+
+Suspension stops work at **both** ends, not just the front door. The dispatcher refuses to
+create new executions for a suspended workflow, *and* the executor refuses to walk one:
+any execution already on the queue (or parked on a delay/wait/approval that resumes later)
+is failed **terminally** the moment it reaches `Executor::execute`, with an error naming
+the suspension. Terminal is the point — a retryable failure would be redelivered forever,
+which is the burn the breaker exists to prevent. The consequence is worth being explicit
+about: **re-enabling does not resume the executions that were failed while suspended.**
+Their entities have moved on; if any of them still need to run, re-trigger them
+(`bin/magento workflow:run <id> --entity-id <n>`) after fixing the cause. Shadow-mode
+executions are unaffected (no side effects to protect), and a workflow *deleted*
+mid-flight is not the same thing — its in-flight executions still finish from their
+pinned definition snapshot.
 
 To recover:
 

@@ -182,12 +182,26 @@
         <constraint xsi:type="primary" referenceId="PRIMARY">
             <column name="step_execution_id"/>
         </constraint>
+        <!-- One row per (execution, step) — the identity every writer already
+             assumes. Executor::upsertStepRow used to be a SELECT-then-INSERT,
+             which two concurrent consumers (a queue redelivery racing a zombie
+             republish) could both lose: two rows for one step, after which a
+             LIMIT 1 reader picks arbitrarily. The constraint makes the upsert
+             an atomic INSERT ... ON DUPLICATE KEY UPDATE and makes every
+             (execution_id, step_key) read provably single-row. Pre-release
+             software: no data migration for hypothetical duplicates — a fresh
+             install has none, and any dev row that dupes fails the DDL loudly
+             rather than being silently merged.
+             It also subsumes the former single-column execution_id index
+             (leading-column prefix), so that index is gone; the whitelist keeps
+             its entry so setup:upgrade drops it on existing dev databases. -->
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_EXECUTION_STEP_EXECUTION_ID_STEP_KEY">
+            <column name="execution_id"/>
+            <column name="step_key"/>
+        </constraint>
         <constraint xsi:type="foreign" referenceId="MAGEOS_WF_EXECUTION_STEP_EXECUTION_ID"
                     table="mageos_workflow_execution_step" column="execution_id"
                     referenceTable="mageos_workflow_execution" referenceColumn="execution_id" onDelete="CASCADE"/>
-        <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STEP_EXECUTION_ID" indexType="btree">
-            <column name="execution_id"/>
-        </index>
         <index referenceId="MAGEOS_WORKFLOW_EXECUTION_STEP_STATUS_RESUME_AT" indexType="btree">
             <column name="status"/>
             <column name="resume_at"/>

@@ -57,7 +57,8 @@ CREATE TABLE mageos_workflow_execution_step (
   error             TEXT,
   resume_at         TIMESTAMP NULL,                      -- for delay steps
   started_at / finished_at TIMESTAMP,
-  INDEX (execution_id), INDEX (status, resume_at)        -- sweeper index
+  UNIQUE (execution_id, step_key),                       -- one row per step; makes the upsert atomic
+  INDEX (status, resume_at)                              -- sweeper index
 );
 ```
 

@@ -44,7 +44,14 @@ use PHPUnit\Framework\TestCase;
  *
  * Section 9 covers the other half of at-least-once delivery: re-entering the
  * walk on a step row that is ALREADY complete must resume past it on its
- * recorded outcome, never re-fire its side effect.
+ * recorded outcome, never re-fire its side effect. Section 10 pins the step-row
+ * upsert against the (execution_id, step_key) unique key — every write names
+ * the columns it may overwrite, and no write may touch the others. Section 11
+ * pins the circuit breaker's second half: an execution under a SUSPENDED
+ * workflow is failed terminally instead of walked (and shadow / enabled /
+ * deleted-mid-flight are unaffected). Section 12 pins that the root-condition
+ * gate is a first-run gate, not a "status is pending" gate, so the sweeper's
+ * running -> pending re-claim of a stranded execution cannot silently skip it.
  */
 class ExecutorWalkTest extends TestCase
 {
@@ -679,6 +686,193 @@ class ExecutorWalkTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // 10. Step-row upsert semantics (unique key on execution_id, step_key)
+    // ------------------------------------------------------------------
+
+    public function testEveryStepRowWriteIsAnUpsertThatOnlyUpdatesTheColumnsItCarries(): void
+    {
+        // The row identity is the unique key, so a write may never overwrite
+        // execution_id/step_key, and the insert-only `status => pending` seed
+        // may never overwrite a status the caller did not ask to change.
+        $this->execution = $this->newExecution($this->chainDefinition());
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(
+            [
+                ['status', 'claimed_at', 'started_at'],
+                ['status', 'result', 'finished_at'],
+            ],
+            $this->connection->stepRowUpdateColumns('a1')
+        );
+        foreach ($this->connection->stepRowUpdateColumns('a1') as $columns) {
+            $this->assertFalse(in_array('execution_id', $columns, true));
+            $this->assertFalse(in_array('step_key', $columns, true));
+        }
+    }
+
+    public function testReParkingAGateUpdatesOnlyStatusAndResumeAtSoARecordedDecisionSurvives(): void
+    {
+        // Load-bearing for resume routing: the addon writes the decision into
+        // the gate's `result`, and the crash-window re-park must not wipe it —
+        // ResumeConsumer reads that column to choose on_approved/on_rejected.
+        $this->registerAction('act.after');
+        $definition = (string) json_encode([
+            'schema' => 2,
+            'entry' => 'w1',
+            'steps' => [
+                'w1' => [
+                    'type' => 'wait',
+                    'config' => ['event' => 'sales_order_invoice_pay', 'timeout' => 'PT1H'],
+                    'on_event' => 'after',
+                    'on_timeout' => 'after',
+                ],
+                'after' => ['type' => 'action', 'action' => 'act.after'],
+            ],
+        ]);
+        $this->execution = $this->newRedelivery($definition, 'w1');
+        $this->connection->seedStepRow('w1', WorkflowExecutionStepInterface::STATUS_COMPLETE, '{"resolution":"event"}');
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        // Two writes — the running claim, then the park — and `result` is in
+        // neither update-column list, so the recorded decision is untouched.
+        $this->assertSame(
+            [
+                ['status', 'claimed_at', 'started_at'],
+                ['status', 'resume_at'],
+            ],
+            $this->connection->stepRowUpdateColumns('w1')
+        );
+        foreach ($this->connection->stepRowUpdateColumns('w1') as $columns) {
+            $this->assertFalse(in_array('result', $columns, true));
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 11. Suspended workflow: the circuit breaker's second half
+    // ------------------------------------------------------------------
+
+    public function testSuspendedWorkflowFailsTheExecutionTerminallyWithoutWalking(): void
+    {
+        // Suspension used to block only NEW dispatches while queued executions
+        // kept failing and being redelivered — the retry-queue burn the breaker
+        // exists to prevent.
+        $this->execution = $this->newExecution($this->chainDefinition());
+        $conditions = new FakeWalkConditionEvaluator(true);
+
+        $this->buildExecutor($conditions, WorkflowInterface::STATUS_SUSPENDED)->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_FAILED, $this->execution->getStatus());
+        // Nothing ran, nothing was even evaluated, no step row was claimed.
+        $this->assertSame(0, $this->actions['act.first']->runs);
+        $this->assertSame(0, $this->actions['act.second']->runs);
+        $this->assertSame([], $this->connection->inserts);
+        $this->assertSame([], $conditions->rootCalls);
+        // Terminal, not retryable: the message is acked, never redelivered.
+        $failed = $this->events->last('workflow_execution_failed');
+        $this->assertNotNull($failed);
+        $this->assertStringContainsString('is suspended', $failed['error']);
+        $this->assertStringContainsString('Refund on cancel', $failed['error']);
+        $this->assertStringContainsString('circuit breaker', $failed['error']);
+        // Terminal state reached: completed_at stamped, so pruning can reap it.
+        $this->assertNotNull($this->connection->lastExecutionTableUpdate());
+    }
+
+    public function testSuspendedWorkflowAlsoAbortsAResumeDrivenMidWalkEntry(): void
+    {
+        // ResumeConsumer routes the park, sets the execution running and calls
+        // the SAME entry point, so a workflow suspended while an execution sat
+        // parked is caught on the way out of the park.
+        $this->execution = $this->newRedelivery($this->chainDefinition(), 'a2');
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true), WorkflowInterface::STATUS_SUSPENDED)
+            ->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_FAILED, $this->execution->getStatus());
+        $this->assertSame(0, $this->actions['act.second']->runs);
+        // The failure names where it died so the grid timeline still reads.
+        $this->assertSame('a2', $this->events->last('workflow_execution_failed')['step_key']);
+    }
+
+    public function testShadowWorkflowIsNotSuspendedAndStillWalksSimulated(): void
+    {
+        // Only `suspended` aborts. Shadow executions have no side effects to
+        // protect the retry queue from, so they walk to completion.
+        $this->execution = $this->newExecution($this->chainDefinition());
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true), WorkflowInterface::STATUS_SHADOW)->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        $this->assertNull($this->events->last('workflow_execution_failed'));
+        // Simulated: the step rows were written, the side effects were not run.
+        $this->assertSame(0, $this->actions['act.first']->runs);
+        $this->assertSame(
+            WorkflowExecutionStepInterface::STATUS_COMPLETE,
+            $this->connection->lastStepRow('a1')['status'] ?? null
+        );
+    }
+
+    public function testEnabledWorkflowIsUnaffectedByTheSuspensionCheck(): void
+    {
+        $this->execution = $this->newExecution($this->chainDefinition());
+
+        $this->buildExecutor(new FakeWalkConditionEvaluator(true), WorkflowInterface::STATUS_ENABLED)->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        $this->assertSame(1, $this->actions['act.first']->runs);
+    }
+
+    public function testWorkflowDeletedMidFlightStillExecutesFromThePinnedSnapshot(): void
+    {
+        // Regression pin for the suspension check: "no workflow" must not be
+        // read as "suspended" — a deleted workflow's in-flight executions
+        // finish on their snapshot, unchanged.
+        $this->execution = $this->newExecution($this->chainDefinition());
+
+        $this->buildExecutorWithoutWorkflow(new FakeWalkConditionEvaluator(true))->execute(101);
+
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        $this->assertSame(1, $this->actions['act.first']->runs);
+        $this->assertSame(1, $this->actions['act.second']->runs);
+        $this->assertNull($this->events->last('workflow_execution_failed'));
+    }
+
+    // ------------------------------------------------------------------
+    // 12. First-run gating vs. the sweeper's stranded-execution re-claim
+    // ------------------------------------------------------------------
+
+    public function testPendingExecutionThatAlreadyHoldsAStepIsResumedNotReGated(): void
+    {
+        // The shape ResumeSweeper::recoverStrandedExecutions creates: it claims
+        // a stalled execution running -> pending mid-walk. Re-gating that on
+        // root conditions would SKIP an execution outright because the entity
+        // moved on since it started — a1 already ran, its side effect stands.
+        $this->execution = $this->newExecution($this->chainDefinition());
+        $this->execution->setStatus(WorkflowExecutionInterface::STATUS_PENDING);
+        $this->execution->setCurrentStep('a2');
+        $conditions = new FakeWalkConditionEvaluator(false);
+
+        $this->buildExecutor($conditions)->execute(101);
+
+        $this->assertSame([], $conditions->rootCalls);
+        $this->assertSame(WorkflowExecutionInterface::STATUS_COMPLETE, $this->execution->getStatus());
+        $this->assertSame(0, $this->actions['act.first']->runs);
+        $this->assertSame(1, $this->actions['act.second']->runs);
+    }
+
+    public function testFreshPendingExecutionWithNoStepYetIsStillGatedOnRootConditions(): void
+    {
+        $this->execution = $this->newExecution($this->chainDefinition());
+        $conditions = new FakeWalkConditionEvaluator(false);
+
+        $this->buildExecutor($conditions)->execute(101);
+
+        $this->assertSame([42], $conditions->rootCalls);
+        $this->assertSame(WorkflowExecutionInterface::STATUS_SKIPPED, $this->execution->getStatus());
+    }
+
+    // ------------------------------------------------------------------
     // Harness
     // ------------------------------------------------------------------
 
@@ -808,12 +1002,31 @@ class ExecutorWalkTest extends TestCase
         return $execution;
     }
 
-    private function buildExecutor(ConditionEvaluator $conditions): Executor
+    private function buildExecutor(
+        ConditionEvaluator $conditions,
+        int $workflowStatus = WorkflowInterface::STATUS_ENABLED
+    ): Executor {
+        return $this->executorFor(
+            $conditions,
+            (new WorkflowStub(42))
+                ->setName('Refund on cancel')
+                ->setStatus($workflowStatus)
+                ->setEntityType('sales_order')
+                ->setConditionsSerialized('{"root":"tree"}')
+        );
+    }
+
+    /**
+     * The workflow-deleted-mid-flight path: the repository has nothing, so the
+     * executor runs from the pinned snapshot alone.
+     */
+    private function buildExecutorWithoutWorkflow(ConditionEvaluator $conditions): Executor
     {
-        $workflow = (new WorkflowStub(42))
-            ->setStatus(WorkflowInterface::STATUS_ENABLED)
-            ->setEntityType('sales_order')
-            ->setConditionsSerialized('{"root":"tree"}');
+        return $this->executorFor($conditions, null);
+    }
+
+    private function executorFor(ConditionEvaluator $conditions, ?WorkflowInterface $workflow): Executor
+    {
         $workflowRepository = new FakeWorkflowRepository($workflow);
         $executionRepository = new FakeExecutionRepository($this->recorder, $this->execution);
 
@@ -1101,20 +1314,23 @@ class RecordingEventManager implements EventManagerInterface
 
 /**
  * In-memory stand-in for the DB adapter (pattern shared with the approval
- * suite's CapturingConnection): the step-row upsert always inserts (fetchOne
- * returns false), inserts/updates are captured for assertions, and step-table
- * inserts are appended to the shared ordering log as
+ * suite's CapturingConnection): every step-row write arrives as the
+ * insertOnDuplicate upsert the executor now issues against the unique key on
+ * (execution_id, step_key), and is captured — bind AND update-column list — for
+ * assertions, then appended to the shared ordering log as
  * "step_row:<step_key>:<status>".
  *
  * fetchRow serves the redelivery guard's (execution_id, step_key) lookup from
  * rows seeded with seedStepRow() — the pre-existing state a redelivered message
- * finds. fetchOne deliberately keeps returning false even for a seeded key so
- * every write still lands as an INSERT the stepRows() assertions can read;
- * the two are independent fakes, not one simulated table.
+ * finds. The upsert capture deliberately does NOT consult those seeded rows: a
+ * real upsert merges server-side, and keeping every write visible as its own
+ * captured row is what lets stepRows() assert the sequence of writes rather
+ * than only their end state. The two are independent fakes, not one simulated
+ * table.
  */
 class RecordingConnection
 {
-    /** @var array<int, array{table: string, bind: array}> */
+    /** @var array<int, array{table: string, bind: array, update_columns: string[]}> */
     public array $inserts = [];
 
     /** @var array<int, array{table: string, bind: array, where: mixed}> */
@@ -1210,6 +1426,18 @@ class RecordingConnection
                 return 1;
             }
 
+            /**
+             * The step-row upsert (unique key on (execution_id, step_key)).
+             * Recorded as an insert AND as the update-column list the caller
+             * passed, so tests can assert the "never clobber a column you were
+             * not given" contract directly.
+             */
+            public function insertOnDuplicate($table, array $bind, array $fields = [])
+            {
+                $this->capture->recordInsert((string) $table, $bind, $fields);
+                return 1;
+            }
+
             public function update($table, array $bind, $where = '')
             {
                 $this->capture->updates[] = ['table' => (string) $table, 'bind' => $bind, 'where' => $where];
@@ -1218,12 +1446,31 @@ class RecordingConnection
         };
     }
 
-    public function recordInsert(string $table, array $bind): void
+    /**
+     * @param string[] $updateColumns columns an upsert would overwrite on a
+     *        duplicate key; [] for a plain insert
+     */
+    public function recordInsert(string $table, array $bind, array $updateColumns = []): void
     {
-        $this->inserts[] = ['table' => $table, 'bind' => $bind];
+        $this->inserts[] = ['table' => $table, 'bind' => $bind, 'update_columns' => $updateColumns];
         if (isset($bind['step_key'], $bind['status'])) {
             $this->recorder->record(sprintf('step_row:%s:%s', $bind['step_key'], $bind['status']));
         }
+    }
+
+    /**
+     * @return array<int, string[]> the update-column list of every step-row
+     *         upsert for a key, oldest first
+     */
+    public function stepRowUpdateColumns(string $stepKey): array
+    {
+        $lists = [];
+        foreach ($this->inserts as $row) {
+            if (($row['bind']['step_key'] ?? null) === $stepKey) {
+                $lists[] = $row['update_columns'];
+            }
+        }
+        return $lists;
     }
 
     /**

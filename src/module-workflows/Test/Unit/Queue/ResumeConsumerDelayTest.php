@@ -249,6 +249,11 @@ class DelayFakeConnection
                 return $this;
             }
 
+            public function order($spec): self
+            {
+                return $this;
+            }
+
             public function limit($count, $offset = 0): self
             {
                 return $this;

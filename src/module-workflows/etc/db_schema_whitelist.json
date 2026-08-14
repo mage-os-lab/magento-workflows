@@ -105,7 +105,8 @@
         },
         "constraint": {
             "PRIMARY": true,
-            "MAGEOS_WF_EXECUTION_STEP_EXECUTION_ID": true
+            "MAGEOS_WF_EXECUTION_STEP_EXECUTION_ID": true,
+            "MAGEOS_WORKFLOW_EXECUTION_STEP_EXECUTION_ID_STEP_KEY": true
         }
     },
     "mageos_workflow_debounce": {

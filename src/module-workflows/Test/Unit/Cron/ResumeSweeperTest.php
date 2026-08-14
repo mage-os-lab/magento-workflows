@@ -18,6 +18,13 @@ use PHPUnit\Framework\TestCase;
  * so the next sweep retries. Zombie steps (running with a stale claim
  * timestamp) are re-claimed and their executions republished to the execute
  * topic — redelivery is safe because state persists before side effects.
+ *
+ * The stranded-execution pass (finding 6) covers the other half of that zombie
+ * story: an execution left in `running` whose step rows hold nothing running or
+ * pending. Those tests pin both directions — a genuinely abandoned execution is
+ * claimed (running -> pending) and republished exactly once, and a live
+ * consumer, a queue-owned retry, or a step the zombie pass already owns is
+ * never stolen.
  */
 class ResumeSweeperTest extends TestCase
 {
@@ -206,6 +213,216 @@ class ResumeSweeperTest extends TestCase
 
         $this->assertCount(0, $this->publisher->published);
     }
+
+    // ------------------------------------------------------------------
+    // Stranded executions: running, but nothing in flight (finding 6)
+    // ------------------------------------------------------------------
+
+    public function testExecutionStrandedRunningWithOnlyCompleteStepsIsClaimedAndRepublished(): void
+    {
+        // The gap the step sweep cannot see: the consumer died AFTER closing
+        // the step row and BEFORE the execution row moved past it. No running
+        // step row, no queue message, and pruning skips non-completed rows —
+        // this execution was previously immortal.
+        $this->connection->executions[31] = [
+            'execution_id' => 31,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(9, 31, 'complete', ['finished_at' => $this->past(45 * 60)]);
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(1, $this->publisher->published);
+        $this->assertSame(ResumeSweeper::TOPIC_EXECUTE, $this->publisher->published[0]['topic']);
+        $this->assertSame('31', $this->publisher->published[0]['data']);
+        // Claimed atomically out of `running`, which is also what makes the row
+        // visible to HealthCheck's stuck-pending check if nobody consumes it.
+        $this->assertSame('pending', $this->connection->executions[31]['status']);
+    }
+
+    public function testExecutionStrandedRunningWithNoStepRowsAtAllIsRecoveredOnItsOwnClock(): void
+    {
+        // Died between the "status running" save and the first step claim: the
+        // execution's own triggered_at is the only evidence of when it moved.
+        $this->connection->executions[32] = [
+            'execution_id' => 32,
+            'status' => 'running',
+            'triggered_at' => $this->past(40 * 60),
+        ];
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(1, $this->publisher->published);
+        $this->assertSame('32', $this->publisher->published[0]['data']);
+        $this->assertSame('pending', $this->connection->executions[32]['status']);
+    }
+
+    public function testLiveExecutionBetweenTwoStepsIsNotStolen(): void
+    {
+        // A healthy walk shows no running step row for the few milliseconds
+        // between closing one step and claiming the next. Recent activity —
+        // not the absence of a running row — is what proves the consumer is
+        // alive, so the newest step timestamp gates the sweep.
+        $this->connection->executions[33] = [
+            'execution_id' => 33,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(10, 33, 'complete', ['finished_at' => $this->past(45 * 60)]);
+        $this->connection->steps[] = $this->stepRow(11, 33, 'complete', ['finished_at' => $this->past(20)]);
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(0, $this->publisher->published);
+        $this->assertSame('running', $this->connection->executions[33]['status']);
+    }
+
+    public function testExecutionWithAPendingStepIsLeftToTheQueuesRetryBackoff(): void
+    {
+        // `pending` = a retryable failure the queue is still redelivering.
+        // Somebody else owns this execution; the sweeper must not race it.
+        $this->connection->executions[34] = [
+            'execution_id' => 34,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(12, 34, 'pending', ['claimed_at' => $this->past(60 * 60)]);
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(0, $this->publisher->published);
+        $this->assertSame('running', $this->connection->executions[34]['status']);
+    }
+
+    public function testExecutionWithAStaleRunningStepIsRepublishedOnceByTheStepSweepOnly(): void
+    {
+        // Both passes can see this execution. The step sweep owns it (it has
+        // its own re-claim clock), so the stranded pass must skip it — one
+        // republish, not two, and the execution row is left in `running` for
+        // the redelivered walk.
+        $this->connection->executions[35] = [
+            'execution_id' => 35,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(13, 35, 'running', ['claimed_at' => $this->past(31 * 60)]);
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(1, $this->publisher->published);
+        $this->assertSame(ResumeSweeper::TOPIC_EXECUTE, $this->publisher->published[0]['topic']);
+        $this->assertSame('running', $this->connection->executions[35]['status']);
+    }
+
+    public function testRecentlyTriggeredRunningExecutionIsNotStranded(): void
+    {
+        $this->connection->executions[36] = [
+            'execution_id' => 36,
+            'status' => 'running',
+            'triggered_at' => $this->past(5 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(14, 36, 'complete', ['finished_at' => $this->past(4 * 60)]);
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(0, $this->publisher->published);
+        $this->assertSame('running', $this->connection->executions[36]['status']);
+    }
+
+    public function testWaitingAndTerminalExecutionsAreNeverStrandedCandidates(): void
+    {
+        // Only `running` strands: a parked execution is `waiting` (owned by the
+        // delay sweep) and complete/failed rows are done.
+        foreach (['waiting', 'complete', 'failed', 'cancelled', 'skipped', 'pending'] as $i => $status) {
+            $this->connection->executions[40 + $i] = [
+                'execution_id' => 40 + $i,
+                'status' => $status,
+                'triggered_at' => $this->past(90 * 60),
+            ];
+        }
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(0, $this->publisher->published);
+    }
+
+    public function testStrandedClaimIsNotRepublishedByTheNextSweep(): void
+    {
+        // The claim is self-limiting: once the row leaves `running` no later
+        // sweep can select it, so a dead consumer gets exactly one message.
+        $this->connection->executions[37] = [
+            'execution_id' => 37,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(15, 37, 'complete', ['finished_at' => $this->past(45 * 60)]);
+
+        $sweeper = $this->sweeper();
+        $sweeper->execute();
+        $sweeper->execute();
+
+        $this->assertCount(1, $this->publisher->published);
+    }
+
+    public function testStrandedPublishFailureRollsTheClaimBackToRunning(): void
+    {
+        $this->connection->executions[38] = [
+            'execution_id' => 38,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(16, 38, 'complete', ['finished_at' => $this->past(45 * 60)]);
+        $this->publisher->throwOnTopic = ResumeSweeper::TOPIC_EXECUTE;
+
+        // Must not escape: a broken broker cannot crash the cron group.
+        $this->sweeper()->execute();
+
+        $this->assertCount(0, $this->publisher->published);
+        $this->assertSame('running', $this->connection->executions[38]['status']);
+    }
+
+    public function testStrandedExecutionHoldingOnlyAWaitingStepRowIsRecovered(): void
+    {
+        // Crash between the step-row park and the execution-row save: the pair
+        // (execution waiting + step waiting) is written in one save, so this
+        // mismatch is unreachable in a healthy walk. The delay sweep cannot
+        // claim it (that claim demands a `waiting` EXECUTION), so republishing
+        // — which re-parks the gate, since the completed-step guard excludes
+        // park steps — is the only way back onto the resume spine.
+        $this->connection->executions[39] = [
+            'execution_id' => 39,
+            'status' => 'running',
+            'triggered_at' => $this->past(90 * 60),
+        ];
+        $this->connection->steps[] = $this->stepRow(17, 39, 'waiting', [
+            'claimed_at' => $this->past(60 * 60),
+            'resume_at' => $this->future(86400),
+        ]);
+
+        $this->sweeper()->execute();
+
+        $this->assertCount(1, $this->publisher->published);
+        $this->assertSame(ResumeSweeper::TOPIC_EXECUTE, $this->publisher->published[0]['topic']);
+        $this->assertSame('39', $this->publisher->published[0]['data']);
+    }
+
+    /**
+     * @param array<string, string|null> $overrides
+     * @return array<string, mixed>
+     */
+    private function stepRow(int $stepExecutionId, int $executionId, string $status, array $overrides = []): array
+    {
+        return array_merge([
+            'step_execution_id' => $stepExecutionId,
+            'execution_id' => $executionId,
+            'status' => $status,
+            'resume_at' => null,
+            'claimed_at' => null,
+            'started_at' => null,
+            'finished_at' => null,
+        ], $overrides);
+    }
 }
 
 /**
@@ -373,7 +590,7 @@ class SweeperFakeConnection
 
     /**
      * Supports the sweeper's condition shapes: "col = ?", "col < ?",
-     * "col <= ?", "col IS NOT NULL". Datetime strings compare
+     * "col <= ?", "col IN (?)", "col IS NOT NULL". Datetime strings compare
      * lexicographically, matching their SQL ordering.
      */
     private function matchesCondition(array $row, string $condition, mixed $value): bool
@@ -381,6 +598,11 @@ class SweeperFakeConnection
         if (str_contains($condition, 'IS NOT NULL')) {
             $column = trim(str_replace('IS NOT NULL', '', $condition));
             return ($row[$column] ?? null) !== null;
+        }
+        if (str_contains($condition, 'IN (?)')) {
+            $column = trim(str_replace('IN (?)', '', $condition));
+            $haystack = array_map('strval', is_array($value) ? $value : [$value]);
+            return in_array((string) ($row[$column] ?? ''), $haystack, true);
         }
         $parts = preg_split('/\s+/', trim($condition));
         $column = $parts[0] ?? '';

@@ -298,6 +298,12 @@ execution, second claims nothing, exactly one resume publish); publish
 failure rolls the claim back (poison the publisher via OM preference) so
 the next sweep retries; zombie recovery: a step stuck `running` with
 `claimed_at` rewound 31 minutes is re-claimed exactly once and republished;
+stranded-execution recovery: an execution left `running` whose only step row
+is `complete` with `finished_at` rewound 31 minutes is claimed
+(`running → pending`) exactly once, republished, and the redelivered walk
+resumes *past* the finished step (assert the action's side effect count does
+not increase) — while the same execution with a fresh `finished_at`, or with
+a `pending` step row, is left alone;
 `ResumeConsumer` continues the walk from the parked step; business-days and
 store-local-time delay options compute against real store timezone config.
 
@@ -312,7 +318,10 @@ batch limit respected.
 **10. `Engine\CircuitBreakerTest`** — drive one workflow to the failure
 threshold with a permanently-throwing action through real consumer
 redeliveries: the workflow row flips to suspended; subsequent dispatches
-refuse; pin the docs/19 risk note as a tripwire — if the admin notification
+refuse; an execution already queued under the now-suspended workflow fails
+**terminally** on its next delivery (error names the suspension, no further
+redelivery, no step side effect) rather than continuing to burn the retry
+queue; pin the docs/19 risk note as a tripwire — if the admin notification
 fires while the suspend persist failed, that is the known non-gated notify
 (expected-fail pin referencing the registry).
 

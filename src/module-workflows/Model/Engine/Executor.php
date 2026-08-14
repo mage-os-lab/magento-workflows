@@ -41,6 +41,11 @@ use Psr\Log\LoggerInterface;
  * opens each iteration with the completed-step guard below
  * (@see resumePastCompletedStep) so an already-`complete` step row is resumed
  * PAST — using its recorded outcome — instead of re-executed.
+ *
+ * Suspension is honored here, not only at dispatch: an execution whose workflow
+ * has been suspended (circuit breaker) is failed terminally before it walks
+ * (@see abortSuspended), so the queue stops burning on a workflow the breaker
+ * already gave up on.
  */
 class Executor
 {
@@ -113,10 +118,24 @@ class Executor
         }
 
         $workflow = $this->loadWorkflow($execution->getWorkflowId());
+        if ($workflow !== null && $workflow->getStatus() === WorkflowInterface::STATUS_SUSPENDED) {
+            $this->abortSuspended($execution, $workflow);
+            return;
+        }
         $simulation = $workflow !== null && $workflow->getStatus() === WorkflowInterface::STATUS_SHADOW;
         $ctx = $this->buildContext($execution, $simulation);
 
-        $isFirstRun = $status === WorkflowExecutionInterface::STATUS_PENDING;
+        $currentKey = $execution->getCurrentStep();
+
+        // "First run" is the row a dispatch just created: pending AND no step
+        // claimed yet. Status alone is not enough — the sweeper's recovery of
+        // stranded executions (Cron/ResumeSweeper) re-claims a stalled
+        // `running` execution back to `pending` mid-walk, and re-gating THAT on
+        // root conditions would skip an execution outright because the entity
+        // moved on since it started. An execution that already holds a
+        // current_step has passed the gate once; the gate is not re-run.
+        $isFirstRun = $status === WorkflowExecutionInterface::STATUS_PENDING
+            && ($currentKey === null || $currentKey === '');
 
         // Aggregated (batch) executions carry entity_id = 0: they have no single
         // entity to re-evaluate root conditions against, and membership was
@@ -133,7 +152,6 @@ class Executor
             }
         }
 
-        $currentKey = $execution->getCurrentStep();
         if ($currentKey === null || $currentKey === '') {
             if (!$isFirstRun) {
                 // Resumed past a trailing delay with no next step: nothing left to do
@@ -153,6 +171,54 @@ class Executor
         $this->executionRepository->save($execution);
 
         $this->walk($execution, $definition, $ctx, $workflow, $currentKey);
+    }
+
+    /**
+     * The circuit breaker's second half (docs/07-actions.md §Guards,
+     * docs/15-operations.md §Circuit-breaker recovery).
+     *
+     * Suspension used to stop only NEW dispatches: the Dispatcher refuses to
+     * create executions for a suspended workflow, but everything already on the
+     * queue kept walking — failing, throwing retryable, being redelivered, and
+     * failing again. That is precisely the retry-queue burn the breaker exists
+     * to stop, and the breaker itself made it worse: each redelivered failure
+     * calls recordFailure() again on a workflow that is already suspended.
+     *
+     * So an execution that reaches the executor under a suspended workflow ends
+     * TERMINALLY, here, before any step runs. Terminal (not retryable) is the
+     * whole point — a retryable failure would be redelivered forever, and a
+     * suspended workflow does not self-heal (only a human re-enables it, and
+     * re-enabling cannot un-fail these rows: their entities have moved on).
+     * The error names the suspension so the grid's failure reason reads as
+     * "the breaker stopped this", not "the action broke".
+     *
+     * Deliberately narrow:
+     *  - `disabled` is NOT included. Disabling stops new dispatches; letting
+     *    in-flight executions finish is the existing (and kinder) behavior, and
+     *    the breaker is not involved.
+     *  - `shadow` is NOT included — shadow executions run simulated, no side
+     *    effects, nothing to protect the retry queue from.
+     *  - A workflow DELETED mid-flight (loadWorkflow returns null) still
+     *    executes from its pinned snapshot, unchanged.
+     *  - The check sits at the top of execute(), which is the single entry
+     *    point for BOTH deliveries: the execute topic (ExecuteConsumer) and
+     *    resumption (ResumeConsumer::process calls execute() after routing the
+     *    park). A delay/wait/approval parked before the breaker tripped is
+     *    therefore failed on the way out of the park rather than resumed.
+     */
+    private function abortSuspended(WorkflowExecutionInterface $execution, WorkflowInterface $workflow): void
+    {
+        $this->failExecution(
+            $execution,
+            $execution->getCurrentStep(),
+            sprintf(
+                'Workflow "%s" (ID %d) is suspended (circuit breaker); execution aborted instead of '
+                . 'retrying its steps. Re-enable the workflow once the cause is fixed — '
+                . 'already-queued executions are not resumed.',
+                $workflow->getName(),
+                (int) $workflow->getWorkflowId()
+            )
+        );
     }
 
     /**
@@ -378,7 +444,11 @@ class Executor
 
     /**
      * Status + recorded result of this execution's row for $stepKey, or null
-     * when the step has never run. Indexed lookup on (execution_id, step_key).
+     * when the step has never run. Unique-key lookup on (execution_id,
+     * step_key): the limit(1) is belt-and-braces, not disambiguation — the
+     * constraint guarantees at most one row, so this can no longer route a
+     * redelivery off whichever duplicate the storage engine happened to
+     * return first.
      *
      * @return array{status: string, result: string|null}|null
      */
@@ -941,33 +1011,49 @@ class Executor
     }
 
     /**
-     * Insert-or-update the per-step runtime row keyed on (execution_id, step_key)
+     * Insert-or-update the per-step runtime row keyed on (execution_id,
+     * step_key), atomically.
+     *
+     * This used to be SELECT-then-INSERT — the exact shape the Dispatcher's own
+     * debounce comments reject as racy. Two consumers holding the same
+     * execution (a queue redelivery racing the sweeper's zombie republish) can
+     * both miss the row and both insert, leaving two rows for one step that
+     * later readers disambiguate by coin flip. The unique constraint on
+     * (execution_id, step_key) (etc/db_schema.xml) plus insertOnDuplicate
+     * collapses that into one row and one round trip.
+     *
+     * $updateColumns is exactly the keys of the PARTIAL $data the caller passed:
+     * an upsert must never clobber a column it was not given. Resume routing
+     * depends on it — re-parking a wait/approval gate writes only
+     * {status, resume_at} and the decision `result` recorded by the addon has
+     * to survive that (pinned by ExecutorWalkTest §10's re-park test). The
+     * `status => pending` default below is therefore insert-only: it seeds a
+     * brand new row and is never in $updateColumns unless the caller asked for
+     * a status change itself.
      */
     private function upsertStepRow(WorkflowExecutionInterface $execution, string $stepKey, array $data): void
     {
         $connection = $this->resourceConnection->getConnection();
-        $table = $this->resourceConnection->getTableName(self::STEP_TABLE);
 
-        $select = $connection->select()
-            ->from($table, [WorkflowExecutionStepInterface::STEP_EXECUTION_ID])
-            ->where('execution_id = ?', (int) $execution->getExecutionId())
-            ->where('step_key = ?', $stepKey)
-            ->limit(1);
-        $stepExecutionId = $connection->fetchOne($select);
+        // Defensive: an EMPTY update-column list means "update every column I
+        // gave you" to the adapter — which here would include the pending
+        // status seed, resetting a live row. No caller passes empty $data; if
+        // one ever does, degrade to re-writing the key column (a no-op on an
+        // existing row) rather than to a reset.
+        $updateColumns = array_keys($data);
+        if ($updateColumns === []) {
+            $updateColumns = ['step_key'];
+        }
 
-        if ($stepExecutionId) {
-            $connection->update(
-                $table,
-                $data,
-                [WorkflowExecutionStepInterface::STEP_EXECUTION_ID . ' = ?' => (int) $stepExecutionId]
-            );
-        } else {
-            $connection->insert($table, array_merge([
+        $connection->insertOnDuplicate(
+            $this->resourceConnection->getTableName(self::STEP_TABLE),
+            array_merge([
                 'execution_id' => (int) $execution->getExecutionId(),
                 'step_key' => $stepKey,
                 'status' => WorkflowExecutionStepInterface::STATUS_PENDING,
-            ], $data));
-        }
+            ], $data),
+            $updateColumns
+        );
     }
 
     /**

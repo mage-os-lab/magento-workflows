@@ -26,7 +26,9 @@ false root conditions, persist-before-side-effect, terminal-vs-retryable,
 delay parking, branch/switch routing, iteration cap), condition-evaluator
 gating (empty ⇒ true, malformed ⇒ throw, vanished entity ⇒ fail-closed),
 dispatcher guards (loop guard, atomic debounce, website scope, status gate),
-circuit breaker, resume sweeper claim atomicity + zombie recovery, delay
+circuit breaker (including the executor's terminal abort under a suspended
+workflow), resume sweeper claim atomicity + zombie recovery (stale step rows
+*and* executions stranded in `running`), step-row upsert semantics, delay
 resume, retention pruning (live/dry-run clocks, in-flight never pruned),
 webhook SSRF posture end-to-end (private-range denial before any request,
 allowlist, redirect re-validation, HTTPS double-opt-in, response caps, secret
