@@ -72,7 +72,12 @@ A schedule-type workflow = cron expression + entity type + the same rule-conditi
 Key trick: `Magento\Rule\Model\Condition\*` supports `collectValidatedAttributes()` / SQL generation in the CatalogRule lineage — but that path is only reliable for products. Pragmatic approach:
 
 - Map the condition tree to `SearchCriteria` where operators translate cleanly (scalar/set/date on selectable attributes)
-- Fall back to load-and-filter in batches of 500 where they don't
+- Fall back to load-and-filter in batches of 500 where they don't. On this fallback path each scanned
+  row is checked in-process against the root conditions (`RootConditionPreFilter`, the same verdict the
+  engine's first-run gate would reach — real entity id, hydration available) *before* dispatch, so
+  non-matching rows cost an evaluation instead of an execution row + queue message the engine would only
+  skip. The match cap bounds **scanned** rows here (like collected mode) and the watermark advances per
+  scanned row, so non-matching rows are never re-scanned on the next tick.
 
 All four entity roots are queryable, including `quote` (`CartRepositoryInterface` wired in the scheduler's `di.xml`); quote schedules watermark on `updated_at`.
 

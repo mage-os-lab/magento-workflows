@@ -22,6 +22,17 @@
                      customer to mage-os/workflows-customer (domain-packs S2);
                      catalog_product to mage-os/workflows-catalog (domain-packs S3). -->
             </argument>
+            <!-- Every nullable collaborator below MUST be wired by hand: the
+                 ObjectManager does not auto-resolve a constructor parameter
+                 that has a default value, so without these entries they all
+                 arrive null in production — which silently degraded collected
+                 mode (B1) to per-entity dispatch and would disable the
+                 fallback-path root-condition pre-filter the same way. -->
+            <argument name="entityDataConverter" xsi:type="object">MageOS\Workflows\Model\Rule\Hydrator\EntityDataConverter</argument>
+            <argument name="membershipEvaluator" xsi:type="object">MageOS\Workflows\Model\Aggregation\MembershipEvaluatorInterface</argument>
+            <argument name="itemProjector" xsi:type="object">MageOS\Workflows\Model\Aggregation\ItemProjector</argument>
+            <argument name="batchContextBuilder" xsi:type="object">MageOS\Workflows\Model\Aggregation\BatchContextBuilder</argument>
+            <argument name="rootConditionPreFilter" xsi:type="object">MageOS\WorkflowsScheduler\Model\RootConditionPreFilter</argument>
         </arguments>
     </type>
 

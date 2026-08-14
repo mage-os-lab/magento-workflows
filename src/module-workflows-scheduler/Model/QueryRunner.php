@@ -26,7 +26,13 @@ use Psr\Log\LoggerInterface;
  *   is queried against the entity's repository, page size 500.
  * - Fallback path: the condition tree could not be index-mapped (nested or
  *   unsupported), so we page through the repository unfiltered by the root
- *   conditions (the watermark filter still applies) within the match cap.
+ *   conditions (the watermark filter still applies) within the match cap —
+ *   but each scanned row is checked in-process against the root conditions
+ *   (RootConditionPreFilter, engine-equivalent verdict) BEFORE dispatch, so
+ *   non-matching rows cost an evaluation, not an execution row + queue
+ *   message the engine would only skip. On this path the match cap bounds
+ *   SCANNED rows (like collected mode) and the watermark advances per
+ *   scanned row, so non-matching rows are never re-scanned next tick.
  *
  * Collected mode (05 B1): when the workflow carries a `collected` aggregation
  * config, matches are NOT dispatched one-per-row; their projections are
@@ -69,7 +75,8 @@ class QueryRunner
         private readonly ?MembershipEvaluatorInterface $membershipEvaluator = null,
         private readonly ?ItemProjector $itemProjector = null,
         private readonly ?BatchContextBuilder $batchContextBuilder = null,
-        private readonly array $dtoInterfaces = []
+        private readonly array $dtoInterfaces = [],
+        private readonly ?RootConditionPreFilter $rootConditionPreFilter = null
     ) {
     }
 
@@ -135,7 +142,7 @@ class QueryRunner
         }
 
         $newWatermark = $previousWatermark;
-        $matched = 0;
+        $counted = 0;
         $currentPage = 1;
         $items = [];
 
@@ -152,7 +159,7 @@ class QueryRunner
             $items = $repository->getList($criteria)->getItems();
 
             foreach ($items as $entity) {
-                if ($matched >= $matchCap) {
+                if ($counted >= $matchCap) {
                     break 2;
                 }
 
@@ -164,14 +171,36 @@ class QueryRunner
 
                 $payload = ['entity_id' => $entityId] + $flat;
 
+                if (!$isMapped) {
+                    // Fallback path: the cap bounds SCANNED rows and the
+                    // watermark advances per scanned row (mirrors collected
+                    // mode), so a tick's work stays bounded and non-matching
+                    // rows are never re-scanned. The pre-filter's verdict is
+                    // engine-equivalent (real entity id, hydration available)
+                    // and fail-open, so a skip here is exactly the skip the
+                    // engine would have recorded — minus the dispatch.
+                    $counted++;
+                    $newWatermark = $this->advanceWatermark($newWatermark, $flat[$watermarkField] ?? null);
+                    if ($this->rootConditionPreFilter !== null
+                        && !$this->rootConditionPreFilter->matches($workflow, $entityId, $payload)
+                    ) {
+                        continue;
+                    }
+                    $this->dispatcher->dispatch($workflowId, $payload, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
+                    continue;
+                }
+
+                // Mapped path: every row already passed the index-mapped
+                // criteria, so dispatches ≈ scans and the cap keeps counting
+                // dispatched rows (unchanged behavior).
                 $this->dispatcher->dispatch($workflowId, $payload, WorkflowInterface::TRIGGER_TYPE_SCHEDULE);
-                $matched++;
+                $counted++;
 
                 $newWatermark = $this->advanceWatermark($newWatermark, $flat[$watermarkField] ?? null);
             }
 
             $currentPage++;
-        } while (count($items) === self::PAGE_SIZE && $matched < $matchCap);
+        } while (count($items) === self::PAGE_SIZE && $counted < $matchCap);
 
         return $newWatermark;
     }
