@@ -2,7 +2,7 @@
 
 **Working name:** `MageOS_Workflows` · **Status:** Proposed (original design doc; much of it since implemented — pending live-install verification) · **Target:** Magento Open Source / Mage-OS / Adobe Commerce ≥ 2.4.4, PHP 8.1+
 
-> **Note.** This is the original consolidated architecture proposal, preserved as written. The as-built status lives in the numbered docs: [13 — Delivery Plan](13-delivery-plan.md) and [16 — Capability Roadmap](16-capability-roadmap.md) for what's coded, and [docs/discovery/](discovery/README.md) for the follow-on build (canvas, template gallery, dry-run, branching, cross-referencing, fan-out, batch aggregation). Passages below that describe those as "v2 / Phase 2" future work are flagged inline where they'd otherwise mislead.
+> **Note.** This is the original consolidated architecture proposal, preserved as written. The as-built status lives in the numbered docs: [13 — Delivery Plan](13-delivery-plan.md) and [16 — Capability Roadmap](16-capability-roadmap.md) for what's coded, and [docs/discovery/](discovery/README.md) for the follow-on build (canvas, template gallery, dry-run, branching, cross-referencing, fan-out, batch aggregation). Passages below that describe those as "v2 / Phase 2" future work are flagged inline where they'd otherwise mislead. One further staleness, not worth rewriting inline: below, `workflows-triggers-core` is credited with the gap-fill trigger metadata; the July 2026 domain-pack split moved all of that into the per-domain packs (`workflows-sales`/`-customer`/`-inventory`/`-review`) — see [05 — Triggers](05-triggers.md#event-triggers--ride-the-async-events-notifier-seam) for the current attribution.
 
 ---
 
