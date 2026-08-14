@@ -12,6 +12,7 @@
 "Cart price rule %1 does not exist","Cart price rule %1 does not exist"
 "Change Order Status","Change Order Status"
 "Conditions Combination","Conditions Combination"
+"Coupon code %1 already exists on cart price rule %2, not %3","Coupon code %1 already exists on cart price rule %2, not %3"
 "Coupon generation returned no codes","Coupon generation returned no codes"
 "Create Credit Memo","Create Credit Memo"
 "Create Invoice","Create Invoice"

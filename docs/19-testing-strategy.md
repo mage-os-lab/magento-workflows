@@ -13,7 +13,7 @@ in [§Findings registry](#findings-registry).
 |---|---|---|---|
 | PHP unit (standalone) | `dev/tests/standalone-runner.php`, PHPUnit-shim + Magento shims, PHP 8.1–8.5 | 1,067 tests | `lint.yml`, blocking |
 | PHP unit (real Magento) | same suites under real PHPUnit inside a real Magento install, 2.4.6→2.4.9 matrix | same files | `check-extension.yml`, blocking |
-| PHP integration (real Magento) | `src/*/Test/Integration` under `dev/tests/integration` — real MySQL, merged DI, EAV, db-transport queue, real `setup:install` | 234 tests / 1,144 assertions (+3 `known-divergence` quarantined, run nightly-only) | `check-extension.yml`, blocking (newest line) |
+| PHP integration (real Magento) | `src/*/Test/Integration` under `dev/tests/integration` — real MySQL, merged DI, EAV, db-transport queue, real `setup:install` | 234 tests / 1,144 assertions (+2 `known-divergence` quarantined, run nightly-only) | `check-extension.yml`, blocking (newest line) |
 | DI compile | `setup:di:compile` against every supported Magento line | — | `check-extension.yml`, blocking |
 | phpcs | Magento2 standard | — | `check-extension.yml`, blocking |
 | Canvas unit | vitest, jsdom | 114 tests | `canvas.yml`, blocking |
@@ -147,6 +147,20 @@ Eight defects only a real install could catch; every one shipped broken:
   `known-divergence` pin in the integration `ResolverTest` now runs in the
   blocking gate, plus unit coverage for unquoted/quoted mixing.
 
+### Resolved — durable email send-once guard
+- **The email send-once guard was a non-atomic cache check-and-set** — safe
+  for sequential redelivery, but two *concurrent* consumers could both send,
+  the default file cache made it per-node, and `cache:flush` / Redis eviction
+  erased it outright. Replaced by a durable claim: `notify.email` and
+  `order.send_email` INSERT into `mageos_workflow_send_log`
+  (`UNIQUE(claim_key)`) BEFORE the send, via the shared
+  `MageOS\Workflows\Model\Idempotency\SendOnceGuard`. A duplicate key is the
+  "already claimed" answer. The residual, deliberate exposure is now the other
+  way round — a crash between claiming and confirming leaves a claimed-but-
+  unconfirmed row, so the redelivery skips a mail that may never have gone out
+  and says so in the skip reason. The integration `known-divergence` pin that
+  proved the old race is retired and replaced by green tests (docs/20 #19).
+
 ### Open — documented behavior not implemented
 - **Entity deleted during a delay is NOT resumed as `skipped`**
   (docs/08:99). `ResumeConsumer` never re-checks the entity; root conditions
@@ -191,9 +205,6 @@ Eight defects only a real install could catch; every one shipped broken:
   no terminal-exception classification — a permanently-throwing action burns
   redeliveries until the circuit breaker (10 fails) suspends. ChangeStatus
   and AddComment likewise catch broadly and always retry.
-- The email send-once guard's check-and-set (`Email.php:106-109`) is not
-  atomic — safe for sequential redelivery, but two *concurrent* consumers
-  could both send.
 - Circuit-breaker admin notification is not gated on the suspend persist —
   a failed save still notifies "suspended" while the workflow stays enabled
   (converges on the next failure).

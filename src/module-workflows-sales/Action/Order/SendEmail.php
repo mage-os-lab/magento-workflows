@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsSales\Action\Order;
 
-use Magento\Framework\Exception\LocalizedException;
 use Magento\Sales\Api\OrderManagementInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
@@ -12,6 +11,7 @@ use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\ActionResult;
+use MageOS\Workflows\Model\Idempotency\SendOnceGuard;
 
 /**
  * order.send_email — (re)send a transactional order email. Two modes via config
@@ -37,10 +37,27 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * confirmation or comment for a canceled order is almost always an authoring
  * mistake, and it will not become valid on redelivery.
  *
- * Idempotency note: transactional email is inherently at-least-once here (a
- * redelivery re-notifies). Author it on a once-only trigger, or gate it, when a
- * duplicate email would matter; the engine's chain-depth guard bounds any
- * trigger→email→trigger interaction.
+ * Send-once guard (both modes): a DURABLE claim on the execution+step dedupe
+ * key, taken BEFORE the send and backed by UNIQUE(claim_key) on
+ * mageos_workflow_send_log — the same core SendOnceGuard notify.email uses,
+ * because the hazard is identical and one policy is better than two. Mail
+ * cannot be unsent, so under at-least-once delivery (docs/08) the executor's
+ * resume-past-complete guard is not enough on its own: a crash INSIDE this
+ * step, after the mail left but before the step row was marked complete, would
+ * otherwise re-notify the customer on redelivery.
+ *
+ * The claim is taken only once there is something to send — after the mode,
+ * order-state and (comment mode) "is there a visible comment" checks — so a
+ * step that skips for lack of a comment leaves no claim behind and a later
+ * legitimate run can still send.
+ *
+ * The trade, deliberately: a crash between claiming and confirming leaves a
+ * `claimed` row, so a redelivery SKIPS a mail that may never have gone out,
+ * and the skip reason says exactly that. A failure from the send call itself
+ * KEEPS the claim and is terminal (never retryable): OrderManagement::notify()
+ * reports one flat false / one MailException whether the MTA refused the
+ * connection or accepted the message and died afterwards, and only one of
+ * those two guesses avoids a customer receiving two copies.
  */
 class SendEmail extends AbstractOrderAction implements SimulateableActionInterface
 {
@@ -48,10 +65,17 @@ class SendEmail extends AbstractOrderAction implements SimulateableActionInterfa
     private const TYPE_COMMENT = 'comment';
     private const TYPES = [self::TYPE_CONFIRMATION, self::TYPE_COMMENT];
 
+    /**
+     * The send-once guard is a REQUIRED parameter, not a nullable convenience:
+     * the ObjectManager does not auto-inject a parameter that has a default
+     * value, so an "optional" guard would arrive null in production and this
+     * action would quietly go back to double-mailing customers.
+     */
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         private readonly OrderManagementInterface $orderManagement,
-        private readonly OrderCommentSender $orderCommentSender
+        private readonly OrderCommentSender $orderCommentSender,
+        private readonly SendOnceGuard $sendOnceGuard
     ) {
         parent::__construct($orderRepository);
     }
@@ -97,9 +121,11 @@ class SendEmail extends AbstractOrderAction implements SimulateableActionInterfa
             );
         }
 
+        $dedupeKey = $ctx->getDedupeKey($this->stepKey($ctx));
+
         return $type === self::TYPE_CONFIRMATION
-            ? $this->sendConfirmation($order)
-            : $this->sendLatestComment($order);
+            ? $this->sendConfirmation($order, $dedupeKey)
+            : $this->sendLatestComment($order, $dedupeKey);
     }
 
     public function simulate(ExecutionContextInterface $ctx, array $config): ActionResultInterface
@@ -134,24 +160,34 @@ class SendEmail extends AbstractOrderAction implements SimulateableActionInterfa
         ));
     }
 
-    private function sendConfirmation(Order $order): ActionResultInterface
+    private function sendConfirmation(Order $order, string $dedupeKey): ActionResultInterface
     {
+        $claim = $this->claim($dedupeKey);
+        if ($claim instanceof ActionResult) {
+            return $claim;
+        }
+
         try {
             $notified = (bool)$this->orderManagement->notify((int)$order->getEntityId());
-        } catch (LocalizedException $e) {
-            return ActionResult::failure('Could not send order email: ' . $e->getMessage());
         } catch (\Exception $e) {
-            // Mail transport / infra flakiness may succeed on retry
-            return ActionResult::failure('Could not send order email: ' . $e->getMessage(), true);
+            // The send call was entered, so the claim stands (see the class
+            // docblock) and this is terminal: a redelivery could only skip.
+            return ActionResult::failure($this->unconfirmedSendError(
+                'Could not send order email: ' . $e->getMessage()
+            ));
         }
 
         if (!$notified) {
-            // notify() reports the send did not go out; a retry may succeed.
-            return ActionResult::failure(
-                (string)__('Order %1 confirmation email was not sent', $order->getIncrementId()),
-                true
-            );
+            // notify() swallows the transport error and reports one flat
+            // false — it may mean "email disabled" or "the MTA took it and the
+            // link dropped". Terminal with the claim retained, for the same
+            // reason: never guess in the direction of a second copy.
+            return ActionResult::failure($this->unconfirmedSendError(
+                (string)__('Order %1 confirmation email was not sent', $order->getIncrementId())
+            ));
         }
+
+        $this->sendOnceGuard->confirm($this->getCode(), $dedupeKey);
 
         return ActionResult::success([
             'email_type' => self::TYPE_CONFIRMATION,
@@ -159,8 +195,10 @@ class SendEmail extends AbstractOrderAction implements SimulateableActionInterfa
         ]);
     }
 
-    private function sendLatestComment(Order $order): ActionResultInterface
+    private function sendLatestComment(Order $order, string $dedupeKey): ActionResultInterface
     {
+        // Resolve BEFORE claiming: "nothing to send" must not burn the claim,
+        // or a later run that does have a comment would be suppressed.
         $comment = $this->latestVisibleComment($order);
         if ($comment === null) {
             return ActionResult::skipped(
@@ -168,18 +206,62 @@ class SendEmail extends AbstractOrderAction implements SimulateableActionInterfa
             );
         }
 
+        $claim = $this->claim($dedupeKey);
+        if ($claim instanceof ActionResult) {
+            return $claim;
+        }
+
         try {
             $this->orderCommentSender->send($order, true, $comment);
-        } catch (LocalizedException $e) {
-            return ActionResult::failure('Could not send order comment email: ' . $e->getMessage());
         } catch (\Exception $e) {
-            return ActionResult::failure('Could not send order comment email: ' . $e->getMessage(), true);
+            return ActionResult::failure($this->unconfirmedSendError(
+                'Could not send order comment email: ' . $e->getMessage()
+            ));
         }
+
+        $this->sendOnceGuard->confirm($this->getCode(), $dedupeKey);
 
         return ActionResult::success([
             'email_type' => self::TYPE_COMMENT,
             'comment_sent' => true,
         ]);
+    }
+
+    /**
+     * Take the send claim, or return the ActionResult that ends the step:
+     * a SKIP when somebody already claimed this (execution, step) — the
+     * redelivery case — or a retryable FAILURE when the claim store could not
+     * answer at all, because sending under an unanswered guard is the one
+     * outcome that must never happen.
+     *
+     * @return true|ActionResult true = claimed, proceed
+     */
+    private function claim(string $dedupeKey)
+    {
+        try {
+            $claimed = $this->sendOnceGuard->claim($this->getCode(), $dedupeKey);
+        } catch (\Exception $e) {
+            return ActionResult::failure(
+                'Could not claim the order email send: ' . $e->getMessage(),
+                true
+            );
+        }
+        if (!$claimed) {
+            return ActionResult::skipped($this->sendOnceGuard->describeClaim($this->getCode(), $dedupeKey));
+        }
+        return true;
+    }
+
+    /**
+     * Failure text for a send whose outcome is unknowable. Spelled out because
+     * the operator has to make the call: the step will NOT retry, and the mail
+     * may or may not have gone out.
+     */
+    private function unconfirmedSendError(string $detail): string
+    {
+        return $detail
+            . ' — the send was already claimed, so it will NOT be retried automatically'
+            . ' (the message may or may not have left the mail server).';
     }
 
     /**

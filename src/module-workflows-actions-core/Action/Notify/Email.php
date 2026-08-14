@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsActionsCore\Action\Notify;
 
 use Magento\Framework\App\Area;
-use Magento\Framework\App\CacheInterface;
 use Magento\Framework\Exception\MailException;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use MageOS\Workflows\Api\ActionResultInterface;
@@ -13,6 +12,7 @@ use MageOS\Workflows\Api\ExecutionContextInterface;
 use MageOS\Workflows\Api\SimulateableActionInterface;
 use MageOS\Workflows\Model\Action\AbstractAction;
 use MageOS\Workflows\Model\Action\ActionResult;
+use MageOS\Workflows\Model\Idempotency\SendOnceGuard;
 
 /**
  * notify.email — sends a transactional email with the execution context
@@ -24,21 +24,42 @@ use MageOS\Workflows\Model\Action\ActionResult;
  *    BEFORE being handed to the template's {{var body|raw}}, so config-borne
  *    markup can never inject live HTML/JS into the message.
  *
- * Sending mail is NOT idempotent and cannot be rolled back, so under
- * at-least-once delivery a check-and-set cache guard on the execution dedupe
- * key runs BEFORE SMTP (covering both modes): a redelivered step that already
- * attempted the send is skipped instead of double-mailing the customer.
+ * Send-once guard — a DURABLE claim, not a cache entry. Mail cannot be
+ * unsent, so under at-least-once delivery (docs/08) the action INSERTs a claim
+ * row keyed on the execution+step dedupe key BEFORE handing anything to the
+ * transport, and a duplicate key means somebody already claimed this send —
+ * skip. The claim lives in mageos_workflow_send_log behind a UNIQUE index
+ * (MageOS\Workflows\Model\Idempotency\SendClaimStoreInterface), which is what
+ * makes it correct where the previous CacheInterface load-then-save was not:
+ *  - the INSERT is atomic, so two concurrent consumers cannot both pass;
+ *  - it is shared by every node, unlike the default per-node file cache;
+ *  - `cache:flush` / a Redis restart / LRU eviction cannot erase it.
+ *
+ * The trade this encodes, deliberately: a crash between the claim and the
+ * confirmation leaves a `claimed` row, so the redelivery SKIPS an email that
+ * may never have gone out — and says exactly that in the skip reason
+ * ("outcome unconfirmed") rather than pretending it was sent. For email that
+ * is the right way round: a missing message an operator can resend beats a
+ * duplicate one they cannot recall. The claim is released only for failures
+ * that provably precede the send — bad config, or a transport that could not
+ * even be built. Once sendMessage() has been entered, the claim stands even if
+ * it throws: Magento wraps every transport error in one MailException, so
+ * "connection refused before DATA" and "died after the MTA accepted it" are
+ * indistinguishable here, and only one of those two guesses is safe.
  */
 class Email extends AbstractAction implements SimulateableActionInterface, BatchCapableActionInterface
 {
-    private const GUARD_CACHE_PREFIX = 'mageos_workflows_email_sent_';
-    private const GUARD_LIFETIME_SECONDS = 604800; // 7 days, beyond any retry window
-
     private const ADHOC_TEMPLATE_ID = 'mageos_workflows_adhoc';
 
+    /**
+     * The send-once guard is REQUIRED, never a nullable convenience: an
+     * optional dependency would arrive null in production (the ObjectManager
+     * does not auto-inject a parameter that has a default value) and the send
+     * would silently lose its only protection.
+     */
     public function __construct(
         private readonly TransportBuilder $transportBuilder,
-        private readonly CacheInterface $cache
+        private readonly SendOnceGuard $sendOnceGuard
     ) {
     }
 
@@ -101,13 +122,22 @@ class Email extends AbstractAction implements SimulateableActionInterface, Batch
             return ActionResult::failure((string)__('Invalid recipient email "%1"', $to));
         }
 
-        // Check-and-set guard BEFORE the side effect (mail cannot be unsent);
-        // one guard covers both the template and the ad-hoc path.
-        $guardKey = self::GUARD_CACHE_PREFIX . sha1($ctx->getDedupeKey($this->stepKey($ctx)));
-        if ($this->cache->load($guardKey)) {
-            return ActionResult::skipped('Duplicate delivery suppressed (email already attempted for this step)');
+        // Durable claim BEFORE the side effect (mail cannot be unsent); one
+        // claim covers both the template and the ad-hoc path.
+        $dedupeKey = $ctx->getDedupeKey($this->stepKey($ctx));
+        try {
+            $claimed = $this->sendOnceGuard->claim($this->getCode(), $dedupeKey);
+        } catch (\Exception $e) {
+            // The claim question went unanswered (DB down, table missing).
+            // Park the step: an unguarded send is exactly what must not happen.
+            return ActionResult::failure(
+                'Could not claim the email send: ' . $e->getMessage(),
+                true
+            );
         }
-        $this->cache->save('1', $guardKey, [], self::GUARD_LIFETIME_SECONDS);
+        if (!$claimed) {
+            return ActionResult::skipped($this->sendOnceGuard->describeClaim($this->getCode(), $dedupeKey));
+        }
 
         $vars = [
             'trigger' => $ctx->getTrigger(),
@@ -123,6 +153,9 @@ class Email extends AbstractAction implements SimulateableActionInterface, Batch
             $vars['body'] = nl2br(htmlspecialchars((string)$body, ENT_QUOTES, 'UTF-8'));
         }
 
+        // Phase 1 — build the transport. Nothing has reached a mail server
+        // yet, so any failure here provably sent nothing: release the claim so
+        // a redelivery can genuinely retry.
         try {
             $transport = $this->transportBuilder
                 ->setTemplateIdentifier($templateId)
@@ -134,15 +167,32 @@ class Email extends AbstractAction implements SimulateableActionInterface, Batch
                 ->setFromByScope('general', $ctx->getStoreId())
                 ->addTo($to)
                 ->getTransport();
-            $transport->sendMessage();
         } catch (MailException $e) {
-            // Transient transport failure: release the guard so a retry can send
-            $this->cache->remove($guardKey);
+            $this->sendOnceGuard->release($this->getCode(), $dedupeKey);
             return ActionResult::failure('Email send failed: ' . $e->getMessage(), true);
         } catch (\Exception $e) {
             // Template/config errors will not resolve on redelivery
+            $this->sendOnceGuard->release($this->getCode(), $dedupeKey);
             return ActionResult::failure('Email send failed: ' . $e->getMessage());
         }
+
+        // Phase 2 — hand it to the transport. From here the claim STANDS
+        // whatever happens: Magento funnels every transport error into one
+        // MailException, so a refused connection and an MTA that accepted the
+        // message before the link dropped look identical, and retrying on that
+        // guess is how customers get two copies. Terminal, not retryable — a
+        // redelivery could only skip on the retained claim, so failing loudly
+        // tells the operator to check and resend instead of silently skipping.
+        try {
+            $transport->sendMessage();
+        } catch (\Exception $e) {
+            return ActionResult::failure(
+                'Email send failed after the send was claimed, so it will NOT be retried automatically '
+                . '(the message may or may not have left the mail server): ' . $e->getMessage()
+            );
+        }
+
+        $this->sendOnceGuard->confirm($this->getCode(), $dedupeKey);
 
         $output = [
             'template_id' => $templateId,

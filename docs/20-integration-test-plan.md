@@ -2,7 +2,9 @@
 
 **Status: DELIVERED (2026-07, PR #21).** All 33 catalog suites are authored
 and green: 234 tests / 1,144 assertions against a real Magento 2.4.9 install
-(plus 3 `known-divergence` pins quarantined from the blocking gate). The
+(plus 2 `known-divergence` pins quarantined from the blocking gate — the third,
+the notify.email send-once race, was retired when the guard became a durable
+DB claim; see #19). The
 bring-up surfaced eight shipped product defects — recorded in
 [docs/19's findings registry](19-testing-strategy.md#findings-registry).
 Environment lessons learned the hard way, now encoded in the harness:
@@ -395,9 +397,14 @@ each action gets its own test class.
 
 **19. `Action\Notify\EmailTest`** — `TransportBuilderMock` capture: template
 resolved store-scoped, variables from the real entity, recipient resolution;
-send-once guard persists its marker and a redelivery does not resend.
-**Two-connection race pin** for the known non-atomic check-and-set
-(`Email.php:106-109`, docs/19 risk note): `@group known-divergence`, nightly.
+send-once guard persists its claim and a redelivery does not resend. The
+former **two-connection race pin** (`known-divergence`, nightly) for the
+non-atomic cache check-and-set is GONE: the guard is now an atomic INSERT
+against `UNIQUE(claim_key)` on `mageos_workflow_send_log`, so the divergence it
+pinned no longer exists. Three green tests replace it — a cache flush no longer
+un-guards a send, a claim left by a crashed attempt suppresses the redelivery
+(and says the message may never have gone out), and the claim row is asserted
+to exist carrying no recipient/PII.
 
 **20. `Action\{Customer,Product,Marketing}\*Test`** — anonymize scrubs the
 documented field set on a real customer (and the scrub ordering vs.

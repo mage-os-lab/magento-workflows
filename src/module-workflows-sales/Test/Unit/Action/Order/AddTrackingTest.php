@@ -62,9 +62,16 @@ class AddTrackingTest extends TestCase
         };
     }
 
-    private function shipment(int $id): object
+    /**
+     * A shipment double. `$existing` seeds tracks the shipment already carries
+     * as [carrier_code, track_number] pairs, so the natural-idempotence guard
+     * has something to find.
+     *
+     * @param array<int, array{0: string, 1: string}> $existing
+     */
+    private function shipment(int $id, array $existing = []): object
     {
-        return new class($id) {
+        $shipment = new class($id) {
             public array $tracks = [];
             public function __construct(private readonly int $id)
             {
@@ -78,7 +85,21 @@ class AddTrackingTest extends TestCase
                 $this->tracks[] = $track;
                 return $this;
             }
+            /**
+             * Mirrors Shipment::getTracks() — the accessor the guard scans.
+             */
+            public function getTracks(): array
+            {
+                return $this->tracks;
+            }
         };
+        foreach ($existing as [$carrier, $number]) {
+            $track = $this->track();
+            $track->setCarrierCode($carrier);
+            $track->setTrackNumber($number);
+            $shipment->addTrack($track);
+        }
+        return $shipment;
     }
 
     private function track(): object
@@ -101,6 +122,15 @@ class AddTrackingTest extends TestCase
             {
                 $this->trackNumber = $v;
                 return $this;
+            }
+            // Read side, used by the (carrier, number) idempotence scan.
+            public function getCarrierCode()
+            {
+                return $this->carrierCode;
+            }
+            public function getTrackNumber()
+            {
+                return $this->trackNumber;
             }
         };
     }
@@ -213,6 +243,177 @@ class AddTrackingTest extends TestCase
         $this->assertSame(501, $shipmentRepo->lastSaved->getEntityId());
         $this->assertSame(501, $result->getOutput()['shipment_id']);
         $this->assertSame('1Z999', $result->getOutput()['track_number']);
+    }
+
+    // -- redelivery guard: (carrier, number) is the parcel's identity ---------
+
+    public function testRedeliveryOfTheSameTrackIsSkippedNotDuplicated(): void
+    {
+        // The crash-inside-the-step window: delivery #1 saved the track, the
+        // step row was never marked complete, delivery #2 re-runs the action
+        // against an order that already carries the number.
+        $shipment = $this->shipment(501, [['ups', '1Z999']]);
+        $order = $this->orderWithShipments([$this->shipment(500), $shipment]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
+
+        $this->assertSame(ActionResultInterface::STATUS_SKIPPED, $result->getStatus());
+        $this->assertSame(0, $shipmentRepo->saves, 'a redelivery must not append a second track row');
+        $this->assertCount(1, $shipment->tracks);
+        $this->assertSame(501, $result->getOutput()['shipment_id']);
+        $this->assertSame('1Z999', $result->getOutput()['track_number']);
+        $this->assertStringContainsString('already on shipment 501', (string)$result->getOutput()['reason']);
+    }
+
+    public function testGuardIsCaseAndWhitespaceInsensitiveOnBothHalves(): void
+    {
+        $shipment = $this->shipment(500, [['UPS', ' 1z999 ']]);
+        $order = $this->orderWithShipments([$shipment]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
+
+        $this->assertSame(ActionResultInterface::STATUS_SKIPPED, $result->getStatus());
+        $this->assertSame(0, $shipmentRepo->saves);
+    }
+
+    public function testGuardSpansEveryShipmentNotJustTheLatest(): void
+    {
+        // A newer shipment appeared between the two deliveries: the number
+        // lives on the OLD shipment, and re-adding it to the new one would be
+        // exactly the customer-visible duplicate the guard exists to stop.
+        $old = $this->shipment(500, [['ups', '1Z999']]);
+        $new = $this->shipment(501);
+        $order = $this->orderWithShipments([$old, $new]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
+
+        $this->assertSame(ActionResultInterface::STATUS_SKIPPED, $result->getStatus());
+        $this->assertSame(500, $result->getOutput()['shipment_id'], 'the holding shipment is reported');
+        $this->assertSame([], $new->tracks);
+        $this->assertSame(0, $shipmentRepo->saves);
+    }
+
+    public function testADifferentNumberOnTheSameCarrierStillAdds(): void
+    {
+        // Two parcels, same carrier: not a duplicate, must go through.
+        $shipment = $this->shipment(500, [['ups', '1Z999']]);
+        $order = $this->orderWithShipments([$shipment]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z888']);
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame(1, $shipmentRepo->saves);
+        $this->assertCount(2, $shipment->tracks);
+    }
+
+    public function testSameNumberOnADifferentCarrierStillAdds(): void
+    {
+        $shipment = $this->shipment(500, [['ups', '1Z999']]);
+        $order = $this->orderWithShipments([$shipment]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'fedex', 'track_number' => '1Z999']);
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame(1, $shipmentRepo->saves);
+    }
+
+    public function testAFailingTrackScanParksForRetryInsteadOfAppendingBlind(): void
+    {
+        $shipment = new class {
+            public function getEntityId(): int
+            {
+                return 500;
+            }
+            public function getTracks(): array
+            {
+                throw new \RuntimeException('track collection unavailable');
+            }
+            public function addTrack($track)
+            {
+                throw new \BadMethodCallException('must not be reached');
+            }
+        };
+        $order = $this->orderWithShipments([$shipment]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
+
+        $this->assertTrue($result->isFailure());
+        $this->assertTrue($result->isRetryable(), 'an unanswered dedupe question is retryable, not a duplicate');
+        $this->assertStringContainsString('existing tracking', (string)$result->getError());
+        $this->assertSame(0, $shipmentRepo->saves);
+    }
+
+    public function testShipmentWithoutATracksAccessorDoesNotBreakTheAdd(): void
+    {
+        // Partial doubles / exotic extensions: the guard degrades to "carries
+        // nothing" rather than failing the step.
+        $shipment = new class {
+            public array $tracks = [];
+            public function getEntityId(): int
+            {
+                return 500;
+            }
+            public function addTrack($track)
+            {
+                $this->tracks[] = $track;
+                return $this;
+            }
+        };
+        $order = $this->orderWithShipments([$shipment]);
+        $shipmentRepo = $this->recordingShipmentRepository();
+        $action = new AddTracking(
+            $this->repositoryReturning($order),
+            $this->trackFactory($this->track()),
+            $shipmentRepo,
+            $this->shippingConfig()
+        );
+
+        $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
+
+        $this->assertTrue($result->isSuccess());
+        $this->assertSame(1, $shipmentRepo->saves);
     }
 
     public function testNoShipmentIsNonRetryableFailure(): void

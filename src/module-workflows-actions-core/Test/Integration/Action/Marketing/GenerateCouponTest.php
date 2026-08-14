@@ -5,6 +5,7 @@ namespace MageOS\WorkflowsActionsCore\Test\Integration\Action\Marketing;
 
 use Magento\Framework\App\ResourceConnection;
 use Magento\SalesRule\Model\ResourceModel\Rule\CollectionFactory as RuleCollectionFactory;
+use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\WorkflowsSales\Action\Marketing\GenerateCoupon;
 use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
 
@@ -12,6 +13,11 @@ use MageOS\WorkflowsActionsCore\Test\Integration\Action\ActionTestCase;
  * Plan #20 (docs/20-integration-test-plan.md §5) — marketing.generate_coupon
  * creates a real salesrule_coupon row from an auto-generation cart price rule
  * and surfaces the code in step output for downstream steps (docs/07 Marketing).
+ *
+ * Also pins the redelivery guard against a real database: the code is derived
+ * from the execution+step dedupe key, so a second delivery of the same step
+ * recovers the SAME coupon (one row, one code) instead of minting a second
+ * live discount.
  *
  * @magentoDbIsolation enabled
  */
@@ -49,6 +55,36 @@ class GenerateCouponTest extends ActionTestCase
                 ->where('code = ?', $code)
         );
         $this->assertSame($ruleId, (int)$storedRuleId, 'A salesrule_coupon row must exist for the generated code');
+    }
+
+    /**
+     * @magentoDataFixture MageOS_WorkflowsActionsCore::Test/Integration/_files/cart_price_rule_autogen.php
+     */
+    public function testRedeliveryRecoversTheSameCouponInsteadOfMintingASecond(): void
+    {
+        $ruleId = $this->ruleId('WF Autogen Rule');
+        // Same context twice = the same dedupe key = a redelivered step.
+        $ctx = $this->buildContext(1, 1, 's1', 'c1111111-1111-1111-1111-111111111111');
+
+        $first = $this->action->execute($ctx, ['rule_id' => $ruleId]);
+        $second = $this->action->execute($ctx, ['rule_id' => $ruleId]);
+
+        $this->assertTrue($first->isSuccess(), $first->getError() ?? '');
+        $this->assertSame(
+            ActionResultInterface::STATUS_SKIPPED,
+            $second->getStatus(),
+            'a redelivery must recover the existing coupon, never mint a second'
+        );
+        $code = (string)$first->getOutput()['coupon_code'];
+        $this->assertSame($code, (string)$second->getOutput()['coupon_code']);
+
+        $connection = $this->resource->getConnection();
+        $rows = (int)$connection->fetchOne(
+            $connection->select()
+                ->from($this->resource->getTableName('salesrule_coupon'), ['COUNT(*)'])
+                ->where('rule_id = ?', $ruleId)
+        );
+        $this->assertSame(1, $rows, 'exactly one coupon exists for the rule after the redelivery');
     }
 
     public function testNonexistentRuleFails(): void

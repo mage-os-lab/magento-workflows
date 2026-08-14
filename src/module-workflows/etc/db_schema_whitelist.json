@@ -126,6 +126,23 @@
             "MAGEOS_WF_DEBOUNCE_WORKFLOW_ID": true
         }
     },
+    "mageos_workflow_send_log": {
+        "column": {
+            "send_log_id": true,
+            "claim_key": true,
+            "scope": true,
+            "status": true,
+            "claimed_at": true,
+            "sent_at": true
+        },
+        "index": {
+            "MAGEOS_WORKFLOW_SEND_LOG_CLAIMED_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGEOS_WORKFLOW_SEND_LOG_CLAIM_KEY": true
+        }
+    },
     "mageos_workflow_batch": {
         "column": {
             "batch_id": true,

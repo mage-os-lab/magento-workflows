@@ -235,6 +235,38 @@
         </index>
     </table>
 
+    <table name="mageos_workflow_send_log" resource="default" engine="innodb"
+           comment="Mage-OS Workflow Send Log (durable at-most-once claims for unrecoverable side effects)">
+        <column xsi:type="bigint" name="send_log_id" unsigned="true" nullable="false" identity="true"
+                comment="Send Log ID"/>
+        <column xsi:type="varchar" name="claim_key" length="191" nullable="false"
+                comment="Claim Key (action scope + execution dedupe key: '&lt;action code&gt;:&lt;uuid&gt;:&lt;step&gt;')"/>
+        <column xsi:type="varchar" name="scope" length="64" nullable="false"
+                comment="Claiming Action Code (e.g. notify.email)"/>
+        <column xsi:type="varchar" name="status" length="16" nullable="false" default="claimed"
+                comment="Status (claimed = attempted, outcome unknown; sent = confirmed handed to the transport)"/>
+        <column xsi:type="timestamp" name="claimed_at" on_update="false" nullable="false"
+                default="CURRENT_TIMESTAMP" comment="Claimed At (before the side effect)"/>
+        <column xsi:type="timestamp" name="sent_at" on_update="false" nullable="true"
+                comment="Confirmed-Sent At; null on a claim whose outcome was never confirmed"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="send_log_id"/>
+        </constraint>
+        <!-- THE guard. Email cannot be unsent, so the claim must be an atomic
+             INSERT that exactly one consumer wins; the previous cache
+             check-and-set was non-atomic, per-node on file caches, and erased
+             by cache:flush / Redis eviction. No PII lives here on purpose (no
+             recipient, no subject): it is a claim ledger, not a mail log. -->
+        <constraint xsi:type="unique" referenceId="MAGEOS_WORKFLOW_SEND_LOG_CLAIM_KEY">
+            <column name="claim_key"/>
+        </constraint>
+        <!-- Cron/PruneExecutions sweeps claims older than the send-log
+             retention window by claimed_at. -->
+        <index referenceId="MAGEOS_WORKFLOW_SEND_LOG_CLAIMED_AT" indexType="btree">
+            <column name="claimed_at"/>
+        </index>
+    </table>
+
     <!-- mageos_workflow_stock_flag moved to mage-os/workflows-inventory with the
          StockThresholdDetector (domain-packs S4). -->
 

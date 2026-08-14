@@ -57,6 +57,11 @@
                     <comment>Execution contexts contain entity snapshots (PII). Lower this to hours-equivalent (fractions unsupported; use 1) for strict containment.</comment>
                     <validate>validate-digits</validate>
                 </field>
+                <field id="send_log_days" translate="label comment" type="text" sortOrder="20" showInDefault="1">
+                    <label>Prune Send-Log Claims After (days)</label>
+                    <comment>Send-once claims for unrecoverable sends (email). They carry no message content, only a claim key, and must outlive every possible queue redelivery: values below 7 days are ignored (7 is enforced as the floor). Default 30.</comment>
+                    <validate>validate-digits</validate>
+                </field>
             </group>
             <group id="webhook" translate="label" type="text" sortOrder="40" showInDefault="1">
                 <label>Webhook Action</label>

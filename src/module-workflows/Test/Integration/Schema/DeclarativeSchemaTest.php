@@ -25,6 +25,7 @@ class DeclarativeSchemaTest extends TestCase
         'mageos_workflow_execution',
         'mageos_workflow_execution_step',
         'mageos_workflow_debounce',
+        'mageos_workflow_send_log',
         'mageos_workflow_stock_flag',
         'mageos_workflow_batch',
         'mageos_workflow_batch_item',

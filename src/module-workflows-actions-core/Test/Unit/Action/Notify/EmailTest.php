@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsActionsCore\Test\Unit\Action\Notify;
 
-use Magento\Framework\App\CacheInterface;
+use MageOS\Workflows\Model\Idempotency\SendOnceGuard;
+use MageOS\Workflows\Test\Unit\Stub\FakeSendClaimStore;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
@@ -15,7 +16,7 @@ class EmailTest extends TestCase
     public function testExecuteWithNoTemplateAndNoSubjectFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -30,7 +31,7 @@ class EmailTest extends TestCase
     public function testExecuteWithTemplateAndSubjectFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -49,7 +50,7 @@ class EmailTest extends TestCase
     public function testExecuteWithTemplateAndBodyFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -67,7 +68,7 @@ class EmailTest extends TestCase
     public function testExecuteWithSubjectButNoBodyFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -82,7 +83,7 @@ class EmailTest extends TestCase
     public function testExecuteWithMissingToFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -97,7 +98,7 @@ class EmailTest extends TestCase
     public function testExecuteWithInvalidEmailFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -115,7 +116,7 @@ class EmailTest extends TestCase
     public function testSimulateWithNoTemplateAndNoSubjectFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -129,7 +130,7 @@ class EmailTest extends TestCase
     public function testSimulateWithTemplateAndSubjectFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -146,7 +147,7 @@ class EmailTest extends TestCase
     public function testSimulateWithSubjectButNoBodyFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -159,7 +160,7 @@ class EmailTest extends TestCase
     public function testSimulateWithMissingToFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -172,7 +173,7 @@ class EmailTest extends TestCase
     public function testSimulateWithInvalidEmailFails(): void
     {
         $transportBuilder = $this->createTransportBuilderStub();
-        $cache = $this->createCacheStub();
+        $cache = $this->createSendOnceGuard();
 
         $action = new Email($transportBuilder, $cache);
         $ctx = new ExecutionContext(new WorkflowExecutionStub());
@@ -187,7 +188,7 @@ class EmailTest extends TestCase
 
     public function testConfigFormTemplateFieldSearchesTheEmailTemplateSource(): void
     {
-        $action = new Email($this->createTransportBuilderStub(), $this->createCacheStub());
+        $action = new Email($this->createTransportBuilderStub(), $this->createSendOnceGuard());
 
         $field = $action->getConfigForm()[0];
 
@@ -211,14 +212,12 @@ class EmailTest extends TestCase
         };
     }
 
-    private function createCacheStub(): CacheInterface
+    /**
+     * A real SendOnceGuard over the in-memory claim store: every test here
+     * fails before the guard is reached, so an unclaimed store is enough.
+     */
+    private function createSendOnceGuard(): SendOnceGuard
     {
-        return new class implements CacheInterface {
-            public function load($identifier) { return false; }
-            public function save($data, $identifier, $tags = [], $lifeTime = null) {}
-            public function remove($identifier) {}
-            public function getFrontend() { throw new \BadMethodCallException(__METHOD__); }
-            public function clean($tags = []) { return true; }
-        };
+        return new SendOnceGuard(new FakeSendClaimStore());
     }
 }

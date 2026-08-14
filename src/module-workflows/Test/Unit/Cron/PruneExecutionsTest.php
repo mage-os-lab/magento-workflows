@@ -20,6 +20,11 @@ use PHPUnit\Framework\TestCase;
  * Debounce slots ride the same cron: a slot only guards its own time bucket,
  * so rows older than max(2x window, 1 hour) are swept; fresher rows are kept
  * (they may still be the active bucket's guard).
+ *
+ * Send-log claims (the durable email send-once guard) ride it too, on their
+ * own days-scale clock with a hard floor: a claim deleted while a redelivery
+ * could still arrive re-arms the double send it exists to prevent, so a
+ * misconfigured sub-floor value must NOT shorten the horizon.
  */
 class PruneExecutionsTest extends TestCase
 {
@@ -168,6 +173,50 @@ class PruneExecutionsTest extends TestCase
         $this->assertFalse(isset($this->connection->debounces[4]));
     }
 
+    private function seedSendLog(int $id, string $claimedAt): void
+    {
+        $this->connection->sendLogs[$id] = [
+            'send_log_id' => $id,
+            'claimed_at' => $claimedAt,
+        ];
+    }
+
+    public function testSendLogClaimsPastTheirRetentionArePrunedAndFreshOnesKept(): void
+    {
+        // Default 30 days.
+        $this->seedSendLog(1, $this->daysAgo(40));
+        $this->seedSendLog(2, $this->daysAgo(5));
+
+        $this->cron()->execute();
+
+        $this->assertFalse(isset($this->connection->sendLogs[1]));
+        $this->assertTrue(isset($this->connection->sendLogs[2]), 'a claim inside the horizon still guards');
+    }
+
+    public function testConfiguredSendLogRetentionDaysIsHonored(): void
+    {
+        $this->seedSendLog(3, $this->daysAgo(20));
+        $this->seedSendLog(4, $this->daysAgo(8));
+
+        $this->cron([PruneExecutions::CONFIG_SEND_LOG_RETENTION_DAYS => 14])->execute();
+
+        $this->assertFalse(isset($this->connection->sendLogs[3]));
+        $this->assertTrue(isset($this->connection->sendLogs[4]));
+    }
+
+    public function testSendLogRetentionNeverGoesBelowTheSafetyFloor(): void
+    {
+        // "Prune after 1 day" would delete claims while queue redeliveries can
+        // still land: the 7-day floor wins over the configured value.
+        $this->seedSendLog(5, $this->daysAgo(3));
+        $this->seedSendLog(6, $this->daysAgo(9));
+
+        $this->cron([PruneExecutions::CONFIG_SEND_LOG_RETENTION_DAYS => 1])->execute();
+
+        $this->assertTrue(isset($this->connection->sendLogs[5]), 'the floor protects a 3-day-old claim');
+        $this->assertFalse(isset($this->connection->sendLogs[6]));
+    }
+
     public function testFlushedBatchesOlderThanRetentionArePrunedAndOpenOnesKept(): void
     {
         $this->connection->batches[100] = [
@@ -234,6 +283,7 @@ class PruneFakeConnection
     private const STEP_TABLE = 'mageos_workflow_execution_step';
     private const BATCH_TABLE = 'mageos_workflow_batch';
     private const DEBOUNCE_TABLE = 'mageos_workflow_debounce';
+    private const SEND_LOG_TABLE = 'mageos_workflow_send_log';
 
     /** @var array<int, array<string, mixed>> execution_id => row */
     public array $executions = [];
@@ -243,6 +293,9 @@ class PruneFakeConnection
 
     /** @var array<int, array<string, mixed>> debounce_id => row */
     public array $debounces = [];
+
+    /** @var array<int, array<string, mixed>> send_log_id => row */
+    public array $sendLogs = [];
 
     /** @var array<int, int[]> every step-table delete's execution-id list */
     public array $stepDeletes = [];
@@ -261,6 +314,7 @@ class PruneFakeConnection
             self::EXECUTION_TABLE => array_values($this->executions),
             self::BATCH_TABLE => array_values($this->batches),
             self::DEBOUNCE_TABLE => array_values($this->debounces),
+            self::SEND_LOG_TABLE => array_values($this->sendLogs),
             default => [],
         };
         $matched = array_values(array_filter(
@@ -310,6 +364,16 @@ class PruneFakeConnection
             foreach ($ids as $id) {
                 if (isset($this->debounces[$id])) {
                     unset($this->debounces[$id]);
+                    $deleted++;
+                }
+            }
+            return $deleted;
+        }
+        if ((string) $table === self::SEND_LOG_TABLE) {
+            $deleted = 0;
+            foreach ($ids as $id) {
+                if (isset($this->sendLogs[$id])) {
+                    unset($this->sendLogs[$id]);
                     $deleted++;
                 }
             }

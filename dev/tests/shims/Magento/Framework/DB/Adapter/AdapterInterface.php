@@ -50,6 +50,24 @@ interface AdapterInterface
     public function insertOnDuplicate($table, array $data, array $fields = []);
 
     /**
+     * Plain INSERT — the duplicate-key error it raises IS the answer for the
+     * atomic claim idioms (Dispatcher debounce, SendClaimStore).
+     *
+     * @param mixed $table
+     * @param array $bind
+     * @return int affected rows
+     */
+    public function insert($table, array $bind);
+
+    /**
+     * @param mixed $table
+     * @param array $bind
+     * @param mixed $where
+     * @return int affected rows
+     */
+    public function update($table, array $bind, $where = '');
+
+    /**
      * @param mixed $table
      * @param mixed $where
      * @return int affected rows

@@ -23,6 +23,7 @@
             </dry_run>
             <retention>
                 <days>90</days>
+                <send_log_days>30</send_log_days>
             </retention>
             <webhook>
                 <allow_insecure_http>0</allow_insecure_http>

@@ -177,6 +177,24 @@ own time bucket, so the cron deletes rows older than twice the configured
 `mageos_workflows/guards/debounce_window_seconds` (minimum keep: one hour). No PII is
 involved (workflow id, entity id, bucket number only) and there is no separate setting.
 
+**Send-log claims** (`mageos_workflow_send_log`) are swept by the same cron, on their own
+clock. Every unrecallable send — `notify.email` and `order.send_email` — INSERTs one claim
+row before it sends (`UNIQUE(claim_key)`; the insert IS the send-once guard), so the table
+grows one row per email and nothing else deletes them.
+
+- Config path: `mageos_workflows/retention/send_log_days` (default 30).
+- **Hard floor: 7 days**, whatever is configured. A claim deleted while a queue redelivery
+  could still reach its step re-arms exactly the double send the claim prevents, so a
+  sub-floor value is ignored rather than obeyed.
+- No PII: the row carries the action code, the execution+step claim key, a status
+  (`claimed` / `sent`) and timestamps — no recipient, no subject, no message body. A
+  `claimed` row whose `sent_at` is still null is the honest record of a crash between the
+  claim and the confirmation: that message may never have gone out, and any redelivery of
+  that step reports it as such instead of resending. Those rows are worth a look after an
+  incident (`SELECT scope, claim_key, claimed_at FROM mageos_workflow_send_log WHERE
+  sent_at IS NULL AND claimed_at < NOW() - INTERVAL 1 HOUR`) — each one is a candidate for
+  a manual resend.
+
 **Approval task rows** (`mageos_workflow_approval`, from the optional
 `mage-os/workflows-approvals` addon — [Approval Gate discovery §3](discovery/approval-gate.md#3-data-model))
 carry `title`/`instructions` interpolated **at park time**, plus any decision `note`/`payload` —

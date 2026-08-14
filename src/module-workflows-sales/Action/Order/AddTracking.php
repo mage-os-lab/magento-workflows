@@ -26,6 +26,27 @@ use MageOS\Workflows\Model\Action\ActionResult;
  * FAILURE with a clear message, not a skip and not a retry. Author it after a
  * create_shipment step (or gate it on the can_ship = No lifecycle condition,
  * ORD-C1) so a shipment is guaranteed present.
+ *
+ * Redelivery guard — NATURAL idempotence, no marker needed. Under at-least-once
+ * delivery (docs/08) the executor resumes past a step row that is already
+ * `complete`, but a crash INSIDE this step (track saved, step row not yet
+ * marked complete) used to leave a redelivery free to append the SAME tracking
+ * number a second time: a duplicate row the customer sees in "Your order has
+ * shipped", plus a duplicate shipment email whenever notify is on downstream.
+ * The guard is the pair itself — (carrier_code, track_number) IS the identity
+ * of a parcel, so there is nothing to record: before appending, the action
+ * scans the order's shipments for a track that already carries this pair and
+ * returns `skipped` (with the holding shipment id) when it finds one. That
+ * beats a dedupe marker on two counts: it costs no extra column/comment, and
+ * it also suppresses an honest authoring duplicate (two workflows feeding the
+ * same carrier number), which a per-execution marker never could.
+ *
+ * The scan spans ALL shipments of the order, not just the one this run would
+ * write to: a redelivery that arrives after a second shipment was created
+ * would otherwise target a different "latest" shipment and re-add the number
+ * there. Comparison is trim + case-insensitive on both halves — carrier codes
+ * are lowercase config keys and carriers treat tracking numbers
+ * case-insensitively, so "1z999" and "1Z999" are the same parcel.
  */
 class AddTracking extends AbstractOrderAction implements SimulateableActionInterface
 {
@@ -108,6 +129,36 @@ class AddTracking extends AbstractOrderAction implements SimulateableActionInter
             );
         }
 
+        // Redelivery guard BEFORE the write: the (carrier, number) pair is the
+        // parcel's identity, so an existing match anywhere on the order means
+        // this track is already attached.
+        try {
+            $existingShipmentId = $this->shipmentIdCarryingTrack($order, $carrierCode, $trackNumber);
+        } catch (\Exception $e) {
+            // An unanswered dedupe question must not become a duplicate track:
+            // park for retry instead of appending blind.
+            return ActionResult::failure(
+                'Could not check for existing tracking: ' . $e->getMessage(),
+                true
+            );
+        }
+        if ($existingShipmentId !== null) {
+            return ActionResult::skipped(
+                sprintf(
+                    'Tracking %s/%s is already on shipment %d of order %s',
+                    $carrierCode,
+                    $trackNumber,
+                    $existingShipmentId,
+                    $order->getIncrementId()
+                ),
+                [
+                    'shipment_id' => $existingShipmentId,
+                    'carrier_code' => $carrierCode,
+                    'track_number' => $trackNumber,
+                ]
+            );
+        }
+
         try {
             $track = $this->trackFactory->create();
             $track->setCarrierCode($carrierCode);
@@ -164,10 +215,69 @@ class AddTracking extends AbstractOrderAction implements SimulateableActionInter
      */
     private function latestShipment($order)
     {
-        $items = $order->getShipmentsCollection()->getItems();
-        if (!is_array($items) || $items === []) {
+        $items = $this->shipments($order);
+        if ($items === []) {
             return null;
         }
         return end($items);
+    }
+
+    /**
+     * The id of a shipment on this order that ALREADY carries this
+     * (carrier_code, track_number) pair, or null when none does.
+     *
+     * Scans every shipment, deliberately: see the class docblock — a
+     * redelivery arriving after a newer shipment appeared would otherwise
+     * target a different shipment and duplicate the number there.
+     *
+     * A shipment object without a tracks accessor (a partial double, an
+     * exotic extension) is treated as carrying nothing rather than crashing
+     * the send — the worst case is the pre-existing duplicate-track behavior,
+     * never a lost track.
+     *
+     * @param \Magento\Sales\Model\Order $order
+     */
+    private function shipmentIdCarryingTrack($order, string $carrierCode, string $trackNumber): ?int
+    {
+        foreach ($this->shipments($order) as $shipment) {
+            if (!is_object($shipment) || !method_exists($shipment, 'getTracks')) {
+                continue;
+            }
+            foreach ((array)$shipment->getTracks() as $track) {
+                if (!is_object($track)
+                    || !method_exists($track, 'getCarrierCode')
+                    || !method_exists($track, 'getTrackNumber')
+                ) {
+                    continue;
+                }
+                if ($this->sameToken((string)$track->getCarrierCode(), $carrierCode)
+                    && $this->sameToken((string)$track->getTrackNumber(), $trackNumber)
+                ) {
+                    return (int)$shipment->getEntityId();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Carrier codes and tracking numbers compare trimmed + case-insensitively
+     * (ASCII: both are machine tokens, never localized text).
+     */
+    private function sameToken(string $left, string $right): bool
+    {
+        return strcasecmp(trim($left), trim($right)) === 0;
+    }
+
+    /**
+     * The order's shipments, oldest first, as a plain list.
+     *
+     * @param \Magento\Sales\Model\Order $order
+     * @return array<int, mixed>
+     */
+    private function shipments($order): array
+    {
+        $items = $order->getShipmentsCollection()->getItems();
+        return is_array($items) ? array_values($items) : [];
     }
 }

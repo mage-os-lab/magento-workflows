@@ -26,6 +26,17 @@ use Psr\Log\LoggerInterface;
  * bucket (intdiv(now, window)), so anything older than one full window can
  * never match again — pruned on a generous multiple of the configured window,
  * never a retention-days clock.
+ *
+ * Send-log claims (mageos_workflow_send_log) are swept on their own clock for
+ * the same "nothing else deletes them" reason: one row per unrecallable send,
+ * so they grow exactly as fast as the store emails. Their horizon is NOT the
+ * debounce horizon, though — a claim must outlive every redelivery that could
+ * still reach its step (queue retries, a stranded execution recovered days
+ * later), because deleting it early re-arms the double send it exists to
+ * prevent. Hence a days-scale clock of its own
+ * (mageos_workflows/retention/send_log_days, default 30) with a hard 7-day
+ * floor, independent of — and normally much shorter than — the 90-day
+ * execution retention.
  */
 class PruneExecutions
 {
@@ -35,10 +46,21 @@ class PruneExecutions
     public const CONFIG_DRY_RUN_RETENTION_DAYS = 'mageos_workflows/dry_run/retention_days';
     public const DEFAULT_DRY_RUN_RETENTION_DAYS = 7;
 
+    public const CONFIG_SEND_LOG_RETENTION_DAYS = 'mageos_workflows/retention/send_log_days';
+    public const DEFAULT_SEND_LOG_RETENTION_DAYS = 30;
+
+    /**
+     * A send claim younger than this is never pruned, whatever the config says:
+     * dropping a claim while a redelivery could still arrive re-arms the
+     * double send the claim exists to prevent (docs/15 retention).
+     */
+    public const MIN_SEND_LOG_RETENTION_DAYS = 7;
+
     private const EXECUTION_TABLE = 'mageos_workflow_execution';
     private const STEP_TABLE = 'mageos_workflow_execution_step';
     private const BATCH_TABLE = 'mageos_workflow_batch';
     private const DEBOUNCE_TABLE = 'mageos_workflow_debounce';
+    private const SEND_LOG_TABLE = 'mageos_workflow_send_log';
 
     private const BATCH_SIZE = 1000;
 
@@ -110,6 +132,52 @@ class PruneExecutions
                 $debounceDeleted
             ));
         }
+
+        $sendLogDeleted = $this->pruneSendLog();
+        if ($sendLogDeleted > 0) {
+            $this->logger->info(sprintf(
+                'Workflow retention pruning removed %d expired send-log claims',
+                $sendLogDeleted
+            ));
+        }
+    }
+
+    /**
+     * Batch-delete send claims (mageos_workflow_send_log) past the send-log
+     * retention window, measured on claimed_at — the instant the claim started
+     * guarding, which is what the redelivery horizon is relative to.
+     *
+     * The configured value is floored at MIN_SEND_LOG_RETENTION_DAYS: a
+     * misconfigured "1 day" would otherwise quietly re-enable double sends for
+     * anything redelivered later than that.
+     */
+    private function pruneSendLog(): int
+    {
+        $days = (int) $this->scopeConfig->getValue(self::CONFIG_SEND_LOG_RETENTION_DAYS);
+        if ($days <= 0) {
+            $days = self::DEFAULT_SEND_LOG_RETENTION_DAYS;
+        }
+        $days = max($days, self::MIN_SEND_LOG_RETENTION_DAYS);
+        $cutoff = gmdate('Y-m-d H:i:s', time() - $days * 86400);
+
+        $connection = $this->resourceConnection->getConnection();
+        $table = $this->resourceConnection->getTableName(self::SEND_LOG_TABLE);
+
+        $totalDeleted = 0;
+        do {
+            $ids = array_map('intval', $connection->fetchCol(
+                $connection->select()
+                    ->from($table, ['send_log_id'])
+                    ->where('claimed_at < ?', $cutoff)
+                    ->limit(self::BATCH_SIZE)
+            ));
+            if ($ids === []) {
+                break;
+            }
+            $totalDeleted += $connection->delete($table, ['send_log_id IN (?)' => $ids]);
+        } while (count($ids) === self::BATCH_SIZE);
+
+        return $totalDeleted;
     }
 
     /**
