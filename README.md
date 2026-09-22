@@ -22,23 +22,23 @@ Merchants build automations like:
 
 ## Installation
 
-```bash
-# Everything — engine + admin UI + all domain packs
-composer require mage-os/workflows-suite:dev-main
+**Everything** (engine + admin UI + all domain packs):
 
-# Or just the engine and the packs you need
+```bash
+composer require mage-os/workflows-suite:dev-main
+bin/magento setup:upgrade
+bin/magento setup:di:compile
+```
+
+**Or pick just the packs you need** (example: orders only):
+
+```bash
 composer require mage-os/workflows:dev-main \
                  mage-os/workflows-admin-ui:dev-main \
                  mage-os/workflows-actions-core:dev-main \
                  mage-os/workflows-triggers-core:dev-main \
+                 mage-os/workflows-scheduler:dev-main \
                  mage-os/workflows-sales:dev-main
-```
-
-Then:
-
-```bash
-bin/magento module:enable MageOS_Workflows MageOS_WorkflowsAdminUi \
-    MageOS_WorkflowsActionsCore MageOS_WorkflowsTriggersCore MageOS_WorkflowsSales
 bin/magento setup:upgrade
 bin/magento setup:di:compile
 ```
