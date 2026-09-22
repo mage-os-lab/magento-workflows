@@ -243,6 +243,13 @@ seam. E3 survives as the documented "Edit as JSON" toggle inside the slide-out.
   policy: dist committed per release tag).
 - **Dependency posture:** two runtime deps (react, @xyflow/react) + elkjs; no CDN, no telemetry,
   no fonts/assets fetched at runtime — same on-prem posture as the engine.
+- **Attribution posture:** because the bundle is committed with every dependency inlined, this
+  package redistributes those dependencies' licensed code — and elkjs is EPL-2.0, which requires
+  its notice and a source-availability statement to travel with the binary. `THIRD-PARTY-NOTICES.txt`
+  at the package root carries both; it is generated from the lockfile by `npm run notices`, the
+  built bundle opens with an attribution banner (set in `vite.config.ts`), and `canvas.yml` fails on
+  notices drift as well as dist drift. A dependency bump that skips `npm run notices` is a
+  compliance regression, not a nit.
 
 ## 8. Sequencing & effort
 

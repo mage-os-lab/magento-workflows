@@ -66,5 +66,15 @@ jobs:
           fi
           echo "No eval / new Function in the bundle."
 
+      # The bundle inlines every dependency (no externals), so their licenses
+      # ride along with the distributed file — elkjs is EPL-2.0, which requires
+      # its notice and a source-availability statement to travel with it. The
+      # notices file is generated from the lockfile, so a dependency bump that
+      # forgets `npm run notices` is a compliance regression, not a nit.
+      - name: Attribution gate — THIRD-PARTY-NOTICES.txt matches the lockfile
+        run: |
+          npm run notices
+          git diff --exit-code ../THIRD-PARTY-NOTICES.txt
+
       - name: Drift check — committed dist matches a fresh build
         run: git diff --exit-code ../view/adminhtml/web/js/dist
