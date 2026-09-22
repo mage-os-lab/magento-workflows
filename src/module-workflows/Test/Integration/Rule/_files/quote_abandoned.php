@@ -5,6 +5,9 @@
  * (QuoteHydrator via CartRepositoryInterface). Inactive so CartRepository::get
  * returns the stored totals rather than recollecting an empty cart to zero.
  *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_Workflows::Test/Integration/Rule/_files/quote_abandoned.php
  *
  * Locate it by reserved_order_id 'wf-quote-01'.

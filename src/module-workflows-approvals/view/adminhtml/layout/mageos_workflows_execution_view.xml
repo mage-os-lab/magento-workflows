@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Execution-view decision panel (docs/discovery/approval-gate.md §6), the
      admin-extension layout-handle injection pattern
      (MageOS\WorkflowsAdminExtension\view\adminhtml\layout\sales_order_index.xml):

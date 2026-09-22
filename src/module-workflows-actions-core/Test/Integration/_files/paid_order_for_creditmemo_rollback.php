@@ -4,6 +4,9 @@
  * enclosing transaction already rolls everything back; this keeps the fixture
  * usable when isolation is off by delegating to the core order rollback (which
  * removes any order/invoice/creditmemo rows) and the product rollback.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 declare(strict_types=1);
 

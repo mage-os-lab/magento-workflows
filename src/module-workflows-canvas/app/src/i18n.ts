@@ -12,6 +12,9 @@
  * the call. PhraseCatalog.php must list every phrase used here so the map is
  * complete; the collector regenerates i18n/en_US.csv from both sides of that
  * seam.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 
 let translations: Record<string, string> = {};

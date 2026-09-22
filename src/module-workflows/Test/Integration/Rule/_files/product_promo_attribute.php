@@ -4,6 +4,9 @@
  * is_used_for_promo_rules so the Product condition's loadAttributeOptions()
  * (CatalogRule-style promo/searchable introspection) auto-discovers it.
  *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_Workflows::Test/Integration/Rule/_files/product_promo_attribute.php
  */
 declare(strict_types=1);

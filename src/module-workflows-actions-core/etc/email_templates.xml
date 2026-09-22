@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Bundled template backing notify.email's ad-hoc (subject + body) mode.
      The action pre-escapes the body in PHP before passing it as a var; the
      template's |raw output is therefore already-safe HTML. -->

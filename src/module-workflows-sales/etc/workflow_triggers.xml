@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Sales + Cart trigger metadata (relocated from mage-os/workflows-triggers-core,
  * domain-packs S1). The sales "created/updated" events are declared by
  * mage-os/mageos-common-async-events, as are paid / invoice.paid / shipped /

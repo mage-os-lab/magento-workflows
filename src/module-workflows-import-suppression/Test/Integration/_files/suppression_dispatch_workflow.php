@@ -7,6 +7,10 @@
  * WorkflowSuppression before and after a real Import::importSource() call.
  *
  * Reference as:
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_WorkflowsImportSuppression::Test/Integration/_files/suppression_dispatch_workflow.php
  */
 declare(strict_types=1);

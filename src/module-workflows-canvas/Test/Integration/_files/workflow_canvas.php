@@ -7,6 +7,10 @@
  * this; the fixture gives the mount test a persisted workflow to load.
  *
  * Reference from tests as:
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_WorkflowsCanvas::Test/Integration/_files/workflow_canvas.php
  *
  * Look it up by name ('Canvas mount fixture') via getList.

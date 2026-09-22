@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Trigger metadata has all moved to the domain packs that own each entity:
  *   - the Sales group and the Cart group (quote.abandoned) ->
  *     mage-os/workflows-sales (domain-packs S1)

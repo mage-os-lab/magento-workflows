@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import type { Edge, Node } from '@xyflow/react';
 import { conditionAttributeLabel } from './conditionLabels';
 import { t } from './i18n';

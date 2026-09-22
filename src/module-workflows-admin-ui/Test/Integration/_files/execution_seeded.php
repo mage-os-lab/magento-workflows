@@ -7,6 +7,9 @@
  * (the engine is exercised elsewhere — here we only need a loadable row).
  *
  * Look the execution up by uuid 'aaaaaaaa-0000-0000-0000-000000000025'.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 declare(strict_types=1);
 

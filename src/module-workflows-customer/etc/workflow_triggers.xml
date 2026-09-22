@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Customer trigger metadata (relocated from mage-os/workflows-triggers-core,
  * domain-packs S2). The customer "created/updated" events are declared by
  * mage-os/mageos-common-async-events; customer.group_changed,

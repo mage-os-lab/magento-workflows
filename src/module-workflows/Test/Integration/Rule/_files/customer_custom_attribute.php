@@ -5,6 +5,9 @@
  * (CustomerMetadataInterface::getAllAttributesMetadata) can be pinned against
  * a real attribute. Referenced as:
  *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_Workflows::Test/Integration/Rule/_files/customer_custom_attribute.php
  */
 declare(strict_types=1);

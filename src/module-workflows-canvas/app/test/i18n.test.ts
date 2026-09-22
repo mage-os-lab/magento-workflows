@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { afterEach, describe, expect, it } from 'vitest';
 import { setTranslations, t } from '../src/i18n';
 

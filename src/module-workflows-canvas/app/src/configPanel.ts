@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { t } from './i18n';
 import { groupTriggers } from './palette';
 import type { ConfigField, ConfigFieldOption, PaletteAction, StepNode, TriggerMeta } from './types';

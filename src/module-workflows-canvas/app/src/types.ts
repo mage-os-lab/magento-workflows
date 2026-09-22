@@ -2,6 +2,9 @@
  * The canvas is a reader/writer of the workflow definition JSON — the only
  * contract between it and the engine. These types mirror the PHP
  * MageOS\Workflows\Model\Definition\Definition shape (docs/04-definition-format).
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 
 export type StepType =

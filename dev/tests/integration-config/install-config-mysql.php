@@ -9,6 +9,9 @@
  * the message-queue framework falls back to the `db` transport, so suites
  * drive ExecuteConsumer/ResumeConsumer in-process with no broker service —
  * the same deployment-decides posture as etc/queue_consumer.xml.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 declare(strict_types=1);
 

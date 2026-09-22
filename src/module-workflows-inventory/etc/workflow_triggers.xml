@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Inventory trigger metadata. inventory.stock_threshold_crossed (relocated
  * from mage-os/workflows-triggers-core, domain-packs S4) and
  * inventory.back_in_stock (INV-T1) are both declared and published by this

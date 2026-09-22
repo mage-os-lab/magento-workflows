@@ -7,6 +7,9 @@
  *
  * Same contract as graphOps: never mutate the input, always hand back the next
  * value (the caller commits it).
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 
 /** Whether an index addresses a real element of the list. */

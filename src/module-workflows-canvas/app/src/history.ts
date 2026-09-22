@@ -6,6 +6,9 @@
  *
  * Generic over the snapshot type so it is trivially unit-testable without a
  * Graph. Bounded so a long editing session cannot grow memory without limit.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 
 export interface History<T> {

@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { Fragment } from 'react';
 import type { AttributeMeta, MetaOption } from '../../conditionTree';
 import {

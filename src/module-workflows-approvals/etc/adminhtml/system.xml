@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Extends the mageos_workflows section's existing "guards" group (declared by
      MageOS_Workflows; module sequence guarantees load order) — borrows the
      manual mass-run cap vocabulary (docs/10-security.md#manual-mass-run,

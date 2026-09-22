@@ -8,6 +8,9 @@
  *
  * The canvas (a separate React bundle) shares the same serialized-tree contract
  * and the same apply endpoint, not these RequireJS modules.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 var config = {
     map: {

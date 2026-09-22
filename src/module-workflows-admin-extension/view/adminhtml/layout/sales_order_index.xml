@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Native Orders grid. Injects the workflow strip into the standard actions
      toolbar (page.main.actions); the block renders nothing unless the view
      model says it should. -->

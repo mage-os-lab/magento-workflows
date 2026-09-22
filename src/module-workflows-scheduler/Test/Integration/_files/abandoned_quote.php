@@ -7,6 +7,9 @@
  * items_count for the exclusion cases) with direct UPDATEs — no sleeps (§2.4).
  *
  * Look it up by reserved_order_id 'wf-abandoned-cart'.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 declare(strict_types=1);
 

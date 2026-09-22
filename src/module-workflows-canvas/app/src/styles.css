@@ -1,3 +1,13 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
+ * This header is stripped from the built canvas.css by design: our rules are
+ * concatenated after @xyflow/react's, so a preserved `/*!` banner would land
+ * mid-file. Attribution for the built pair (canvas.js + canvas.css) is the
+ * banner on canvas.js plus THIRD-PARTY-NOTICES.txt at the package root.
+ */
+
 /* Canvas styling. Bundled into canvas.js (cssCodeSplit:false) so no external
    stylesheet is fetched — CSP-safe, self-contained. */
 

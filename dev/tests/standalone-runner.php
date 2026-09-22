@@ -1,4 +1,8 @@
 <?php
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
 
 /**
  * Zero-dependency test runner for the Mage-OS Workflow Engine unit tests.

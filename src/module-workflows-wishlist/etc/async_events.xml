@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Wishlist async-event definition (WSH-T1). The delivered payload hydrates the
  * added product from the id in the published data (entity = catalog_product,
  * exactly as the review pack's catalog.product.review_submitted does — the

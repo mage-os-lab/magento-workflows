@@ -5,6 +5,9 @@
  * created through the REAL repository save path — so it also transits
  * ValidateWorkflowOnSave on every use. Reference from tests as:
  *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_Workflows::Test/Integration/_files/workflow_linear.php
  *
  * Look it up by name ('Integration linear fixture') via getList, or through

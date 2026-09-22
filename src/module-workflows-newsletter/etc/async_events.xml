@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Newsletter async-event definition (SUB-T1). Unlike the order/customer/product
  * events, whose service class is a core Api repository (OrderRepositoryInterface,
  * CustomerRepositoryInterface, ...), the newsletter subscriber has NO repository

@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { toGraph } from '../src/mapping';
 import type { Definition, Graph, MountConfig, PaletteAction } from '../src/types';
 

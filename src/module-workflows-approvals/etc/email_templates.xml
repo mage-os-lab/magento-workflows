@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Bundled template backing ParkNotifier's optional direct-email channel
      (docs/discovery/approval-gate.md §6). Mirrors module-workflows-actions-core's
      notify.email ad-hoc template exactly: the body is pre-escaped in PHP

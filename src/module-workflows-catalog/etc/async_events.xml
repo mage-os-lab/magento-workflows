@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Catalog product-lifecycle async-event definitions (PRD-T1/T2/T3). The
  * service class/method hydrates the delivered payload from the id in the
  * published data (productId => ProductRepositoryInterface::getById);

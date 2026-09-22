@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Merges the cart-abandonment threshold into the engine's
      mageos_workflows/scheduler group (same section/group/field ids so Magento
      merges it into the existing Scheduler group). The field lives here because

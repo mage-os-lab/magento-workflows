@@ -5,6 +5,10 @@
  * EventPublisher but overrides its constructor so it needs no real
  * async-events EventDispatcher, and records every publish() call instead of
  * dispatching. Wired in via an object-manager preference under
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  * @magentoAppIsolation so observers reached through the real merged
  * events.xml deliver here — letting the test assert the event name + payload
  * shape the observer produced, without touching the async-events transport.

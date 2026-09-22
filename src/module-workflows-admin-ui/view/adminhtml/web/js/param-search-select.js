@@ -18,6 +18,9 @@
  * CSP-safe: no inline script (loaded as a module), no eval, all config from
  * data-* attributes on the container element; option labels and every other
  * server string are written with textContent/.text(), never innerHTML.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 define([
     'jquery'

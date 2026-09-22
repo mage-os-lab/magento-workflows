@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Extends the mageos_workflows section defined by MageOS_Workflows
      (module sequence guarantees load order); only the field this module
      owns is declared here. -->
