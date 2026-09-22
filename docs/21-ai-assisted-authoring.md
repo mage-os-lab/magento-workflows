@@ -104,7 +104,7 @@ There is no agent-specific code path, and deliberately so. A generated definitio
   way around that ([10 §Deferred privilege escalation](10-security.md#deferred-privilege-escalation-the-core-threat-model));
 - will be subject to the same **execution-time scope re-check** when that control lands — the
   design (a workflow whose author lost website scope gets suspended, not silently escalated)
-  is not yet implemented; see [#14](https://github.com/rhoerr/magento-workflows/issues/14)
+  is not yet implemented; see [#14](https://github.com/mage-os-lab/magento-workflows/issues/14)
   and the status note in [10 §Deferred privilege escalation](10-security.md#deferred-privilege-escalation-the-core-threat-model).
   Until it lands, this applies equally to human- and agent-authored workflows — neither gets
   the re-check, so neither is disadvantaged, but the containment is the ACL at save time;
@@ -243,7 +243,7 @@ for skills-and-docs; all are worth knowing before pointing an agent at productio
 
 ## Future work (not in scope here)
 
-Tracked on [issue #11](https://github.com/rhoerr/magento-workflows/issues/11); to be spun out
+Tracked on [issue #11](https://github.com/mage-os-lab/magento-workflows/issues/11); to be spun out
 separately if pursued:
 
 - An **MCP server** wrapping the existing REST CRUD / validate / dry-run endpoints, so

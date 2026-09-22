@@ -96,7 +96,7 @@ Executions are **resumable and crash-safe**:
 - State is in the DB *before* any side effect; consumer death mid-step = redelivery.
 - Steps are marked `running` with a claim timestamp so a sweeper can fail-or-retry zombies.
 - Actions should be idempotent where cheap; where not, **at-least-once is documented per action**. The dedupe key is always **execution UUID + step key** — fine enough that two comment steps in one workflow coexist, coarse enough that a redelivered single step still dedupes (add-comment pinned by `AddCommentTest`; email send logs the key before SMTP).
-- An entity deleted during a delay surfaces **per-action** on resume: the resume path does not re-check the entity, so the next step's action encounters the missing entity itself and reports it under that action's own failure semantics (`NoSuchEntityException` handled as terminal or retryable per action). Branch/switch steps with `revalidate_entity: true` (the default) fail closed by routing `on_false`/`default`. A uniform execution-level `skipped` resume status is tracked as [#13](https://github.com/rhoerr/magento-workflows/issues/13) but not currently implemented.
+- An entity deleted during a delay surfaces **per-action** on resume: the resume path does not re-check the entity, so the next step's action encounters the missing entity itself and reports it under that action's own failure semantics (`NoSuchEntityException` handled as terminal or retryable per action). Branch/switch steps with `revalidate_entity: true` (the default) fail closed by routing `on_false`/`default`. A uniform execution-level `skipped` resume status is tracked as [#13](https://github.com/mage-os-lab/magento-workflows/issues/13) but not currently implemented.
 
 ## Aggregated (batch) workflows
 

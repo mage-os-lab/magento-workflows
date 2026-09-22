@@ -3,6 +3,11 @@
     "description": "Mage-OS Workflow Engine: admin grid + form UI, executions log UI, ACL",
     "type": "magento2-module",
     "license": "OSL-3.0",
+    "homepage": "https://github.com/mage-os-lab/magento-workflows",
+    "support": {
+        "issues": "https://github.com/mage-os-lab/magento-workflows/issues",
+        "source": "https://github.com/mage-os-lab/magento-workflows"
+    },
     "require": {
         "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
         "mage-os/workflows": "*",
