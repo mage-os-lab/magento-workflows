@@ -67,8 +67,19 @@ class DataControllerTest extends AbstractBackendController
         // admin Save controller.
         $this->assertStringContainsString('mageos_workflows/workflow/save', (string) $config['endpoints']['save']);
         $this->assertIsBool($config['approvalsAvailable']);
-        // With no workflow_id, the loaded workflow slot is null.
-        $this->assertNull($config['workflow']);
+        // With no workflow_id, a manage-granted admin gets the blank-workflow
+        // bootstrap (canvas-first creation): id 0, empty definition, and the
+        // workflowOptions catalogue the settings panel renders from.
+        $this->assertIsArray($config['workflow']);
+        $this->assertSame(0, $config['workflow']['id']);
+        $this->assertSame(Definition::SCHEMA_VERSION, $config['workflow']['definition']['schema']);
+        $this->assertSame([], $config['workflow']['definition']['steps']);
+        $this->assertNull($config['workflow']['definition']['entry']);
+        $this->assertArrayHasKey('workflowOptions', $config);
+        foreach (['entityTypes', 'triggerTypes', 'statuses', 'websites'] as $optionList) {
+            $this->assertArrayHasKey($optionList, $config['workflowOptions']);
+        }
+        $this->assertNotEmpty($config['workflowOptions']['statuses']);
     }
 
     /**

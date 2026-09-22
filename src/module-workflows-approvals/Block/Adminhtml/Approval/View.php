@@ -9,9 +9,13 @@ use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Registry;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\Workflows\Model\ResourceModel\WorkflowExecutionStep\CollectionFactory;
+use MageOS\WorkflowsAdminUi\Model\OptionLabel;
+use MageOS\WorkflowsAdminUi\Model\Source\EntityType;
+use MageOS\WorkflowsAdminUi\Model\Source\ExecutionStatus;
 use MageOS\WorkflowsApprovals\Api\Data\ApprovalInterface;
 use MageOS\WorkflowsApprovals\Model\DueInFormatter;
 use MageOS\WorkflowsApprovals\Model\EntityUrlResolver;
+use MageOS\WorkflowsApprovals\Model\Source\ApprovalStatus;
 
 /**
  * Decision view page (docs/discovery/approval-gate.md §6): task summary, entity
@@ -31,9 +35,68 @@ class View extends Template
         private readonly CollectionFactory $stepCollectionFactory,
         private readonly EntityUrlResolver $entityUrlResolver,
         private readonly DueInFormatter $dueInFormatter,
+        private readonly ApprovalStatus $approvalStatusSource,
+        private readonly EntityType $entityTypeSource,
+        private readonly ExecutionStatus $executionStatusSource,
         array $data = []
     ) {
         parent::__construct($context, $data);
+    }
+
+    /**
+     * "Order #142" — the same entity-type label the approvals grid renders,
+     * raw code when the type's pack is not installed.
+     */
+    public function getEntityLabel(): string
+    {
+        $approval = $this->getApproval();
+        if ($approval === null) {
+            return '';
+        }
+        $entityType = (string) $approval->getEntityType();
+
+        return $entityType === ''
+            ? (string) $approval->getEntityId()
+            : sprintf(
+                '%s #%d',
+                OptionLabel::resolve($this->entityTypeSource, $entityType),
+                $approval->getEntityId()
+            );
+    }
+
+    public function getStatusLabel(): string
+    {
+        $approval = $this->getApproval();
+
+        return $approval === null
+            ? ''
+            : OptionLabel::resolve($this->approvalStatusSource, (string) $approval->getStatus());
+    }
+
+    /**
+     * Step statuses share the execution status code set (minus `cancelled`), so
+     * the admin-ui ExecutionStatus source labels this timeline too.
+     */
+    public function getStepStatusLabel(?string $status): string
+    {
+        return OptionLabel::resolve($this->executionStatusSource, (string) $status);
+    }
+
+    /**
+     * Assignee roles are free-form admin role names carried on the task, so no
+     * option source can enumerate them: humanize the stored token in place
+     * ("finance_manager" => "Finance Manager"). The raw value stays available in
+     * the cell's title attribute.
+     */
+    public function getAssigneeRoleLabel(): string
+    {
+        $approval = $this->getApproval();
+        $role = $approval === null ? '' : trim((string) $approval->getAssigneeRole());
+        if ($role === '') {
+            return '';
+        }
+
+        return ucwords(str_replace(['_', '-', '.'], ' ', $role));
     }
 
     public function getApproval(): ?ApprovalInterface

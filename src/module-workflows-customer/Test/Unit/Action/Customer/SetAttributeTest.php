@@ -296,4 +296,35 @@ class SetAttributeTest extends TestCase
         $this->assertSame(0, $customerRepo->saveCount);
         $this->assertCount(0, $customer->attributes);
     }
+
+    public function testConfigFormAttributeCodeSearchesTheCustomerAttributeSource(): void
+    {
+        $action = new SetAttribute(
+            $this->fakeCustomerRepository($this->fakeCustomer()),
+            $this->fakeAttributeRepository(),
+            $this->shippedDenylist()
+        );
+
+        $field = $action->getConfigForm()[0];
+
+        $this->assertSame('attribute_code', $field['name']);
+        $this->assertSame('select', $field['type']);
+        $this->assertSame(['source' => 'customer_attributes', 'min_chars' => 0], $field['options_search']);
+        $this->assertTrue($field['required']);
+    }
+
+    public function testIsDeniedExposesTheShippedDenylistToThePicker(): void
+    {
+        $action = new SetAttribute(
+            $this->fakeCustomerRepository($this->fakeCustomer()),
+            $this->fakeAttributeRepository(),
+            $this->shippedDenylist()
+        );
+
+        foreach ($this->shippedDenylist() as $code) {
+            $this->assertTrue($action->isDenied($code), "\"{$code}\" is on the shipped denylist");
+            $this->assertTrue($action->isDenied(strtoupper($code)), 'the denylist is case-insensitive');
+        }
+        $this->assertFalse($action->isDenied('loyalty_tier'));
+    }
 }

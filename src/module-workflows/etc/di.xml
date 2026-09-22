@@ -199,6 +199,7 @@
         <arguments>
             <argument name="checks" xsi:type="array">
                 <item name="structural" xsi:type="object">MageOS\Workflows\Model\Validation\Check\StructuralCheck</item>
+                <item name="trigger_ref" xsi:type="object">MageOS\Workflows\Model\Validation\Check\TriggerRefCheck</item>
                 <item name="graph" xsi:type="object">MageOS\Workflows\Model\Validation\Check\GraphCheck</item>
                 <item name="profile" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ProfileCheck</item>
                 <item name="action_codes" xsi:type="object">MageOS\Workflows\Model\Validation\Check\ActionCodesCheck</item>

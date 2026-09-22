@@ -23,6 +23,8 @@ function config(overrides: Partial<MountConfig> = {}): MountConfig {
       dryRun: '/dry',
       validate: '/validate',
       options: '/options',
+      conditionMeta: '/conditionMeta',
+      conditions: '/conditions',
       save: '/admin/mageos_workflows/workflow/save',
     },
     formKey: 'FKEY',
@@ -44,6 +46,8 @@ function config(overrides: Partial<MountConfig> = {}): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
+    i18n: {},
     approvalsAvailable: false,
     ...overrides,
   };
@@ -77,6 +81,9 @@ describe('buildSavePayload — posts through the existing admin Save controller'
     expect(map.conditions_serialized).toEqual(['{"type":"root"}']);
     // multiselect repeats one key per id
     expect(map['website_ids[]']).toEqual(['1', '2']);
+    // back=canvas: the Save controller redirects to canvas/edit — the piece
+    // that gives a NEW workflow its id-bearing canvas URL after first save.
+    expect(map.back).toEqual(['canvas']);
   });
 
   it('sets the definition field to the mapped graph JSON', () => {

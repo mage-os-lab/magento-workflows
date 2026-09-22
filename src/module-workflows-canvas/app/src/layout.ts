@@ -19,6 +19,11 @@ export async function autoLayout(graph: Graph): Promise<Record<string, { x: numb
       'elk.direction': 'DOWN',
       'elk.layered.spacing.nodeNodeBetweenLayers': '64',
       'elk.spacing.nodeNode': '48',
+      // Bias sibling order toward edge declaration order, which is the same
+      // order the node renders its source handles (on_true before on_false,
+      // switch cases in case order): without it elk freely mirrors siblings
+      // and a branch's yes/no edges cross right out of auto-layout.
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
     },
     children: graph.nodes.map((n) => ({ id: n.id, width: NODE_W, height: NODE_H })),
     edges: graph.edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),

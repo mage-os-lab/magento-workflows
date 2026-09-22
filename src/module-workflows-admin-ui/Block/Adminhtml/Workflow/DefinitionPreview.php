@@ -59,9 +59,12 @@ class DefinitionPreview extends Template
                 $workflow->getTriggerRef(),
                 $workflow->getEntityType()
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Never let a preview failure break the edit form; the merchant can
-            // still edit and save (which runs its own validation).
+            // still edit and save (which runs its own validation). \Throwable,
+            // not \Exception: this block renders inside the ui-component config
+            // (htmlContent), where an escaping \Error is swallowed by
+            // Result::__toString() and silently blanks the ENTIRE form.
             return null;
         }
     }

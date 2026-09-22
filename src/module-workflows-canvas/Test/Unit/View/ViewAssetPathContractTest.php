@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsCanvas\Test\Unit\View;
 
+use MageOS\Workflows\Test\Unit\PackageLocator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -37,17 +38,12 @@ class ViewAssetPathContractTest extends TestCase
     private const VIEW_FILE_URL_PATTERN =
         '/getViewFileUrl\(\s*[\'"]([A-Za-z0-9_]+)::([^\'"]+)[\'"]/';
 
-    private function srcRoot(): string
-    {
-        return dirname(__DIR__, 4);
-    }
-
     /**
-     * @return string repo-relative path
+     * @return string container-relative path
      */
     private function relative(string $path): string
     {
-        return str_replace(dirname($this->srcRoot()) . '/', '', $path);
+        return PackageLocator::relative($path);
     }
 
     /**
@@ -55,45 +51,26 @@ class ViewAssetPathContractTest extends TestCase
      * from each package's registration.php — the same source of truth Magento
      * itself uses.
      *
+     * PackageLocator does the discovery, so the sibling packages resolve in
+     * BOTH layouts — <repo>/src/module-* and, in CI's real Magento install,
+     * <magento>/vendor/mage-os/workflows* — and it throws on an empty scan
+     * rather than letting this contract pass with nothing checked.
+     *
      * @return array<string, string>
      */
     private function moduleDirectories(): array
     {
-        $map = [];
-        foreach (glob($this->srcRoot() . '/module-*', GLOB_ONLYDIR) ?: [] as $moduleDir) {
-            $registration = $moduleDir . '/registration.php';
-            if (!is_file($registration)) {
-                continue;
-            }
-            $source = (string) file_get_contents($registration);
-            if (preg_match('/ComponentRegistrar::MODULE\s*,\s*[\'"]([A-Za-z0-9_]+)[\'"]/', $source, $m) === 1) {
-                $map[$m[1]] = $moduleDir;
-            }
-        }
-        return $map;
+        return PackageLocator::packageRoots();
     }
 
     /**
-     * Every .phtml template in the monorepo.
+     * Every .phtml template this suite ships.
      *
      * @return string[]
      */
     private function templateFiles(): array
     {
-        $files = [];
-        foreach (glob($this->srcRoot() . '/module-*/view/*/templates', GLOB_ONLYDIR) ?: [] as $dir) {
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
-            );
-            foreach ($iterator as $fileInfo) {
-                /** @var \SplFileInfo $fileInfo */
-                if ($fileInfo->isFile() && str_ends_with($fileInfo->getFilename(), '.phtml')) {
-                    $files[] = $fileInfo->getPathname();
-                }
-            }
-        }
-        sort($files);
-        return $files;
+        return PackageLocator::filesUnder('view/*/templates', '.phtml');
     }
 
     /**
@@ -188,7 +165,7 @@ class ViewAssetPathContractTest extends TestCase
     public function testNoModuleShipsAModuleRootWebDirectory(): void
     {
         $offenders = [];
-        foreach (glob($this->srcRoot() . '/module-*/web', GLOB_ONLYDIR) ?: [] as $dir) {
+        foreach (PackageLocator::globInPackages('web', GLOB_ONLYDIR) as $dir) {
             $offenders[] = $this->relative($dir);
         }
 

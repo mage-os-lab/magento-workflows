@@ -25,13 +25,15 @@ function config(actions: MountConfig['actions']): MountConfig {
     executionId: null,
     knownSchemaVersion: 3,
     grants: { manage: true, dryRun: true },
-    endpoints: { executionSteps: '/steps', dryRun: '/dry', validate: '/validate', options: '/options', save: '/save' },
+    endpoints: { executionSteps: '/steps', dryRun: '/dry', validate: '/validate', options: '/options', conditionMeta: '/conditionMeta', conditions: '/conditions', save: '/save' },
     formKey: 'k',
     workflow: null,
     actions,
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
+    i18n: {},
     approvalsAvailable: false,
   };
 }

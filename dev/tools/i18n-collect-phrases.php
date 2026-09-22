@@ -21,6 +21,8 @@ declare(strict_types=1);
  *     catalog.
  *   - JS (and inline JS in .phtml): `$t('...')` and `$.mage.__('...')` with a
  *     literal argument.
+ *   - TS / TSX under src/module-workflows-canvas/app/src/: `t('...')` with a
+ *     literal argument — the canvas React app's translation helper.
  *   - XML: any element carrying a `translate` attribute. `translate="true"`
  *     translates the element's own text; `translate="label comment"` translates
  *     the named attributes, or — as system.xml does — the named child elements.
@@ -30,8 +32,10 @@ declare(strict_types=1);
  * Deliberately out of scope:
  *
  *   - Test/ directories (fixtures are not shipped UI copy).
- *   - src/module-workflows-canvas/app/ — the React app hardcodes English in TSX
- *     outside the `__()` pipeline; see issue #9 for the structural decision.
+ *   - Everything under src/module-workflows-canvas/app/ except app/src/ — the
+ *     app's dependencies, build output, unit tests and e2e specs are not
+ *     shipped UI copy. English still hardcoded in TSX outside a `t()` call is
+ *     invisible to the scan by design: only call sites become catalog rows.
  *   - src/module-workflows-templates/templates/*.json — template titles,
  *     descriptions and parameter labels are data, not `__()` call sites; same
  *     open decision.
@@ -52,6 +56,13 @@ const SRC_DIR = __DIR__ . '/../../src';
 
 /** Directory names never scanned, at any depth. */
 const SKIP_DIRS = ['Test', 'node_modules', 'vendor', 'dist', 'app'];
+
+/**
+ * Package-relative directory scanned back in despite `app` being in SKIP_DIRS:
+ * the canvas React app's own sources, without its node_modules/, dist/, test/
+ * or e2e/ siblings.
+ */
+const APP_SRC_DIR = 'app/src';
 
 /**
  * Packages that intentionally ship no catalog even though the scan may find
@@ -254,7 +265,7 @@ function decodePhpLiteral(string $literal): ?string
 }
 
 /* -------------------------------------------------------------------------- */
-/* JavaScript (standalone .js and inline <script> in .phtml)                   */
+/* JavaScript (standalone .js, inline <script> in .phtml, canvas TS/TSX)       */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -264,11 +275,38 @@ function decodePhpLiteral(string $literal): ?string
  */
 function parseJs(string $code): array
 {
-    $phrases = [];
-    $patterns = [
+    return matchCallLiterals($code, [
         '/(?<![\w$.])\$t\(\s*(\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*")\s*[),]/',
         '/\$\.mage\.__\(\s*(\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*")\s*[),]/',
-    ];
+    ]);
+}
+
+/**
+ * Phrases from `t('literal')`, the canvas app's translation helper.
+ *
+ * The lookbehind keeps the match to a bare `t` — `$t(`, `format(`, `import(`
+ * and `?.split(` all end in a word character, `$` or `.` and are skipped.
+ *
+ * @return string[]
+ */
+function parseTs(string $code): array
+{
+    return matchCallLiterals($code, [
+        '/(?<![\w$.])t\(\s*(\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*")\s*[),]/',
+    ]);
+}
+
+/**
+ * First arguments of the calls matched by $patterns, whose capture group 1 is a
+ * quoted literal. Template literals and concatenations do not match, so — as on
+ * the PHP side — a dynamic argument is skipped rather than guessed at.
+ *
+ * @param string[] $patterns
+ * @return string[]
+ */
+function matchCallLiterals(string $code, array $patterns): array
+{
+    $phrases = [];
 
     foreach ($patterns as $pattern) {
         if (!preg_match_all($pattern, $code, $matches)) {
@@ -442,6 +480,17 @@ function collectPackagePhrases(string $packageDir): array
             // .phtml is scanned twice on purpose: `__()` in the PHP islands and
             // `$.mage.__()` in the inline <script> block are both real call sites.
             $phrases = array_merge($phrases, parseJs($code));
+        }
+    }
+
+    $appSrc = $packageDir . '/' . APP_SRC_DIR;
+    if (is_dir($appSrc)) {
+        foreach (collectFiles($appSrc) as $file) {
+            $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if (!in_array($extension, ['ts', 'tsx'], true)) {
+                continue;
+            }
+            $phrases = array_merge($phrases, parseTs((string) file_get_contents($file)));
         }
     }
 

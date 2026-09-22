@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Canvas smoke — mock admin mount (new workflow)</title>
+  <link rel="stylesheet" href="/view/adminhtml/web/js/dist/canvas.css" />
+</head>
+<body>
+  <!--
+    Mocks the canvas mount with NO workflow_id: Mount.php's canvas-first
+    contract — a manager gets the blank workflow document (id 0, empty steps
+    map) plus the always-present workflowOptions lists, which is what flips the
+    app into the editor with the settings panel open. Mirrors admin-page.html
+    otherwise (same endpoints, same form key, same bundle).
+  -->
+  <div
+    id="mageos-workflows-canvas-root"
+    data-role="mageos-workflows-canvas"
+    data-config='{"workflowId":null,"executionId":null,"knownSchemaVersion":3,"grants":{"manage":true,"dryRun":false},"endpoints":{"executionSteps":"/__steps","dryRun":"/__dry","validate":"/__validate","options":"/__options","conditionMeta":"/__conditionMeta","conditions":"/__conditions","save":"/__save"},"formKey":"test-form-key","workflow":{"id":0,"name":"","status":0,"entityType":"","triggerType":"event","triggerRef":"","conditionsSerialized":null,"loopGuardDepth":1,"websiteIds":[],"fanOutRelation":"","fanOutCap":"","definition":{"schema":3,"steps":{},"entry":null}},"workflowOptions":{"entityTypes":[{"value":"sales_order","label":"Sales Order"},{"value":"customer","label":"Customer"}],"triggerTypes":[{"value":"event","label":"Event"},{"value":"schedule","label":"Schedule"},{"value":"manual","label":"Manual"}],"statuses":[{"value":"0","label":"Disabled"},{"value":"2","label":"Enabled"}],"websites":[{"value":"1","label":"Main Website"}]},"actions":{"order.add_comment":{"label":"Add Comment","group":"Sales"}},"actionsMeta":[{"code":"order.add_comment","label":"Add Comment","group":"Sales","applicableEntities":["sales_order"],"configForm":[],"aclResource":null}],"triggers":[],"secrets":[]}'
+  ></div>
+  <script src="/view/adminhtml/web/js/dist/canvas.js"></script>
+</body>
+</html>

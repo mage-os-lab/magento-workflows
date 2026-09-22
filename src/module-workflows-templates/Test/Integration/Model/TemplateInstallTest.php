@@ -62,26 +62,34 @@ class TemplateInstallTest extends TestCase
      * @var array<string, array<string, string>>
      */
     private const INSTALLABLE_TEMPLATE_PARAMS = [
-        'abandoned-cart-recovery-coupon' => ['coupon_rule_id' => '7'],
+        'abandoned-cart-recovery-coupon' => ['coupon_rule_id' => self::RULE_ID_PLACEHOLDER],
         'gdpr-anonymize-on-request' => [],
         'guest-order-registration-invite' => [],
         'high-value-order-fraud-hold' => [
             'fraud_webhook_url' => 'https://fraud.example.test/score',
             'fraud_signing_secret' => 'fraud_hmac_key',
         ],
-        'new-customer-welcome-series' => ['incentive_rule_id' => '3'],
+        'new-customer-welcome-series' => ['incentive_rule_id' => self::RULE_ID_PLACEHOLDER],
         'order-stuck-in-processing-escalation' => [],
         'post-purchase-review-request' => [],
-        'product-review-triage' => ['reward_rule_id' => '9'],
+        'product-review-triage' => ['reward_rule_id' => self::RULE_ID_PLACEHOLDER],
         'refund-follow-up' => [],
         'stock-threshold-supplier-webhook' => [
             'supplier_webhook_url' => 'https://supplier.example.test/reorder',
             'supplier_signing_secret' => 'supplier_hmac_key',
         ],
         'unpaid-order-cleanup-sweep' => [],
-        'vip-auto-group-assignment' => ['vip_group_id' => '5'],
-        'vip-order-notification' => ['vip_group_id' => '42'],
+        'vip-auto-group-assignment' => ['vip_group_id' => '2'],
+        'vip-order-notification' => ['vip_group_id' => '3'],
     ];
+
+    /**
+     * Sentinel replaced at install time with the id of a cart price rule
+     * created in the test database — ParameterEngine live-validates
+     * entity:salesrule parameters against existing records, and a fresh
+     * integration DB ships none.
+     */
+    private const RULE_ID_PLACEHOLDER = '%live_rule_id%';
 
     private const EDITION_GATED_TEMPLATE = 'b2b-net-terms-payment-reminder';
 
@@ -174,7 +182,12 @@ class TemplateInstallTest extends TestCase
     {
         $this->loginFullAdmin();
 
+        $ruleId = (string) $this->createCartPriceRule();
         foreach (self::INSTALLABLE_TEMPLATE_PARAMS as $code => $params) {
+            $params = array_map(
+                static fn (string $v): string => $v === self::RULE_ID_PLACEHOLDER ? $ruleId : $v,
+                $params
+            );
             $result = $this->templateInstaller->install(new TemplateInstallRequest(
                 $code,
                 $params,
@@ -255,7 +268,7 @@ class TemplateInstallTest extends TestCase
     {
         $this->loginFullAdmin();
 
-        $request = new TemplateInstallRequest('vip-order-notification', ['vip_group_id' => '5']);
+        $request = new TemplateInstallRequest('vip-order-notification', ['vip_group_id' => '2']);
 
         $first = $this->templateInstaller->install($request);
         $second = $this->templateInstaller->install($request);
@@ -387,7 +400,7 @@ class TemplateInstallTest extends TestCase
             $exitCode = $tester->execute([
                 'code' => 'vip-order-notification',
                 '--params-file' => $paramsFile,
-                '--param' => ['vip_group_id=9'],
+                '--param' => ['vip_group_id=3'],
                 '--activate' => true,
             ]);
 
@@ -396,6 +409,27 @@ class TemplateInstallTest extends TestCase
         } finally {
             @unlink($paramsFile);
         }
+    }
+
+    /**
+     * A real cart price rule (auto-generated specific coupons, all stock
+     * groups, default website) so entity:salesrule template parameters
+     * pass ParameterEngine's live existing-record validation.
+     */
+    private function createCartPriceRule(): int
+    {
+        /** @var \Magento\SalesRule\Model\Rule $rule */
+        $rule = Bootstrap::getObjectManager()->create(\Magento\SalesRule\Model\Rule::class);
+        $rule->setName('Workflow template integration rule')
+            ->setIsActive(1)
+            ->setCouponType(\Magento\SalesRule\Model\Rule::COUPON_TYPE_SPECIFIC)
+            ->setUseAutoGeneration(1)
+            ->setCustomerGroupIds([0, 1, 2, 3])
+            ->setWebsiteIds([1])
+            ->setSimpleAction(\Magento\SalesRule\Model\Rule::BY_PERCENT_ACTION)
+            ->setDiscountAmount(10)
+            ->save();
+        return (int) $rule->getId();
     }
 
     private function countWorkflows(): int

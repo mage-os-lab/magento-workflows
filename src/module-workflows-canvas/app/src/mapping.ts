@@ -148,7 +148,15 @@ function rebuildStep(original: StepNode, edges: GraphEdge[]): StepNode {
     }
   }
 
-  // Switch case targets.
+  // Switch case targets. A switch step's conditions live on its CASES; a
+  // step-level conditions_serialized there is dead weight the executor never
+  // reads (Executor reads cases[] only) and the schema rejects (`switchStep` is
+  // additionalProperties:false), so a stray key from an older editor build — or
+  // a hand-edited definition — is dropped on the way out rather than posted
+  // into a save that would fail validation.
+  if (step.type === 'switch') {
+    delete step.conditions_serialized;
+  }
   if (step.type === 'switch' && Array.isArray(step.cases)) {
     step.cases = step.cases.map((c) => {
       const target = byHandle.get(`case:${c.key}`);

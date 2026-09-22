@@ -3,17 +3,6 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsCanvas\Test\Unit\Block\Adminhtml\Canvas;
 
-use Magento\Framework\Api\SearchCriteriaInterface;
-use Magento\Framework\Api\SearchResultsInterface;
-use Magento\Framework\AuthorizationInterface;
-use Magento\Framework\App\RequestInterface;
-use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\Module\Manager as ModuleManager;
-use MageOS\Workflows\Api\ActionMetadataProviderInterface;
-use MageOS\Workflows\Api\Data\WorkflowInterface;
-use MageOS\Workflows\Api\SecretMetadataProviderInterface;
-use MageOS\Workflows\Api\TriggerMetadataProviderInterface;
-use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\WorkflowsCanvas\Block\Adminhtml\Canvas\Mount;
 use PHPUnit\Framework\TestCase;
 
@@ -27,12 +16,8 @@ use PHPUnit\Framework\TestCase;
  * with the addon installed, and the addon may not wire a canvas class itself
  * (neither optional package depends on the other).
  *
- * Mount extends Backend\Block\Template (an empty shim in the standalone
- * runner) whose real constructor is layout-heavy, so the block is built as an
- * anonymous subclass with a no-op constructor overriding the three inherited
- * helpers getConfigJson() calls, with Mount's own promoted dependencies
- * injected by reflection — the same posture DataProviderTest takes for the
- * UI AbstractDataProvider.
+ * The block is assembled by MountBuilder (see its docblock for why the block
+ * under test is an anonymous subclass with reflection-injected dependencies).
  */
 class MountApprovalsAvailableTest extends TestCase
 {
@@ -74,149 +59,6 @@ class MountApprovalsAvailableTest extends TestCase
      */
     private function mount(array $enabledModules): Mount
     {
-        $mount = new class extends Mount {
-            // Skip the layout-heavy Template constructor entirely.
-            public function __construct()
-            {
-            }
-
-            public function getRequest()
-            {
-                return new class implements RequestInterface {
-                    public function getParam($key, $default = null)
-                    {
-                        return $default;
-                    }
-
-                    public function getModuleName()
-                    {
-                        return '';
-                    }
-
-                    public function setModuleName($name)
-                    {
-                        return $this;
-                    }
-
-                    public function getActionName()
-                    {
-                        return '';
-                    }
-
-                    public function setActionName($name)
-                    {
-                        return $this;
-                    }
-
-                    public function setParams(array $params)
-                    {
-                        return $this;
-                    }
-
-                    public function getParams()
-                    {
-                        return [];
-                    }
-
-                    public function getCookie($name, $default)
-                    {
-                        return $default;
-                    }
-
-                    public function isSecure()
-                    {
-                        return false;
-                    }
-                };
-            }
-
-            public function getUrl($route = '', $params = [])
-            {
-                return '/' . ltrim((string) $route, '/');
-            }
-
-            public function getFormKey()
-            {
-                return 'test_form_key';
-            }
-        };
-
-        $moduleManager = new class($enabledModules) extends ModuleManager {
-            /**
-             * @param string[] $enabled
-             */
-            public function __construct(private readonly array $enabled)
-            {
-                // Deliberately no parent call: the real Manager constructor
-                // wants module-list collaborators this test never exercises.
-            }
-
-            public function isEnabled($moduleName)
-            {
-                return in_array($moduleName, $this->enabled, true);
-            }
-        };
-
-        $repository = new class implements WorkflowRepositoryInterface {
-            public function save(WorkflowInterface $workflow): WorkflowInterface
-            {
-                throw new \LogicException('not exercised');
-            }
-
-            public function getById(int $workflowId): WorkflowInterface
-            {
-                throw new NoSuchEntityException(__('no workflow %1', $workflowId));
-            }
-
-            public function getList(SearchCriteriaInterface $searchCriteria): SearchResultsInterface
-            {
-                throw new \LogicException('not exercised');
-            }
-
-            public function delete(WorkflowInterface $workflow): bool
-            {
-                throw new \LogicException('not exercised');
-            }
-
-            public function deleteById(int $workflowId): bool
-            {
-                throw new \LogicException('not exercised');
-            }
-        };
-
-        $dependencies = [
-            'workflowRepository' => $repository,
-            'actionMetadataProvider' => new class implements ActionMetadataProviderInterface {
-                public function getActions(?string $entityType = null): array
-                {
-                    return [];
-                }
-            },
-            'triggerMetadataProvider' => new class implements TriggerMetadataProviderInterface {
-                public function getTriggers(): array
-                {
-                    return [];
-                }
-            },
-            'secretMetadataProvider' => new class implements SecretMetadataProviderInterface {
-                public function getSecretNames(): array
-                {
-                    return [];
-                }
-            },
-            'authorization' => new class implements AuthorizationInterface {
-                public function isAllowed($resource, $privilege = null)
-                {
-                    return false;
-                }
-            },
-            'moduleManager' => $moduleManager,
-        ];
-        foreach ($dependencies as $property => $value) {
-            $reflection = new \ReflectionProperty(Mount::class, $property);
-            $reflection->setValue($mount, $value);
-        }
-
-        return $mount;
+        return MountBuilder::create()->withEnabledModules($enabledModules)->build();
     }
 }

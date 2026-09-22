@@ -103,21 +103,25 @@
                 <label translate="true">Status</label>
             </settings>
         </column>
-        <column name="trigger_type">
+        <column name="trigger_type" component="Magento_Ui/js/grid/columns/select">
             <settings>
-                <filter>text</filter>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\TriggerType"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
                 <label translate="true">Trigger Type</label>
             </settings>
         </column>
-        <column name="trigger_ref">
+        <column name="trigger_ref" class="MageOS\WorkflowsAdminUi\Ui\Component\Listing\Column\TriggerRef">
             <settings>
                 <filter>text</filter>
                 <label translate="true">Trigger</label>
             </settings>
         </column>
-        <column name="entity_type">
+        <column name="entity_type" component="Magento_Ui/js/grid/columns/select">
             <settings>
-                <filter>text</filter>
+                <options class="MageOS\WorkflowsAdminUi\Model\Source\EntityType"/>
+                <filter>select</filter>
+                <dataType>select</dataType>
                 <label translate="true">Entity Type</label>
             </settings>
         </column>

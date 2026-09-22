@@ -185,6 +185,19 @@ class EmailTest extends TestCase
         $this->assertTrue($result->isFailure());
     }
 
+    public function testConfigFormTemplateFieldSearchesTheEmailTemplateSource(): void
+    {
+        $action = new Email($this->createTransportBuilderStub(), $this->createCacheStub());
+
+        $field = $action->getConfigForm()[0];
+
+        $this->assertSame('template_id', $field['name']);
+        $this->assertSame('select', $field['type']);
+        $this->assertSame(['source' => 'email_templates', 'min_chars' => 0], $field['options_search']);
+        // The either/or notice stays: the picker does not replace the mode rule.
+        $this->assertStringContainsString('not both', (string)$field['notice']);
+    }
+
     private function createTransportBuilderStub(): TransportBuilder
     {
         return new class extends TransportBuilder {

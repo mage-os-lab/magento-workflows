@@ -27,6 +27,77 @@
   font-size: 15px;
 }
 
+/* The persistent workflow-settings panel above the canvas. The field markup
+   inside is Magento's own (admin__field / admin__control-*) so the theme
+   styles the controls; this block only contributes the one-row layout and a
+   card boundary the admin theme has no pattern for. Explicit label/control
+   resets keep the panel legible on the mocked e2e page too, where the admin
+   theme CSS is absent. */
+.wf-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 20px;
+  background: #f8f8f8;
+  border: 1px solid #d6d6d6;
+  border-radius: 4px;
+  margin: 0;
+  padding: 12px 16px;
+}
+
+.wf-settings .wf-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  min-width: 160px;
+  border: 0;
+  padding: 0;
+}
+
+.wf-settings__field--name {
+  min-width: 240px;
+}
+
+.wf-settings .admin__field-label {
+  color: #303030;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  width: auto;
+}
+
+.wf-settings .admin__field-control {
+  width: auto;
+  margin: 0;
+}
+
+.wf-settings .admin__control-text,
+.wf-settings .admin__control-select {
+  max-width: 260px;
+}
+
+.wf-settings .admin__field-error {
+  display: block;
+  color: #e22626;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.wf-settings__note {
+  font-size: 11px;
+  color: #666;
+  max-width: 260px;
+}
+
+.wf-settings__website {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+  font-size: 12px;
+}
+
 .wf-canvas__overlay-label {
   color: #1565c0;
   font-weight: 600;
@@ -36,8 +107,21 @@
   color: #c62828;
 }
 
+.wf-canvas__dryrun-entity {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.wf-canvas__dryrun-entity input {
+  width: 90px;
+}
+
 .wf-canvas__flow {
-  height: 640px;
+  /* Never below the classic 640px; grow into tall screens (toolbar +
+     settings panel + admin chrome eat roughly 380px of the viewport). */
+  height: max(640px, calc(100vh - 380px));
   border: 1px solid #d6d6d6;
   border-radius: 4px;
   background: #fafafa;
@@ -61,6 +145,85 @@
 
 .wf-node--taken {
   box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.4);
+}
+
+/* Selection state: React Flow marks the wrapper .selected but nothing styled
+   it, so clicking a node opened the config panel with no visual cue on the
+   canvas of WHICH node is being edited. Admin link blue, matching the theme. */
+.react-flow__node.selected .wf-node {
+  box-shadow: 0 0 0 2px #007bdb, 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Type accents: a colored top edge + tinted type chip per step type, so a
+   graph is scannable by shape/color before any label is read. The palette
+   leans on the Magento admin colors (orange #eb5202, link blue #007bdb,
+   success green #79a22e, error red #e22626). */
+.wf-node {
+  border-top-width: 4px;
+}
+
+.wf-node--action { border-top-color: #007bdb; }
+.wf-node--action .wf-node__type { color: #007bdb; }
+
+.wf-node--branch,
+.wf-node--switch { border-top-color: #eb5202; }
+.wf-node--branch .wf-node__type,
+.wf-node--switch .wf-node__type { color: #eb5202; }
+
+.wf-node--delay,
+.wf-node--wait { border-top-color: #8d6e00; }
+.wf-node--delay .wf-node__type,
+.wf-node--wait .wf-node__type { color: #8d6e00; }
+
+.wf-node--approval { border-top-color: #6f42c1; }
+.wf-node--approval .wf-node__type { color: #6f42c1; }
+
+.wf-node--stop { border-top-color: #e22626; }
+.wf-node--stop .wf-node__type { color: #e22626; }
+
+.wf-node--degraded { border-top-color: #e22626; }
+
+/* The trigger card: the one deliberately-heavier element on the canvas. */
+.wf-node--trigger {
+  border-color: #79a22e;
+  border-top-width: 4px;
+  background: #f6faef;
+  min-width: 210px;
+}
+
+.wf-node__head--trigger .wf-node__type {
+  color: #79a22e;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.wf-node__icon {
+  width: 9px;
+  height: 11px;
+}
+
+.wf-node__chip {
+  background: #e5f0d3;
+  border-radius: 8px;
+  color: #4d6b17;
+  font-size: 10px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.wf-node__conditions {
+  border-top: 1px dashed #cfdcb5;
+  color: #4d6b17;
+  cursor: pointer;
+  font-size: 11px;
+  margin-top: 6px;
+  padding-top: 5px;
+}
+
+.wf-node__conditions--none {
+  color: #7a7a7a;
 }
 
 .wf-node--degraded {
@@ -251,6 +414,15 @@
   box-sizing: border-box;
 }
 
+/* A full-width checkbox renders as a detached box on its own row, nowhere
+   near its label text — every boolean field (revalidate, business-days,
+   approval flags) was hit by the blanket width above. */
+.wf-field input[type='checkbox'] {
+  width: auto;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 .wf-field__notice {
   display: block;
   color: #757575;
@@ -345,4 +517,436 @@
 .wf-slideout__error {
   color: #c62828;
   font-size: 12px;
+}
+
+/* Why the condition builder cannot start (missing entity type, metadata
+   failure) — styled after the Magento admin warning message pattern. */
+.wf-slideout__meta-error {
+  background: #fdf0d5;
+  border: 1px solid #f0dcb0;
+  color: #6f4400;
+  font-size: 13px;
+  margin: 10px 0;
+  padding: 10px 12px;
+}
+
+.wf-slideout__meta-error p {
+  margin: 0 0 6px;
+}
+
+.wf-slideout__retry {
+  background: #fff;
+  border: 1px solid #adadad;
+  color: #514943;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.wf-slideout__retry:hover {
+  border-color: #514943;
+}
+
+.wf-slideout__json-toggle {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.wf-slideout__json-toggle summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.wf-slideout__warning {
+  color: #8d6e00;
+  font-size: 12px;
+}
+
+.wf-slideout__message-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.wf-slideout__message-list .wf-msg {
+  display: block;
+  font-size: 11px;
+  padding: 3px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+}
+
+.wf-slideout__message-list .wf-msg--error {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.wf-slideout__message-list .wf-msg--warning {
+  background: #fff8e1;
+  color: #8d6e00;
+}
+
+.wf-slideout__foot {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.wf-slideout__revalidate {
+  margin: 0;
+}
+
+/* Checkbox inline with its label text; the explanatory notice wraps below. */
+.wf-slideout__revalidate input {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.wf-slideout__revalidate .wf-field__notice {
+  display: block;
+  margin-top: 4px;
+}
+
+.wf-slideout__buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.wf-canvas__root-conditions .wf-canvas__badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #eceff1;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+/* ---- Workflow settings slide-out -------------------------------------- */
+.wf-settings__websites {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.wf-settings__website {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.wf-settings__website input {
+  width: auto;
+}
+
+/* ---- Condition tree builder ------------------------------------------- */
+.wf-cond {
+  font-size: 12px;
+}
+
+.wf-cond__loading,
+.wf-cond__empty p {
+  color: #757575;
+  margin: 4px 0;
+}
+
+.wf-cond__tree,
+.wf-cond__children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wf-cond__children {
+  margin-left: 14px;
+  padding-left: 8px;
+  border-left: 1px solid #e0e0e0;
+}
+
+.wf-cond__node {
+  margin: 3px 0;
+}
+
+.wf-cond__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.wf-cond__sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wf-cond__select,
+.wf-cond__value,
+.wf-cond__path,
+.wf-cond__add-select {
+  font-size: 12px;
+  max-width: 100%;
+}
+
+.wf-cond__value-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wf-cond__hint {
+  color: #757575;
+  font-size: 11px;
+}
+
+.wf-cond__remove {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.wf-cond__raw {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 4px;
+  background: #f5f5f5;
+  font-family: monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.wf-cond__add {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.wf-cond__clear {
+  margin-top: 8px;
+}
+
+/* ---- Config-panel row editors + composites ---------------------------- */
+.wf-field__notice--error {
+  color: #c62828;
+}
+
+.wf-field__toggle {
+  margin-top: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1979c3;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.wf-duration__composite {
+  display: flex;
+  gap: 4px;
+}
+
+.wf-duration__amount {
+  flex: 0 0 70px;
+}
+
+.wf-duration__unit {
+  flex: 1 1 auto;
+}
+
+.wf-field--multi select {
+  min-height: 60px;
+}
+
+/* Multi search-select chips (selected values; the select below ADDS to them). */
+.wf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+}
+
+.wf-chips__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 4px 1px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 10px;
+  background: #eceff1;
+  font-size: 11px;
+}
+
+.wf-chips__remove {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.wf-cases__list,
+.wf-rows__list {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+
+.wf-cases__row,
+.wf-rows__row {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.wf-cases__key {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+.wf-cases__state {
+  display: block;
+  color: #757575;
+  font-size: 11px;
+  margin: 2px 0;
+}
+
+.wf-cases__buttons,
+.wf-rows__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.wf-cases__buttons button,
+.wf-rows__controls button {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.wf-rows__controls input[type='text'],
+.wf-rows__controls input[type='email'],
+.wf-rows__controls select {
+  flex: 1 1 80px;
+  min-width: 0;
+}
+
+.wf-rows__key {
+  font-family: monospace;
+}
+
+.wf-rows__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.wf-rows__check input {
+  width: auto;
+}
+
+.wf-cases__add {
+  margin-top: 4px;
+}
+
+/* ---- merchant-review round ---------------------------------------------- */
+
+/* Connection handles: the visual dot stays modest but the hit-area is real —
+   a 6px target made the core gesture fail silently in merchant testing. */
+.wf-canvas__flow .react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  background: #35414a;
+}
+
+/* A selected edge must LOOK selected (there was no styling at all). */
+.wf-canvas__flow .react-flow__edge.selected path.react-flow__edge-path {
+  stroke: #007bdb;
+  stroke-width: 2.5;
+}
+
+.wf-canvas__dirty {
+  background: #fdf0d5;
+  border: 1px solid #f0dcb0;
+  border-radius: 3px;
+  color: #6f4400;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+.wf-canvas__save-review {
+  background: #fdf0d5;
+  border: 1px solid #f0dcb0;
+  border-radius: 4px;
+  color: #6f4400;
+  font-size: 13px;
+  padding: 10px 14px;
+}
+
+.wf-canvas__save-review-head {
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.wf-canvas__save-review ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.wf-canvas__save-review li {
+  margin-bottom: 4px;
+}
+
+.wf-canvas__save-review-jump {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.wf-palette__howto {
+  border-top: 1px solid #e0e0e0;
+  color: #666;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+  padding-top: 8px;
+}
+
+.wf-panel__key {
+  color: #999;
+  font-family: monospace;
+  font-size: 11px;
+  margin: -6px 0 8px;
+}
+
+.wf-panel__title--friendly {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.wf-outline__unconnected {
+  color: #8a6200;
+  font-weight: 600;
+}
+
+.wf-settings__note--warning {
+  color: #8a6200;
 }

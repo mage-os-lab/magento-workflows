@@ -1,0 +1,55 @@
+<?php
+/**
+ * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\RunNowModal $block
+ *
+ * The "Run Now" entity picker, hidden until the toolbar button opens it. Same
+ * shape as the dry-run picker: a recent-entity select (only when a provider
+ * registered rows for this entity type) that copies into the free numeric input
+ * the Run URL is built from.
+ *
+ * Renders nothing on the new-workflow form or without the manual-run ACL — the
+ * toolbar button is gated identically, so there is never a button without its
+ * modal. Boots declaratively through data-mage-init with every user-facing
+ * string already translated into a data-* attribute (one server-side
+ * translation pass, no mage/translate in the module). No inline script (CSP).
+ */
+$recent = $block->getRecentEntities();
+$init = $block->escapeHtmlAttr('{"mageosWorkflowsRunNow": {}}');
+$containerId = \MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\RunNowModal::CONTAINER_ID;
+?>
+<?php if ($block->canRun()): ?>
+    <div id="<?= $block->escapeHtmlAttr($containerId) ?>"
+         class="mageos-run-now-modal"
+         style="display:none"
+         data-mage-init='<?= /* @noEscape */ $init ?>'
+         data-run-url="<?= $block->escapeUrl($block->getRunUrl()) ?>"
+         data-title="<?= $block->escapeHtmlAttr(__('Run Now')) ?>"
+         data-label-run="<?= $block->escapeHtmlAttr(__('Run')) ?>"
+         data-label-cancel="<?= $block->escapeHtmlAttr(__('Cancel')) ?>"
+         data-label-invalid="<?= $block->escapeHtmlAttr(__('Enter a numeric entity ID.')) ?>">
+        <p><?= $block->escapeHtml(__('Enter the ID of the entity (e.g. order or customer ID) to run this workflow against:')) ?></p>
+
+        <div class="admin__field">
+            <label class="admin__field-label" for="mageos-run-now-entity-id">
+                <span><?= $block->escapeHtml(__('Entity ID (%1)', $block->getEntityType())) ?></span>
+            </label>
+            <div class="admin__field-control">
+                <?php if ($recent !== []): ?>
+                    <select id="mageos-run-now-recent" class="admin__control-select"
+                            data-role="run-now-recent">
+                        <option value=""><?= $block->escapeHtml(__('— recent %1 —', $block->getEntityType())) ?></option>
+                        <?php foreach ($recent as $row): ?>
+                            <option value="<?= $block->escapeHtmlAttr((string) $row['id']) ?>">
+                                <?= $block->escapeHtml($row['label']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+                <input type="text" id="mageos-run-now-entity-id" class="admin__control-text"
+                       data-role="run-now-entity-id" inputmode="numeric" autocomplete="off"
+                       placeholder="<?= $block->escapeHtmlAttr(__('Entity ID')) ?>"/>
+                <div class="admin__field-error" role="alert" data-role="run-now-error"></div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>

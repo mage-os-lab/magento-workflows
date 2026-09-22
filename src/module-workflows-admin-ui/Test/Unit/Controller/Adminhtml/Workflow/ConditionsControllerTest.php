@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsAdminUi\Test\Unit\Controller\Adminhtml\Workflow;
 
 use Magento\Framework\App\Action\HttpPostActionInterface;
+use MageOS\Workflows\Model\Definition\Definition;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Conditions;
 use PHPUnit\Framework\TestCase;
 
@@ -59,5 +60,24 @@ class ConditionsControllerTest extends TestCase
         $this->assertFalse($this->normalize('{not json'));
         // A scalar JSON value is not a condition tree (must be an object/array).
         $this->assertFalse($this->normalize('42'));
+    }
+
+    /**
+     * The probe definition exists only so the structural half of the pipeline
+     * passes and the CONDITIONS shape is the only thing judged. Pinning it to a
+     * legacy schema would make the probe itself the thing that fails the moment
+     * that version leaves the accepted input list, so it tracks the current
+     * version — and it must genuinely parse.
+     */
+    public function testProbeDefinitionDeclaresTheCurrentSchemaAndParses(): void
+    {
+        $probe = (string)(new \ReflectionClass(Conditions::class))->getConstant('PROBE_DEFINITION');
+
+        $decoded = json_decode($probe, true);
+        $this->assertSame(Definition::SCHEMA_VERSION, $decoded['schema']);
+
+        $definition = Definition::fromJson($probe);
+        $this->assertSame(Definition::SCHEMA_VERSION, $definition->getSchemaVersion());
+        $this->assertSame('s1', $definition->getEntryKey());
     }
 }

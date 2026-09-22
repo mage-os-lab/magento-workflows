@@ -8,6 +8,7 @@
         "mage-os/workflows": "*",
         "magento/module-backend": "*",
         "magento/module-sales": "*",
+        "magento/module-store": "*",
         "magento/module-ui": "*",
         "magento/framework": ">=103.0.4"
     },

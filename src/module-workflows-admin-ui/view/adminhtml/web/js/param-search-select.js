@@ -53,7 +53,7 @@ define([
             minChars = 2;
         }
 
-        var $chip = $('<div/>', {'class': 'mageos-param-search__current'}),
+        var $chip = $('<div></div>', {'class': 'mageos-param-search__current'}),
             $query = $('<input/>', {
                 'type': 'text',
                 'class': 'admin__control-text mageos-param-search__query',
@@ -61,12 +61,12 @@ define([
                 'autocomplete': 'off',
                 'aria-label': labels.placeholder
             }),
-            $results = $('<select/>', {
+            $results = $('<select></select>', {
                 'class': 'admin__control-select mageos-param-search__results',
                 'size': 6,
                 'aria-label': labels.results
             }),
-            $manual = $('<button/>', {
+            $manual = $('<button></button>', {
                 'type': 'button',
                 'class': 'action-secondary mageos-param-search__manual'
             });

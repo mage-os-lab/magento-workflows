@@ -11,6 +11,7 @@ use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Exception\AuthorizationException;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Module\Manager as ModuleManager;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\Data\WorkflowInterfaceFactory;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
@@ -46,7 +47,11 @@ class Save extends Action implements HttpPostActionInterface
         private readonly WorkflowRepositoryInterface $workflowRepository,
         private readonly WorkflowInterfaceFactory $workflowFactory,
         private readonly DataPersistorInterface $dataPersistor,
-        private readonly ValidationResultRegistry $validationResultRegistry
+        private readonly ValidationResultRegistry $validationResultRegistry,
+        // Framework class, so this adds no module dependency: admin-ui never
+        // depends on the optional canvas package. Used only to decide whether
+        // a `back=canvas` round-trip has anywhere to land.
+        private readonly ModuleManager $moduleManager
     ) {
         parent::__construct($context);
     }
@@ -93,13 +98,11 @@ class Save extends Action implements HttpPostActionInterface
             $this->messageManager->addSuccessMessage(__('The workflow has been saved.'));
             $this->surfaceValidationWarnings();
 
-            if ($this->getRequest()->getParam('back')) {
-                return $resultRedirect->setPath(
-                    'mageos_workflows/workflow/edit',
-                    ['workflow_id' => $workflow->getWorkflowId()]
-                );
-            }
-            return $resultRedirect->setPath('mageos_workflows/workflow/index');
+            [$path, $params] = $this->resolveSuccessRedirect(
+                $this->getRequest()->getParam('back'),
+                (int) $workflow->getWorkflowId()
+            );
+            return $resultRedirect->setPath($path, $params);
         } catch (NoSuchEntityException $e) {
             // The record being edited was deleted meanwhile: keep the merchant's input and
             // reopen it as a new workflow instead of dropping everything on the grid page.
@@ -125,6 +128,36 @@ class Save extends Action implements HttpPostActionInterface
             'mageos_workflows/workflow/edit',
             $workflowId ? ['workflow_id' => $workflowId] : []
         );
+    }
+
+    /**
+     * Where a SUCCESSFUL save lands: [route path, route params].
+     *
+     * `back=canvas` is the visual editor's round-trip. The canvas posts through
+     * this same controller — it has no save path of its own (docs/discovery/
+     * canvas.md §4) — and needs to come back to itself rather than to the
+     * classic form; that is what makes canvas-first authoring of a NEW workflow
+     * work at all, since the id only exists once this save has run. The canvas
+     * package is optional, so the flag is honored only while its module is
+     * enabled and otherwise degrades to the ordinary "Save and Continue Edit"
+     * behavior. Any other truthy `back` keeps that classic behavior; falsy
+     * returns to the grid.
+     *
+     * Failure paths deliberately do NOT consult this: they always return to the
+     * classic form, where DataPersistor restores the merchant's input and the
+     * validation messages render.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function resolveSuccessRedirect(mixed $back, int $workflowId): array
+    {
+        if ($back === 'canvas' && $this->moduleManager->isEnabled('MageOS_WorkflowsCanvas')) {
+            return ['mageos_workflows_canvas/canvas/edit', ['workflow_id' => $workflowId]];
+        }
+        if ($back) {
+            return ['mageos_workflows/workflow/edit', ['workflow_id' => $workflowId]];
+        }
+        return ['mageos_workflows/workflow/index', []];
     }
 
     /**

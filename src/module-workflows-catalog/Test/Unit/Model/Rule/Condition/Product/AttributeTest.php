@@ -209,7 +209,7 @@ class AttributeTest extends TestCase
             public function __construct()
             {
             }
-            public function create()
+            public function create(array $data = [])
             {
                 throw new \RuntimeException('no attribute collection under the standalone runner');
             }

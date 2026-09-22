@@ -193,6 +193,20 @@ rule-widget forms assume full-page form scaffolding; the spike proves it renders
 a slide-out). E3 remains behind an "edit as JSON" toggle for power users. E2 is the eventual
 modernization path *if* E1's UX proves unacceptable — but it would be its own funded project.
 
+**Outcome:** the E1 spike could not be evidenced in this repo (the rule-widget rendering layer is
+not a dependency and cannot run in CI — see [11 §v2](../11-admin-ui.md#v2-workflows-canvas)), so
+the shipped editor is **E2 on the E1 seam**: a React condition tree builder in the shared
+slide-out, driven entirely by a server metadata feed (`mageos_workflows/data/conditionMeta`,
+backed by `ConditionMetaProvider`) that projects the *existing* rule-model contract —
+`getNewChildSelectOptions()`, `loadAttributeOptions()`, `getInputType()`,
+`getValueSelectOptions()`, operator sets — per node type. The "duplicates the rule widget"
+objection to E2 is answered by that feed: attribute discovery, operator/type semantics, EAV
+options and cross-entity subtrees stay server-side in the condition classes; the client renders
+what it is told and preserves verbatim any node type the server cannot describe. The apply
+round-trip and the serialized-tree contract are unchanged (the same `workflow/conditions`
+endpoint), so a full install that later hosts the stock rule widget still drops into the same
+seam. E3 survives as the documented "Edit as JSON" toggle inside the slide-out.
+
 ## 7. Quality, maintainability, reliability
 
 - **Round-trip fidelity is the reliability contract:** parse → graph model → serialize must be
@@ -260,3 +274,17 @@ is independent.
    view rather than an unusable canvas.
 4. Release artifact policy — committed `dist/` vs composer-packaged build artifacts vs
    packagist-side build. Leaning committed dist per tag (Magento-ecosystem norm, auditable).
+
+## 10. Post-ship outcomes (follow-up pass on PR #35's out-of-scope list)
+
+- **Canvas-first creation shipped.** `canvas/edit` with no `workflow_id` mounts a blank
+  workflow plus a `workflowOptions` option catalogue; a "Workflow settings" slide-out edits
+  the general fields, and the save posts `back=canvas` so creation round-trips through the
+  existing Save controller (still no bespoke endpoint) and back into the canvas.
+- **Canvas i18n shipped.** All UI literals go through `t()` backed by a server-injected
+  phrase map built from `__()` calls (`Model/I18n/PhraseCatalog.php`); the i18n collector
+  scans TS `t('...')` literals and CI gates catalog drift. This resolves the "hardcoded
+  English" caveat noted in the Phase B delivery.
+- **Config-panel gaps closed.** Multi search-select for `multiselect` + `options_search`;
+  option sources wired for email template / cart price rule / attribute-code / carrier
+  fields; the dry-run overlay accepts an optional entity id.
