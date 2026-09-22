@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import type { AttributeMeta, ConditionNode, MetaOption, NodeMeta } from '../../conditionTree';
 import {
   applyAttributeChange,

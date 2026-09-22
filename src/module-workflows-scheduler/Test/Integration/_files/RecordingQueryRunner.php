@@ -7,6 +7,9 @@
  * RunScheduledWorkflows hands it a due workflow. Wired via an object-manager
  * preference under @magentoAppIsolation so the cron's double-fire guard can be
  * observed as "run() invoked exactly once per due minute".
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 declare(strict_types=1);
 

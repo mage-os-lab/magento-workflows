@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { describe, expect, it } from 'vitest';
 import { buildVariablePaths, upstreamStepKeys } from '../src/variablePicker';
 import { makeConfig, makeGraph } from './support';

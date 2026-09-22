@@ -12,6 +12,9 @@
  * execute then refunds again instead of skipping. This fixture keeps every
  * amount aligned (2 x 10 = 20 everywhere) to avoid that.
  *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_WorkflowsActionsCore::Test/Integration/_files/paid_order_for_creditmemo.php
  *
  * Locate the order by increment id '100000001'.

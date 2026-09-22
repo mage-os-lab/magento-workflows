@@ -6,6 +6,9 @@
  * (soft dependency); wiring this preference in lets a test assert the exact
  * async-event payload a detector publishes without touching the real
  * async-events transport, and keeps the detector's flag/dedupe logic intact.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 declare(strict_types=1);
 

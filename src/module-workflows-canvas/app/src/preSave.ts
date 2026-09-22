@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { edgeLabel, getStepEdges } from './edges';
 import { t } from './i18n';
 import type { Graph, MountConfig } from './types';

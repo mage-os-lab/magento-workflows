@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 // Minimal static file server for the Playwright smoke. Rooted at the canvas
 // MODULE directory so both /app/e2e/fixtures/* and the built
 // /view/adminhtml/web/js/dist/*

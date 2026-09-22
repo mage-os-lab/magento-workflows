@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Sequence pins load order after the engine (config section + repository it
      reads), the admin UI (routes the strip links target), and Backend (owns
      the page.main.actions container the strip injects into). All three are

@@ -3,6 +3,11 @@
     "description": "Mage-OS Workflow Engine newsletter domain pack: the newsletter_subscriber condition root + hydrator, the newsletter.subscription_changed trigger, the customer newsletter-status aggregate, the customer.newsletter subscribe/unsubscribe action and the anonymize-unsubscribe plugin on workflows-customer's Anonymize action",
     "type": "magento2-module",
     "license": "OSL-3.0",
+    "homepage": "https://github.com/mage-os-lab/magento-workflows",
+    "support": {
+        "issues": "https://github.com/mage-os-lab/magento-workflows/issues",
+        "source": "https://github.com/mage-os-lab/magento-workflows"
+    },
     "require": {
         "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
         "mage-os/workflows": "*",

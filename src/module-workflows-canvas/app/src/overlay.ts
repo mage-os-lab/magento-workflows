@@ -2,6 +2,9 @@
  * Pure overlay math: given execution step rows or a dry-run trace, compute the
  * node tints, taken-edge ids, and per-step durations the viewer paints on the
  * graph. No React, no DOM — unit-testable.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 
 export interface ExecutionStepRow {

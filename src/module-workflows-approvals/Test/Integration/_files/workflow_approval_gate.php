@@ -8,6 +8,10 @@
  * every use — a gate that stops validating is itself a finding.
  *
  * Reference from tests as:
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_WorkflowsApprovals::Test/Integration/_files/workflow_approval_gate.php
  *
  * Look it up by name ('Approval gate integration fixture') via getList.

@@ -94,7 +94,7 @@ below no longer include them.
   undo/redo, validate + save). [07 — Canvas](discovery/implementation/07-canvas.md).
 - **Workflows on native entity grids** — an addon surfacing per-entity workflow counts and
   view/create deep links on the Orders / Customers / Products grids
-  ([issue #5](https://github.com/rhoerr/magento-workflows/issues/5)).
+  ([issue #5](https://github.com/mage-os-lab/magento-workflows/issues/5)).
   [entity-grid-visibility](discovery/entity-grid-visibility.md).
 - **Approval / decision gate** — an `approval` step (schema 4) that parks on the wait spine
   and routes on a human decision: `on_approved` / `on_rejected` / a required-timeout

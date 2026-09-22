@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { useState } from 'react';
 import type { MetaOptionGroup } from '../../conditionTree';
 import { t } from '../../i18n';

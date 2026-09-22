@@ -6,6 +6,10 @@
  * computed by CustomerAggregateProvider) evaluate against seeded orders.
  *
  * Pair with Magento/Customer/_files/customer.php. Referenced as:
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_Workflows::Test/Integration/Rule/_files/customer_orders.php
  *
  * Rows are inserted directly through the sales connection (the aggregate SQL

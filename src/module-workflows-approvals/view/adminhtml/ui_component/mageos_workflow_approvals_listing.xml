@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
 <!-- Approvals grid (docs/discovery/approval-gate.md §6). Default filter
      status=open is applied by Controller/Adminhtml/Approval/Index via the
      filters_modifier redirect (the same mechanism

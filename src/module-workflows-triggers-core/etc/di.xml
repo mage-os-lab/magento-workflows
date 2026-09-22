@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * DI wiring for the trigger layer.
  *
  * Notifier pool: registers WorkflowNotifier under the name "workflow" in the

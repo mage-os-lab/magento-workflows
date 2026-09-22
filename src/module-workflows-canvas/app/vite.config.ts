@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
@@ -16,6 +21,24 @@ import { resolve } from 'node:path';
  * The production build is minified by esbuild, which does not emit eval /
  * new Function — verified by the canvas.yml CI drift + a grep gate.
  */
+/**
+ * Attribution banner prepended to the built bundle. The bundle inlines
+ * third-party libraries (no externals), several under licenses that require
+ * their notices to travel with the distributed code — elkjs is EPL-2.0. The
+ * full list, license texts and the EPL-2.0 source-availability statement live
+ * in THIRD-PARTY-NOTICES.txt at the root of this package; regenerate that file
+ * whenever app/package-lock.json changes.
+ */
+const banner = [
+  '/*!',
+  ' * Mage-OS Workflows canvas. Copyright (c) Mage-OS. Licensed under OSL-3.0.',
+  ' * Bundles third-party libraries under MIT, ISC, BSD-3-Clause and EPL-2.0',
+  ' * terms, including React, @xyflow/react and elkjs (EPL-2.0). Attribution',
+  ' * and full license texts: THIRD-PARTY-NOTICES.txt in the',
+  ' * mage-os/workflows-canvas package root.',
+  ' */',
+].join('\n');
+
 export default defineConfig({
   plugins: [react()],
   define: {
@@ -35,6 +58,7 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
+        banner,
         // One file, styles inlined by the bundle at runtime.
         inlineDynamicImports: true,
         assetFileNames: 'canvas.[ext]',

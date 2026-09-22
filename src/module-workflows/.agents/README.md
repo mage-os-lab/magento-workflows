@@ -30,5 +30,5 @@ ln -sfn ../../vendor/mage-os/workflows/.agents/skills/workflow-review .claude/sk
 ```
 
 The skills are instructions, not enforcement — see
-[docs/21 — LLM-Assisted Authoring](https://github.com/rhoerr/magento-workflows/blob/main/docs/21-ai-assisted-authoring.md).
+[docs/21 — LLM-Assisted Authoring](https://github.com/mage-os-lab/magento-workflows/blob/main/docs/21-ai-assisted-authoring.md).
 The ACL is the enforcement.

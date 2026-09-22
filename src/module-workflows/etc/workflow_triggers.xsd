@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Schema for workflow_triggers.xml — workflow trigger metadata declarations.
  *
  * Trigger metadata describes the async events a workflow may bind to:
@@ -9,8 +15,6 @@
  *
  * This schema is a published spec artifact of the Mage-OS Workflow Engine
  * and is versioned with the definition format (see docs/05-triggers.md).
- *
- * Copyright (c) Mage-OS. Licensed under OSL-3.0.
  */
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"

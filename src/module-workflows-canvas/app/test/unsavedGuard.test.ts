@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { describe, expect, it, vi } from 'vitest';
 import { addNode, blankStep, connect, moveNode, positionsOf } from '../src/graphOps';
 import { toDefinition } from '../src/mapping';

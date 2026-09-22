@@ -1,6 +1,6 @@
 # Discovery — Entity-Grid Visibility (Workflows Surfaced on Native Grid Pages)
 
-**Status:** Implemented (July 2026) · **Track:** discoverability · **Origin:** [issue #5](https://github.com/rhoerr/magento-workflows/issues/5)
+**Status:** Implemented (July 2026) · **Track:** discoverability · **Origin:** [issue #5](https://github.com/mage-os-lab/magento-workflows/issues/5)
 **Related:** [11 — Admin UI](../11-admin-ui.md) · [02 — Package Decomposition](../02-packages.md) · [09 — Scope, ACL & Observability](../09-scope-acl-observability.md)
 
 ---
@@ -12,7 +12,7 @@ the Orders grid — the page where "when an order is created…" automations *ma
 signal that the workflow feature exists, no signal that three workflows are already firing on
 every row they're looking at, and no path shorter than four navigation hops to create one.
 
-[Issue #5](https://github.com/rhoerr/magento-workflows/issues/5) proposes surfacing workflows on
+[Issue #5](https://github.com/mage-os-lab/magento-workflows/issues/5) proposes surfacing workflows on
 the related native grid pages (Orders, Customers, Products, …): show which workflows exist for
 that entity type, plus an entry point to create a new one. Requirements from the issue thread:
 

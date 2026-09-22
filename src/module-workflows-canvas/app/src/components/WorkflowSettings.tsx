@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+
 import { useState } from 'react';
 import type { ConfigFieldOption, TriggerMeta, WorkflowOptions } from '../types';
 import { eventOptionGroups, isCataloguedEvent } from '../configPanel';

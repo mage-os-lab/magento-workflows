@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Review trigger metadata (relocated from mage-os/workflows-triggers-core,
  * domain-packs S5). catalog.product.review_submitted is declared and published
  * by this module (etc/async_events.xml, Observer\ReviewSubmittedObserver).

@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!--
 /**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
+/**
  * Gap-fill async event definitions have all moved to the domain packs that
  * own their entity and publisher:
  *   - sales.order.status_changed, quote.abandoned -> mage-os/workflows-sales

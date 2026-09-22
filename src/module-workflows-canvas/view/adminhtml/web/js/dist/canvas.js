@@ -1,4 +1,10 @@
-(function(){"use strict";var Y6e=typeof globalThis!="undefined"?globalThis:typeof window!="undefined"?window:typeof global!="undefined"?global:typeof self!="undefined"?self:{};function nZ(o){return o&&o.__esModule&&Object.prototype.hasOwnProperty.call(o,"default")?o.default:o}var Z6e={exports:{}},WL={},e5e={exports:{}},Kc={};/**
+/*!
+ * Mage-OS Workflows canvas. Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * Bundles third-party libraries under MIT, ISC, BSD-3-Clause and EPL-2.0
+ * terms, including React, @xyflow/react and elkjs (EPL-2.0). Attribution
+ * and full license texts: THIRD-PARTY-NOTICES.txt in the
+ * mage-os/workflows-canvas package root.
+ */(function(){"use strict";var Y6e=typeof globalThis!="undefined"?globalThis:typeof window!="undefined"?window:typeof global!="undefined"?global:typeof self!="undefined"?self:{};function nZ(o){return o&&o.__esModule&&Object.prototype.hasOwnProperty.call(o,"default")?o.default:o}var Z6e={exports:{}},WL={},e5e={exports:{}},Kc={};/**
  * @license React
  * react.production.min.js
  *

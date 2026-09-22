@@ -17,6 +17,9 @@
  * data-* attributes on the trigger element; server strings set via textContent.
  * The trigger context posted alongside the tree is read from the live form
  * fields instead (see contextValue) because it is editable in the same form.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 define([
     'jquery',

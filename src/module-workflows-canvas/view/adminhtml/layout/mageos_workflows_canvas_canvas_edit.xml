@@ -1,5 +1,11 @@
 <?xml version="1.0"?>
 <!--
+/**
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ */
+-->
+<!--
   Editor page (::manage). Renders the same CSP-safe mount as the viewer; the
   React bundle enables editing affordances from grants.manage.
 -->

@@ -4,6 +4,9 @@
  * specific coupons, so marketing.generate_coupon can create a real coupon
  * from it.
  *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
+ *
  *   @magentoDataFixture MageOS_WorkflowsActionsCore::Test/Integration/_files/cart_price_rule_autogen.php
  *
  * Locate it by name 'WF Autogen Rule'.

@@ -17,6 +17,9 @@
  *
  * CSP-safe: no inline script, no eval, all config from data-* attributes;
  * server strings are set via text()/createTextNode, never innerHTML.
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 define([
     'jquery',

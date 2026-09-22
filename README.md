@@ -84,6 +84,26 @@ The engine and the three shared infrastructure packs are entity-agnostic *in fac
 
 The core module ships the domain model (`etc/db_schema.xml`), two-phase condition engine (`Model/Rule/`), graph-walking executor and queue topology (`Model/Engine/`, `Model/Queue/`), variable resolver and secrets (`Model/Variable/`, `Model/Secrets/`), and the `workflow:*` CLI commands. Actions register into `ActionPool` via `di.xml` — see `src/module-workflows-actions-core/etc/di.xml` for the pattern; that *is* the connector SDK.
 
+## Licensing
+
+Mage-OS's own code in this repository is licensed **OSL-3.0** (`LICENSE.txt`, copied into each
+package so every Composer artifact carries its own license text).
+
+One package redistributes third-party code: `mage-os/workflows-canvas` ships a prebuilt bundle
+(`view/adminhtml/web/js/dist/canvas.js`) with all of its dependencies inlined — React,
+`@xyflow/react`, the d3 helpers and **elkjs, which is EPL-2.0**. Attribution, the full license
+texts and the EPL-2.0 source-availability statement live in
+[`src/module-workflows-canvas/THIRD-PARTY-NOTICES.txt`](src/module-workflows-canvas/THIRD-PARTY-NOTICES.txt).
+That file is generated from the lockfile (`cd src/module-workflows-canvas/app && npm run notices`)
+and the `canvas` workflow fails on drift, so a dependency bump cannot silently drop an attribution.
+
+No other package *redistributes* third-party code. Two declare ordinary Composer dependencies
+outside the Magento/Mage-OS namespaces — `guzzlehttp/guzzle` (`workflows-actions-core`) and
+`dragonmantank/cron-expression` (`workflows-scheduler`), both MIT and both already required by
+Magento core. Composer resolves those at install time and each ships its own license text into
+`vendor/`, so they need no attribution from us; the canvas bundle is the only place where someone
+else's code travels inside a Mage-OS file.
+
 ## Status
 
 **Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 22 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. The follow-on discovery-track build ([docs/discovery/](docs/discovery/README.md)) added, behind default-off flags and optional modules: multi-way `switch` branching with save-time graph validation (definition schema 3), entity cross-referencing (relation registry), a side-effect-free dry-run (CLI/REST/admin trace panel), trigger-level fan-out, batch aggregation, the template gallery (14 bundled recipes), the optional React Flow canvas, and the native-grid visibility addon. The bundled entity bindings have since been reorganized into six vertical domain packs (sales, customer, catalog, inventory, review, newsletter) plus a `workflows-suite` metapackage, leaving the engine and the shared trigger/action/scheduler packs entity-agnostic ([domain-pack split](docs/discovery/implementation/08-domain-packs.md)). A standalone test runner exercises `Test/Unit` across the module suite (via a Magento shim layer, `dev/tests/shims/`), plus the canvas's TypeScript tests, with CI lint + units on PHP 8.1–8.4.

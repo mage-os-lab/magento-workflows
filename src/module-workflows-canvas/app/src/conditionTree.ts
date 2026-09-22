@@ -26,6 +26,9 @@
  * The metadata types below mirror the `conditionMeta` endpoint contract
  * (ConditionMetaProvider). They live here, not in the fetch layer, because the
  * node model reasons about them (kind, operator/attribute defaults).
+ *
+ * Copyright (c) Mage-OS. Licensed under OSL-3.0.
+ * See LICENSE.txt for license details.
  */
 
 import { t } from './i18n';
