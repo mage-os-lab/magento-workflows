@@ -1,111 +1,175 @@
 # Mage-OS Workflow Engine
 
-**Working name:** `MageOS_Workflows` · **Status:** Proposed · **Target:** Magento Open Source / Mage-OS / Adobe Commerce ≥ 2.4.4, PHP 8.1+
+[![CI](https://github.com/mage-os-lab/magento-workflows/actions/workflows/lint.yml/badge.svg)](https://github.com/mage-os-lab/magento-workflows/actions/workflows/lint.yml)
+**Pre-alpha · 0.1.x-dev** · OSL-3.0
 
-A merchant-facing, admin-native **trigger → condition → action** workflow engine for Magento, entirely on-prem, composed from existing Magento primitives.
+A merchant-facing **trigger → condition → action** workflow engine for Magento, built entirely on native Magento primitives. No SaaS dependency, no external runtime — just Composer packages that plug into the admin panel.
 
 Merchants build automations like:
 
-> *"When an order is created on US Store, if grand total > $500 and customer group is Wholesale, then: add order comment, wait 1 hour, if still unpaid notify #fraud."*
+> *"When an order is placed on US Store, if grand total > $500 and customer group is Wholesale, then: add an order comment, wait 1 hour, if still unpaid notify the fraud team."*
 
-— in the admin panel, with no code, no SaaS dependency, and full awareness of EAV attributes, scopes, and B2B entities.
+— in the admin, with no code, full EAV awareness, and multi-store scope support.
 
-## Why native, not n8n?
+> [!WARNING]
+> This is an early development release. The engine compiles and runs, but APIs, database schemas, and the definition JSON format may change without notice between 0.x releases. Do not use in production.
 
-| Decision | Rationale |
+## Requirements
+
+- **Magento Open Source / Mage-OS** ≥ 2.4.4 (or Adobe Commerce)
+- **PHP** 8.1, 8.2, 8.3, 8.4, or 8.5
+- [`mage-os/mageos-async-events`](https://github.com/mage-os/mageos-async-events) ^4.0
+
+## Installation
+
+```bash
+# Everything — engine + admin UI + all domain packs
+composer require mage-os/workflows-suite:dev-main
+
+# Or just the engine and the packs you need
+composer require mage-os/workflows:dev-main \
+                 mage-os/workflows-admin-ui:dev-main \
+                 mage-os/workflows-actions-core:dev-main \
+                 mage-os/workflows-triggers-core:dev-main \
+                 mage-os/workflows-sales:dev-main
+```
+
+Then:
+
+```bash
+bin/magento module:enable MageOS_Workflows MageOS_WorkflowsAdminUi \
+    MageOS_WorkflowsActionsCore MageOS_WorkflowsTriggersCore MageOS_WorkflowsSales
+bin/magento setup:upgrade
+bin/magento setup:di:compile
+```
+
+## What's included
+
+The engine ships as a set of Composer packages you can mix and match:
+
+**Core** (entity-agnostic):
+
+| Package | Module | What it does |
+|---|---|---|
+| `mage-os/workflows` | `MageOS_Workflows` | Domain model, condition engine, graph-walking executor, queue topology, variable resolver, secrets vault, CLI |
+| `mage-os/workflows-admin-ui` | `MageOS_WorkflowsAdminUi` | Admin grid, form with JSON definition editor, execution log viewer, ACL |
+| `mage-os/workflows-actions-core` | `MageOS_WorkflowsActionsCore` | 22 built-in actions: email, order status, customer group, webhook (SSRF-hardened), flow control, and more |
+| `mage-os/workflows-triggers-core` | `MageOS_WorkflowsTriggersCore` | Async-events notifier binding and EventPublisher |
+| `mage-os/workflows-scheduler` | `MageOS_WorkflowsScheduler` | Cron-triggered workflows, abandoned-cart detection, stock-threshold queries |
+
+**Domain packs** (entity bindings — triggers, conditions, hydrators, relation roots):
+
+| Package | Covers |
 |---|---|
-| Build native; do not embed n8n | Licensing (Sustainable Use / embed license), payload-JSON impedance vs. EAV/scopes/B2B, wrong user (ops vs. merchant) |
-| [`mageos-async-events`](https://github.com/mage-os/mageos-async-events) is the event bus | Inherits queue transport, quadratic-backoff retry, UUID trace logging, ES/Lucene search, subscription model |
-| Conditions extend `Magento\Rule\Model` | Free EAV introspection, merchant-familiar UI widget, battle-tested evaluation |
-| Actions = DI-registered pool | Standard Magento pattern; third-party extensible by `di.xml` |
-| v1 UI is adminhtml forms, not a canvas | ~20% of the cost of React Flow; AutomateWoo proves the model. Canvas is v2 |
-| External connectors via webhook action → iPaaS | Don't compete with 400-connector ecosystems; own the data model instead |
+| `mage-os/workflows-sales` | Orders, invoices, shipments, credit memos, quotes |
+| `mage-os/workflows-customer` | Customers, addresses, order-history aggregates |
+| `mage-os/workflows-catalog` | Products, categories, EAV attribute auto-discovery |
+| `mage-os/workflows-inventory` | Stock / CatalogInventory |
+| `mage-os/workflows-review` | Product reviews |
+| `mage-os/workflows-newsletter` | Newsletter subscriptions |
+| `mage-os/workflows-wishlist` | Wishlists |
 
-See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-goals.
+**Optional extras** (not in the suite metapackage — require separately):
+
+| Package | What it does |
+|---|---|
+| `mage-os/workflows-canvas` | React Flow visual workflow editor/viewer |
+| `mage-os/workflows-templates` | Bundled template gallery (14 ready-made recipes) |
+| `mage-os/workflows-admin-extension` | Native-grid visibility strips on order/customer/product grids |
+| `mage-os/workflows-approvals` | Human-decision approval gate for workflow steps |
+| `mage-os/workflows-import-suppression` | Suppresses workflow dispatch during bulk CSV imports |
+
+## CLI
+
+```
+bin/magento workflow:run           # Execute a workflow manually
+bin/magento workflow:import        # Import workflow definition JSON
+bin/magento workflow:export        # Export workflow definition JSON
+bin/magento workflow:stats         # Execution statistics
+bin/magento workflow:health        # Queue and engine health check
+bin/magento workflow:secret:set    # Store an encrypted secret for use in actions
+bin/magento workflow:secret:list   # List stored secrets
+bin/magento workflow:secret:delete # Remove a secret
+bin/magento workflow:template:list    # List available templates
+bin/magento workflow:template:install # Install a template as a new workflow
+```
+
+## How it works
+
+1. **Triggers** fire when something happens — an order is placed, a cron schedule hits, a manual CLI run.
+2. **Conditions** evaluate against the entity using Magento's `Rule\Model` — full EAV introspection, combinable with AND/OR/NOT.
+3. **Actions** execute in a step graph — linear, branching, or with delays (business-days and store-timezone aware). The executor is queue-backed with crash recovery, loop guards, and a circuit breaker.
+
+Actions are registered into an `ActionPool` via `di.xml`. To add a custom action, implement `ActionInterface` and register it — that's the extension API. See `src/module-workflows-actions-core/etc/di.xml` for the pattern.
+
+Workflows support **shadow mode** (log what *would* happen without side effects) and **dry-run** (trace execution against a real entity without writing anything).
+
+## Project status
+
+**What works:** The full engine — triggers, conditions, actions, delays, branching, the admin UI (grid + form with JSON editor + execution logs), REST API, CLI, import/export, shadow mode, dry-run, the template gallery, the React Flow canvas, and the approval gate. CI runs lint and unit tests on PHP 8.1–8.4.
+
+**What needs work:**
+- The admin condition editor ships a **JSON editor fallback** — the rule-widget tab and metadata-driven action form are not yet built
+- Test coverage is growing (280 unit tests, 90 integration tests) but incomplete
+- The **B2B domain pack** is designed but not implemented
+- No signed remote template feed yet
+- APIs and schema will change — this is a 0.x release
+
+See the [Delivery Plan](docs/13-delivery-plan.md) and [Capability Roadmap](docs/16-capability-roadmap.md) for the full picture.
 
 ## Documentation
 
-| Doc | Contents |
+| | |
 |---|---|
-| [01 — Overview & Positioning](docs/01-overview.md) | Locked decisions, non-goals, strategy |
-| [02 — Package Decomposition](docs/02-packages.md) | Composer package layout and dependencies |
-| [03 — Domain Model](docs/03-domain-model.md) | Entities, DDL, versioning semantics |
-| [04 — Definition Format](docs/04-definition-format.md) | The definition JSON contract, import/export |
-| [05 — Trigger Layer](docs/05-triggers.md) | Event, scheduled, and manual triggers |
-| [06 — Condition Engine](docs/06-conditions.md) | Rule-model generalization, two-phase evaluation, delay semantics |
-| [07 — Action Framework](docs/07-actions.md) | Action contract, core library, webhook action, variable resolution, guards |
-| [08 — Execution Model](docs/08-execution-model.md) | Queue topology, resumption, crash safety, sizing |
-| [09 — Scope, ACL & Observability](docs/09-scope-acl-observability.md) | Multi-store semantics, permissions, logging |
-| [10 — Security Model](docs/10-security.md) | SSRF hardening, deferred privilege escalation, secrets, PII |
-| [11 — Admin UI](docs/11-admin-ui.md) | v1 form UI, v2 canvas, shadow mode, merchant accessibility |
-| [12 — B2B Pack](docs/12-b2b.md) | Adobe Commerce B2B triggers/conditions/actions |
-| [13 — Delivery Plan](docs/13-delivery-plan.md) | Phases, effort estimates, test strategy |
-| [14 — Risks & Open Questions](docs/14-risks.md) | Risk register with mitigations |
-| [15 — Operations Guide](docs/15-operations.md) | Consumers, cron, health checks, retention, recovery |
-| [16 — Capability Roadmap](docs/16-capability-roadmap.md) | Post-review execution record: waves 1–5 implemented, deferred scope |
-| [17 — Use Cases](docs/17-use-cases.md) | 100+ high-level examples of how merchants and agencies use the engine |
-| [18 — Known Boundaries](docs/18-limitations.md) | ~60 flows the engine does *not* support (yet), each with the architectural reason |
-| [19 — Testing Strategy](docs/19-testing-strategy.md) | Test inventory, current-vs-ideal evaluation, behavior-findings registry |
-| [20 — Integration Test Plan](docs/20-integration-test-plan.md) | Magento integration-test lane: harness wiring, suite catalog, phasing |
-| [21 — LLM-Assisted Authoring](docs/21-ai-assisted-authoring.md) | The sanctioned generate → validate → dry-run → install-disabled loop, agent boundaries, the agent skills shipped in `mage-os/workflows` |
-| [Discovery — Phase 3 & Enhancements](docs/discovery/README.md) | Planning/evaluation docs (canvas, template gallery, dry-run, branching, batch aggregation, fan-out, entity cross-referencing) plus bottom-up [implementation plans](docs/discovery/implementation/README.md) |
-
-The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).
+| **Start here** | [Overview & Positioning](docs/01-overview.md) · [Definition Format](docs/04-definition-format.md) · [Use Cases](docs/17-use-cases.md) |
+| **Architecture** | [Domain Model](docs/03-domain-model.md) · [Packages](docs/02-packages.md) · [Execution Model](docs/08-execution-model.md) |
+| **Building blocks** | [Triggers](docs/05-triggers.md) · [Conditions](docs/06-conditions.md) · [Actions](docs/07-actions.md) |
+| **Operating** | [Operations Guide](docs/15-operations.md) · [Security Model](docs/10-security.md) · [Scope & ACL](docs/09-scope-acl-observability.md) |
+| **Planning** | [Delivery Plan](docs/13-delivery-plan.md) · [Roadmap](docs/16-capability-roadmap.md) · [Risks](docs/14-risks.md) · [Known Boundaries](docs/18-limitations.md) |
+| **Admin UI** | [Admin UI](docs/11-admin-ui.md) · [LLM-Assisted Authoring](docs/21-ai-assisted-authoring.md) |
+| **Testing** | [Testing Strategy](docs/19-testing-strategy.md) · [Integration Test Plan](docs/20-integration-test-plan.md) |
+| **Future** | [B2B Pack](docs/12-b2b.md) · [Discovery & Enhancements](docs/discovery/README.md) |
 
 ## Repository layout
 
 ```
-# Engine + shared infrastructure (entity-agnostic)
-src/module-workflows/                 mage-os/workflows              MageOS_Workflows (core engine)
-src/module-workflows-admin-ui/        mage-os/workflows-admin-ui     MageOS_WorkflowsAdminUi
-src/module-workflows-actions-core/    mage-os/workflows-actions-core MageOS_WorkflowsActionsCore (notify + flow actions)
-src/module-workflows-triggers-core/   mage-os/workflows-triggers-core MageOS_WorkflowsTriggersCore (notifier binding + EventPublisher)
-src/module-workflows-scheduler/       mage-os/workflows-scheduler    MageOS_WorkflowsScheduler (cron + QueryRunner)
-# Domain packs (one per commerce domain — roots, hydrators, relations, triggers, actions)
-src/module-workflows-sales/           mage-os/workflows-sales        MageOS_WorkflowsSales
-src/module-workflows-customer/        mage-os/workflows-customer     MageOS_WorkflowsCustomer
-src/module-workflows-catalog/         mage-os/workflows-catalog      MageOS_WorkflowsCatalog
-src/module-workflows-inventory/       mage-os/workflows-inventory    MageOS_WorkflowsInventory
-src/module-workflows-review/          mage-os/workflows-review       MageOS_WorkflowsReview
-src/module-workflows-newsletter/      mage-os/workflows-newsletter   MageOS_WorkflowsNewsletter
-# Metapackage
-src/metapackage-workflows-suite/      mage-os/workflows-suite        (engine + infra + all six domain packs)
-# Optional extras (opt-in, not in the suite)
-src/module-workflows-canvas/          mage-os/workflows-canvas       MageOS_WorkflowsCanvas (optional React Flow viewer + editor)
-src/module-workflows-templates/       mage-os/workflows-templates    MageOS_WorkflowsTemplates (bundled gallery content pack)
-src/module-workflows-admin-extension/ mage-os/workflows-admin-extension MageOS_WorkflowsAdminExtension (native-grid visibility addon)
-src/module-workflows-import-suppression/ mage-os/workflows-import-suppression MageOS_WorkflowsImportSuppression (optional bulk-import suppression)
-src/module-workflows-approvals/       mage-os/workflows-approvals    MageOS_WorkflowsApprovals (optional human-decision gate)
-spec/                                 Published definition + export JSON Schemas, conformance fixtures
-docs/                                 Architecture documentation
+src/module-workflows/                    Core engine
+src/module-workflows-admin-ui/           Admin UI
+src/module-workflows-actions-core/       Built-in actions
+src/module-workflows-triggers-core/      Async-events trigger binding
+src/module-workflows-scheduler/          Cron + query-based triggers
+src/module-workflows-sales/              Sales domain pack
+src/module-workflows-customer/           Customer domain pack
+src/module-workflows-catalog/            Catalog domain pack
+src/module-workflows-inventory/          Inventory domain pack
+src/module-workflows-review/             Review domain pack
+src/module-workflows-newsletter/         Newsletter domain pack
+src/module-workflows-wishlist/           Wishlist domain pack
+src/metapackage-workflows-suite/         Metapackage (all of the above)
+src/module-workflows-canvas/             Optional: React Flow editor
+src/module-workflows-templates/          Optional: template gallery
+src/module-workflows-admin-extension/    Optional: native-grid strips
+src/module-workflows-approvals/          Optional: approval gate
+src/module-workflows-import-suppression/ Optional: bulk-import suppression
+spec/                                    JSON Schemas + conformance fixtures
+docs/                                    Architecture documentation
+dev/                                     Test runner, shims, CI tools
 ```
 
-The engine and the three shared infrastructure packs are entity-agnostic *in fact*: order/customer/product/quote bindings live in the vertical **domain packs** ([domain-pack split](docs/discovery/implementation/08-domain-packs.md), executed July 2026), and [`dev/tools/dependency-honesty-check.php`](dev/tools/dependency-honesty-check.php) enforces honest composer metadata in CI.
-
-The core module ships the domain model (`etc/db_schema.xml`), two-phase condition engine (`Model/Rule/`), graph-walking executor and queue topology (`Model/Engine/`, `Model/Queue/`), variable resolver and secrets (`Model/Variable/`, `Model/Secrets/`), and the `workflow:*` CLI commands. Actions register into `ActionPool` via `di.xml` — see `src/module-workflows-actions-core/etc/di.xml` for the pattern; that *is* the connector SDK.
+The engine and shared infrastructure packs are entity-agnostic — all entity bindings live in the domain packs. [`dev/tools/dependency-honesty-check.php`](dev/tools/dependency-honesty-check.php) enforces this in CI.
 
 ## Licensing
 
-Mage-OS's own code in this repository is licensed **OSL-3.0** (`LICENSE.txt`, copied into each
-package so every Composer artifact carries its own license text).
+This repository's own code is licensed **OSL-3.0** (see `LICENSE.txt`, included in every package).
 
-One package redistributes third-party code: `mage-os/workflows-canvas` ships a prebuilt bundle
-(`view/adminhtml/web/js/dist/canvas.js`) with all of its dependencies inlined — React,
-`@xyflow/react`, the d3 helpers and **elkjs, which is EPL-2.0**. Attribution, the full license
-texts and the EPL-2.0 source-availability statement live in
-[`src/module-workflows-canvas/THIRD-PARTY-NOTICES.txt`](src/module-workflows-canvas/THIRD-PARTY-NOTICES.txt).
-That file is generated from the lockfile (`cd src/module-workflows-canvas/app && npm run notices`)
-and the `canvas` workflow fails on drift, so a dependency bump cannot silently drop an attribution.
+The `mage-os/workflows-canvas` package bundles third-party code (React, @xyflow/react, elkjs/EPL-2.0, d3 helpers) in a prebuilt JS file. Full attribution and license texts are in [`src/module-workflows-canvas/THIRD-PARTY-NOTICES.txt`](src/module-workflows-canvas/THIRD-PARTY-NOTICES.txt), generated from the lockfile and verified by CI.
 
-No other package *redistributes* third-party code. Two declare ordinary Composer dependencies
-outside the Magento/Mage-OS namespaces — `guzzlehttp/guzzle` (`workflows-actions-core`) and
-`dragonmantank/cron-expression` (`workflows-scheduler`), both MIT and both already required by
-Magento core. Composer resolves those at install time and each ships its own license text into
-`vendor/`, so they need no attribution from us; the canvas bundle is the only place where someone
-else's code travels inside a Mage-OS file.
+No other package redistributes third-party code. Ordinary Composer dependencies (guzzlehttp/guzzle, dragonmantank/cron-expression — both MIT, both already in Magento core) are resolved at install time.
 
-## Status
+## Contributing
 
-**Implemented, pre-alpha.** The full Phase 1–2 surface from the [Delivery Plan](docs/13-delivery-plan.md), plus waves 1–5 of the [Capability Roadmap](docs/16-capability-roadmap.md), is coded: core engine (linear + delays with business-days/store-local-time options + branches + schema-2 `wait` steps), condition pool for order/customer/quote/product with EAV auto-discovery and customer order-history aggregates, 22 core actions including the SSRF-hardened webhook, async-events notifier trigger path, scheduler with abandoned-cart and stock-threshold detection, REST API for workflow CRUD and execution reads, adminhtml UI (grid, form with JSON definition editor, execution logs, ACL), import/export/run/stats CLI, loop guards, circuit breaker, shadow mode. The follow-on discovery-track build ([docs/discovery/](docs/discovery/README.md)) added, behind default-off flags and optional modules: multi-way `switch` branching with save-time graph validation (definition schema 3), entity cross-referencing (relation registry), a side-effect-free dry-run (CLI/REST/admin trace panel), trigger-level fan-out, batch aggregation, the template gallery (14 bundled recipes), the optional React Flow canvas, and the native-grid visibility addon. The bundled entity bindings have since been reorganized into six vertical domain packs (sales, customer, catalog, inventory, review, newsletter) plus a `workflows-suite` metapackage, leaving the engine and the shared trigger/action/scheduler packs entity-agnostic ([domain-pack split](docs/discovery/implementation/08-domain-packs.md)). A standalone test runner exercises `Test/Unit` across the module suite (via a Magento shim layer, `dev/tests/shims/`), plus the canvas's TypeScript tests, with CI lint + units on PHP 8.1–8.4.
+Contributions are welcome. This project is in early development — please open an issue before starting significant work so we can discuss the approach.
 
-Not yet done: integration against a live Magento install (the code has not been compiled by `setup:di:compile` or exercised end-to-end — this remains the gate before any GA claim), full unit/integration coverage (the runner exists; suites are still growing), the rule-widget condition editor tab and metadata-driven dynamicRows action form (v1 ships a JSON editor fallback), the B2B pack, and a signed remote template feed. Class-name fidelity against `mageos-async-events` internals has now been audited against the real package source (`mage-os/mageos-async-events` @ `b249976`) and holds: the `NotifierFactory` `notifierClasses` object-pool keyed by subscription `metadata`, the `NotifierInterface::notify(AsyncEventInterface, CloudEventImmutable): ResultInterface` contract (we narrow the return to `NotifierResult`), the `async_events.xsd` node shape, and the `AsyncEventRepositoryInterface::save(AsyncEventInterface, bool $checkResources)` signature plus the `AsyncEventInterface` accessors the subscription lifecycle drives are all confirmed (citations in `src/module-workflows-triggers-core/etc/di.xml` and class docblocks; asserted at runtime by `AsyncEventsFidelityTest`). Two items are flagged rather than confirmed: `EventPublisher` publishes through the async-events *delivery* dispatcher (`EventDispatcher::dispatch`) instead of the queue publisher (`AsyncEventPublisherInterface::publish`) — a synchronous-vs-async / payload-fidelity trade-off; and upstream `AsyncEventRepository::save()` ignores `event_name` changes on an existing subscription, so re-pointing a bound workflow's trigger needs a subscription recreate. Both are documented in `docs/14-risks.md`. End-to-end execution against a live Magento install (compiled by `setup:di:compile`) remains the outstanding gate before any GA claim.
+## Credits
+
+Built by [Mage-OS](https://mage-os.org) contributors with extensive use of [Claude Code](https://claude.com/claude-code) for architecture, implementation, and documentation.
