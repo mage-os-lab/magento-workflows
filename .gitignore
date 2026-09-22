@@ -8,6 +8,8 @@ composer.lock
 .vscode/
 *.swp
 .DS_Store
-# Local agent state stays untracked; the checked-in agent skills do not.
+# Local agent state stays untracked. The two entries under .claude/skills/ are
+# checked-in symlinks to the canonical skills in
+# src/module-workflows/.agents/skills/, so a checkout picks them up with no setup.
 /.claude/*
 !/.claude/skills/

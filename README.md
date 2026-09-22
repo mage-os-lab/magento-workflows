@@ -47,7 +47,7 @@ See [Positioning & Scope](docs/01-overview.md) for the full rationale and non-go
 | [18 — Known Boundaries](docs/18-limitations.md) | ~60 flows the engine does *not* support (yet), each with the architectural reason |
 | [19 — Testing Strategy](docs/19-testing-strategy.md) | Test inventory, current-vs-ideal evaluation, behavior-findings registry |
 | [20 — Integration Test Plan](docs/20-integration-test-plan.md) | Magento integration-test lane: harness wiring, suite catalog, phasing |
-| [21 — LLM-Assisted Authoring](docs/21-ai-assisted-authoring.md) | The sanctioned generate → validate → dry-run → install-disabled loop, agent boundaries, in-repo agent skills |
+| [21 — LLM-Assisted Authoring](docs/21-ai-assisted-authoring.md) | The sanctioned generate → validate → dry-run → install-disabled loop, agent boundaries, the agent skills shipped in `mage-os/workflows` |
 | [Discovery — Phase 3 & Enhancements](docs/discovery/README.md) | Planning/evaluation docs (canvas, template gallery, dry-run, branching, batch aggregation, fan-out, entity cross-referencing) plus bottom-up [implementation plans](docs/discovery/implementation/README.md) |
 
 The original consolidated architecture document is preserved at [docs/architecture-plan.md](docs/architecture-plan.md).

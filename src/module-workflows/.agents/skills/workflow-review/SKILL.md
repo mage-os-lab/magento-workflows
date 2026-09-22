@@ -111,7 +111,8 @@ The renderer also caps at 25 steps. A long graph is summarized, not fully descri
 
 ## Reference
 
-`.claude/skills/workflow-authoring/reference/definition-format.md` (step types, edges,
-validation codes) and `reference/api-surface.md` (routes, ACLs, CLI). Repo docs:
-`docs/04-definition-format.md`, `docs/09-scope-acl-observability.md`, `docs/10-security.md`,
-`docs/15-operations.md`, `docs/21-ai-assisted-authoring.md`.
+The sibling `workflow-authoring` skill carries `reference/definition-format.md` (step types,
+edges, validation codes) and `reference/api-surface.md` (routes, ACLs, CLI); both apply here
+unchanged. Project docs live in the source repository, not in a Magento install — read them
+there (or on GitHub): `docs/04-definition-format.md`, `docs/09-scope-acl-observability.md`,
+`docs/10-security.md`, `docs/15-operations.md`, `docs/21-ai-assisted-authoring.md`.

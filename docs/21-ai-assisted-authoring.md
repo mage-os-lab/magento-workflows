@@ -152,11 +152,14 @@ Three format facts cause most machine-generation failures, so state them early i
    only — never in keys, never as an action code, never as an attribute code
    ([10 §SSRF hardening — trust boundary](10-security.md#ssrf-hardening-the-webhook-action)).
 
-## In-repo agent skills
+## Shipped agent skills
 
-Two skills ship in [`.claude/skills/`](../.claude/skills/), so an agent working in a checkout
-of this repo — or in a customer project vendoring it — picks up the discipline automatically
-rather than inferring it:
+Two skills live in
+[`src/module-workflows/.agents/skills/`](../src/module-workflows/.agents/skills/) — inside the
+`mage-os/workflows` package, so a store's copy is version-pinned to the engine it actually
+runs. These files assert exact endpoint paths, field names, ACL resources and CLI flags; a
+stale copy against a newer engine would mislead an agent confidently, which is the whole
+argument for pinning them to the module rather than keeping them repo-only.
 
 - **`workflow-authoring`** — the format, pool discovery, the validate → dry-run →
   install-disabled loop, and the hard rules (never enable, never touch secrets, always
@@ -169,6 +172,34 @@ rather than inferring it:
   irreversible actions, outbound webhooks and captured-response usage, stale-snapshot
   branches, long parks, approval-timeout consequences, fan-out blast radius, and referenced
   secret names.
+
+### Getting them into a project
+
+Claude Code discovers skills at the **project** root (`<magento-root>/.claude/skills/`), never
+inside `vendor/`. Composer packaging alone therefore never makes them "just work" — one copy
+or link step exists in every design. From your Magento root:
+
+```bash
+mkdir -p .claude/skills
+cp -R vendor/mage-os/workflows/.agents/skills/* .claude/skills/
+```
+
+Re-run after `composer update` to stay in sync, or symlink instead so they track the installed
+module automatically:
+
+```bash
+mkdir -p .claude/skills
+ln -sfn ../../vendor/mage-os/workflows/.agents/skills/workflow-authoring .claude/skills/workflow-authoring
+ln -sfn ../../vendor/mage-os/workflows/.agents/skills/workflow-review .claude/skills/workflow-review
+```
+
+In a checkout of this repo the same links already exist, pointing at `src/` instead of
+`vendor/`, so contributors pick the skills up with no setup — and edits land on the canonical
+copies that ship.
+
+Everything else under `docs/` and `spec/` is repo-only and always has been: it is reference
+material for building the engine, not runtime input. The skills are the part an agent needs
+*at the store*, which is why they are the part that got packaged.
 
 The skills are instructions, not enforcement. The ACL is the enforcement.
 

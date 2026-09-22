@@ -153,7 +153,11 @@ Then stop. Do not enable, do not run it, do not "just test it live".
   validation codes.
 - `reference/api-surface.md` — every endpoint and CLI command with its ACL, verified
   against `src/module-workflows/etc/webapi.xml` and `Console/Command/`.
-- Repo docs: `docs/04-definition-format.md`, `docs/05-triggers.md`, `docs/06-conditions.md`,
-  `docs/07-actions.md`, `docs/10-security.md`, `docs/21-ai-assisted-authoring.md`.
-- Machine-readable: `spec/workflow-definition.schema.json`, `spec/workflow-export.schema.json`,
-  `spec/workflow-template.schema.json`, worked examples in `spec/fixtures/`.
+- Project docs and schemas live in the source repository, not in a Magento install — read
+  them there (or on GitHub) when this skill is installed into a store: `docs/04-definition-format.md`,
+  `docs/05-triggers.md`, `docs/06-conditions.md`, `docs/07-actions.md`, `docs/10-security.md`,
+  `docs/21-ai-assisted-authoring.md`; machine-readable `spec/workflow-definition.schema.json`,
+  `spec/workflow-export.schema.json`, `spec/workflow-template.schema.json`, and worked
+  examples in `spec/fixtures/`.
+- The installation itself always outranks both: the metadata endpoints are the authority on
+  which actions, triggers and options actually exist here.
