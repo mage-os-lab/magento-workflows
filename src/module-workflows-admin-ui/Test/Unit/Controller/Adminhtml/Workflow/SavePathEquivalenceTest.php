@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\WorkflowsAdminUi\Test\Unit\Controller\Adminhtml\Workflow;
 
+use Magento\Framework\Module\Manager as ModuleManager;
 use MageOS\Workflows\Model\Definition\Definition;
 use MageOS\WorkflowsAdminUi\Controller\Adminhtml\Workflow\Save;
 use PHPUnit\Framework\TestCase;
@@ -113,6 +114,75 @@ JSON;
         $this->assertFalse(
             array_key_exists('ui', json_decode($stored, true)),
             'A ui-free definition must stay ui-free through the save path'
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // Where a successful save lands (work package P1).
+    //
+    // Sharing the controller means sharing its redirect, so the canvas passes
+    // back=canvas to come back to itself instead of the classic form -- the
+    // only way canvas-first authoring of a NEW workflow can continue editing,
+    // since the id exists only after this save. Same reflection posture as the
+    // assembler above: resolveSuccessRedirect() touches one injected
+    // collaborator, set directly on an un-constructed instance.
+    // ---------------------------------------------------------------------
+
+    /**
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function resolveSuccessRedirect(mixed $back, int $workflowId, bool $canvasEnabled = true): array
+    {
+        $controller = (new \ReflectionClass(Save::class))->newInstanceWithoutConstructor();
+        $moduleManager = new class ($canvasEnabled) extends ModuleManager {
+            public function __construct(private readonly bool $canvasEnabled)
+            {
+                // No parent call: the real Manager wants module-list
+                // collaborators this test never exercises.
+            }
+
+            public function isEnabled($moduleName)
+            {
+                return $moduleName === 'MageOS_WorkflowsCanvas' && $this->canvasEnabled;
+            }
+        };
+        (new \ReflectionProperty(Save::class, 'moduleManager'))->setValue($controller, $moduleManager);
+
+        return (new \ReflectionMethod(Save::class, 'resolveSuccessRedirect'))
+            ->invoke($controller, $back, $workflowId);
+    }
+
+    public function testCanvasBackReturnsToTheCanvasWithTheSavedId(): void
+    {
+        $this->assertSame(
+            ['mageos_workflows_canvas/canvas/edit', ['workflow_id' => 42]],
+            $this->resolveSuccessRedirect('canvas', 42)
+        );
+    }
+
+    public function testCanvasBackDegradesToTheClassicFormWhenTheCanvasIsDisabled(): void
+    {
+        // The canvas package is optional; a stale/forged flag must never
+        // redirect to a route the installation does not have.
+        $this->assertSame(
+            ['mageos_workflows/workflow/edit', ['workflow_id' => 42]],
+            $this->resolveSuccessRedirect('canvas', 42, false)
+        );
+    }
+
+    public function testOrdinaryBackStillReturnsToTheClassicForm(): void
+    {
+        $this->assertSame(
+            ['mageos_workflows/workflow/edit', ['workflow_id' => 42]],
+            $this->resolveSuccessRedirect('1', 42)
+        );
+    }
+
+    public function testNoBackStillReturnsToTheGrid(): void
+    {
+        $this->assertSame(
+            ['mageos_workflows/workflow/index', []],
+            $this->resolveSuccessRedirect(null, 42)
         );
     }
 }

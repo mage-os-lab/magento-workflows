@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { EdgeMap, StepNode } from './types';
 
 /**
@@ -56,25 +57,29 @@ export function edgeHandles(step: StepNode): string[] {
   return Object.keys(getStepEdges(step));
 }
 
-/** Human label for an edge name, for edge rendering. */
+/**
+ * Human label for an edge name, for edge rendering. Resolved through t() at
+ * call time (the phrase map is installed before anything renders); the EDGE
+ * NAMES themselves are machine values and never translated.
+ */
 export function edgeLabel(edgeName: string): string {
   switch (edgeName) {
     case 'next':
       return '';
     case 'on_true':
-      return 'yes';
+      return t('yes');
     case 'on_false':
-      return 'no';
+      return t('no');
     case 'on_event':
-      return 'on event';
+      return t('on event');
     case 'on_timeout':
-      return 'on timeout';
+      return t('on timeout');
     case 'on_approved':
-      return 'approved';
+      return t('approved');
     case 'on_rejected':
-      return 'rejected';
+      return t('rejected');
     case 'default':
-      return 'default';
+      return t('default');
     default:
       return edgeName.startsWith('case:') ? edgeName.slice('case:'.length) : edgeName;
   }

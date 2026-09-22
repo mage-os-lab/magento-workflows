@@ -35,7 +35,11 @@ class DefinitionValidation implements DefinitionValidationInterface
         ?string $entityType = null
     ): DefinitionValidationResultInterface {
         $result = $this->validator->validate(
-            new ValidationSubject($definition, $conditionsSerialized),
+            // The trigger fields ride into the subject, not just the plain-language
+            // renderer: otherwise the trigger-aware checks (trigger ref, fan-out
+            // alignment) stay silent here and REST/canvas validate would disagree
+            // with what the same pipeline says at save time.
+            new ValidationSubject($definition, $conditionsSerialized, $triggerType, $triggerRef, $entityType),
             // Dry-run: per-action ACL re-authorization is an authoring-time
             // gate and deliberately does not run here (F2).
             new ValidationContext(

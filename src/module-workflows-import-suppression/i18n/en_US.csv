@@ -1,0 +1,2 @@
+"Suppress Workflow Dispatch During Import","Suppress Workflow Dispatch During Import"
+"Wraps Data/System > Import runs in the suppression scope so a large CSV import (e.g. catalog_product_import) does not fire one dispatch evaluation per row. Disable only if a store deliberately wants per-row workflow reactions during import.","Wraps Data/System > Import runs in the suppression scope so a large CSV import (e.g. catalog_product_import) does not fire one dispatch evaluation per row. Disable only if a store deliberately wants per-row workflow reactions during import."

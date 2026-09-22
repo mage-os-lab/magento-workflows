@@ -9,6 +9,7 @@ use MageOS\Workflows\Api\Data\WorkflowInterface;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 use MageOS\Workflows\Console\Command\ExportCommand;
 use MageOS\Workflows\Console\Command\ImportCommand;
+use MageOS\Workflows\Model\Definition\Definition;
 use MageOS\Workflows\Model\WorkflowFactory;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -45,7 +46,9 @@ class ImportExportRoundTripTest extends TestCase
     public function testExportThenImportRoundTripsToADeepEqualDefinition(): void
     {
         $definition = [
-            'schema' => 1,
+            // Current schema: export/import normalizes legacy versions upward,
+            // so only a current-schema fixture round-trips decoded-equal.
+            'schema' => Definition::SCHEMA_VERSION,
             'entry' => 's1',
             'steps' => [
                 's1' => [

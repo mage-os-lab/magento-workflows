@@ -14,7 +14,7 @@
             "edition": "any"
         },
         "parameters": [
-            {"key": "vip_group_id", "label": "VIP customer group ID", "type": "string", "required": true}
+            {"key": "vip_group_id", "label": "VIP customer group ID", "type": "entity:customer_group", "required": true}
         ]
     },
     "workflow": {

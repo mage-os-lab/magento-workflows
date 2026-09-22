@@ -60,12 +60,38 @@
         </arguments>
     </type>
 
-    <!-- Option source: customer groups (relocated from the engine); it lives
-         with its consumer (customer.assign_group). -->
+    <!-- Option sources: customer groups (relocated from the engine) and the
+         searchable customer-attribute source backing customer.set_attribute's
+         attribute_code picker. Both live with their consumers. -->
     <type name="MageOS\Workflows\Model\Option\OptionSourcePool">
         <arguments>
             <argument name="sources" xsi:type="array">
                 <item name="customer_groups" xsi:type="object">MageOS\WorkflowsCustomer\Model\Option\CustomerGroupOptionSource</item>
+                <item name="customer_attributes" xsi:type="object">MageOS\WorkflowsCustomer\Model\Option\CustomerAttributeOptionSource</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- entity:customer_group alias for the source above; a bounded list. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="customer_group" xsi:type="array">
+                    <item name="source" xsi:type="string">customer_groups</item>
+                    <item name="bounded" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- entity:customer_group alias for the source above; a bounded list. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="customer_group" xsi:type="array">
+                    <item name="source" xsi:type="string">customer_groups</item>
+                    <item name="bounded" xsi:type="boolean">true</item>
+                </item>
             </argument>
         </arguments>
     </type>
@@ -87,7 +113,9 @@
     <!-- Deny-by-default attribute list for customer.set_attribute
          (docs/10-security.md, deferred privilege escalation; relocated from
          actions-core). Third parties may EXTEND this via di.xml array merge;
-         removing shipped entries is a deliberate, visible act. -->
+         removing shipped entries is a deliberate, visible act.
+         CustomerAttributeOptionSource reads the list back off this action, so the
+         attribute_code picker never offers a code the action would refuse. -->
     <type name="MageOS\WorkflowsCustomer\Action\Customer\SetAttribute">
         <arguments>
             <argument name="deniedAttributes" xsi:type="array">
@@ -123,6 +151,18 @@
             </argument>
             <argument name="dtoInterfaces" xsi:type="array">
                 <item name="customer" xsi:type="string">Magento\Customer\Api\Data\CustomerInterface</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Dry-run entity picker (03): the customer recent-entity provider. Global
+         scope for the same array_replace reason the admin-ui registration
+         documents — an area-scope declaration would wipe providers other packs
+         declare in global di.xml. -->
+    <type name="MageOS\Workflows\Model\DryRun\RecentEntityProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="customer" xsi:type="object">MageOS\WorkflowsCustomer\Model\DryRun\CustomerRecentEntityProvider</item>
             </argument>
         </arguments>
     </type>

@@ -45,6 +45,16 @@ jobs:
       - name: Dependency-honesty check
         run: php dev/tools/dependency-honesty-check.php
 
+  i18n-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: i18n catalog check
+        run: php dev/tools/i18n-collect-phrases.php --check
+
   xml-lint:
     runs-on: ubuntu-latest
     steps:

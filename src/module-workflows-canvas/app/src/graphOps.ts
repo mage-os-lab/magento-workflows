@@ -1,6 +1,7 @@
 import { canConnect, type ConnectParams } from './connectRules';
 import { edgeLabel } from './edges';
 import { nodeSummary } from './nodeSummary';
+import { blankCase } from './switchCases';
 import type { Graph, GraphEdge, GraphNode, MountConfig, StepNode, StepType } from './types';
 
 /**
@@ -52,6 +53,25 @@ export function addNode(
     nodes: [...graph.nodes, node],
     entry: isFirst ? id : graph.entry,
   };
+}
+
+/**
+ * A free spot for a click-added node: below the lowest existing node, aligned
+ * to its column. The old fixed {80,80} drop point stacked every added step on
+ * the same spot — three clicks produced what looked like ONE card, with the
+ * hidden ones silently catching edge drops meant for the visible one.
+ */
+export function freePosition(graph: Graph): { x: number; y: number } {
+  if (graph.nodes.length === 0) {
+    return { x: 80, y: 220 };
+  }
+  let lowest = graph.nodes[0];
+  for (const node of graph.nodes) {
+    if (node.position.y > lowest.position.y) {
+      lowest = node;
+    }
+  }
+  return { x: lowest.position.x, y: lowest.position.y + 150 };
 }
 
 /** Remove a node and every edge touching it (no dangling edges survive). */
@@ -133,9 +153,22 @@ export function blankStep(type: StepType, action?: string): StepNode {
     case 'branch':
       return { type: 'branch', conditions_serialized: null, on_true: null, on_false: null };
     case 'wait':
-      return { type: 'wait', config: { event: '' }, on_event: null, on_timeout: null };
+      // `waitStep.config` requires BOTH event and timeout, so the timeout is
+      // seeded the same way delay seeds duration and approval seeds P7D — the
+      // event is the operator's to pick and cannot be defaulted.
+      return {
+        type: 'wait',
+        config: { event: '', timeout: 'P1D' },
+        on_event: null,
+        on_timeout: null,
+      };
     case 'switch':
-      return { type: 'switch', cases: [], default: null };
+      // One starter case, because `switchStep.cases` declares minItems 1
+      // (Definition::assertSwitchStep rejects an empty list): a switch dropped
+      // from the palette must be saveable without first hand-editing JSON.
+      // conditions_serialized null = "always matches", so the starter case is
+      // valid as-is and the panel's case editor renames/extends it.
+      return { type: 'switch', cases: [blankCase('case_1')], default: null };
     case 'approval':
       // P7D default mirrors the form suggestion in docs/discovery/approval-gate.md §4
       // ("No indefinite parks" — timeout is required, P7D is the suggested default).

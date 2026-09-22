@@ -6,6 +6,7 @@ import {
   MiniMap,
   addEdge as _addEdge,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
   useReactFlow,
   type Connection,
@@ -13,24 +14,54 @@ import {
   type Node,
 } from '@xyflow/react';
 import type { Graph, MountConfig, StepNode } from '../types';
+import { t } from '../i18n';
 import { toDefinition } from '../mapping';
 import { autoLayout, needsLayout } from '../layout';
+import { nodeSummary } from '../nodeSummary';
+import {
+  buildTriggerCard,
+  buildTriggerFlowElements,
+  triggerPosition,
+  TRIGGER_NODE_ID,
+  type TriggerCard,
+  type TriggerNodeData,
+} from '../triggerNode';
 import { nodeTypes, type NodeData } from './WorkflowNode';
 import { Outline } from './Outline';
 import { Palette, type PaletteDragPayload } from './Palette';
 import { ConfigPanel } from './ConfigPanel';
 import { ConditionSlideOut } from './ConditionSlideOut';
+import { SETTINGS_NAME_INPUT_ID, WorkflowSettings } from './WorkflowSettings';
 import {
   addNode,
   blankStep,
   connect as connectOp,
   deleteNode,
   disconnect,
+  freePosition,
   moveNode,
   positionsOf,
 } from '../graphOps';
+import { preSaveFindings, type PreSaveFinding } from '../preSave';
+import { buildAttributeLabelMap, setConditionAttributeLabels } from '../conditionLabels';
+import { loadNodeMeta } from '../conditionsClient';
+import {
+  applyTargetConditions,
+  readRevalidate,
+  readTargetConditions,
+  supportsRevalidate,
+  type ConditionTarget,
+} from '../conditionTarget';
 import { canUndo, canRedo, initHistory, push, redo, undo, type History } from '../history';
+import {
+  applyMeta,
+  initMeta,
+  metaFingerprint,
+  metaSaveError,
+  type EditableMeta,
+} from '../workflowMeta';
 import { submitSave } from '../saveClient';
+import { armUnloadGuard, fingerprintDefinition, isDirty as isDirtyFn } from '../unsavedGuard';
 import {
   buildValidateRequest,
   debounce,
@@ -56,13 +87,79 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
   const [history, setHistory] = useState<History<Graph>>(() => initHistory(initialGraph));
   const graph = history.present;
 
-  const [layoutDirty, setLayoutDirty] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [pinned, setPinned] = useState<PinnedMessages>({ byNode: {}, document: [], hasErrors: false });
   const [status, setStatus] = useState<string>('');
-  const [conditionStep, setConditionStep] = useState<string | null>(null);
+  const [conditionTarget, setConditionTarget] = useState<ConditionTarget | null>(null);
+  // Pre-save review findings: shown after the first Save click when the graph
+  // has empty required fields / dangling paths; the second click saves anyway.
+  const [saveWarnings, setSaveWarnings] = useState<PreSaveFinding[] | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // The workflow ROOT condition tree. It is not part of the definition (it is
+  // its own workflow column), so it lives beside the graph history and is
+  // folded back into the config that saveClient/validateClient read — those two
+  // keep reading it from workflow meta, edited or not.
+  const [rootConditions, setRootConditions] = useState<string | null>(
+    config.workflow?.conditionsSerialized ?? null,
+  );
+
+  // The general workflow fields (name/status/entity/trigger/websites), edited
+  // in the persistent settings panel above the canvas. Like the root
+  // conditions they are not part of the definition, so they live beside the
+  // graph history and are folded into the config saveClient/validateClient
+  // read.
+  const [meta, setMeta] = useState<EditableMeta>(() => initMeta(config.workflow));
+
+  const effectiveConfig = useMemo<MountConfig>(() => {
+    let cfg = config;
+    if (config.workflow && config.workflow.conditionsSerialized !== rootConditions) {
+      cfg = { ...cfg, workflow: { ...config.workflow, conditionsSerialized: rootConditions } };
+    }
+    return applyMeta(cfg, meta);
+  }, [config, rootConditions, meta]);
 
   const readOnly = graph.readOnly;
+
+  // Serialize a graph exactly as a save would. One helper for both the save
+  // payload and the dirty comparison, so the two can never disagree about what
+  // "the current definition" is. Positions are always written: a bootstrapped
+  // or auto-laid-out layout must survive a save, not only a manual drag.
+  const definitionOf = useCallback(
+    (g: Graph) =>
+      toDefinition(g, {
+        positions: positionsOf(g),
+        existingUi: config.workflow?.definition?.ui,
+      }),
+    [config],
+  );
+  const definition = useMemo(() => definitionOf(graph), [definitionOf, graph]);
+
+  // ---- unsaved-changes guard (issue #18) ---------------------------------
+  // Refs rather than state: submitSave navigates away in the same tick it is
+  // called, so the guard must be disarmed synchronously on save — a state
+  // transition (and the effect cleanup it would schedule) lands too late.
+  const savedFingerprint = useRef<string | null>(null);
+  const dirty = useRef(false);
+  // The root condition tree and the settings-panel meta are saved alongside the
+  // definition, so an edit to either alone must still arm the guard.
+  const fingerprintNow = useMemo(
+    () => `${fingerprintDefinition(definition)}|${rootConditions ?? ''}|${metaFingerprint(meta)}`,
+    [definition, rootConditions, meta],
+  );
+  if (savedFingerprint.current === null) {
+    savedFingerprint.current = fingerprintNow;
+  }
+
+  useEffect(() => {
+    const nowDirty = isDirtyFn(savedFingerprint.current ?? '', fingerprintNow);
+    dirty.current = nowDirty;
+    setIsDirty(nowDirty);
+    // Any edit invalidates a pending "Save anyway": the next Save re-reviews.
+    setSaveWarnings(null);
+  }, [fingerprintNow]);
+
+  useEffect(() => armUnloadGuard(() => dirty.current), []);
 
   // Auto-layout once when the definition ships no ui block.
   useEffect(() => {
@@ -76,6 +173,12 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           ...h,
           present: moveAll(h.present, positions),
         }));
+        // A machine-generated first layout is not a user edit: re-baseline it
+        // (before the state lands, so the dirty effect sees it) or merely
+        // OPENING an un-laid-out workflow would arm the guard.
+        savedFingerprint.current = `${fingerprintDefinition(definitionOf(moveAll(graph, positions)))}|${
+          config.workflow?.conditionsSerialized ?? ''
+        }|${metaFingerprint(initMeta(config.workflow))}`;
       });
       return () => {
         cancelled = true;
@@ -109,8 +212,9 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
       return;
     }
     const def = JSON.stringify(toDefinition(graph, { positions: positionsOf(graph) }));
-    runValidate(config, def);
-  }, [graph, config, readOnly, runValidate]);
+    // effectiveConfig, so an edited ROOT tree is what gets live-validated.
+    runValidate(effectiveConfig, def);
+  }, [graph, effectiveConfig, readOnly, runValidate]);
 
   // ---- keyboard undo/redo ------------------------------------------------
   useEffect(() => {
@@ -133,41 +237,129 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
 
   const selectedNode = useMemo(() => graph.nodes.find((n) => n.id === selected) ?? null, [graph, selected]);
 
+  // Merchant labels for condition summaries ("Grand Total", not grand_total):
+  // fetched once per entity type from the same cached metadata feed the
+  // condition editor uses, then every existing face summary is recomputed.
+  // Fetch failure just leaves raw codes — never broken UI.
+  const [labelsVersion, setLabelsVersion] = useState(0);
+  useEffect(() => {
+    if (meta.entityType === '') {
+      return undefined;
+    }
+    let cancelled = false;
+    void loadNodeMeta(config, meta.entityType, null).then((res) => {
+      if (cancelled || !res.node) {
+        return;
+      }
+      setConditionAttributeLabels(buildAttributeLabelMap(res.node));
+      setLabelsVersion((v) => v + 1);
+      setHistory((h) => ({ ...h, present: refreshSummaries(h.present, config) }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [meta.entityType, config]);
+
+  // The presentational trigger card (see triggerNode.ts): rebuilt live from
+  // the settings-panel meta and the root conditions, so the canvas always
+  // shows what starts the workflow and its entry gate.
+  const triggerCard = useMemo<TriggerCard>(
+    () =>
+      buildTriggerCard(
+        {
+          triggerType: meta.triggerType,
+          triggerRef: meta.triggerRef,
+          entityType: meta.entityType,
+          conditionsSerialized: rootConditions,
+        },
+        config.triggers,
+        config.workflowOptions,
+      ),
+    // Deliberately NOT the whole meta object: the card reads only these three
+    // fields, and a new card identity reseeds every React Flow node/edge —
+    // depending on `meta` would rebuild the canvas (and drop its selection
+    // state) on every keystroke in the Name field. labelsVersion re-renders
+    // the condition summary once merchant labels arrive.
+    [meta.triggerType, meta.triggerRef, meta.entityType, rootConditions, config, labelsVersion],
+  );
+
   return (
-    <div className="wf-canvas wf-canvas--editor" role="application" aria-label="Workflow visual editor">
+    <div className="wf-canvas wf-canvas--editor" role="application" aria-label={t('Workflow visual editor')}>
       {readOnly && (
         <div className="wf-canvas__banner" role="alert">
-          This workflow declares schema {graph.schema}, newer than this canvas understands. Shown
-          read-only — edit it in the JSON editor.
+          {t('This workflow declares schema')} {graph.schema}.{' '}
+          {t('Shown read-only — edit it in the JSON editor.')}
         </div>
       )}
 
       <Toolbar
-        config={config}
+        title={meta.name !== '' ? meta.name : t('Workflow')}
         canUndo={canUndo(history)}
         canRedo={canRedo(history)}
         hasErrors={pinned.hasErrors}
         status={status}
         readOnly={readOnly}
+        rootConditionsSet={rootConditions !== null && rootConditions.trim() !== ''}
         onUndo={() => setHistory((h) => undo(h))}
         onRedo={() => setHistory((h) => redo(h))}
+        onEditRootConditions={() => setConditionTarget({ scope: 'workflow' })}
+        dirty={isDirty}
+        savingBlocked={saveWarnings !== null && saveWarnings.length > 0}
         onSave={() => {
-          setStatus('Saving…');
-          const positions = layoutDirty ? positionsOf(graph) : undefined;
-          const def = toDefinition(graph, {
-            positions: positions ?? positionsOf(graph),
-            existingUi: config.workflow?.definition?.ui,
-          });
-          submitSave(config, def);
+          // Client-side gate only for what the server would bounce anyway: a
+          // nameless workflow. Point at the always-visible settings panel by
+          // focusing its name input instead of navigating.
+          const metaError = metaSaveError(meta);
+          if (metaError !== null) {
+            setStatus(metaError);
+            document.getElementById(SETTINGS_NAME_INPUT_ID)?.focus();
+            return;
+          }
+          // First click with review findings: show them and hold the save. The
+          // second click ("Save anyway") proceeds — the server re-validates
+          // everything regardless.
+          if (saveWarnings === null) {
+            const findings = preSaveFindings(graph, config, meta);
+            if (findings.length > 0) {
+              setSaveWarnings(findings);
+              setStatus('');
+              return;
+            }
+          }
+          setStatus(t('Saving…'));
+          // Disarm first: the save IS a navigation (a real hidden-form POST),
+          // so a still-armed guard would prompt on the way out. The page is
+          // replaced by the controller's response either way, so there is no
+          // in-page state left to protect once the form is submitted.
+          savedFingerprint.current = fingerprintNow;
+          dirty.current = false;
+          submitSave(effectiveConfig, definition);
         }}
       />
+
+      {config.workflow !== null && (
+        <WorkflowSettings
+          meta={meta}
+          options={config.workflowOptions}
+          triggers={config.triggers}
+          readOnly={readOnly}
+          onChange={setMeta}
+        />
+      )}
 
       <div className="wf-canvas__stage">
         <Palette
           config={config}
           onAdd={(payload) => {
-            const g = addFromPayload(graph, payload, { x: 80, y: 80 }, config);
+            // A free spot below the graph (never the old fixed point that
+            // stacked every added card on the same pixels), and the new step
+            // opens selected so its config panel is immediately in view.
+            const g = addFromPayload(graph, payload, freePosition(graph), config);
             commit(g);
+            const added = g.nodes.find((n) => !graph.nodes.some((o) => o.id === n.id));
+            if (added) {
+              setSelected(added.id);
+            }
           }}
         />
 
@@ -176,29 +368,70 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
           graph={graph}
           pinned={pinned}
           readOnly={readOnly}
+          triggerCard={triggerCard}
+          onTriggerClick={() => {
+            if (!readOnly) {
+              setConditionTarget({ scope: 'workflow' });
+            }
+          }}
           onSelect={setSelected}
           onCommit={commit}
-          onMove={(id, position) => {
-            setLayoutDirty(true);
-            commit(moveNode(graph, id, position));
+          onMove={(id, position) => commit(moveNode(graph, id, position))}
+          onDeleted={(nodes, edges) => {
+            const what =
+              nodes > 0 && edges > 0
+                ? t('Step and connection deleted')
+                : nodes > 0
+                  ? t('Step deleted')
+                  : t('Connection deleted');
+            setStatus(`${what} — ${t('press Ctrl+Z to undo.')}`);
           }}
         />
 
         {selectedNode && (
           <ConfigPanel
+            // Keyed by step: the panel holds per-field UI state (a duration's
+            // composite-vs-ISO mode, a search field's query, a case key draft),
+            // and none of that should follow the selection to another step.
+            key={selectedNode.id}
             node={selectedNode}
             config={config}
             graph={graph}
             readOnly={readOnly}
-            onChange={(stepKey, step) => commit(replaceStep(graph, stepKey, step))}
+            onChange={(stepKey, step) => commit(replaceStep(graph, stepKey, step, config.actions))}
+            // Switch case edits arrive as a whole graph: a case key is an edge
+            // handle, so the panel's case ops (switchCases) rewrite nodes AND
+            // edges together and hand the result straight to the history.
+            onGraphChange={commit}
             onDelete={(stepKey) => {
               commit(deleteNode(graph, stepKey));
               setSelected(null);
             }}
-            onEditConditions={(stepKey) => setConditionStep(stepKey)}
+            onEditConditions={(target) => setConditionTarget(target)}
           />
         )}
       </div>
+
+      {saveWarnings !== null && saveWarnings.length > 0 && (
+        <div className="wf-canvas__save-review message message-warning" role="alert">
+          <p className="wf-canvas__save-review-head">
+            {t('Before you save — this workflow has gaps. Fix them, or press "Save anyway" to save as-is:')}
+          </p>
+          <ul>
+            {saveWarnings.map((f, i) => (
+              <li key={`${f.stepKey ?? 'wf'}-${i}`}>
+                {f.stepKey !== null ? (
+                  <button type="button" className="wf-canvas__save-review-jump" onClick={() => setSelected(f.stepKey)}>
+                    {f.message}
+                  </button>
+                ) : (
+                  f.message
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="wf-canvas__doc-messages" role="status" aria-live="polite">
         {pinned.document.length > 0 && (
@@ -217,20 +450,48 @@ export function Editor({ config, initialGraph }: Props): JSX.Element {
         overlay={{ nodeStatus: {}, nodeError: {}, durationMs: {}, takenEdgeIds: new Set() }}
         onSelect={setSelected}
         selected={selected}
+        trigger={triggerCard}
       />
 
-      {conditionStep && (
+      {conditionTarget && (
         <ConditionSlideOut
-          step={graph.nodes.find((n) => n.id === conditionStep)?.data.step ?? null}
-          stepKey={conditionStep}
-          onApply={(stepKey, conditionsSerialized) => {
-            const node = graph.nodes.find((n) => n.id === stepKey);
-            if (node) {
-              commit(replaceStep(graph, stepKey, { ...node.data.step, conditions_serialized: conditionsSerialized }));
+          target={conditionTarget}
+          config={effectiveConfig}
+          readOnly={readOnly}
+          value={
+            conditionTarget.scope === 'workflow'
+              ? rootConditions
+              : readTargetConditions(stepOf(graph, conditionTarget.stepKey), conditionTarget)
+          }
+          revalidateEntity={
+            conditionTarget.scope === 'workflow'
+              ? null
+              : supportsRevalidate(stepOf(graph, conditionTarget.stepKey))
+                ? readRevalidate(stepOf(graph, conditionTarget.stepKey))
+                : null
+          }
+          onApply={(target, conditionsSerialized, revalidateEntity, notice) => {
+            if (target.scope === 'workflow') {
+              // Not part of the definition: it rides to the server through
+              // saveClient's conditions_serialized field (workflow meta).
+              setRootConditions(conditionsSerialized);
+            } else {
+              const step = stepOf(graph, target.stepKey);
+              if (step) {
+                commit(
+                  replaceStep(
+                    graph,
+                    target.stepKey,
+                    applyTargetConditions(step, target, conditionsSerialized, revalidateEntity),
+                    config.actions,
+                  ),
+                );
+              }
             }
-            setConditionStep(null);
+            setStatus(notice ?? '');
+            setConditionTarget(null);
           }}
-          onClose={() => setConditionStep(null)}
+          onClose={() => setConditionTarget(null)}
         />
       )}
     </div>
@@ -243,26 +504,43 @@ function FlowSurface({
   graph,
   pinned,
   readOnly,
+  triggerCard,
+  onTriggerClick,
   onSelect,
   onCommit,
   onMove,
+  onDeleted,
 }: {
   config: MountConfig;
   graph: Graph;
   pinned: PinnedMessages;
   readOnly: boolean;
+  triggerCard: TriggerCard;
+  onTriggerClick: () => void;
   onSelect: (id: string | null) => void;
   onCommit: (graph: Graph) => void;
   onMove: (id: string, position: { x: number; y: number }) => void;
+  onDeleted: (nodes: number, edges: number) => void;
 }): JSX.Element {
-  const { screenToFlowPosition } = useReactFlow();
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);
+  const { screenToFlowPosition, fitView } = useReactFlow();
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<Node<NodeData | TriggerNodeData>>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const fitted = useRef(false);
 
-  // Re-seed React Flow state whenever the source graph changes identity.
+  // Re-seed React Flow state whenever the source graph changes identity. The
+  // trigger node/edge are appended presentationally — they are not in the
+  // Graph model, cannot be deleted or rewired, and their position derives
+  // from the entry step (triggerNode.ts).
   useEffect(() => {
-    setRfNodes(
-      graph.nodes.map((n) => ({
+    const trigger = buildTriggerFlowElements(
+      triggerCard,
+      graph.entry,
+      triggerPosition(graph),
+      !readOnly,
+    );
+    setRfNodes([
+      trigger.node,
+      ...graph.nodes.map((n) => ({
         id: n.id,
         type: n.type,
         position: n.position,
@@ -271,17 +549,33 @@ function FlowSurface({
           messages: pinned.byNode[n.id] ?? [],
         } as unknown as NodeData,
       })),
-    );
-    setRfEdges(
-      graph.edges.map((e) => ({
+    ]);
+    setRfEdges([
+      ...trigger.edges,
+      ...graph.edges.map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
         sourceHandle: e.sourceHandle,
         label: e.label || undefined,
       })),
-    );
-  }, [graph, pinned, setRfNodes, setRfEdges]);
+    ]);
+  }, [graph, pinned, triggerCard, readOnly, setRfNodes, setRfEdges]);
+
+  // Frame the graph once, as soon as the nodes are MEASURED and their
+  // positions are REAL: the mount-time `fitView` prop fires before any nodes
+  // exist (they arrive via the seed effect above), fitView() on unmeasured
+  // nodes is a silent no-op, and a definition without a stored layout gets
+  // its true positions only after the async elk pass — without this, opening
+  // such a workflow lands the viewport on one corner of the graph. Later
+  // seeds (user edits) never re-fit: yanking the viewport mid-edit is worse.
+  const nodesInitialized = useNodesInitialized();
+  useEffect(() => {
+    if (!fitted.current && nodesInitialized && !needsLayout(graph)) {
+      fitted.current = true;
+      void fitView({ padding: 0.15, maxZoom: 1 });
+    }
+  }, [nodesInitialized, graph, fitView]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -334,13 +628,23 @@ function FlowSurface({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={(_, node) => onSelect(node.id)}
+        onNodeClick={(_, node) => {
+          if (node.id === TRIGGER_NODE_ID) {
+            onTriggerClick();
+            return;
+          }
+          onSelect(node.id);
+        }}
         onNodeDragStop={(_, node) => onMove(node.id, node.position)}
         onPaneClick={() => onSelect(null)}
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         elementsSelectable
         deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
+        // Generous magnetic snap: the visual dots are small, and a drop a few
+        // pixels off a 6px handle silently discarding the connection was the
+        // single hardest gesture in merchant testing.
+        connectionRadius={40}
         onDelete={({ nodes: deletedNodes, edges: deletedEdges }) => {
           // One combined commit for a delete gesture: a bare edge delete must
           // reach the graph too (it previously only touched React Flow's local
@@ -354,6 +658,9 @@ function FlowSurface({
             g = deleteNode(g, n.id);
           }
           onCommit(g);
+          // Keyboard deletion is easy to hit by accident and has no confirm:
+          // say what happened and how to take it back.
+          onDeleted(deletedNodes.length, deletedEdges.length);
         }}
         fitView
         proOptions={{ hideAttribution: true }}
@@ -367,41 +674,68 @@ function FlowSurface({
 }
 
 function Toolbar({
-  config,
+  title,
   canUndo: undoable,
   canRedo: redoable,
   hasErrors,
   status,
   readOnly,
+  rootConditionsSet,
+  dirty,
+  savingBlocked,
   onUndo,
   onRedo,
+  onEditRootConditions,
   onSave,
 }: {
-  config: MountConfig;
+  title: string;
   canUndo: boolean;
   canRedo: boolean;
   hasErrors: boolean;
   status: string;
   readOnly: boolean;
+  rootConditionsSet: boolean;
+  dirty: boolean;
+  savingBlocked: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onEditRootConditions: () => void;
   onSave: () => void;
 }): JSX.Element {
   return (
-    <div className="wf-canvas__toolbar" role="toolbar" aria-label="Editor actions">
-      <strong className="wf-canvas__title">{config.workflow?.name ?? 'Workflow'}</strong>
-      <button type="button" onClick={onUndo} disabled={!undoable || readOnly}>
-        Undo
+    <div className="wf-canvas__toolbar" role="toolbar" aria-label={t('Editor actions')}>
+      <strong className="wf-canvas__title">{title}</strong>
+      <button type="button" className="action-default" onClick={onUndo} disabled={!undoable || readOnly}>
+        {t('Undo')}
       </button>
-      <button type="button" onClick={onRedo} disabled={!redoable || readOnly}>
-        Redo
+      <button type="button" className="action-default" onClick={onRedo} disabled={!redoable || readOnly}>
+        {t('Redo')}
       </button>
-      <button type="button" className="wf-canvas__save" onClick={onSave} disabled={readOnly}>
-        Save
+      {/* The general workflow fields (name/status/entity/trigger/websites)
+          live in the persistent settings panel rendered below this toolbar. */}
+      {/* The workflow-level gate ("does this workflow run at all?"), edited in
+          the same slide-out as a step's tree. The badge is the set/unset
+          indicator — root conditions are otherwise invisible on the canvas. */}
+      <button
+        type="button"
+        className="action-default wf-canvas__root-conditions"
+        onClick={onEditRootConditions}
+        disabled={readOnly}
+      >
+        {t('Workflow conditions')}
+        <span className="wf-canvas__badge">{rootConditionsSet ? t('Set') : t('Not set')}</span>
+      </button>
+      {dirty && !readOnly && (
+        <span className="wf-canvas__dirty" role="status">
+          {t('Unsaved changes')}
+        </span>
+      )}
+      <button type="button" className="action-primary wf-canvas__save" onClick={onSave} disabled={readOnly}>
+        {savingBlocked ? t('Save anyway') : t('Save')}
       </button>
       {hasErrors && (
         <span className="wf-canvas__error" role="status">
-          Validation errors — see the badged steps.
+          {t('Validation errors — see the badged steps.')}
         </span>
       )}
       {status && <span className="wf-canvas__status">{status}</span>}
@@ -421,12 +755,37 @@ function addFromPayload(
   return addNode(graph, blankStep(type, payload.action), position, config);
 }
 
-function replaceStep(graph: Graph, stepKey: string, step: StepNode): Graph {
+function stepOf(graph: Graph, stepKey: string): StepNode | null {
+  return graph.nodes.find((n) => n.id === stepKey)?.data.step ?? null;
+}
+
+function replaceStep(
+  graph: Graph,
+  stepKey: string,
+  step: StepNode,
+  actions: MountConfig['actions'],
+): Graph {
   return {
     ...graph,
     nodes: graph.nodes.map((n) =>
-      n.id === stepKey ? { ...n, data: { ...n.data, step } } : n,
+      // Recompute the face summary alongside the step (switchCases.ts does the
+      // same): branch faces show their condition, wait faces their timeout,
+      // approval faces their title — all editable through paths that land here.
+      n.id === stepKey
+        ? { ...n, data: { ...n.data, step, summary: nodeSummary(step, actions) } }
+        : n,
     ),
+  };
+}
+
+/** Recompute every face summary (after merchant labels arrive). */
+function refreshSummaries(graph: Graph, config: MountConfig): Graph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((n) => ({
+      ...n,
+      data: { ...n.data, summary: nodeSummary(n.data.step, config.actions) },
+    })),
   };
 }
 

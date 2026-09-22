@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace MageOS\Workflows\Model\Template;
 
 use Magento\Framework\Exception\LocalizedException;
+use MageOS\Workflows\Model\Option\EntityOptionSourceRegistry;
+use MageOS\Workflows\Model\Option\OptionSourcePool;
 
 /**
  * Install-time %param.<key>% token substitution over a template's workflow body
@@ -16,12 +18,38 @@ use Magento\Framework\Exception\LocalizedException;
  *  - a provided value whose key is not a declared parameter → error;
  *  - a required parameter with neither a value nor a default → error;
  *  - a `select`/`options` value outside the declared option set → error;
+ *  - a `number` value that is non-numeric or outside a declared min/max → error;
+ *  - a `duration` value that is not an ISO-8601 interval → error;
+ *  - a `url` value that is not a valid http(s) URL → error;
+ *  - an `entity:*` value with no matching record in the mapped option source →
+ *    error;
  *  - any %param.*% token still present after substitution → error.
+ *
+ * The typed checks cover authored defaults as well as supplied values, and are
+ * skipped wholesale when a caller passes `$validateTypes: false` (admin preview,
+ * which renders a body before the operator has finished the form). Entity
+ * existence checks additionally no-op when no option-source pool / registry is
+ * wired (bare construction in unit tests), when the alias is unregistered, or
+ * when the mapped source is absent because its domain pack is not installed —
+ * CompatibilityChecker reports a missing pack separately.
  */
 class ParameterEngine
 {
     /** Matches a single substitution token, capturing the parameter key. */
     private const TOKEN_PATTERN = '/%param\.([a-z0-9_]+)%/';
+
+    /** Prefix marking a parameter type that names an entity alias. */
+    private const ENTITY_TYPE_PREFIX = 'entity:';
+
+    /**
+     * Both dependencies default to null so the engine stays constructible
+     * without a container; null disables entity existence checks only.
+     */
+    public function __construct(
+        private readonly ?OptionSourcePool $optionSourcePool = null,
+        private readonly ?EntityOptionSourceRegistry $entityRegistry = null
+    ) {
+    }
 
     /**
      * Apply the parameter values to the workflow body, returning the
@@ -30,12 +58,13 @@ class ParameterEngine
      * @param array<string, mixed> $workflow the template's `workflow` node
      * @param array<int, array<string, mixed>> $parameterDefs the `parameters` list
      * @param array<string, mixed> $values key => value (form / CLI / patch)
+     * @param bool $validateTypes false skips the typed checks (preview only)
      * @return array<string, mixed> the substituted workflow node
      * @throws LocalizedException
      */
-    public function apply(array $workflow, array $parameterDefs, array $values): array
+    public function apply(array $workflow, array $parameterDefs, array $values, bool $validateTypes = true): array
     {
-        $resolved = $this->resolveValues($parameterDefs, $values);
+        $resolved = $this->resolveValues($parameterDefs, $values, $validateTypes);
         $substituted = $this->substitute($workflow, $resolved);
         $this->assertNoLeftoverTokens($substituted);
 
@@ -52,7 +81,7 @@ class ParameterEngine
      * @return array<string, string>
      * @throws LocalizedException
      */
-    private function resolveValues(array $parameterDefs, array $values): array
+    private function resolveValues(array $parameterDefs, array $values, bool $validateTypes = true): array
     {
         $defsByKey = [];
         foreach ($parameterDefs as $def) {
@@ -84,6 +113,9 @@ class ParameterEngine
 
             $value = $this->scalarString($key, $value);
             $this->assertOption($key, $def, $value);
+            if ($validateTypes && $value !== '') {
+                $this->assertTypedValue($key, $def, $value);
+            }
             $resolved[$key] = $value;
         }
 
@@ -91,21 +123,13 @@ class ParameterEngine
     }
 
     /**
-     * A parameter is required unless it declares itself optional. Both flags
-     * exist in the schema; `required: true` forces it, `optional: true` (or the
-     * absence of `required`) makes it optional.
+     * Parameters are optional unless they declare `required: true`.
      *
      * @param array<string, mixed> $def
      */
     private function isRequired(array $def): bool
     {
-        if (!empty($def['required'])) {
-            return true;
-        }
-        if (!empty($def['optional'])) {
-            return false;
-        }
-        return false;
+        return !empty($def['required']);
     }
 
     /**
@@ -125,6 +149,133 @@ class ParameterEngine
         if (!in_array($value, $allowed, true)) {
             throw new LocalizedException(__(
                 'The value "%1" is not a valid option for template parameter "%2".',
+                $value,
+                $key
+            ));
+        }
+    }
+
+    /**
+     * Type-specific validation of a non-empty resolved value (supplied or
+     * defaulted). Every value is a string by contract, so each branch parses
+     * the string form; unrecognised types validate nothing.
+     *
+     * @param array<string, mixed> $def
+     * @throws LocalizedException
+     */
+    private function assertTypedValue(string $key, array $def, string $value): void
+    {
+        $type = (string) ($def['type'] ?? '');
+
+        if ($type === 'number') {
+            $this->assertNumber($key, $def, $value);
+            return;
+        }
+
+        if ($type === 'duration') {
+            $this->assertDuration($key, $value);
+            return;
+        }
+
+        if ($type === 'url') {
+            $this->assertUrl($key, $value);
+            return;
+        }
+
+        if (str_starts_with($type, self::ENTITY_TYPE_PREFIX)) {
+            $this->assertEntityValue($key, $def, $value, substr($type, strlen(self::ENTITY_TYPE_PREFIX)));
+        }
+    }
+
+    /**
+     * `min` / `max` are validated server-side; `step` is a client-only hint.
+     *
+     * @param array<string, mixed> $def
+     * @throws LocalizedException
+     */
+    private function assertNumber(string $key, array $def, string $value): void
+    {
+        if (!is_numeric($value)) {
+            throw new LocalizedException(__('The template parameter "%1" must be a number.', $key));
+        }
+
+        $number = (float) $value;
+        if (isset($def['min']) && is_numeric($def['min']) && $number < (float) $def['min']) {
+            throw new LocalizedException(__(
+                'The template parameter "%1" must be at least %2.',
+                $key,
+                $def['min']
+            ));
+        }
+        if (isset($def['max']) && is_numeric($def['max']) && $number > (float) $def['max']) {
+            throw new LocalizedException(__(
+                'The template parameter "%1" must be at most %2.',
+                $key,
+                $def['max']
+            ));
+        }
+    }
+
+    /**
+     * @throws LocalizedException
+     */
+    private function assertDuration(string $key, string $value): void
+    {
+        try {
+            new \DateInterval($value);
+        } catch (\Exception) {
+            throw new LocalizedException(__(
+                'The template parameter "%1" must be an ISO-8601 duration such as "P1D" or "PT4H".',
+                $key
+            ));
+        }
+    }
+
+    /**
+     * Scheme is restricted to http(s): a template parameter feeds outbound
+     * calls and admin links, never a javascript:/data: payload.
+     *
+     * @throws LocalizedException
+     */
+    private function assertUrl(string $key, string $value): void
+    {
+        $scheme = strtolower((string) parse_url($value, PHP_URL_SCHEME));
+        if (filter_var($value, FILTER_VALIDATE_URL) === false || !in_array($scheme, ['http', 'https'], true)) {
+            throw new LocalizedException(__('The template parameter "%1" must be a valid http(s) URL.', $key));
+        }
+    }
+
+    /**
+     * Existence check for an `entity:<alias>` value against the option source
+     * the alias maps to. Silently skipped when inline `options` override the
+     * mapping (already enforced by assertOption), when no pool/registry is
+     * wired, when the alias is unregistered, or when the mapped source is not
+     * installed — a missing domain pack is CompatibilityChecker's report.
+     *
+     * @param array<string, mixed> $def
+     * @throws LocalizedException
+     */
+    private function assertEntityValue(string $key, array $def, string $value, string $alias): void
+    {
+        $inlineOptions = $def['options'] ?? null;
+        if (is_array($inlineOptions) && $inlineOptions !== []) {
+            return;
+        }
+        if ($this->optionSourcePool === null || $this->entityRegistry === null) {
+            return;
+        }
+        if (!$this->entityRegistry->has($alias)) {
+            return;
+        }
+
+        $code = $this->entityRegistry->sourceCode($alias);
+        if (!$this->optionSourcePool->has($code)) {
+            return;
+        }
+
+        if (!$this->optionSourcePool->get($code)->hasValue($value)) {
+            throw new LocalizedException(__(
+                'The value "%1" for template parameter "%2" does not match any existing record.',
                 $value,
                 $key
             ));

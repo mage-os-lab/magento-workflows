@@ -64,9 +64,11 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
             [
                 'name' => 'attribute_code',
                 'label' => 'Attribute Code',
-                'type' => 'text',
+                'type' => 'select',
                 'required' => true,
                 'notice' => 'System attributes (password_hash, group_id, email, ...) are refused.',
+                // The source already excludes the denied codes below.
+                'options_search' => ['source' => 'customer_attributes', 'min_chars' => 0],
             ],
             ['name' => 'value', 'label' => 'Value', 'type' => 'text', 'required' => true],
         ];
@@ -132,6 +134,16 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
     }
 
     /**
+     * Whether the denylist refuses this code. Public so the customer_attributes
+     * option source can offer exactly what this action would accept, without
+     * restating the list (it stays declared once, in di.xml).
+     */
+    public function isDenied(string $attributeCode): bool
+    {
+        return in_array(strtolower($attributeCode), array_map('strtolower', $this->deniedAttributes), true);
+    }
+
+    /**
      * Denylist + syntax gate; null when the code is writable
      */
     private function checkDenied(string $attributeCode): ?ActionResult
@@ -139,7 +151,7 @@ class SetAttribute extends AbstractAction implements SimulateableActionInterface
         if (!preg_match(self::CODE_PATTERN, $attributeCode)) {
             return ActionResult::failure((string)__('Invalid attribute code "%1"', $attributeCode));
         }
-        if (in_array(strtolower($attributeCode), array_map('strtolower', $this->deniedAttributes), true)) {
+        if ($this->isDenied($attributeCode)) {
             return ActionResult::failure((string)__(
                 'Attribute "%1" is on the security denylist and cannot be written by workflows',
                 $attributeCode

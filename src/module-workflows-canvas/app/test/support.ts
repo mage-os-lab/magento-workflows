@@ -13,6 +13,8 @@ export function makeConfig(overrides: Partial<MountConfig> = {}): MountConfig {
       dryRun: '/dry',
       validate: '/validate',
       options: '/options',
+      conditionMeta: '/conditionMeta',
+      conditions: '/conditions',
       save: '/save',
     },
     formKey: 'FKEY',
@@ -34,6 +36,8 @@ export function makeConfig(overrides: Partial<MountConfig> = {}): MountConfig {
     actionsMeta: [],
     triggers: [],
     secrets: [],
+    workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
+    i18n: {},
     approvalsAvailable: false,
     ...overrides,
   };

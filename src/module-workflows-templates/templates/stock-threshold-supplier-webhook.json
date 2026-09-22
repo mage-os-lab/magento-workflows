@@ -14,7 +14,7 @@
             "edition": "any"
         },
         "parameters": [
-            {"key": "supplier_webhook_url", "label": "Supplier reorder webhook URL", "type": "string", "required": true},
+            {"key": "supplier_webhook_url", "label": "Supplier reorder webhook URL", "type": "url", "required": true, "note": "Receives a POST signed with the HMAC secret below, carrying the SKU and its remaining quantity. It must answer within 10 seconds."},
             {"key": "supplier_signing_secret", "label": "HMAC secret for the supplier webhook", "type": "secret", "required": true}
         ]
     },

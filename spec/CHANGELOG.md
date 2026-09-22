@@ -43,6 +43,32 @@ spec move in lockstep.
   `{{ }}`); typed (`string`, `select`, `duration`, `secret`, `entity:*`), with the F6
   option-source union (`options` inline / `options_search` reference) for pick fields.
 
+## Template schema 1 — typed parameters (additive, one removal)
+
+- **`parameters[].type` is now a closed set.** It was a free-form string; it is now either one of
+  `string | number | url | duration | select | secret` or an `entity:<alias>` source matching
+  `^entity:[a-z0-9_]+$`. The install form renders a real widget per type instead of a text input
+  with a note, and the values are validated **globally** (admin, REST, and CLI all run through
+  `ParameterEngine`): `number` = numeric within `min`/`max`, `duration` = a value `\DateInterval`
+  accepts, `url` = an absolute `http`/`https` URL, `entity:*` = existence-checked against the
+  mapped option source (skipped when that source's pack is not installed). Values remain strings
+  end to end — a `number` default is still a JSON string (`"default": "50"`).
+- **`entity:<alias>` resolves through a server-side registry** —
+  `MageOS\Workflows\Model\Option\EntityOptionSourceRegistry`, a DI array map of alias →
+  `{source, bounded?, min_chars?}`. Shipped aliases: `entity:salesrule` → `cart_price_rules`
+  (searchable), `entity:customer_group` → `customer_groups` (bounded), `entity:order_status` →
+  `order_statuses` (bounded), `entity:website` → `websites` (bounded), `entity:email_template` →
+  `email_templates` (searchable). A pack registers its own aliases the same way; an unregistered
+  alias is still schema-valid and degrades to a plain text input.
+- **New optional parameter properties** — `note` (localizedText: authored help text that
+  *replaces* the widget-derived note), `min` / `max` (numbers, server-validated for `number`
+  parameters), and `step` (number, `exclusiveMinimum: 0`, a client-side input-granularity hint
+  only).
+- **`optional` removed.** The boolean was declared but never read by anything; `required`
+  (default `false`) has always been the single source of truth. No shipped template used it.
+- **Option-source precedence is now documented, not implied:** inline `options` >
+  `options_search` > the `entity:*` registry mapping. The first one present wins.
+
 ## Definition schema 4
 
 - **`approval` step type** — a human-decision gate parked on the wait spine

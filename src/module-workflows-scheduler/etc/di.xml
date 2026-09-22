@@ -24,4 +24,21 @@
             </argument>
         </arguments>
     </type>
+
+    <!--
+        Save-time cron syntax for schedule-type workflows, appended to the
+        engine's ordered check pool (F2). The check lives here because the
+        parse authority — dragonmantank/cron-expression — is this package's
+        dependency, not the engine's; DI merges the array across modules, the
+        same way the domain packs append hydrators and option sources.
+        Deliberately NOT added to WorkflowValidatorForDryRun: dry-run judges a
+        definition, not the workflow's schedule.
+    -->
+    <type name="MageOS\Workflows\Model\Validation\WorkflowValidator">
+        <arguments>
+            <argument name="checks" xsi:type="array">
+                <item name="cron_expression" xsi:type="object">MageOS\WorkflowsScheduler\Model\Validation\CronExpressionCheck</item>
+            </argument>
+        </arguments>
+    </type>
 </config>

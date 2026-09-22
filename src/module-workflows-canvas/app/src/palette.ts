@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { MountConfig, PaletteAction, StepType, TriggerMeta } from './types';
 
 /**
@@ -45,15 +46,18 @@ export interface PaletteGroup {
   items: PaletteItem[];
 }
 
-const FLOW_ITEMS: PaletteFlowItem[] = [
-  { kind: 'flow', type: 'delay', label: 'Delay' },
-  { kind: 'flow', type: 'branch', label: 'Branch (if/else)' },
-  { kind: 'flow', type: 'wait', label: 'Wait for event' },
-  { kind: 'flow', type: 'switch', label: 'Switch (multi-way)' },
-];
-
-/** The always-last sink item; approval (when available) is inserted before it. */
-const STOP_ITEM: PaletteFlowItem = { kind: 'flow', type: 'stop', label: 'Stop' };
+/**
+ * The flow-primitive items. Built per call (not a module constant) so the
+ * labels resolve through t() after the phrase map is installed at mount.
+ */
+function flowItems(): PaletteFlowItem[] {
+  return [
+    { kind: 'flow', type: 'delay', label: t('Delay') },
+    { kind: 'flow', type: 'branch', label: t('Branch (if/else)') },
+    { kind: 'flow', type: 'wait', label: t('Wait for event') },
+    { kind: 'flow', type: 'switch', label: t('Switch (multi-way)') },
+  ];
+}
 
 /**
  * Build the grouped palette from the bootstrap. The flow group is first; action
@@ -61,12 +65,13 @@ const STOP_ITEM: PaletteFlowItem = { kind: 'flow', type: 'stop', label: 'Stop' }
  * group, actions are sorted by label. Empty groups are dropped.
  */
 export function buildPalette(config: MountConfig): PaletteGroup[] {
-  const flowItems: PaletteFlowItem[] = [...FLOW_ITEMS];
+  const flow: PaletteFlowItem[] = flowItems();
   if (config.approvalsAvailable) {
-    flowItems.push({ kind: 'flow', type: 'approval', label: 'Approval gate' });
+    flow.push({ kind: 'flow', type: 'approval', label: t('Approval gate') });
   }
-  flowItems.push(STOP_ITEM);
-  const groups: PaletteGroup[] = [{ label: 'Flow', items: flowItems }];
+  // The always-last sink item; approval (when available) sits just before it.
+  flow.push({ kind: 'flow', type: 'stop', label: t('Stop') });
+  const groups: PaletteGroup[] = [{ label: t('Flow'), items: flow }];
 
   const byGroup = new Map<string, PaletteActionItem[]>();
   for (const action of config.actionsMeta) {
@@ -89,7 +94,7 @@ export function buildPalette(config: MountConfig): PaletteGroup[] {
     const items = (byGroup.get(name) ?? []).sort((a, b) =>
       a.label.toLowerCase().localeCompare(b.label.toLowerCase()),
     );
-    groups.push({ label: name || 'Other', items });
+    groups.push({ label: name || t('Other'), items });
   }
 
   return groups;
@@ -106,7 +111,7 @@ export function groupTriggers(triggers: TriggerMeta[]): { label: string; trigger
   }
   return [...byGroup.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([label, list]) => ({ label: label || 'Other', triggers: list }));
+    .map(([label, list]) => ({ label: label || t('Other'), triggers: list }));
 }
 
 /** Look up a palette action's full metadata by code (for config-panel gen). */

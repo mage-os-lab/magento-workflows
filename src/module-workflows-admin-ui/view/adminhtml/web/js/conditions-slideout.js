@@ -13,8 +13,10 @@
  * adds the rule widget it renders inside this same modal and posts to the same
  * endpoint — the contract does not move.
  *
- * CSP-safe: no inline script (loaded as a module), no eval, all config from
+ * CSP-safe: no inline script (loaded as a module), no eval, static config from
  * data-* attributes on the trigger element; server strings set via textContent.
+ * The trigger context posted alongside the tree is read from the live form
+ * fields instead (see contextValue) because it is editable in the same form.
  */
 define([
     'jquery',
@@ -24,16 +26,39 @@ define([
     'use strict';
 
     /**
+     * Reads a form field by name, falling back to a static data-* attribute on
+     * the trigger container for hosts that are not inside the workflow form.
+     *
+     * The trigger context (trigger_type / trigger_ref / entity_type) decides
+     * which condition checks the server runs, and it is EDITABLE in the same
+     * form as the conditions — so it is read from the live fields at apply
+     * time, never cached at init: changing the trigger and then editing
+     * conditions must validate against the new trigger. Peer convention:
+     * definition-preview.js reads the unsaved definition the same way.
+     *
+     * @param {jQuery} $root the trigger container carrying data-* config
+     * @param {String} name form field name
+     * @param {String} dataKey jQuery data key of the static fallback
+     * @return {String}
+     */
+    function contextValue($root, name, dataKey) {
+        var $el = $('[name="' + name + '"]');
+
+        if ($el.length) {
+            return $el.val() || '';
+        }
+
+        return $root.data(dataKey) || '';
+    }
+
+    /**
      * @param {HTMLElement} root the trigger container carrying data-* config
      */
     function init(root) {
         var $root = $(root),
             endpoint = $root.data('applyUrl'),
             formKey = $root.data('formKey'),
-            fieldSelector = $root.data('fieldSelector'),
-            triggerType = $root.data('triggerType') || '',
-            triggerRef = $root.data('triggerRef') || '',
-            entityType = $root.data('entityType') || '';
+            fieldSelector = $root.data('fieldSelector');
 
         var $field = $(fieldSelector);
         var $dialog = $('<div></div>', {'class': 'mageos-conditions-slideout'});
@@ -68,9 +93,9 @@ define([
                         apply(dlg, $textarea, $messages, $field, {
                             endpoint: endpoint,
                             formKey: formKey,
-                            triggerType: triggerType,
-                            triggerRef: triggerRef,
-                            entityType: entityType
+                            triggerType: contextValue($root, 'trigger_type', 'triggerType'),
+                            triggerRef: contextValue($root, 'trigger_ref', 'triggerRef'),
+                            entityType: contextValue($root, 'entity_type', 'entityType')
                         });
                     }
                 }

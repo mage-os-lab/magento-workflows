@@ -8,6 +8,7 @@ use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\ShipmentRepositoryInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Shipment\TrackFactory;
+use Magento\Shipping\Model\Config as ShippingConfig;
 use MageOS\Workflows\Api\ActionResultInterface;
 use MageOS\Workflows\Model\Execution\ExecutionContext;
 use MageOS\Workflows\Test\Unit\Stub\WorkflowExecutionStub;
@@ -136,6 +137,38 @@ class AddTrackingTest extends TestCase
         };
     }
 
+    /**
+     * @param array<string, string> $carriers carrier code => configured title
+     */
+    private function shippingConfig(array $carriers = ['ups' => 'United Parcel Service'], bool $throws = false): ShippingConfig
+    {
+        $models = [];
+        foreach ($carriers as $code => $title) {
+            $models[$code] = new class($title) {
+                public function __construct(private readonly string $title)
+                {
+                }
+                public function getConfigData($field)
+                {
+                    return $field === 'title' ? $this->title : null;
+                }
+            };
+        }
+
+        return new class($models, $throws) extends ShippingConfig {
+            public function __construct(private readonly array $models, private readonly bool $throws)
+            {
+            }
+            public function getActiveCarriers($store = null)
+            {
+                if ($this->throws) {
+                    throw new \RuntimeException('shipping config unavailable');
+                }
+                return $this->models;
+            }
+        };
+    }
+
     private function repositoryReturning(?Order $order): OrderRepositoryInterface
     {
         return new class($order) implements OrderRepositoryInterface {
@@ -163,7 +196,7 @@ class AddTrackingTest extends TestCase
         $track = $this->track();
         $order = $this->orderWithShipments([$this->shipment(500), $this->shipment(501)]);
         $shipmentRepo = $this->recordingShipmentRepository();
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($track), $shipmentRepo);
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($track), $shipmentRepo, $this->shippingConfig());
 
         $result = $action->execute($this->context(), [
             'carrier_code' => 'ups',
@@ -186,7 +219,7 @@ class AddTrackingTest extends TestCase
     {
         $order = $this->orderWithShipments([]);
         $shipmentRepo = $this->recordingShipmentRepository();
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $shipmentRepo);
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $shipmentRepo, $this->shippingConfig());
 
         $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
 
@@ -199,7 +232,7 @@ class AddTrackingTest extends TestCase
     public function testMissingCarrierCodeIsRejected(): void
     {
         $order = $this->orderWithShipments([$this->shipment(500)]);
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $this->recordingShipmentRepository());
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $this->recordingShipmentRepository(), $this->shippingConfig());
 
         $result = $action->execute($this->context(), ['track_number' => '1Z999']);
 
@@ -210,7 +243,7 @@ class AddTrackingTest extends TestCase
     public function testMissingTrackNumberIsRejected(): void
     {
         $order = $this->orderWithShipments([$this->shipment(500)]);
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $this->recordingShipmentRepository());
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $this->recordingShipmentRepository(), $this->shippingConfig());
 
         $result = $action->execute($this->context(), ['carrier_code' => 'ups']);
 
@@ -222,7 +255,7 @@ class AddTrackingTest extends TestCase
     {
         $track = $this->track();
         $order = $this->orderWithShipments([$this->shipment(500)]);
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($track), $this->recordingShipmentRepository());
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($track), $this->recordingShipmentRepository(), $this->shippingConfig());
 
         $result = $action->execute($this->context(), ['carrier_code' => 'fedex', 'track_number' => '77']);
 
@@ -237,7 +270,7 @@ class AddTrackingTest extends TestCase
         // the track without further processing.
         $track = $this->track();
         $order = $this->orderWithShipments([$this->shipment(500)]);
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($track), $this->recordingShipmentRepository());
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($track), $this->recordingShipmentRepository(), $this->shippingConfig());
 
         $result = $action->execute($this->context(), [
             'carrier_code' => 'dhl',
@@ -250,7 +283,7 @@ class AddTrackingTest extends TestCase
 
     public function testOrderNotFoundIsFailure(): void
     {
-        $action = new AddTracking($this->repositoryReturning(null), $this->trackFactory($this->track()), $this->recordingShipmentRepository());
+        $action = new AddTracking($this->repositoryReturning(null), $this->trackFactory($this->track()), $this->recordingShipmentRepository(), $this->shippingConfig());
 
         $result = $action->execute($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
 
@@ -262,7 +295,7 @@ class AddTrackingTest extends TestCase
     {
         $order = $this->orderWithShipments([$this->shipment(500)]);
         $shipmentRepo = $this->recordingShipmentRepository();
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $shipmentRepo);
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $shipmentRepo, $this->shippingConfig());
 
         $result = $action->simulate($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
 
@@ -274,11 +307,63 @@ class AddTrackingTest extends TestCase
     public function testSimulateFailsWhenNoShipment(): void
     {
         $order = $this->orderWithShipments([]);
-        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $this->recordingShipmentRepository());
+        $action = new AddTracking($this->repositoryReturning($order), $this->trackFactory($this->track()), $this->recordingShipmentRepository(), $this->shippingConfig());
 
         $result = $action->simulate($this->context(), ['carrier_code' => 'ups', 'track_number' => '1Z999']);
 
         $this->assertTrue($result->isFailure());
         $this->assertStringContainsString('no shipment', (string)$result->getError());
+    }
+
+    public function testConfigFormOffersTheActiveCarriersAsABoundedSelect(): void
+    {
+        $action = new AddTracking(
+            $this->repositoryReturning(null),
+            $this->trackFactory($this->track()),
+            $this->recordingShipmentRepository(),
+            $this->shippingConfig(['ups' => 'United Parcel Service', 'flatrate' => ''])
+        );
+
+        $field = $action->getConfigForm()[0];
+
+        $this->assertSame('carrier_code', $field['name']);
+        $this->assertSame('select', $field['type']);
+        $this->assertSame([
+            ['value' => 'ups', 'label' => 'United Parcel Service'],
+            // No configured title: fall back to the code the track will carry.
+            ['value' => 'flatrate', 'label' => 'flatrate'],
+        ], $field['options']);
+    }
+
+    public function testConfigFormDegradesToTextWhenTheShippingConfigThrows(): void
+    {
+        $action = new AddTracking(
+            $this->repositoryReturning(null),
+            $this->trackFactory($this->track()),
+            $this->recordingShipmentRepository(),
+            $this->shippingConfig(throws: true)
+        );
+
+        $field = $action->getConfigForm()[0];
+
+        $this->assertSame('carrier_code', $field['name']);
+        $this->assertSame('text', $field['type'], 'an unavailable carrier list must not break the form');
+        $this->assertFalse(isset($field['options']));
+        $this->assertTrue($field['required']);
+    }
+
+    public function testConfigFormLeavesTheSelectOptionlessWhenNoCarrierIsActive(): void
+    {
+        $action = new AddTracking(
+            $this->repositoryReturning(null),
+            $this->trackFactory($this->track()),
+            $this->recordingShipmentRepository(),
+            $this->shippingConfig([])
+        );
+
+        $field = $action->getConfigForm()[0];
+
+        $this->assertSame('select', $field['type']);
+        $this->assertFalse(isset($field['options']));
     }
 }

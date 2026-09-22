@@ -78,9 +78,24 @@ use Psr\Log\NullLogger;
  *  4. For every template whose definition contains a branch/switch/wait step
  *     (the ones actually exercising a decision), runs a DryRunService smoke:
  *     the synthetic walk must not error.
+ *
+ * A second test pins the parameter *type* contract published in
+ * spec/workflow-template.schema.json ($defs/parameter) and restated in
+ * templates/README.md "Parameter type contract". No JSON-Schema validator
+ * ships in this repo, so this is the de-facto schema gate for the pack.
  */
 class SeedPackFixtureTest extends TestCase
 {
+    /**
+     * The closed `type` enum from spec/workflow-template.schema.json
+     * ($defs/parameter/properties/type). Anything outside this list must match
+     * ENTITY_TYPE_PATTERN instead.
+     */
+    private const ALLOWED_PARAM_TYPES = ['string', 'number', 'url', 'duration', 'select', 'secret'];
+
+    /** The schema's alternative branch for entity-backed parameter types. */
+    private const ENTITY_TYPE_PATTERN = '/^entity:[a-z0-9_]+$/';
+
     /** Every action code registered in module-workflows-actions-core/etc/di.xml. */
     private const ALL_ACTION_CODES = [
         'order.add_comment', 'order.change_status', 'order.hold', 'order.unhold',
@@ -235,6 +250,203 @@ class SeedPackFixtureTest extends TestCase
 
         $this->assertTrue($sawWait, 'At least one seed template must showcase a schema-2 wait step.');
         $this->assertTrue($sawSwitch, 'At least one seed template must showcase a schema-3 switch step.');
+    }
+
+    /**
+     * The parameter-type contract, pinned per spec/workflow-template.schema.json
+     * ($defs/parameter) and templates/README.md "Parameter type contract":
+     *
+     *  - `type` is a CLOSED set -- one of ALLOWED_PARAM_TYPES, or an
+     *    `entity:<alias>` source matching ENTITY_TYPE_PATTERN. A typo'd or
+     *    invented type would otherwise ship silently (no JSON-Schema validator
+     *    runs in CI), and the install form would fall back to a bare text input.
+     *  - `optional` was REMOVED from the schema; `required` is the only flag
+     *    read. A leftover `optional` key is now an additionalProperties
+     *    violation, so no shipped template may carry one.
+     *  - `min`/`max`/`step` are numbers (step > 0) and only carry meaning for
+     *    `number` parameters; `note` is localizedText like `label`.
+     *  - Values stay strings end to end, so a `number` default is still a JSON
+     *    string ("50", not 50) -- the token is substituted into JSON text.
+     */
+    public function testEveryDeclaredParameterTypeIsInTheClosedSchemaSet(): void
+    {
+        $source = $this->bundledSource();
+        $seenTypes = [];
+
+        foreach ($source->list() as $summary) {
+            $code = $summary->getCode();
+            $raw = json_decode($source->get($code), true);
+            $parameters = $raw['template']['parameters'] ?? [];
+
+            foreach ($parameters as $index => $parameter) {
+                $where = sprintf('%s: parameter #%d (%s)', $code, $index, $parameter['key'] ?? '?');
+
+                $this->assertArrayHasKey('type', $parameter, "$where: must declare a type");
+                $type = $parameter['type'];
+                $this->assertTrue(is_string($type), "$where: type must be a string");
+                $seenTypes[$type] = true;
+
+                $this->assertTrue(
+                    in_array($type, self::ALLOWED_PARAM_TYPES, true)
+                        || preg_match(self::ENTITY_TYPE_PATTERN, $type) === 1,
+                    sprintf(
+                        '%s: type "%s" is outside the closed schema set (%s, or entity:<alias>)',
+                        $where,
+                        $type,
+                        implode('|', self::ALLOWED_PARAM_TYPES)
+                    )
+                );
+
+                $this->assertFalse(
+                    array_key_exists('optional', $parameter),
+                    "$where: `optional` was removed from the schema -- use `required`"
+                );
+
+                foreach (['min', 'max', 'step'] as $bound) {
+                    if (!array_key_exists($bound, $parameter)) {
+                        continue;
+                    }
+                    $this->assertTrue(
+                        is_int($parameter[$bound]) || is_float($parameter[$bound]),
+                        "$where: `$bound` must be a number"
+                    );
+                    $this->assertSame(
+                        'number',
+                        $type,
+                        "$where: `$bound` only carries meaning on a `number` parameter"
+                    );
+                }
+                if (array_key_exists('step', $parameter)) {
+                    $this->assertTrue($parameter['step'] > 0, "$where: `step` must be greater than zero");
+                }
+
+                if (array_key_exists('note', $parameter)) {
+                    $this->assertTrue(
+                        $this->isLocalizedText($parameter['note']),
+                        "$where: `note` must be a non-empty string or a {locale: string} map"
+                    );
+                }
+
+                if (array_key_exists('default', $parameter)) {
+                    $this->assertTrue(
+                        is_string($parameter['default']),
+                        "$where: defaults stay JSON strings -- values are strings end to end"
+                    );
+                }
+                if ($type === 'number' && array_key_exists('default', $parameter)) {
+                    $this->assertTrue(
+                        is_numeric($parameter['default']),
+                        "$where: a `number` default must be numeric"
+                    );
+                }
+                if ($type === 'url' && array_key_exists('default', $parameter)) {
+                    $this->assertTrue(
+                        $this->isHttpUrl((string) $parameter['default']),
+                        "$where: a `url` default must be an absolute http/https URL"
+                    );
+                }
+            }
+        }
+
+        // The pack is meant to exercise the widget matrix, not just text inputs.
+        foreach (['number', 'url', 'duration', 'secret', 'entity:salesrule', 'entity:customer_group'] as $expected) {
+            $this->assertArrayHasKey(
+                $expected,
+                $seenTypes,
+                sprintf('The seed pack should still showcase the "%s" parameter type.', $expected)
+            );
+        }
+    }
+
+    /**
+     * Mirrors the schema's REQUIRED_PARAM_VALUES contract: the representative
+     * values this test installs with must themselves satisfy the newly typed
+     * parameters, or the fixture would be proving the wrong thing. (The
+     * engine's `entity:*` existence check is inert here -- this test builds a
+     * bare `new ParameterEngine()` with no option-source pool -- so only the
+     * number/url/duration checks are exercised.)
+     */
+    public function testRepresentativeParamValuesSatisfyTheDeclaredTypes(): void
+    {
+        $source = $this->bundledSource();
+
+        foreach ($source->list() as $summary) {
+            $code = $summary->getCode();
+            $raw = json_decode($source->get($code), true);
+            $values = self::REQUIRED_PARAM_VALUES[$code] ?? [];
+
+            $declared = [];
+            foreach ($raw['template']['parameters'] ?? [] as $parameter) {
+                $declared[(string) $parameter['key']] = $parameter;
+            }
+
+            foreach ($values as $key => $value) {
+                $this->assertArrayHasKey($key, $declared, "$code: fixture value for undeclared parameter $key");
+                $type = (string) $declared[$key]['type'];
+                $where = "$code.$key ($type)";
+
+                if ($type === 'number') {
+                    $this->assertTrue(is_numeric($value), "$where: fixture value must be numeric");
+                    if (isset($declared[$key]['min'])) {
+                        $this->assertTrue($value + 0 >= $declared[$key]['min'], "$where: below declared min");
+                    }
+                    if (isset($declared[$key]['max'])) {
+                        $this->assertTrue($value + 0 <= $declared[$key]['max'], "$where: above declared max");
+                    }
+                }
+                if ($type === 'url') {
+                    $this->assertTrue($this->isHttpUrl($value), "$where: fixture value must be an http/https URL");
+                }
+                if ($type === 'duration') {
+                    $this->assertTrue($this->isIsoDuration($value), "$where: fixture value must be ISO-8601");
+                }
+            }
+
+            // Every required parameter without a default must have a fixture value.
+            foreach ($declared as $key => $parameter) {
+                if (($parameter['required'] ?? false) === true && !array_key_exists('default', $parameter)) {
+                    $this->assertArrayHasKey($key, $values, "$code: required parameter $key needs a fixture value");
+                }
+            }
+        }
+    }
+
+    private function isLocalizedText(mixed $value): bool
+    {
+        if (is_string($value)) {
+            return $value !== '';
+        }
+        if (!is_array($value) || $value === []) {
+            return false;
+        }
+        foreach ($value as $locale => $text) {
+            if (!is_string($locale) || preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', $locale) !== 1) {
+                return false;
+            }
+            if (!is_string($text) || $text === '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function isHttpUrl(string $value): bool
+    {
+        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+        $scheme = strtolower((string) parse_url($value, PHP_URL_SCHEME));
+        return $scheme === 'http' || $scheme === 'https';
+    }
+
+    private function isIsoDuration(string $value): bool
+    {
+        try {
+            new \DateInterval($value);
+            return true;
+        } catch (\Exception) {
+            return false;
+        }
     }
 
     private function bundledSource(): BundledTemplateSource

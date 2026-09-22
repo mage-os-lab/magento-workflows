@@ -67,6 +67,16 @@ class GenerateCouponTest extends ActionTestCase
         $this->assertFalse($result->isRetryable());
     }
 
+    public function testConfigFormRuleIdSearchesTheCartPriceRuleSource(): void
+    {
+        $field = $this->action->getConfigForm()[0];
+
+        $this->assertSame('rule_id', $field['name']);
+        $this->assertSame(['source' => 'cart_price_rules', 'min_chars' => 0], $field['options_search']);
+        $this->assertTrue($field['required']);
+        $this->assertStringContainsString('auto-generated', (string)$field['notice']);
+    }
+
     private function ruleId(string $name): int
     {
         /** @var RuleCollectionFactory $factory */

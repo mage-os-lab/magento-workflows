@@ -63,9 +63,11 @@
     },
     "option_sources": {
         "cart_price_rules": "MageOS\\WorkflowsSales\\Model\\Option\\CartPriceRuleOptionSource",
+        "customer_attributes": "MageOS\\WorkflowsCustomer\\Model\\Option\\CustomerAttributeOptionSource",
         "customer_groups": "MageOS\\WorkflowsCustomer\\Model\\Option\\CustomerGroupOptionSource",
         "email_templates": "MageOS\\Workflows\\Model\\Option\\EmailTemplateOptionSource",
         "order_statuses": "MageOS\\WorkflowsSales\\Model\\Option\\OrderStatusOptionSource",
+        "product_attributes": "MageOS\\WorkflowsCatalog\\Model\\Option\\ProductAttributeOptionSource",
         "websites": "MageOS\\WorkflowsCatalog\\Model\\Option\\WebsiteOptionSource"
     },
     "trigger_events": {

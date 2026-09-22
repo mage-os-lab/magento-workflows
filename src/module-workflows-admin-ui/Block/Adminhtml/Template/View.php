@@ -5,12 +5,15 @@ namespace MageOS\WorkflowsAdminUi\Block\Adminhtml\Template;
 
 use Magento\Backend\Block\Template\Context;
 use Magento\Framework\Locale\ResolverInterface;
+use MageOS\Workflows\Api\ActionMetadataInterface;
+use MageOS\Workflows\Model\Action\ActionPool;
 use MageOS\Workflows\Model\PlainLanguageRenderer;
 use MageOS\Workflows\Model\Template\CompatibilityChecker;
 use MageOS\Workflows\Model\Template\CompatibilityResult;
 use MageOS\Workflows\Model\Template\LocalizedText;
 use MageOS\Workflows\Model\Template\ParameterEngine;
 use MageOS\Workflows\Model\Template\TemplateSourceInterface;
+use MageOS\Workflows\Model\Trigger\TriggerRegistry;
 
 /**
  * Template detail (06): the plain-language rendering of the workflow with its
@@ -26,9 +29,41 @@ class View extends AbstractDetail
         ResolverInterface $localeResolver,
         private readonly ParameterEngine $parameterEngine,
         private readonly PlainLanguageRenderer $plainLanguageRenderer,
+        private readonly TriggerRegistry $triggerRegistry,
+        private readonly ActionPool $actionPool,
         array $data = []
     ) {
         parent::__construct($context, $templateSource, $compatibilityChecker, $localeResolver, $data);
+    }
+
+    /**
+     * Declared label for a `requires.triggers` event ("sales.order.created" =>
+     * "Order Created"). Falls back to the raw event name — which is exactly the
+     * case the compatibility panel is about to flag as MISSING_TRIGGER, so the
+     * admin needs to see the code.
+     */
+    public function triggerLabel(string $event): string
+    {
+        $trigger = $this->triggerRegistry->getByEvent($event);
+        $label = is_array($trigger) ? (string) ($trigger['label'] ?? '') : '';
+
+        return $label !== '' ? $label : $event;
+    }
+
+    /**
+     * Declared label for a `requires.actions` code ("order.add_comment" => "Add
+     * Order Comment"), read from the same ActionPool metadata the canvas palette
+     * projects. Raw code when the action is not installed or exposes no metadata.
+     */
+    public function actionLabel(string $code): string
+    {
+        if (!$this->actionPool->has($code)) {
+            return $code;
+        }
+        $action = $this->actionPool->get($code);
+        $label = $action instanceof ActionMetadataInterface ? $action->getLabel() : '';
+
+        return $label !== '' ? $label : $code;
     }
 
     public function getTitle(): string
@@ -75,7 +110,9 @@ class View extends AbstractDetail
 
         $values = $this->previewValues();
         try {
-            $workflow = $this->parameterEngine->apply($workflow, $this->getParameters(), $values);
+            // Typed validation off: the preview feeds `<Label>` placeholders for
+            // parameters with no default, which no typed check would accept.
+            $workflow = $this->parameterEngine->apply($workflow, $this->getParameters(), $values, false);
         } catch (\Throwable $e) {
             // keep the un-substituted body
         }

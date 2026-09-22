@@ -92,16 +92,35 @@
                     "description": "Substituted into the workflow body as %param.<key>%"
                 },
                 "label": {"$ref": "#/$defs/localizedText"},
+                "note": {
+                    "$ref": "#/$defs/localizedText",
+                    "description": "Authored help text shown under the field; replaces the widget-derived note"
+                },
                 "type": {
-                    "type": "string",
-                    "description": "Drives the install form widget: string, select, duration, secret, or an entity source (e.g. entity:salesrule)"
+                    "description": "Closed type set driving the install form widget and the server-side value validation. `string` = free text; `number` = numeric, range-checked against `min`/`max`; `url` = absolute http/https URL; `duration` = ISO-8601 interval (e.g. PT4H, P3D), rendered as a composite with an ISO escape hatch; `select` = pick from the declared `options`; `secret` = names a secret, the value is supplied at install time and never stored in the template. An `entity:<alias>` type resolves through the server-side entity option-source registry (MageOS\\Workflows\\Model\\Option\\EntityOptionSourceRegistry), which maps the alias to a registered option source (e.g. entity:salesrule -> cart_price_rules) and decides whether the widget is a bounded select or a searchable picker; the submitted value is existence-checked against that source when it is registered.",
+                    "oneOf": [
+                        {"enum": ["string", "number", "url", "duration", "select", "secret"]},
+                        {"type": "string", "pattern": "^entity:[a-z0-9_]+$"}
+                    ]
                 },
                 "default": {},
                 "required": {"type": "boolean", "default": false},
-                "optional": {"type": "boolean", "default": false},
+                "min": {
+                    "type": "number",
+                    "description": "Lower bound for a `number` parameter; enforced server-side on every install path (admin, REST, CLI)"
+                },
+                "max": {
+                    "type": "number",
+                    "description": "Upper bound for a `number` parameter; enforced server-side on every install path (admin, REST, CLI)"
+                },
+                "step": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "Client-side granularity hint for a `number` parameter's input (e.g. 1 for whole units); never enforced server-side"
+                },
                 "options": {
                     "type": "array",
-                    "description": "Inline options for a bounded source (F6 option-source union)",
+                    "description": "Inline options for a bounded source (F6 option-source union). Highest precedence: inline `options` win over `options_search`, which in turn wins over an `entity:*` type's registry mapping",
                     "items": {
                         "type": "object",
                         "required": ["value", "label"],
@@ -114,7 +133,7 @@
                 },
                 "options_search": {
                     "type": "object",
-                    "description": "Search reference for a large source (F6 option-source union); resolved by the meta/options endpoint (plan 07)",
+                    "description": "Search reference for a large source (F6 option-source union); resolved by the meta/options endpoint (plan 07). Middle precedence: used when no inline `options` are declared, and it overrides an `entity:*` type's registry mapping",
                     "required": ["source"],
                     "additionalProperties": false,
                     "properties": {

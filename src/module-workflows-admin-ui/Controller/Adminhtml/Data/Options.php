@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace MageOS\WorkflowsCanvas\Controller\Adminhtml\Data;
+namespace MageOS\WorkflowsAdminUi\Controller\Adminhtml\Data;
 
 use Magento\Backend\App\Action;
 use Magento\Framework\App\Action\HttpGetActionInterface;
@@ -12,12 +12,14 @@ use Magento\Framework\Exception\NoSuchEntityException;
 use MageOS\Workflows\Api\OptionSourceProviderInterface;
 
 /**
- * Same-origin, session-authed JSON option-source feed for config-panel selects
- * (F6 option-source union). A config field's `options_search: {source, min_chars}`
- * points here; the client calls ?source=<code>&q=<query> as the user types
- * (bounded sources return their whole list on an empty query, search-typed
- * sources filter + cap). Delegates to the SAME core provider the REST route
- * (GET /V1/workflows/meta/options) uses; ::view is the auth (read-only). The
+ * Same-origin, admin-authed JSON twin of the REST route
+ * GET /V1/workflows/meta/options (F6 option-source union), delegating to the
+ * SAME core provider; ::view is the auth (read-only). Consumed by BOTH admin
+ * surfaces that need to resolve options in the browser: the template install
+ * form's search pickers (a parameter's `options_search: {source, min_chars}`
+ * or its `entity:*` registry mapping) and the canvas config panel. The client
+ * calls ?source=<code>&q=<query> as the user types — bounded sources return
+ * their whole list on an empty query, search-typed sources filter + cap. The
  * REST route stays for third parties/CI (Phase A Data/* pattern).
  */
 class Options extends Action implements HttpGetActionInterface

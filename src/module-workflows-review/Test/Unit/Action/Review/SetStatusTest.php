@@ -66,9 +66,38 @@ class SetStatusTest extends TestCase
             public function __construct()
             {
             }
+
             public function create(array $data = []): Review
             {
-                return new Review();
+                // NOT `new Review()`: the real Magento\Review\Model\Review is an
+                // AbstractModel with a nine-argument DI constructor (Context,
+                // Registry, resource, ... ) — constructing it bare is an
+                // ArgumentCountError on a full install, and only the shim's
+                // DataObject-shaped stand-in tolerates it. An own no-op
+                // constructor bypasses the parent's in BOTH worlds; nothing this
+                // action touches needs constructor state, since the whole
+                // get/set surface it uses resolves through DataObject::__call
+                // over $_data.
+                return new class extends Review {
+                    public function __construct()
+                    {
+                    }
+
+                    /**
+                     * A properly constructed Review has _idFieldName = 'review_id'
+                     * (AbstractModel::_init() reads it from the resource model,
+                     * which is unreachable without the DI constructor), so
+                     * AbstractModel::getId() would otherwise read the 'id' key and
+                     * report every loaded review as missing. Untyped to match both
+                     * the real AbstractModel::getId() and the shim's.
+                     *
+                     * @return mixed
+                     */
+                    public function getId()
+                    {
+                        return $this->getData('review_id');
+                    }
+                };
             }
         };
     }

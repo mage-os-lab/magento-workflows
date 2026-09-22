@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Test\Unit\Config;
 
+use MageOS\Workflows\Test\Unit\PackageLocator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -36,33 +37,29 @@ class DiScopeContractTest extends TestCase
     private const COLLECTION_FACTORY =
         'Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory';
 
-    private function srcRoot(): string
-    {
-        return dirname(__DIR__, 4);
-    }
-
     /**
-     * Every etc/<area>/di.xml in the monorepo.
+     * Every etc/<area>/di.xml this suite ships.
+     *
+     * Discovery goes through PackageLocator so the scan finds the sibling
+     * packages in BOTH layouts — <repo>/src/module-* and, in CI's real Magento
+     * install, <magento>/vendor/mage-os/workflows* — and throws instead of
+     * returning an empty set (a vacuous pass would gut every guard below).
      *
      * @return string[]
      */
     private function areaDiFiles(): array
     {
-        $files = [];
-        foreach (glob($this->srcRoot() . '/module-*/etc/*/di.xml') ?: [] as $path) {
-            $files[] = $path;
-        }
-        return $files;
+        return PackageLocator::globInPackages('etc/*/di.xml');
     }
 
     /**
-     * @return string[] repo-relative paths
+     * @param string[] $paths
+     * @return string[] container-relative paths
      */
     private function relative(array $paths): array
     {
-        $root = dirname($this->srcRoot());
         return array_map(
-            static fn (string $p): string => str_replace($root . '/', '', $p),
+            static fn (string $p): string => PackageLocator::relative($p),
             $paths
         );
     }
@@ -127,7 +124,7 @@ class DiScopeContractTest extends TestCase
     {
         $registered = $this->globallyRegisteredDataSources();
 
-        $components = glob($this->srcRoot() . '/module-*/view/adminhtml/ui_component/*_listing.xml') ?: [];
+        $components = PackageLocator::globInPackages('view/adminhtml/ui_component/*_listing.xml');
         $this->assertTrue($components !== [], 'Expected at least one listing ui_component.');
 
         $unregistered = [];
@@ -157,7 +154,7 @@ class DiScopeContractTest extends TestCase
     {
         $registered = [];
 
-        foreach (glob($this->srcRoot() . '/module-*/etc/di.xml') ?: [] as $file) {
+        foreach (PackageLocator::globInPackages('etc/di.xml') as $file) {
             $xml = simplexml_load_file($file);
             if ($xml === false) {
                 continue;

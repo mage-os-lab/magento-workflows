@@ -8,6 +8,7 @@ use Magento\Framework\Data\Form\FormKey;
 use Magento\Framework\Message\MessageInterface;
 use Magento\TestFramework\TestCase\AbstractBackendController;
 use MageOS\Workflows\Api\Data\WorkflowInterface;
+use MageOS\Workflows\Model\Definition\Definition;
 use MageOS\Workflows\Api\WorkflowRepositoryInterface;
 
 /**
@@ -48,7 +49,10 @@ class SaveControllerTest extends AbstractBackendController
     public function testCanvasShapedSavePersistsDefinitionDecodedEqual(): void
     {
         $definition = [
-            'schema' => 1,
+            // The CURRENT schema: the save path normalizes legacy versions
+            // upward (Definition::fromJson()->toJson()), so only a
+            // current-schema fixture round-trips decoded-equal.
+            'schema' => Definition::SCHEMA_VERSION,
             'entry' => 's1',
             'steps' => [
                 's1' => [

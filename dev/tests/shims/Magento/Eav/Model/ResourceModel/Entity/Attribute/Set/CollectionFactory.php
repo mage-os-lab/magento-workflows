@@ -10,7 +10,7 @@ namespace Magento\Eav\Model\ResourceModel\Entity\Attribute\Set;
  */
 class CollectionFactory
 {
-    public function create()
+    public function create(array $data = [])
     {
         return null;
     }

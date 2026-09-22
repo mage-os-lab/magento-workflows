@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace MageOS\Workflows\Test\Unit\Composition;
 
+use MageOS\Workflows\Test\Unit\PackageLocator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -25,11 +26,6 @@ use PHPUnit\Framework\TestCase;
 final class CompositionSurfaceTest extends TestCase
 {
     private const FIXTURE = __DIR__ . '/composition-surface.json';
-
-    private static function repoRoot(): string
-    {
-        return dirname(__DIR__, 5);
-    }
 
     /**
      * @return array<string, array<string, string>>
@@ -57,7 +53,11 @@ final class CompositionSurfaceTest extends TestCase
 
     public function testMergedSurfaceMatchesFixture(): void
     {
-        $actual = CompositionSurfaceExtractor::extract(self::repoRoot());
+        // PackageLocator resolves the sibling packages in BOTH layouts (monorepo
+        // src/module-*, install vendor/mage-os/workflows*) and throws rather than
+        // returning an empty set — a scan that found nothing would otherwise
+        // report the entire fixture as "removed".
+        $actual = CompositionSurfaceExtractor::extract(PackageLocator::packageDirs());
         $expected = self::expected();
 
         if ($actual === $expected) {

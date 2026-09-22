@@ -24,6 +24,8 @@ import type { Graph, StepNode } from '../src/types';
 
 const config = makeConfig({
   knownSchemaVersion: 4,
+  workflowOptions: { entityTypes: [], triggerTypes: [], statuses: [], websites: [] },
+  i18n: {},
   approvalsAvailable: true,
   actions: { 'order.add_comment': { label: 'Add Comment', group: 'Sales' } },
 });

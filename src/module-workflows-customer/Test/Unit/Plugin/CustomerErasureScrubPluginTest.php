@@ -5,7 +5,6 @@ namespace MageOS\WorkflowsCustomer\Test\Unit\Plugin;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\CustomerInterface;
-use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\NoSuchEntityException;
 use MageOS\WorkflowsCustomer\Model\ExecutionPiiScrubber;
 use MageOS\WorkflowsCustomer\Plugin\CustomerErasureScrubPlugin;
@@ -30,7 +29,7 @@ class CustomerErasureScrubPluginTest extends TestCase
         $result = $plugin->afterDelete(
             $this->repository(null),
             true,
-            new FakeDeletedCustomer(42, 'john.doe@example.com')
+            $this->customer(42, 'john.doe@example.com')
         );
 
         $this->assertTrue($result);
@@ -42,7 +41,7 @@ class CustomerErasureScrubPluginTest extends TestCase
         $scrubber = new RecordingScrubber();
         $plugin = new CustomerErasureScrubPlugin($scrubber, new NullLogger());
 
-        $plugin->afterDelete($this->repository(null), false, new FakeDeletedCustomer(42, 'a@b.test'));
+        $plugin->afterDelete($this->repository(null), false, $this->customer(42, 'a@b.test'));
 
         $this->assertSame([], $scrubber->calls);
     }
@@ -51,7 +50,7 @@ class CustomerErasureScrubPluginTest extends TestCase
     {
         $scrubber = new RecordingScrubber();
         $plugin = new CustomerErasureScrubPlugin($scrubber, new NullLogger());
-        $repository = $this->repository(new FakeDeletedCustomer(42, 'john.doe@example.com'));
+        $repository = $this->repository($this->customer(42, 'john.doe@example.com'));
 
         $log = [];
         $result = $plugin->aroundDeleteById(
@@ -113,7 +112,7 @@ class CustomerErasureScrubPluginTest extends TestCase
         $result = $plugin->afterDelete(
             $this->repository(null),
             true,
-            new FakeDeletedCustomer(42, 'john.doe@example.com')
+            $this->customer(42, 'john.doe@example.com')
         );
 
         $this->assertTrue($result, 'The deletion already committed; the scrub failure must not mask it');
@@ -121,13 +120,26 @@ class CustomerErasureScrubPluginTest extends TestCase
         $this->assertStringContainsString('customer 42', $logger->errors[0]);
     }
 
-    private function repository(?FakeDeletedCustomer $customer): CustomerRepositoryInterface
+    /**
+     * A deleted-customer stand-in. The plugin reads only id and email, but the
+     * fake must implement the FULL real CustomerInterface surface: the
+     * standalone shim declares just the two getters, while a real install
+     * declares ~48 methods and fatals on a partial implementation. The
+     * standalone runner's TestCase has no mock generator, so the fake is a
+     * literal class (extra public methods are harmless against the shim).
+     */
+    private function customer(int $id, string $email): CustomerInterface
+    {
+        return new FakeDeletedCustomer($id, $email);
+    }
+
+    private function repository(?CustomerInterface $customer): CustomerRepositoryInterface
     {
         return new class ($customer) implements CustomerRepositoryInterface {
             /** @var string[] */
             public array $log = [];
 
-            public function __construct(public ?FakeDeletedCustomer $customer)
+            public function __construct(public ?CustomerInterface $customer)
             {
             }
 
@@ -168,6 +180,14 @@ class CustomerErasureScrubPluginTest extends TestCase
     }
 }
 
+/**
+ * Implements the complete real 2.4.x CustomerInterface (including the
+ * custom-attribute methods it inherits), untyped signatures matching core's
+ * published API, so loading it never fatals on a full install. Only getId()
+ * and getEmail() carry data — everything else is inert.
+ *
+ * phpcs:disable Magento2.Annotation -- inert stubs, documented above.
+ */
 class FakeDeletedCustomer implements CustomerInterface
 {
     public function __construct(
@@ -185,6 +205,239 @@ class FakeDeletedCustomer implements CustomerInterface
     {
         return $this->email;
     }
+
+    // @codingStandardsIgnoreStart -- inert interface-completeness stubs.
+    public function setId($id)
+    {
+        return $this;
+    }
+
+    public function getGroupId()
+    {
+        return null;
+    }
+
+    public function setGroupId($groupId)
+    {
+        return $this;
+    }
+
+    public function getDefaultBilling()
+    {
+        return null;
+    }
+
+    public function setDefaultBilling($defaultBilling)
+    {
+        return $this;
+    }
+
+    public function getDefaultShipping()
+    {
+        return null;
+    }
+
+    public function setDefaultShipping($defaultShipping)
+    {
+        return $this;
+    }
+
+    public function getConfirmation()
+    {
+        return null;
+    }
+
+    public function setConfirmation($confirmation)
+    {
+        return $this;
+    }
+
+    public function getCreatedAt()
+    {
+        return null;
+    }
+
+    public function setCreatedAt($createdAt)
+    {
+        return $this;
+    }
+
+    public function getUpdatedAt()
+    {
+        return null;
+    }
+
+    public function setUpdatedAt($updatedAt)
+    {
+        return $this;
+    }
+
+    public function getCreatedIn()
+    {
+        return null;
+    }
+
+    public function setCreatedIn($createdIn)
+    {
+        return $this;
+    }
+
+    public function getDob()
+    {
+        return null;
+    }
+
+    public function setDob($dob)
+    {
+        return $this;
+    }
+
+    public function setEmail($email)
+    {
+        return $this;
+    }
+
+    public function getFirstname()
+    {
+        return null;
+    }
+
+    public function setFirstname($firstname)
+    {
+        return $this;
+    }
+
+    public function getLastname()
+    {
+        return null;
+    }
+
+    public function setLastname($lastname)
+    {
+        return $this;
+    }
+
+    public function getMiddlename()
+    {
+        return null;
+    }
+
+    public function setMiddlename($middlename)
+    {
+        return $this;
+    }
+
+    public function getPrefix()
+    {
+        return null;
+    }
+
+    public function setPrefix($prefix)
+    {
+        return $this;
+    }
+
+    public function getSuffix()
+    {
+        return null;
+    }
+
+    public function setSuffix($suffix)
+    {
+        return $this;
+    }
+
+    public function getGender()
+    {
+        return null;
+    }
+
+    public function setGender($gender)
+    {
+        return $this;
+    }
+
+    public function getStoreId()
+    {
+        return null;
+    }
+
+    public function setStoreId($storeId)
+    {
+        return $this;
+    }
+
+    public function getTaxvat()
+    {
+        return null;
+    }
+
+    public function setTaxvat($taxvat)
+    {
+        return $this;
+    }
+
+    public function getWebsiteId()
+    {
+        return null;
+    }
+
+    public function setWebsiteId($websiteId)
+    {
+        return $this;
+    }
+
+    public function getAddresses()
+    {
+        return null;
+    }
+
+    public function setAddresses(?array $addresses = null)
+    {
+        return $this;
+    }
+
+    public function getDisableAutoGroupChange()
+    {
+        return null;
+    }
+
+    public function setDisableAutoGroupChange($disableAutoGroupChange)
+    {
+        return $this;
+    }
+
+    public function getExtensionAttributes()
+    {
+        return null;
+    }
+
+    public function setExtensionAttributes(
+        \Magento\Customer\Api\Data\CustomerExtensionInterface $extensionAttributes
+    ) {
+        return $this;
+    }
+
+    public function getCustomAttribute($attributeCode)
+    {
+        return null;
+    }
+
+    public function setCustomAttribute($attributeCode, $attributeValue)
+    {
+        return $this;
+    }
+
+    public function getCustomAttributes()
+    {
+        return [];
+    }
+
+    public function setCustomAttributes(array $attributes)
+    {
+        return $this;
+    }
+    // @codingStandardsIgnoreEnd
 }
 
 class RecordingScrubber extends ExecutionPiiScrubber
@@ -196,7 +449,15 @@ class RecordingScrubber extends ExecutionPiiScrubber
 
     public function __construct()
     {
-        parent::__construct(new ResourceConnection(), new NullLogger());
+        // Deliberately NO parent::__construct(): ExecutionPiiScrubber takes a
+        // real Magento\Framework\App\ResourceConnection, and on a full install
+        // that class needs three DI collaborators
+        // (ConfigInterface/ConnectionFactoryInterface/DeploymentConfig) — `new
+        // ResourceConnection()` is an ArgumentCountError there, and only the
+        // standalone runner's shim tolerates it. Bypassing the parent
+        // constructor is safe because scrubForCustomer() below is the only
+        // method this double is ever asked for and it never reads the parent's
+        // (therefore uninitialized) properties.
     }
 
     public function scrubForCustomer(int $customerId, string $email): void

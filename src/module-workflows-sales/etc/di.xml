@@ -81,6 +81,22 @@
         </arguments>
     </type>
 
+    <!-- entity:* aliases for the sales sources: rules are searched, statuses
+         are a bounded list. -->
+    <type name="MageOS\Workflows\Model\Option\EntityOptionSourceRegistry">
+        <arguments>
+            <argument name="map" xsi:type="array">
+                <item name="salesrule" xsi:type="array">
+                    <item name="source" xsi:type="string">cart_price_rules</item>
+                </item>
+                <item name="order_status" xsi:type="array">
+                    <item name="source" xsi:type="string">order_statuses</item>
+                    <item name="bounded" xsi:type="boolean">true</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
     <!-- Order + coupon actions (relocated from actions-core). Action codes
          unchanged. -->
     <type name="MageOS\Workflows\Model\Action\ActionPool">
@@ -115,6 +131,19 @@
             <argument name="dtoInterfaces" xsi:type="array">
                 <item name="sales_order" xsi:type="string">Magento\Sales\Api\Data\OrderInterface</item>
                 <item name="quote" xsi:type="string">Magento\Quote\Api\Data\CartInterface</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Dry-run entity picker (03): the quote recent-entity provider (sales_order
+         is registered by the admin-ui pack, which owns that provider). Global
+         scope for the same array_replace reason the admin-ui registration
+         documents — an area-scope declaration would wipe providers other packs
+         declare in global di.xml. -->
+    <type name="MageOS\Workflows\Model\DryRun\RecentEntityProviderPool">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="quote" xsi:type="object">MageOS\WorkflowsSales\Model\DryRun\QuoteRecentEntityProvider</item>
             </argument>
         </arguments>
     </type>

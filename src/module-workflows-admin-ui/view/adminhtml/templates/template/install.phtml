@@ -1,8 +1,18 @@
 <?php
 /**
  * @var \MageOS\WorkflowsAdminUi\Block\Adminhtml\Template\Install $block
+ *
+ * Every widget the block can return has its OWN branch below — none falls
+ * through to a default — so adding a widget without rendering it fails the
+ * view contract test rather than silently degrading a field. The two enhanced
+ * widgets (search, duration) always render their REAL input inside the
+ * container and boot declaratively with data-mage-init, all config in data-*
+ * attributes: with JavaScript off, or after an install error re-renders the
+ * form, the plain input is what the operator gets. No inline script (CSP).
  */
 $parameters = $block->getParameters();
+$searchInit = $block->escapeHtmlAttr('{"mageosWorkflowsParamSearch": {}}');
+$durationInit = $block->escapeHtmlAttr('{"mageosWorkflowsParamDuration": {}}');
 ?>
 <div class="admin__page-section">
     <div class="admin__page-section-title">
@@ -48,7 +58,60 @@ $parameters = $block->getParameters();
                         <input type="password" name="secret_value[<?= $block->escapeHtmlAttr($key) ?>]"
                                class="admin__control-text" autocomplete="new-password"
                                placeholder="<?= $block->escapeHtmlAttr(__('new value (optional)')) ?>"/>
-                    <?php else: ?>
+                    <?php elseif ($widget === 'search'): ?>
+                        <?php $search = $block->searchConfig($parameter); ?>
+                        <div class="mageos-param-search"
+                             data-mage-init='<?= /* @noEscape */ $searchInit ?>'
+                             data-endpoint="<?= $block->escapeUrl($search['url']) ?>"
+                             data-source="<?= $block->escapeHtmlAttr($search['source']) ?>"
+                             data-min-chars="<?= $block->escapeHtmlAttr((string) $search['min_chars']) ?>"
+                             data-current-label="<?= $block->escapeHtmlAttr($block->currentValueLabel($parameter)) ?>"
+                             data-search-placeholder="<?= $block->escapeHtmlAttr(__('Type to search…')) ?>"
+                             data-label-results="<?= $block->escapeHtmlAttr(__('Search results')) ?>"
+                             data-label-no-results="<?= $block->escapeHtmlAttr(__('No matches.')) ?>"
+                             data-label-nothing-selected="<?= $block->escapeHtmlAttr(__('Nothing selected yet.')) ?>"
+                             data-label-manual="<?= $block->escapeHtmlAttr(__('Enter the record ID manually')) ?>">
+                            <input type="text" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                                   name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                                   class="admin__control-text"
+                                   value="<?= $block->escapeHtmlAttr($block->fieldValue($parameter)) ?>"
+                                   <?= $block->isRequired($parameter) ? 'required' : '' ?>/>
+                        </div>
+                    <?php elseif ($widget === 'duration'): ?>
+                        <?php $duration = $block->durationParts($parameter); ?>
+                        <div class="mageos-param-duration"
+                             data-mage-init='<?= /* @noEscape */ $durationInit ?>'
+                             <?php if ($duration !== null): ?>
+                             data-value="<?= $block->escapeHtmlAttr((string) $duration['value']) ?>"
+                             data-unit="<?= $block->escapeHtmlAttr($duration['unit']) ?>"
+                             <?php endif; ?>
+                             data-label-amount="<?= $block->escapeHtmlAttr(__('Amount')) ?>"
+                             data-label-unit="<?= $block->escapeHtmlAttr(__('Unit')) ?>"
+                             data-label-minutes="<?= $block->escapeHtmlAttr(__('Minutes')) ?>"
+                             data-label-hours="<?= $block->escapeHtmlAttr(__('Hours')) ?>"
+                             data-label-days="<?= $block->escapeHtmlAttr(__('Days')) ?>">
+                            <input type="text" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                                   name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                                   class="admin__control-text"
+                                   value="<?= $block->escapeHtmlAttr($block->fieldValue($parameter)) ?>"
+                                   <?= $block->isRequired($parameter) ? 'required' : '' ?>/>
+                        </div>
+                    <?php elseif ($widget === 'number'): ?>
+                        <input type="number" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                               name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                               class="admin__control-text"
+                               value="<?= $block->escapeHtmlAttr($block->fieldValue($parameter)) ?>"
+                               <?php foreach ($block->numberAttrs($parameter) as $attribute => $attributeValue): ?>
+                               <?= $block->escapeHtmlAttr($attribute) ?>="<?= $block->escapeHtmlAttr($attributeValue) ?>"
+                               <?php endforeach; ?>
+                               <?= $block->isRequired($parameter) ? 'required' : '' ?>/>
+                    <?php elseif ($widget === 'url'): ?>
+                        <input type="url" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
+                               name="param[<?= $block->escapeHtmlAttr($key) ?>]"
+                               class="admin__control-text"
+                               value="<?= $block->escapeHtmlAttr($block->fieldValue($parameter)) ?>"
+                               <?= $block->isRequired($parameter) ? 'required' : '' ?>/>
+                    <?php elseif ($widget === 'text'): ?>
                         <input type="text" id="<?= $block->escapeHtmlAttr($fieldId) ?>"
                                name="param[<?= $block->escapeHtmlAttr($key) ?>]"
                                class="admin__control-text"

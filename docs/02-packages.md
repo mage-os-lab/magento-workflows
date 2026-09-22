@@ -11,19 +11,19 @@ entity-agnostic *in fact*. Every package's composer metadata is CI-enforced hone
 
 | Package | Contents |
 |---|---|
-| `mage-os/workflows` | Core engine: domain model, condition evaluation/machinery (rule pools, hydration/relation/leaf/combine pools, aggregate pool), execution, queues, secrets, webapi + CLI, generic leaves, the `email_templates` option source |
+| `mage-os/workflows` | Core engine: domain model, condition evaluation/machinery (rule pools, hydration/relation/leaf/combine pools, aggregate pool), execution, queues, secrets, webapi + CLI, generic leaves, the `email_templates` option source (+ its `entity:email_template` alias), and the `EntityOptionSourceRegistry` the packs register aliases into |
 | `mage-os/workflows-admin-ui` | Grid + form UI, executions log UI, ACL, dry-run recent-entity picker |
 | `mage-os/workflows-actions-core` | Entity-agnostic action library: `notify.email`/`notify.webhook`/`notify.admin`, `flow.set_variable`, and the bundled ad-hoc email template |
 | `mage-os/workflows-triggers-core` | Async-events notifier binding, subscription lifecycle/ownership, and the `EventPublisher` the domain packs publish gap-fill events through |
 | `mage-os/workflows-scheduler` | Scheduled-trigger infrastructure: cron entry, entity-agnostic `QueryRunner` + `ConditionToSearchCriteria`, schedule-state table (domain packs contribute their per-entity `QueryRunner` maps) |
 
-**Domain packs** (one Magento module + composer package per commerce domain; each carries that domain's roots, hydrators, relations, option sources, detectors, triggers and actions together):
+**Domain packs** (one Magento module + composer package per commerce domain; each carries that domain's roots, hydrators, relations, option sources — including the `entity:*` template-parameter aliases those sources back, registered into core's `EntityOptionSourceRegistry` — detectors, triggers and actions together):
 
 | Package | Contents |
 |---|---|
-| `mage-os/workflows-sales` | Order + quote condition roots, order/quote hydrators, `order.*`/`quote.*` relations, order-history aggregates on the customer root, the order-status + abandoned-cart triggers and `AbandonedCartDetector`, order + coupon actions, order-status/cart-price-rule option sources, `sales_order`/`quote` `QueryRunner` maps, the cart-abandonment threshold config field |
-| `mage-os/workflows-customer` | Customer condition root, customer hydrator, `customer.open_orders` relation, the customer-group-changed trigger, `customer.assign_group`/`set_attribute`/`anonymize` actions, customer-group option source, `customer` `QueryRunner` map |
-| `mage-os/workflows-catalog` | Product condition root, product hydrator, `product.set_attribute`/`set_status`/`set_categories`/`set_special_price` actions, `catalog_product` `QueryRunner` map |
+| `mage-os/workflows-sales` | Order + quote condition roots, order/quote hydrators, `order.*`/`quote.*` relations, order-history aggregates on the customer root, the order-status + abandoned-cart triggers and `AbandonedCartDetector`, order + coupon actions, order-status/cart-price-rule option sources (+ their `entity:order_status` and `entity:salesrule` aliases), `sales_order`/`quote` `QueryRunner` maps, the cart-abandonment threshold config field |
+| `mage-os/workflows-customer` | Customer condition root, customer hydrator, `customer.open_orders` relation, the customer-group-changed trigger, `customer.assign_group`/`set_attribute`/`anonymize` actions, customer-group option source (+ its `entity:customer_group` alias), `customer` `QueryRunner` map |
+| `mage-os/workflows-catalog` | Product condition root, product hydrator, `product.set_attribute`/`set_status`/`set_categories`/`set_special_price` actions, the `websites` option source (+ its `entity:website` alias), `catalog_product` `QueryRunner` map |
 | `mage-os/workflows-inventory` | `StockThresholdDetector`, the stock-threshold-crossed trigger, the stock-flag hysteresis table, `product.set_stock`, the stock-threshold config field; *suggests* MSI (runtime-guarded) |
 | `mage-os/workflows-review` | `ReviewSubmittedObserver` + the `catalog.product.review_submitted` trigger |
 | `mage-os/workflows-newsletter` | `customer.newsletter` action + the anonymize-unsubscribe plugin on `workflows-customer`'s Anonymize |
@@ -66,6 +66,8 @@ These are also the review checklist for placing future backlog items:
 1. **Root ownership** — a pack owns a condition root iff it owns the entity's Magento module.
 2. **Relations live with their source entity's pack** (where they appear in the UI): `order.*`/`quote.*` → sales; `customer.*` → customer.
 3. **Aggregates live with the pack owning the queried data**, contributed to the target root via the aggregate pool (order-history aggregates on the customer root belong to sales).
-4. **Option sources live with their consumer.**
+4. **Option sources live with their consumer**, and a source's `entity:*` template-parameter
+   alias is registered by the same pack (one DI entry into core's `EntityOptionSourceRegistry`),
+   so an absent pack simply loses both together.
 5. **Packs may require any never-absent `magento/*` module freely** (Sales, Customer, Catalog, Quote, Eav, CatalogInventory, SalesRule, Email — all shipped by `product-community-edition`). Workflows packs never require each other *laterally* (sales ↔ customer); domain packs may — and must, honestly — require the shared infrastructure packs they build on (`workflows` always; `workflows-triggers-core` when they publish through its `EventPublisher`; `workflows-scheduler` when they contribute a `QueryRunner` map). Only the small optional-domain packs may additionally require the domain packs beneath them (newsletter → customer).
 6. The `set_stock`/MSI runtime-guard style stays reserved for genuinely removable package families inside an otherwise hard-dep class; enable state covers everything else.

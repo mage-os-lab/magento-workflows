@@ -42,6 +42,15 @@ for branch/switch/approval edges), the save/validate client contracts, and a
 Playwright smoke that asserts actual edge wiring and ui-position persistence
 in the posted definition.
 
+One gap the lint lane structurally cannot cover is covered here instead: no
+JSON-Schema validator runs anywhere in CI (the lint lane only JSON-decodes), so
+`SeedPackFixtureTest` is the de-facto schema gate for the bundled template pack
+— alongside its compat/install/dry-run pipeline it pins every declared
+parameter `type` to the closed set published in
+`spec/workflow-template.schema.json` (`string|number|url|duration|select|secret`
+or `entity:<alias>`), fails on the removed `optional` key, and checks the
+fixture's representative parameter values against those declared types.
+
 ## The ideal, and the distance to it
 
 For this engine the ideal test portfolio is, in priority order:
@@ -123,6 +132,11 @@ Eight defects only a real install could catch; every one shipped broken:
 - **Canvas edge deletion was never persisted** — delete-key edge removal
   updated only React Flow local state; the next save silently re-posted the
   edge. Fixed with a combined `onDelete` commit; pinned by an e2e scenario.
+- **Canvas unsaved-changes guard** (issue #18) — no dirty tracking or
+  `beforeunload` existed, so navigating away discarded edits silently. Fixed
+  with a pure `unsavedGuard` seam (canonical definition fingerprint + dirty
+  compare + a guard armed only while dirty, disarmed synchronously by the
+  save navigation); pinned by `test/unsavedGuard.test.ts`.
 
 ### Open — documented behavior not implemented
 - **`{{ ... number:2 }}` unquoted filter args render literally**
@@ -147,8 +161,6 @@ Eight defects only a real install could catch; every one shipped broken:
 - **Manual mass-run cap / matched-count preview / audit-log hash**
   (docs/10 §Manual mass-run) — not evident in the Run controller; unverified
   and untested.
-- **Canvas unsaved-changes guard** — no dirty tracking/`beforeunload`
-  anywhere; navigating away discards edits silently.
 - **Webhook redirect targets are validated but not DNS-pinned**
   (`Webhook.php:223` pins only the original host) — a rebinding DNS server
   could re-resolve a validated redirect hop between validation and connect.
@@ -208,6 +220,7 @@ Eight defects only a real install could catch; every one shipped broken:
 3. API functional tests for the REST surface; then admin-ui controller units
    (Run/mass actions, importer, HealthCheck, console commands).
 4. Canvas: component-level tests for `Editor.tsx`/`ConfigPanel.tsx`
-   (add @testing-library), an unsaved-changes guard, and eventually one
-   full-stack e2e against a disposable Magento.
+   (add @testing-library) — the unsaved-changes guard landed as a pure seam,
+   but the wiring in `Editor.tsx` is still only covered indirectly — and
+   eventually one full-stack e2e against a disposable Magento.
 5. Docs pass to clear the "docs stale" list above.

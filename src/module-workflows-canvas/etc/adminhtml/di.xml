@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- Workflow-settings option lists bootstrapped into the canvas mount config
+         (`workflowOptions`). They are bound to the very same option sources the
+         classic admin form's selects declare in mageos_workflows_form.xml, so
+         the two authoring surfaces cannot drift apart: entity types come from
+         the core EntityTypeMetadataProviderInterface catalogue, websites from
+         the stock config source the form's website_ids multiselect uses.
+
+         Adminhtml-only: the mount block exists on no other area. -->
+    <type name="MageOS\WorkflowsCanvas\Block\Adminhtml\Canvas\Mount">
+        <arguments>
+            <argument name="entityTypeSource" xsi:type="object">MageOS\WorkflowsAdminUi\Model\Source\EntityType</argument>
+            <argument name="triggerTypeSource" xsi:type="object">MageOS\WorkflowsAdminUi\Model\Source\TriggerType</argument>
+            <argument name="statusSource" xsi:type="object">MageOS\WorkflowsAdminUi\Model\Source\WorkflowStatus</argument>
+            <argument name="websiteSource" xsi:type="object">Magento\Config\Model\Config\Source\Website</argument>
+        </arguments>
+    </type>
+</config>

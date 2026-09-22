@@ -44,6 +44,17 @@ describe('addNode', () => {
     expect(g2.nodes).toHaveLength(1);
   });
 
+  it('blankStep("wait") seeds the required timeout (the event stays the author\'s call)', () => {
+    // waitStep.config requires event AND timeout; without the timeout a
+    // freshly-dropped wait step could never save.
+    expect(blankStep('wait')).toEqual({
+      type: 'wait',
+      config: { event: '', timeout: 'P1D' },
+      on_event: null,
+      on_timeout: null,
+    });
+  });
+
   it('blankStep("approval") seeds a required timeout and all three null edges', () => {
     const step = blankStep('approval');
     expect(step).toEqual({

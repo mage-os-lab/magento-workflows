@@ -4,12 +4,17 @@ declare(strict_types=1);
 namespace MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\Edit;
 
 use Magento\Framework\View\Element\UiComponent\Control\ButtonProviderInterface;
+use MageOS\WorkflowsAdminUi\Block\Adminhtml\Workflow\RunNowModal;
 
 /**
- * Prompts for the target entity ID (plain window.prompt, v1 adminhtml) and
- * navigates to the Run controller. The URL builder already appends the adminhtml
- * secret key, and extra path params after it are still routed, so entity_id is
- * appended client-side.
+ * Opens the "Run Now" modal (RunNowModal + run-now-modal.js), which asks for the
+ * target entity ID with a recent-entity picker — this button used to ask with a
+ * window.prompt. The on_click stays a one-liner that raises one custom event on
+ * the modal container; the RequireJS module owns the behaviour, including
+ * building the Run URL, so nothing about the dispatch lives in inline script.
+ *
+ * The visibility gates are the modal's gates too (saved workflow + the dedicated
+ * manual-run ACL), so the button never renders without the container it opens.
  */
 class RunNowButton extends GenericButton implements ButtonProviderInterface
 {
@@ -18,7 +23,7 @@ class RunNowButton extends GenericButton implements ButtonProviderInterface
      */
     public function getButtonData(): array
     {
-        if ($this->getWorkflowId() === null || !$this->isAllowed('MageOS_Workflows::manual_run')) {
+        if ($this->getWorkflowId() === null || !$this->isAllowed(RunNowModal::ACL_MANUAL_RUN)) {
             return [];
         }
 
@@ -32,14 +37,6 @@ class RunNowButton extends GenericButton implements ButtonProviderInterface
 
     private function getOnClick(): string
     {
-        $runUrl = $this->getUrl('mageos_workflows/workflow/run', ['workflow_id' => $this->getWorkflowId()]);
-        $prompt = json_encode(
-            (string) __('Enter the ID of the entity (e.g. order or customer ID) to run this workflow against:'),
-            JSON_THROW_ON_ERROR
-        );
-
-        return "var entityId = window.prompt({$prompt}); "
-            . "if (entityId !== null && entityId.trim() !== '') { "
-            . "location.href = '{$runUrl}' + 'entity_id/' + encodeURIComponent(entityId.trim()) + '/'; }";
+        return sprintf("jQuery('#%s').trigger('mageos:open-run-now');", RunNowModal::CONTAINER_ID);
     }
 }

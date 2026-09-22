@@ -23,24 +23,22 @@ $approval = $block->getApproval();
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Entity')) ?></th>
-                    <td>
+                    <td title="<?= $block->escapeHtmlAttr((string) $approval->getEntityType()) ?>">
                         <?php $entityUrl = $block->getEntityUrl(); ?>
                         <?php if ($entityUrl): ?>
-                            <a href="<?= $block->escapeUrl($entityUrl) ?>">
-                                <?= $block->escapeHtml($approval->getEntityType()) ?> #<?= $block->escapeHtml((string) $approval->getEntityId()) ?>
-                            </a>
+                            <a href="<?= $block->escapeUrl($entityUrl) ?>"><?= $block->escapeHtml($block->getEntityLabel()) ?></a>
                         <?php else: ?>
-                            <?= $block->escapeHtml($approval->getEntityType()) ?> #<?= $block->escapeHtml((string) $approval->getEntityId()) ?>
+                            <?= $block->escapeHtml($block->getEntityLabel()) ?>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Status')) ?></th>
-                    <td><?= $block->escapeHtml($approval->getStatus()) ?></td>
+                    <td><?= $block->escapeHtml($block->getStatusLabel()) ?></td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Assignee Role')) ?></th>
-                    <td><?= $block->escapeHtml($approval->getAssigneeRole() ?? '—') ?></td>
+                    <td title="<?= $block->escapeHtmlAttr((string) $approval->getAssigneeRole()) ?>"><?= $block->escapeHtml($block->getAssigneeRoleLabel() ?: '—') ?></td>
                 </tr>
                 <tr>
                     <th><?= $block->escapeHtml(__('Due')) ?></th>
@@ -87,7 +85,7 @@ $approval = $block->getApproval();
                 <?php foreach ($steps as $step): ?>
                     <tr>
                         <td><?= $block->escapeHtml($step->getStepKey()) ?></td>
-                        <td><?= $block->escapeHtml($step->getStatus()) ?></td>
+                        <td><?= $block->escapeHtml($block->getStepStatusLabel($step->getStatus())) ?></td>
                         <td><?= $block->escapeHtml((string) $step->getStartedAt()) ?></td>
                         <td><?= $block->escapeHtml((string) $step->getFinishedAt()) ?></td>
                     </tr>

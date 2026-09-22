@@ -14,8 +14,8 @@
             "edition": "any"
         },
         "parameters": [
-            {"key": "value_threshold", "label": "Order total that triggers a hold", "type": "string", "default": "1000"},
-            {"key": "fraud_webhook_url", "label": "Fraud-scoring webhook URL", "type": "string", "required": true},
+            {"key": "value_threshold", "label": "Order total that triggers a hold", "type": "number", "min": 0, "default": "1000"},
+            {"key": "fraud_webhook_url", "label": "Fraud-scoring webhook URL", "type": "url", "required": true, "note": "Receives a POST signed with the HMAC secret below, carrying the order number, grand total, and customer email. It must answer within 5 seconds; its response is captured as the fraud score."},
             {"key": "fraud_signing_secret", "label": "HMAC secret for the fraud webhook", "type": "secret", "required": true}
         ]
     },

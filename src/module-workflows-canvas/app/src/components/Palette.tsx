@@ -1,5 +1,6 @@
 import type { DragEvent } from 'react';
 import type { MountConfig } from '../types';
+import { t } from '../i18n';
 import { buildPalette, type PaletteItem } from '../palette';
 
 /**
@@ -36,7 +37,7 @@ export function Palette({ config, onAdd }: Props): JSX.Element {
   };
 
   return (
-    <nav className="wf-palette" aria-label="Step palette">
+    <nav className="wf-palette" aria-label={t('Step palette')}>
       {groups.map((group) => (
         <section key={group.label} className="wf-palette__group">
           <h4 className="wf-palette__group-title">{group.label}</h4>
@@ -55,10 +56,10 @@ export function Palette({ config, onAdd }: Props): JSX.Element {
                     <button
                       type="button"
                       className="wf-palette__add"
-                      aria-label={`Add ${label}`}
+                      aria-label={`${t('Add')} ${label}`}
                       onClick={() => onAdd(payloadOf(item))}
                     >
-                      Add
+                      {t('Add')}
                     </button>
                   </div>
                 </li>
@@ -67,6 +68,10 @@ export function Palette({ config, onAdd }: Props): JSX.Element {
           </ul>
         </section>
       ))}
+      {/* The connect gesture is invisible until someone tells you it exists. */}
+      <p className="wf-palette__howto">
+        {t('To connect steps, drag from a dot on the bottom edge of one step to the top of another. Click a step or connection and press Delete to remove it.')}
+      </p>
     </nav>
   );
 }

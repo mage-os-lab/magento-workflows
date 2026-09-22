@@ -6,6 +6,18 @@
             <item name="provider" xsi:type="string">mageos_workflows_form.mageos_workflows_form_data_source</item>
         </item>
         <item name="label" xsi:type="string" translate="true">General Information</item>
+        <!-- The form template must match the layout builder. This form declares no
+             <settings><layout>, so Structure::generate() builds it with the GENERIC
+             layout — but the default form template (templates/form/default) binds
+             its content to "{name}.areas", a component only the TABS layout builder
+             creates (Magento\Ui\Component\Layout\Tabs::initAreas). With the default
+             template and no tabs layout, the knockout scope waits forever for a
+             component that never registers: the loading mask never hides, not a
+             single field renders, and there is no console error. The collapsible
+             template binds "{name}.{name}" — the node the generic layout DOES
+             create — and renders each fieldset as a collapsible section
+             (cms_page_form is the core reference for this exact pattern). -->
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
     </argument>
     <settings>
         <!-- Toolbar buttons belong to the uiComponent, not to a Widget\Form\Container

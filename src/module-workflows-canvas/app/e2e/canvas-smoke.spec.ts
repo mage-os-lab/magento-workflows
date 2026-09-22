@@ -10,12 +10,16 @@ import { expect, test, type Page } from '@playwright/test';
  * save loop performs. The server side of save (auth/ACL/Save controller/F2
  * plugin) is covered by the PHP suite.
  *
- * Two scenarios:
+ * Three scenarios:
  *   1. add a Stop step, WIRE it from the existing action's `next` handle by
  *      dragging a connection, and assert the posted definition carries the
  *      edge in the right key AND persists ui positions (bootstrapped + moved);
  *   2. connect then DELETE the edge via select + Backspace and assert the
- *      posted definition reflects the removal (next back to null).
+ *      posted definition reflects the removal (next back to null);
+ *   3. canvas-first creation: mount the no-id blank-workflow config
+ *      (admin-page-new.html), fill name + entity type in the auto-opened
+ *      settings panel, add a node, save, and assert the POST carries the
+ *      general fields and back=canvas with NO workflow_id.
  */
 
 async function mockEndpoints(page: Page): Promise<{ saved: string[] }> {
@@ -49,11 +53,13 @@ async function addStopAndConnect(page: Page): Promise<void> {
   const stopNode = page.locator('.react-flow__node', { hasText: 'Stop' });
   await expect(stopNode).toBeVisible();
 
-  // Move the freshly-dropped stop node well below the action node.
+  // Click-adds now land on a free spot below the graph (no more stacking), so
+  // no clearing move is needed — a small nudge still exercises drag + the
+  // layout-dirty flag without pushing the node out of the viewport.
   const stopBox = (await stopNode.boundingBox())!;
-  await page.mouse.move(stopBox.x + stopBox.width / 2, stopBox.y + 10);
+  await page.mouse.move(stopBox.x + stopBox.width / 2, stopBox.y + 30);
   await page.mouse.down();
-  await page.mouse.move(stopBox.x + stopBox.width / 2, stopBox.y + 220, { steps: 10 });
+  await page.mouse.move(stopBox.x + stopBox.width / 2 + 80, stopBox.y + 60, { steps: 8 });
   await page.mouse.up();
 
   // Drag a connection: action `next` source handle -> stop target handle.
@@ -66,8 +72,9 @@ async function addStopAndConnect(page: Page): Promise<void> {
   await page.mouse.move(tgt.x + tgt.width / 2, tgt.y + tgt.height / 2, { steps: 15 });
   await page.mouse.up();
 
-  // The committed (graph-backed) edge renders.
-  await expect(page.locator('.react-flow__edge')).toHaveCount(1);
+  // The committed (graph-backed) step edge renders — counted apart from the
+  // presentational trigger edge, which is always there.
+  await expect(page.locator('.react-flow__edge:not([data-id="__wf_trigger_edge__"])')).toHaveCount(1);
 }
 
 function parseSavedDefinition(body: string): {
@@ -120,10 +127,22 @@ test('delete a connected edge via keyboard: the posted definition drops the edge
 
   await addStopAndConnect(page);
 
-  // Select the edge and delete it with the keyboard (deleteKeyCode).
-  await page.locator('.react-flow__edge').click();
+  // Select the step edge (not the presentational trigger edge) and delete it
+  // with the keyboard (deleteKeyCode). The trigger edge is not deletable and
+  // must survive.
+  const stepEdge = page.locator('.react-flow__edge:not([data-id="__wf_trigger_edge__"])');
+  // A vertical edge has a zero-WIDTH bounding box, which locator.click refuses
+  // as "not visible" — click the path's midpoint by coordinates instead.
+  const mid = await stepEdge.locator('path').first().evaluate((el) => {
+    const path = el as SVGPathElement;
+    const point = path.getPointAtLength(path.getTotalLength() / 2);
+    const ctm = path.getScreenCTM()!;
+    return { x: ctm.a * point.x + ctm.c * point.y + ctm.e, y: ctm.b * point.x + ctm.d * point.y + ctm.f };
+  });
+  await page.mouse.click(mid.x, mid.y);
   await page.keyboard.press('Backspace');
-  await expect(page.locator('.react-flow__edge')).toHaveCount(0);
+  await expect(stepEdge).toHaveCount(0);
+  await expect(page.locator('[data-id="__wf_trigger_edge__"]')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => saved.length, { timeout: 10_000 }).toBeGreaterThan(0);
@@ -136,4 +155,38 @@ test('delete a connected edge via keyboard: the posted definition drops the edge
   const stopKey = Object.keys(steps).find((k) => steps[k].type === 'stop');
   expect(stopKey).toBeTruthy();
   expect(steps.s1.next).toBeNull();
+});
+
+test('canvas-first creation: settings + save post the general fields with back=canvas and no workflow_id', async ({ page }) => {
+  const { saved } = await mockEndpoints(page);
+  await page.goto('/app/e2e/fixtures/admin-page-new.html');
+
+  // The settings panel is persistent above the canvas — no modal to open or
+  // dismiss. Name and entity type are the first authoring decisions.
+  const settings = page.getByRole('region', { name: 'Workflow settings' });
+  await expect(settings).toBeVisible();
+  await settings.getByLabel('Name').fill('Canvas-born Workflow');
+  await settings.getByLabel('Applies to').selectOption('sales_order');
+
+  // Author a minimal graph so the save carries a real definition. (The
+  // trigger card is a presentational extra node — count step nodes only.)
+  await page.getByRole('button', { name: 'Add Stop' }).click();
+  await expect(page.locator('.react-flow__node:not(.react-flow__node-trigger)')).toHaveCount(1);
+  await expect(page.locator('.react-flow__node-trigger')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => saved.length, { timeout: 10_000 }).toBeGreaterThan(0);
+
+  const { params, definition } = parseSavedDefinition(saved[0]);
+  // The edited general fields post through the classic Save controller...
+  expect(params.get('name')).toBe('Canvas-born Workflow');
+  expect(params.get('entity_type')).toBe('sales_order');
+  // ...asking to land back on the canvas (which is where the new id appears)...
+  expect(params.get('back')).toBe('canvas');
+  // ...and a NEW workflow posts no id at all — the controller creates one.
+  expect(params.get('workflow_id')).toBeNull();
+
+  const steps = definition.steps ?? {};
+  expect(Object.keys(steps).length).toBe(1);
+  expect(Object.values(steps)[0].type).toBe('stop');
 });

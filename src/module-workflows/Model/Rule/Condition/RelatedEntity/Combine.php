@@ -144,13 +144,21 @@ class Combine extends AbstractWorkflowCombine
             ['value' => self::class, 'label' => __('Conditions Combination')],
             ['value' => TriggerData::class, 'label' => __('Trigger Data (advanced)')],
         ];
-        foreach ($targets as $condition) {
+        foreach ($targets as $targetType => $condition) {
             $attributeOptions = [];
             foreach ($condition->loadAttributeOptions()->getAttributeOption() as $code => $label) {
                 $attributeOptions[] = ['value' => get_class($condition) . '|' . $code, 'label' => $label];
             }
             if ($attributeOptions !== []) {
-                $groups[] = ['label' => __('Related Attribute'), 'value' => $attributeOptions];
+                // Name the target entity in the heading: with no relation
+                // chosen yet, EVERY registered target's attributes are offered,
+                // and two groups both called "Related Attribute" are
+                // indistinguishable ("Created At" exists on customers AND
+                // orders).
+                $groups[] = [
+                    'label' => __('Related Attribute (%1)', (string) $targetType),
+                    'value' => $attributeOptions,
+                ];
             }
         }
 
